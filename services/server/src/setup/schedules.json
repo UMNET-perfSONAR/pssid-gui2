@@ -1,0 +1,23 @@
+db.schedules.insertMany([
+        {"schedule_every_1_min": {
+            "repeat": "*/1 * * * *"
+        }},
+        {"schedule_every_5_min": {
+            "repeat": "*/5 * * * *"
+        }},
+        {"schedule_every_10_min": {
+            "repeat": "*/10 * * * *"
+        }},      
+]);
+
+
+db.schedules.insertMany[
+    {"schedule":"schedule_every_1_min",
+    "schedule_every_1_min":{
+        "repeat": "*/1 * * * *"
+    }   
+    },
+    {"schedule":"schedule_every_5_min",
+     "schedule_every_5_min":{
+        "repeat":"*/5 * * * *"
+    }}]
