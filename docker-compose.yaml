@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  client:
+    build: ./services/client
+    volumes:
+      - ./services/client:/usr/src/app/client
+      - client_node_modules:/usr/src/app/client/node_modules
+    ports:
+      - 8080:8080
+
+  server:
+    build: ./services/server
+    volumes:
+      - ./services/server:/usr/src/app/server
+    ports:
+      - 8000:8000
+    depends_on:
+      - mongo
+  mongo:
+    image: mongo
+    ports:
+      - 27017:27017
+
+volumes:
+  client_node_modules:
