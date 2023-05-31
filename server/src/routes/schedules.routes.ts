@@ -1,9 +1,15 @@
 import express, { Express, Request, Response } from 'express';
-import { connectToMongoDB } from '../services/ideas.service';
 var schedules = express.Router();
 
-const getSchedules = require('../controllers/schedules.controllers');
+const {getSchedules,
+        postSchedule,
+        updateSchedule,
+        deleteSchedule}
+= require('../controllers/schedules.controllers');
 
 schedules.get('/', getSchedules);
+schedules.post('/create-schedule', postSchedule);
+schedules.put('/update-schedule', updateSchedule);
+schedules.delete('/delete/:schedule_name', deleteSchedule);
 
 module.exports=schedules;
