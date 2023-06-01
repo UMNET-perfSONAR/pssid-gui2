@@ -15,7 +15,8 @@ var client = (0, ideas_service_1.connectToMongoDB)();
 // get all hosts
 const getHosts = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     (yield client).connect();
-    var response = yield (yield client).db('gui').collection('hosts').find().toArray();
+    const collection = yield (yield client).db('gui').collection('hosts');
+    const response = yield collection.find().project({ _id: 0, "host": 0 }).toArray();
     console.log(response);
     res.send(response);
 }));
@@ -38,11 +39,13 @@ const deleteHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* ()
 // add a single host to db 
 const postHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     (yield client).connect();
+    const data = req.body;
+    const batchData = data.batchData;
+    let object = `${data.name}`;
     var collection = yield (yield client).db('gui').collection('hosts');
-    var data = req.body;
     collection.insertOne({
         "host": data.name,
-        "batches": data.batchData
+        [object]: { "batches": batchData },
     });
     res.json(req.body);
 }));
@@ -53,11 +56,17 @@ const updateHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const old_hostname = data.old_hostname;
     const new_hostname = data.new_hostname;
     const batchData = data.batchData;
+    let old_host = `${old_hostname}`;
     (yield client).connect();
     var collection = yield (yield client).db('gui').collection('hosts');
+    // Update data - Do in two steps - error otherwise. TODO - Look into shortening this
     collection.updateOne({
         "host": old_hostname
-    }, { $set: { "host": new_hostname, "batches": batchData }
+    }, { $set: { "host": new_hostname, [old_host + ".batches"]: batchData },
+    });
+    collection.updateOne({
+        "host": new_hostname
+    }, { $rename: { [old_host]: new_hostname }
     });
     res.json(data);
 }));
