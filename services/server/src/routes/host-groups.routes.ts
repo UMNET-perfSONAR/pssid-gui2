@@ -4,16 +4,14 @@ var hostGroups = express.Router();
 const {getHostGroups, 
     getOneHostGroup, 
     deleteHostGroup, 
-    postHostGroup,
-    updateHostGroup} = require('../controllers/HostGroups.controllers');
+    postHostGroup, 
+    updateHostGroup} = require('../controllers/host-groups.contollers');
 
 
 hostGroups.get('/', getHostGroups);
-hostGroups.get('/:HostGroup-group-name', getOneHostGroup);
-hostGroups.delete('/:HostGroup-group-name', deleteHostGroup);
-hostGroups.post('/create-HostGroup-group', postHostGroup);
-// HostGroups.put('/HostGroup/:old_HostGroup/:new_HostGroupname/:new_batches', updateHostGroup);
-
+hostGroups.get('/:host_group', getOneHostGroup);
+hostGroups.delete('/:host_group', deleteHostGroup);
+hostGroups.post('/create-hostgroup', postHostGroup);
 hostGroups.put('/update-HostGroup-group', updateHostGroup);
 
 module.exports=hostGroups;

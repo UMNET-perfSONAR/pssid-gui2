@@ -9,38 +9,39 @@ var client = connectToMongoDB();
 // get all HostGroups
 const getHostGroups = (async (req: Request, res: Response) =>{
     (await client).connect();
-    var response = await (await client).db('gui').collection('host_groups').find().toArray();
-    console.log(response);
+    const collection = await (await client).db('gui').collection('host_groups');
+    const response = await collection.find().project({_id:0}).toArray();
     res.send(response);
 })
 
 // get a single host
-const getOneHost = (async (req: Request, res: Response) => {
+const getOneHostGroup = (async (req: Request, res: Response) => {
     const host_group = String(req.params.host_group);
     (await client).connect();
     var collection = await (await client).db('gui').collection('host_groups');
-    var response = collection.find({"host": host_group}).toArray();
+    var response = collection.find({"name": host_group}).project({_id:0}).toArray();
     res.send(response); 
 })
 
 // delete a single host
-const deleteHost = (async (req:Request, res:Response) => {
+const deleteHostGroup = (async (req:Request, res:Response) => {
     const host_group = String(req.params.host_group);
     (await client).connect();
     var collection = await (await client).db('gui').collection('host_groups');
-    await collection.findOneAndDelete({ "host_group" : host_group });
+    await collection.findOneAndDelete({ "name" : host_group });
     res.send('Host ' + host_group + ' was deleted')
 })
 
 // add a single host to db 
-const postHost = (async (req:Request, res:Response) => {
+const postHostGroup = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = await (await client).db('gui').collection('host_groups');
     var data = req.body; 
+    const host_group_name = `${data.host_group}`
     collection.insertOne({
-        "host_group":data.host_group,
+        "name":data.host_group,
         "hosts":data.hosts,
-        "batches":data.batchData
+        "batches":data.batchData 
     });
     res.json(req.body);
 })
@@ -48,24 +49,19 @@ const postHost = (async (req:Request, res:Response) => {
 
 // TODO: Add option to provide meta-information 
 // completely update one host
-const updateHost = (async (req:Request, res:Response) => {
-    const data = req.body;
-    const old_host_group = data.old_host_group;
-    const new_host_group = data.new_host_group;
-    const hosts = data.hosts;
-    const batchData = data.batchData;
-
+const updateHostGroup = (async (req:Request, res:Response) => {
     (await client).connect();
-    var collection = await (await client).db('gui').collection('host_groups');
+    let data = req.body;
+    let collection = await (await client).db('gui').collection('host_groups');
     collection.updateOne({
-        "host": old_host_group
-    }, {$set:{"host": new_host_group, "hosts":hosts, "batches": batchData}
+        "host": data.old_host_group
+    }, {$set:{"host": data.new_host_group, "hosts":data.hosts, 
+              "batches": data.batchData}
      });
-    
     res.json(data);
 } )
 module.exports = {getHostGroups, 
-                getOneHost, 
-                deleteHost, 
-                postHost, 
-                updateHost};
+                getOneHostGroup, 
+                deleteHostGroup, 
+                postHostGroup, 
+                updateHostGroup};

@@ -8,7 +8,7 @@ var client = connectToMongoDB();
 const getSchedules = (async (req: Request, res: Response) =>{
     (await client).connect();
     var collection = (await client).db("gui").collection("schedules");
-    const schedules = await collection.find().project({_id:0, "schedule":0}).toArray();
+    const schedules = await collection.find().project({_id:0}).toArray();
     res.send(schedules);
 })
 
@@ -26,45 +26,25 @@ const deleteSchedule = (async (req:Request, res:Response) => {
 // add a single schedule to db 
 const postSchedule = (async (req:Request, res:Response) => {
     (await client).connect();
-    const data = req.body; 
-    const schedule_name = `${data.schedule}`
-
     var collection = await (await client).db('gui').collection('schedules');
     collection.insertOne({
-        "schedule" : data.schedule,
-        [schedule_name] : {
-            "repeat" : data.repeat
-        }
+        "schedule" : req.body.schedule,
+        "repeat" : req.body.repeat
     });
     res.json(req.body);
 })
 
-
 // TODO: Add option to provide meta-information 
 // completely update one schedule
 const updateSchedule = (async (req:Request, res:Response) => {
-    const data = req.body;
-    const old_schedule = data.old_schedule;
-    const new_schedule = data.new_schedule;
-    const repeat = data.repeat;
-
-    const old_sched_ref = `${old_schedule}`;
-
     (await client).connect();
     var collection = await (await client).db('gui').collection('schedules');
     collection.updateOne({
-        "schedule": old_schedule
-    }, {$set:{"schedule": new_schedule, [old_sched_ref+".repeat"]:repeat}
+        "schedule": req.body.old_schedule
+    }, {$set:{"schedule": req.body.new_schedule, "repeat":req.body.repeat}
      });
-
-    collection.updateOne({
-        "schedule": new_schedule
-     }, { $rename:{[old_sched_ref]:new_schedule}
-     })
-    
-    res.json(data);
+    res.json(req.body);
 } )
-
 
 module.exports = {getSchedules, 
                 deleteSchedule,

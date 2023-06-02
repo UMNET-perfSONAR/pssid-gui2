@@ -10,9 +10,7 @@ const { writeFileSync } = require('fs');
 async function get_collection(client: MongoClient, col: String) {
     (await client).connect();
     const db = await (await client).db('gui');
-    // i.e. hosts collection has a "host" field 
-    const singular = `${col}`.slice(0, -1);
-    const data = await db.collection(`${col}`).find().project({_id:0, [`${singular}`]:0}).toArray();
+    const data = await db.collection(`${col}`).find().project({_id:0}).toArray();
     var host_data = {[`${col}`]:data};
     return host_data;  
 }
