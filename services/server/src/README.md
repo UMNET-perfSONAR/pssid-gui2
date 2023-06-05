@@ -1,32 +1,32 @@
 Collection Layouts in MongoDB:
 
-HOSTS:
+Hosts:
 ```
-host: {
-    host: "rp1",
-    rp1: {
+host: { 
+    [{
+        host: "rp1",
         batches: []
         data: {}
-    }
+    }] 
 }
 ```
-HOST_GROUPS:
+Host Groups:
 ```
 host_groups: {
-    host_group: "chem_building",
-    chem_building: {
+    [{
+        name: "chem_building",
         hosts: []
         batches: []
         data: {}
-    }
+    }]
 }
 ```
-SCHEDULES: 
+Schedules: 
 ```
 schedules: {
-    schedules: "schedule_every_1_min",
-    schedule_every_1_min: {
+    [{
+        name: "schedule_every_1_min",
         repeat: "*/1 * * * *"
-    }
+    }]
 }
 ```

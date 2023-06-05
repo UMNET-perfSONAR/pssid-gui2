@@ -37,7 +37,7 @@ const postHost = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = await (await client).db('gui').collection('hosts');
     collection.insertOne({
-        "host":req.body.name,
+        "name":req.body.name,
         "batches": req.body.batches,
         "data": req.body.data
     });   

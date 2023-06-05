@@ -15,8 +15,8 @@ var client = (0, ideas_service_1.connectToMongoDB)();
 const getSchedules = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     (yield client).connect();
     var collection = (yield client).db("gui").collection("schedules");
-    const specific = yield collection.find().toArray();
-    res.send(yield collection.find().toArray());
+    const schedules = yield collection.find().project({ _id: 0 }).toArray();
+    res.send(schedules);
 }));
 // delete a schedule
 const deleteSchedule = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -30,27 +30,22 @@ const deleteSchedule = ((req, res) => __awaiter(void 0, void 0, void 0, function
 const postSchedule = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     (yield client).connect();
     var collection = yield (yield client).db('gui').collection('schedules');
-    var data = req.body;
     collection.insertOne({
-        "schedule": data.schedule,
-        "repeat": data.repeat
+        "schedule": req.body.schedule,
+        "repeat": req.body.repeat
     });
     res.json(req.body);
 }));
 // TODO: Add option to provide meta-information 
 // completely update one schedule
 const updateSchedule = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const data = req.body;
-    const old_schedule = data.old_schedule;
-    const new_schedule = data.new_schedule;
-    const repeat = data.repeat;
     (yield client).connect();
     var collection = yield (yield client).db('gui').collection('schedules');
     collection.updateOne({
-        "schedule": old_schedule
-    }, { $set: { "schedule": new_schedule, "repeat": repeat }
+        "schedule": req.body.old_schedule
+    }, { $set: { "schedule": req.body.new_schedule, "repeat": req.body.repeat }
     });
-    res.json(data);
+    res.json(req.body);
 }));
 module.exports = { getSchedules,
     deleteSchedule,

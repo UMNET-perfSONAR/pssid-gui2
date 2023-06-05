@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from 'express';
-import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
+import { MongoClient, Db, MongoServerError, Collection, ObjectId } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
 // import { client } from '../index';
 
@@ -29,7 +29,7 @@ const deleteHostGroup = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = await (await client).db('gui').collection('host_groups');
     await collection.findOneAndDelete({ "name" : host_group });
-    res.send('Host ' + host_group + ' was deleted')
+    res.send('Host ' + host_group + ' was deleted!')
 })
 
 // add a single host to db 
@@ -37,7 +37,6 @@ const postHostGroup = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = await (await client).db('gui').collection('host_groups');
     var data = req.body; 
-    const host_group_name = `${data.host_group}`
     collection.insertOne({
         "name":data.host_group,
         "hosts":data.hosts,
@@ -54,9 +53,9 @@ const updateHostGroup = (async (req:Request, res:Response) => {
     let data = req.body;
     let collection = await (await client).db('gui').collection('host_groups');
     collection.updateOne({
-        "host": data.old_host_group
-    }, {$set:{"host": data.new_host_group, "hosts":data.hosts, 
-              "batches": data.batchData}
+        "name": data.old_host_group
+    }, {$set:{"name": data.new_host_group, "hosts":data.hosts, 
+              "batches": data.batches, "data": data.data}
      });
     res.json(data);
 } )

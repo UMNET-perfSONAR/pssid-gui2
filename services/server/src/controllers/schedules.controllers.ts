@@ -9,7 +9,13 @@ const getSchedules = (async (req: Request, res: Response) =>{
     (await client).connect();
     var collection = (await client).db("gui").collection("schedules");
     const schedules = await collection.find().project({_id:0}).toArray();
-    res.send(schedules);
+    console.log("hello");
+    let host_col = await (await client).db('gui').collection('hosts');
+    console.log('here');
+    var dat = (await host_col.find({"name": "rp1"}).toArray());
+    var str = JSON.stringify(dat[0]._id);
+    console.log(str);
+    res.send(dat);
 })
 
 

@@ -10,13 +10,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const ideas_service_1 = require("../services/ideas.service");
+// import { client } from '../index';
 // TODO: Scope of client variable - Import from another module?
 var client = (0, ideas_service_1.connectToMongoDB)();
 // get all HostGroups
 const getHostGroups = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     (yield client).connect();
-    var response = yield (yield client).db('gui').collection('host_groups').find().toArray();
-    console.log(response);
+    const collection = yield (yield client).db('gui').collection('host_groups');
+    const response = yield collection.find().project({ _id: 0, "host_group": 0 }).toArray();
     res.send(response);
 }));
 // get a single host
@@ -24,7 +25,7 @@ const getOneHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const host_group = String(req.params.host_group);
     (yield client).connect();
     var collection = yield (yield client).db('gui').collection('host_groups');
-    var response = collection.find({ "host": host_group }).toArray();
+    var response = collection.find({ "host_group": host_group }).project({ _id: 0, "host_group": 0 }).toArray();
     res.send(response);
 }));
 // delete a single host
@@ -40,27 +41,31 @@ const postHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     (yield client).connect();
     var collection = yield (yield client).db('gui').collection('host_groups');
     var data = req.body;
+    const host_group_name = `${data.host_group}`;
     collection.insertOne({
         "host_group": data.host_group,
-        "hosts": data.hosts,
-        "batches": data.batchData
+        [host_group_name]: {
+            "hosts": data.hosts,
+            "batches": data.batchData
+        }
     });
     res.json(req.body);
 }));
 // TODO: Add option to provide meta-information 
 // completely update one host
 const updateHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const data = req.body;
-    const old_host_group = data.old_host_group;
-    const new_host_group = data.new_host_group;
-    const hosts = data.hosts;
-    const batchData = data.batchData;
     (yield client).connect();
+    const data = req.body;
+    const old_group_ref = `${data.old_host_group}`;
     var collection = yield (yield client).db('gui').collection('host_groups');
     collection.updateOne({
-        "host": old_host_group
-    }, { $set: { "host": new_host_group, "hosts": hosts, "batches": batchData }
+        "host": data.old_host_group
+    }, { $set: { "host": data.new_host_group, [old_group_ref + "hosts"]: data.hosts,
+            [old_group_ref + "batches"]: data.batchData }
     });
+    collection.updateOne({
+        "host": data.new_host_group
+    }, { $rename: { [old_group_ref]: data.new_host_group } });
     res.json(data);
 }));
 module.exports = { getHostGroups,

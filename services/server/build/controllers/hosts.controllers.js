@@ -16,7 +16,7 @@ var client = (0, ideas_service_1.connectToMongoDB)();
 const getHosts = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     (yield client).connect();
     const collection = yield (yield client).db('gui').collection('hosts');
-    const response = yield collection.find().project({ _id: 0, "host": 0 }).toArray();
+    const response = yield collection.find().project({ _id: 0 }).toArray();
     console.log(response);
     res.send(response);
 }));
@@ -25,7 +25,7 @@ const getOneHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const name = String(req.params.hostname);
     (yield client).connect();
     var collection = yield (yield client).db('gui').collection('hosts');
-    var response = collection.find({ "host": name }).toArray();
+    var response = collection.find({ "name": name }).toArray();
     res.send(response);
 }));
 // delete a single host
@@ -33,42 +33,33 @@ const deleteHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const name = String(req.params.hostname);
     (yield client).connect();
     var collection = yield (yield client).db('gui').collection('hosts');
-    yield collection.findOneAndDelete({ "host": name });
-    res.send('Host ' + name + ' was deleted');
+    yield collection.findOneAndDelete({ "name": name });
+    res.send('host ' + name + ' was deleted');
 }));
 // add a single host to db 
 const postHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     (yield client).connect();
-    const data = req.body;
-    const batchData = data.batchData;
-    let object = `${data.name}`;
     var collection = yield (yield client).db('gui').collection('hosts');
     collection.insertOne({
-        "host": data.name,
-        [object]: { "batches": batchData },
+        "host": req.body.name,
+        "batches": req.body.batches,
+        "data": req.body.data
     });
     res.json(req.body);
 }));
 // TODO: Add option to provide meta-information 
 // completely update one host
 const updateHost = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const data = req.body;
-    const old_hostname = data.old_hostname;
-    const new_hostname = data.new_hostname;
-    const batchData = data.batchData;
-    let old_host = `${old_hostname}`;
+    let body = req.body;
     (yield client).connect();
     var collection = yield (yield client).db('gui').collection('hosts');
     // Update data - Do in two steps - error otherwise. TODO - Look into shortening this
     collection.updateOne({
-        "host": old_hostname
-    }, { $set: { "host": new_hostname, [old_host + ".batches"]: batchData },
+        "name": body.old_hostname
+    }, { $set: { "name": body.new_hostname, "batches": body.batches,
+            "data": body.data },
     });
-    collection.updateOne({
-        "host": new_hostname
-    }, { $rename: { [old_host]: new_hostname }
-    });
-    res.json(data);
+    res.json(body);
 }));
 module.exports = { getHosts,
     getOneHost,

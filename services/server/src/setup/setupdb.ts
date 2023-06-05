@@ -18,19 +18,36 @@ export async function startup() {
 
     // when this returns, should be able to convert json array -> json object -> correct formatting 
     db.collection('schedules').insertMany([
-        {"schedule":"schedule_every_1_min",
-        "repeat": "*/1 * * * *" 
+        {"name":"schedule_every_1_min",
+         "repeat": "*/1 * * * *"
         },
-        {"schedule":"schedule_every_5_min",
+        {"name":"schedule_every_5_min",
          "repeat":"*/5 * * * *"
         }])
 
     db.collection('hosts').insertMany([
-        {"host":"rp1",
-         "batches": ""
+        {"name":"rp1",
+         "batches": [],
+         "data": []
         },
-        {"host":"rp2",
-        "batches": ""
+        {"name":"rp2",
+         "batches": [],
+         "data": [] 
+        }
+    ])
+
+    db.collection('host_groups').insertMany([
+        {
+            "name": "chem_building",
+            "hosts": ["rp1", "rp1"],
+            "batches": ["batch_2", "my_batch"],
+            "data": []
+        },
+        {
+            "name": "lsa_building",
+            "hosts": ["rp1"], 
+            "batches": ["all_batches"],
+            "data": []
         }
     ])
 }
