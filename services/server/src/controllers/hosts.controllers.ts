@@ -9,7 +9,7 @@ var client = connectToMongoDB();
 const getHosts = (async (req: Request, res: Response) =>{
     (await client).connect();
     const collection = await (await client).db('gui').collection('hosts');
-    const response = await collection.find().project({_id:0}).toArray();
+    const response = await collection.find().toArray();
     console.log(response);
     res.send(response);
 })
