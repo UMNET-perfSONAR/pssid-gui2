@@ -12,6 +12,6 @@ hostGroups.get('/', getHostGroups);
 hostGroups.get('/:host_group', getOneHostGroup);
 hostGroups.delete('/:host_group', deleteHostGroup);
 hostGroups.post('/create-hostgroup', postHostGroup);
-hostGroups.put('/update-HostGroup-group', updateHostGroup);
+hostGroups.put('/update-hostgroup', updateHostGroup);
 
 module.exports=hostGroups;

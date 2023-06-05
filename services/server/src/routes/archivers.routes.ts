@@ -5,7 +5,7 @@ const {getArchivers,
     getOneArchiver, 
     deleteArchiver, 
     postArchiver, 
-    updateArchiver} = require('../controllers/archivers.contollers');
+    updateArchiver} = require('../controllers/archivers.controllers');
 
 
 archivers.get('/', getArchivers);

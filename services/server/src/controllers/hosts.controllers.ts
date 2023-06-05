@@ -50,7 +50,6 @@ const updateHost = (async (req:Request, res:Response) => {
     let body = req.body;
     (await client).connect();
     var collection = await (await client).db('gui').collection('hosts');
-    // Update data - Do in two steps - error otherwise. TODO - Look into shortening this
     collection.updateOne({
         "name": body.old_hostname
     }, {$set:{"name": body.new_hostname, "batches": body.batches,

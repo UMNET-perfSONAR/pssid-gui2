@@ -10,6 +10,7 @@ services:
       - 8080:8080
 
   server:
+    restart: on-failure
     build: ./services/server
     volumes:
       - ./services/server:/usr/src/app/server

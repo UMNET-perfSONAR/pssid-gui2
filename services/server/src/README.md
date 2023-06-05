@@ -4,7 +4,7 @@ Hosts:
 ```
 host: { 
     [{
-        host: "rp1",
+        name: "rp1",
         batches: []
         data: {}
     }] 
@@ -21,6 +21,17 @@ host_groups: {
     }]
 }
 ```
+Archivers:
+```
+archivers: {
+    name: "example_rabbitmq_archie",
+    archiver: "rabbitmq",
+    "data": {
+        _url: "amqp://elastic:elastic@pssid-elk.miserver.it.umich.edu",
+        routing-key: "pscheduler_raw"  
+    }
+}
+```
 Schedules: 
 ```
 schedules: {
@@ -29,4 +40,15 @@ schedules: {
         repeat: "*/1 * * * *"
     }]
 }
+```
+SSID Profiles:
+```
+ssid_profiles: {[
+    {
+        name: "MWireless_profile",
+        SSID: "MWireless",
+        min_signal: -73
+    }
+]}
+
 ```

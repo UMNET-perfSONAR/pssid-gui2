@@ -49,7 +49,7 @@ const postArchiver = (async (req:Request, res:Response) => {
 const updateArchiver = (async (req:Request, res:Response) => {
     let body = req.body;
     (await client).connect();
-    var collection = await (await client).db('gui').collection('Archivers');
+    var collection = await (await client).db('gui').collection('archivers');
     // Update data - Do in two steps - error otherwise. TODO - Look into shortening this
     collection.updateOne({
         "name": body.old_arc_name

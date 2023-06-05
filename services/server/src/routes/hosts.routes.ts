@@ -12,8 +12,7 @@ hosts.get('/', getHosts);
 hosts.get('/:hostname', getOneHost);
 hosts.delete('/:hostname', deleteHost);
 hosts.post('/create-host', postHost);
-// hosts.put('/host/:old_host/:new_hostname/:new_batches', updateHost);
 
-hosts.put('/updateHost', updateHost);
+hosts.put('/update-host', updateHost);
 
 module.exports=hosts;
