@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
+import { updateCollection } from '../services/update.service';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -55,6 +56,9 @@ const updateTest = (async (req:Request, res:Response) => {
     }, {$set:{"name": body.new_testname, "type": body.type,
               "spec": body.spec},
      })
+    if (body.old_testname !== body.new_testname) {      // Trigger update in jobs collection
+        updateCollection('jobs', 'tests', client)           // update jobs using tests collection
+    }
     res.json(body);
 } )
 module.exports = {getTests, 

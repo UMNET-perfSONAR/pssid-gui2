@@ -50,7 +50,7 @@ const postHostGroup = (async (req:Request, res:Response) => {
     collection.insertOne({
         "name":data.host_group,
         "batches":data.batches,
-        "hosts_ids": host_arr,
+        "host_ids": host_arr,
     });
 
     res.json(data);

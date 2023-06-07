@@ -1,11 +1,16 @@
 import express, { Express, Request, Response } from 'express';
 import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
-
+import { updateCollection } from '../services/update.service';
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
 
-// get all Archivers
+/**
+ * Return all archiver information from mongodb 
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const getArchivers = (async (req: Request, res: Response) =>{
     (await client).connect();
     const collection = await (await client).db('gui').collection('archivers');
@@ -14,7 +19,12 @@ const getArchivers = (async (req: Request, res: Response) =>{
     res.send(response);
 })
 
-// get a single Archiver
+/**
+ * Get one archiver by 'name'
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const getOneArchiver = (async (req: Request, res: Response) => {
     const name = String(req.params.Archivername);
     (await client).connect();
@@ -23,7 +33,12 @@ const getOneArchiver = (async (req: Request, res: Response) => {
     res.send(response); 
 })
 
-// delete a single Archiver
+/**
+ * Delete specified archiver from database. archiver to be deleted comes as URL parameter
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const deleteArchiver = (async (req:Request, res:Response) => {
     const name = String(req.params.Archivername);
     (await client).connect();
@@ -32,7 +47,12 @@ const deleteArchiver = (async (req:Request, res:Response) => {
     res.send('archiver ' + name + ' was deleted')
 })
 
-// add a single Archiver to db 
+/**
+ * Creates new archiver entry in database.
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const postArchiver = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = await (await client).db('gui').collection('archivers');
@@ -44,8 +64,13 @@ const postArchiver = (async (req:Request, res:Response) => {
     res.json(req.body);
 })
 
-// TODO: Add option to provide meta-information 
-// completely update one Archiver
+/**
+ * Updates archiver with information specified by the user. 
+ * Triggers update in batches to ensure up to date information.
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const updateArchiver = (async (req:Request, res:Response) => {
     let body = req.body;
     (await client).connect();
@@ -55,9 +80,13 @@ const updateArchiver = (async (req:Request, res:Response) => {
         "name": body.old_arc_name
     }, {$set:{"name": body.new_arc_name, "archiver": body.archiver,
               "data": body.data},
-     })
+    });
+    if (body.old_arc_name !== body.new_arc_name) {               // Trigger update in batches collection
+        updateCollection('batches', 'archivers', client)       // update batches using ssid_profiles collection
+    }
     res.json(body);
 } )
+
 module.exports = {getArchivers, 
                 getOneArchiver, 
                 deleteArchiver, 
