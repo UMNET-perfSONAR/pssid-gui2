@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import { MongoClient, Db, MongoServerError, Collection, ObjectId } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
+import { lookup } from 'dns';
 // import { client } from '../index';
 
 // TODO: Scope of client variable - Import from another module?
@@ -9,8 +10,8 @@ var client = connectToMongoDB();
 // get all HostGroups
 const getHostGroups = (async (req: Request, res: Response) =>{
     (await client).connect();
-    const collection = await (await client).db('gui').collection('host_groups');
-    const response = await collection.find().project({_id:0}).toArray();
+    const collection = (await client).db('gui').collection('host_groups');
+    const response = await collection.find().project({_id:0, "host_ids":0}).toArray();
     res.send(response);
 })
 
@@ -37,12 +38,22 @@ const postHostGroup = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = await (await client).db('gui').collection('host_groups');
     var data = req.body; 
+
+    // test to see if manual reference works 
+    var host = await (await client).db('gui').collection('hosts');
+    var host_arr = [];
+    host_arr.length += data.hosts.length;
+    for (let i = 0; i < data.hosts.length; i++) {
+        host_arr[i] = (await host.findOne({"name":`${data.hosts[i]}`}))?._id
+    }
+
     collection.insertOne({
         "name":data.host_group,
-        "hosts":data.hosts,
-        "batches":data.batchData 
+        "batches":data.batches,
+        "hosts_ids": host_arr,
     });
-    res.json(req.body);
+
+    res.json(data);
 })
 
 
@@ -51,7 +62,7 @@ const postHostGroup = (async (req:Request, res:Response) => {
 const updateHostGroup = (async (req:Request, res:Response) => {
     (await client).connect();
     let data = req.body;
-    let collection = await (await client).db('gui').collection('host_groups');
+    let collection = (await client).db('gui').collection('host_groups');
     collection.updateOne({
         "name": data.old_host_group
     }, {$set:{"name": data.new_host_group, "hosts":data.hosts, 

@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from 'express';
-import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
+import { updateCollection } from '../services/update.service';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -55,6 +55,10 @@ const updateHost = (async (req:Request, res:Response) => {
     }, {$set:{"name": body.new_hostname, "batches": body.batches,
               "data": body.data},
      })
+
+     if (body.new_hostname !== body.old_hostname) {
+        updateCollection('host_groups', 'hosts', client);      // update host_groups using hosts collection
+     }
     res.json(body);
 } )
 module.exports = {getHosts, 

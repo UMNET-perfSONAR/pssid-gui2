@@ -20,10 +20,14 @@ async function get_collection(client: MongoClient, col: String) {
 export async function create_config_file() {
     const client = await connectToMongoDB();
 
-    var host_data = await get_collection(client, "hosts");
-    var schedule_data = await get_collection(client, "schedules");
-
-    var obj = Object.assign(host_data, schedule_data);
+    let collectionList = ["hosts", "host_groups", "schedules"];
+    
+    let host_data = await get_collection(client, "hosts");
+    let schedule_data = await get_collection(client, "schedules");
+    let host_group_data = await get_collection(client, "host_groups");
+    let archiver_data = await get_collection(client, "archivers");
+    let job_data = await get_collection(client, "jobs");
+    let obj = Object.assign(host_data,  host_group_data, job_data, archiver_data, schedule_data);
   
     try {
     writeFileSync(path, JSON.stringify(obj, null, 2), 'utf8');
