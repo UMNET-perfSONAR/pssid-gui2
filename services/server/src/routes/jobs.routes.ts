@@ -7,7 +7,7 @@ const {getJobs,
     postJob,
     updateJob} = require('../controllers/jobs.controllers');
 
-
+ 
 jobs.get('/', getJobs);
 jobs.get('/:job', getOneJob);
 jobs.delete('/:job', deleteJob);

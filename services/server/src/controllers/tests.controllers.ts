@@ -11,7 +11,6 @@ const getTests = (async (req: Request, res: Response) =>{
     (await client).connect();
     const collection = await (await client).db('gui').collection('tests');
     const response = await collection.find().toArray();
-    console.log(response);
     res.send(response);
 })
 
@@ -50,14 +49,14 @@ const postTest = (async (req:Request, res:Response) => {
 const updateTest = (async (req:Request, res:Response) => {
     let body = req.body;
     (await client).connect();
-    var collection = await (await client).db('gui').collection('tests');
-    collection.updateOne({
+    var collection = (await client).db('gui').collection('tests');
+    await collection.updateOne({
         "name": body.old_testname
     }, {$set:{"name": body.new_testname, "type": body.type,
               "spec": body.spec},
      })
-    if (body.old_testname !== body.new_testname) {      // Trigger update in jobs collection
-        updateCollection('jobs', 'tests', client)           // update jobs using tests collection
+    if (body.old_testname !== body.new_testname) {                // Trigger update in jobs collection
+        await updateCollection('jobs', 'tests', client)           // update jobs using tests collection
     }
     res.json(body);
 } )

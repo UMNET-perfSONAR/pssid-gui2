@@ -15,13 +15,7 @@ const getSchedules = (async (req: Request, res: Response) =>{
     (await client).connect();
     var collection = (await client).db("gui").collection("schedules");
     const schedules = await collection.find().project({_id:0}).toArray();
-    console.log("hello");
-    let host_col = await (await client).db('gui').collection('hosts');
-    console.log('here');
-    var dat = (await host_col.find({"name": "rp1"}).toArray());
-    var str = JSON.stringify(dat[0]._id);
-    console.log(str);
-    res.send(dat);
+    res.send(schedules);
 })
 
 
@@ -65,14 +59,14 @@ const postSchedule = (async (req:Request, res:Response) => {
  */
 const updateSchedule = (async (req:Request, res:Response) => {
     (await client).connect();
-    var collection = await (await client).db('gui').collection('schedules');
-    collection.updateOne({
-        "schedule": req.body.old_schedule
-    }, {$set:{"schedule": req.body.new_schedule, "repeat":req.body.repeat}
+    var collection = (await client).db('gui').collection('schedules');
+    await collection.updateOne({
+        "name": req.body.old_schedule
+    }, {$set:{"name": req.body.new_schedule, "repeat":req.body.repeat}
      });
     
-    if (req.body.old_schedule != req.body.new_schedule) {       // Trigger update in batches collection
-        updateCollection('batches', 'schedule', client);        // update batches using schedules collection
+    if (req.body.old_schedule !== req.body.new_schedule) {      // Trigger update in batches collection
+        await updateCollection('batches', 'schedules', client);        // update batches using schedules collection
     }
     
     res.json(req.body);

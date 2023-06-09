@@ -13,7 +13,7 @@ var client = connectToMongoDB();
  */
 const getJobs = (async (req: Request, res: Response) =>{
     (await client).connect();
-    const collection = await (await client).db('gui').collection('jobs');
+    const collection = (await client).db('gui').collection('jobs');
     const response = await collection.find().project({_id:0}).toArray();
     console.log(response);
     res.send(response);
@@ -28,7 +28,7 @@ const getJobs = (async (req: Request, res: Response) =>{
 const getOneJob = (async (req: Request, res: Response) => {
     const name = String(req.params.hostname);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('jobs');
+    var collection = (await client).db('gui').collection('jobs');
     var response = collection.find({"name": name}).toArray();
     res.send(response); 
 })
@@ -42,7 +42,7 @@ const getOneJob = (async (req: Request, res: Response) => {
 const deleteJob = (async (req:Request, res:Response) => {
     const name = String(req.params.hostname);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('jobs');
+    var collection = (await client).db('gui').collection('jobs');
     await collection.findOneAndDelete({ "name" : name });
     res.send('host ' + name + ' was deleted')
 })
@@ -56,7 +56,7 @@ const deleteJob = (async (req:Request, res:Response) => {
 const postJob = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('jobs');
-    let test_ids = get_test_ids(client, req.body); 
+    let test_ids = await get_test_ids(client, req.body); 
     collection.insertOne({
         "name":req.body.name,
         "parallel": req.body.parallel,
@@ -79,13 +79,14 @@ const updateJob = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('jobs');
     let doc = await collection.findOne({name: req.body.old_job});
-    collection.updateOne({
+    await collection.updateOne({
         "name": body.old_job
     }, {$set:{"name": body.new_job, "parallel": body.parallel, "continue-if": body.continue_if,
-              "test_ids": (doc?.tests === body.tests) ? doc?.tests : get_test_ids(client, body),
+              "test_ids": (JSON.stringify(doc?.tests) === JSON.stringify(body.tests)) 
+                            ? doc?.tests : await get_test_ids(client, body),
               "tests": body.tests
             } 
-     })
+     }) 
     if (body.old_job !== body.new_job) {                           // Trigger update in batches collection
         updateCollection('batches', 'jobs', client);               // update batches using jobs collection
     }

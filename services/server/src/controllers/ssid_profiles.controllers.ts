@@ -13,9 +13,8 @@ var client = connectToMongoDB();
  */
 const getSSIDProfiles = (async (req: Request, res: Response) =>{
     (await client).connect();
-    const collection = await (await client).db('gui').collection('ssid_profiles');
+    const collection = (await client).db('gui').collection('ssid_profiles');
     const response = await collection.find().project({_id:0}).toArray();
-    console.log(response);
     res.send(response);
 })
 
@@ -28,7 +27,7 @@ const getSSIDProfiles = (async (req: Request, res: Response) =>{
 const getOneSSIDProfile = (async (req: Request, res: Response) => {
     const name = String(req.params.SSIDProfilename);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('ssid_profiles');
+    var collection = (await client).db('gui').collection('ssid_profiles');
     var response = collection.find({"name": name}).toArray();
     res.send(response); 
 })
@@ -42,7 +41,7 @@ const getOneSSIDProfile = (async (req: Request, res: Response) => {
 const deleteSSIDProfile = (async (req:Request, res:Response) => {
     const name = String(req.params.SSIDProfilename);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('ssid_profiles');
+    var collection = (await client).db('gui').collection('ssid_profiles');
     await collection.findOneAndDelete({ "name" : name });
     res.send('ssid_profile ' + name + ' was deleted')
 })
@@ -55,7 +54,7 @@ const deleteSSIDProfile = (async (req:Request, res:Response) => {
  */
 const postSSIDProfile = (async (req:Request, res:Response) => {
     (await client).connect();
-    var collection = await (await client).db('gui').collection('ssid_profiles');
+    var collection = (await client).db('gui').collection('ssid_profiles');
     collection.insertOne({
         "name": req.body.name,
         "SSID": req.body.ssid,
@@ -75,7 +74,7 @@ const updateSSIDProfile = (async (req:Request, res:Response) => {
     let body = req.body;
     (await client).connect();
     var collection = (await client).db('gui').collection('ssid_profiles');
-    collection.updateOne({
+    await collection.updateOne({
         "name": body.old_ssid_name
     }, {$set:{"name": body.new_ssid_name, "SSID": body.ssid,
               "min_signal": body.min_signal},

@@ -23,7 +23,7 @@ export async function startup() {
         },
         {"name":"schedule_every_5_min",
          "repeat":"*/5 * * * *"
-        }])
+        }]);
 
     db.collection('hosts').insertMany([
         {"name":"rp1",
@@ -34,20 +34,41 @@ export async function startup() {
          "batches": [],
          "data": [] 
         }
-    ])
-
-    db.collection('host_groups').insertMany([
+    ]);
+    db.collection('archivers').insertOne(
         {
-            "name": "chem_building",
-            "hosts": ["rp1", "rp1"],
-            "batches": ["batch_2", "my_batch"],
-            "data": []
-        },
-        {
-            "name": "lsa_building",
-            "hosts": ["rp1"], 
-            "batches": ["all_batches"],
-            "data": []
+            "name": "example_rabbitmq_archive",
+            "archiver": "rabbitmq",
+            "data": {
+                "_url": "amqp://elastic:elastic@pssid-elk.miserver.it.umich.edu",
+                "routing-key": "pscheduler_raw"  
+            }
         }
-    ])
+    );
+    db.collection('ssid_profiles').insertOne(
+        {
+            "name": "MWireless_profile",
+            "SSID": "MWireless",
+            "min_signal": -73
+        }
+    );
+    db.collection('tests').insertOne(
+        {
+            "name": "http-google",
+            "type": "http",
+            "spec": {
+                "url": "www.google.com"
+            }
+        }
+    )
+
+    db.collection('jobs').insertOne(
+        {
+            "name": "layer-2-auth",
+            "parallel": true,
+            "test_ids":[],
+            "tests": [],
+            "continue-if": true
+        }
+    )
 }
