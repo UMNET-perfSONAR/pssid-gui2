@@ -1,6 +1,9 @@
 import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
+import { get_batch_ids } from '../services/utility.services';
+import { hostname } from 'os';
+import { deleteDocument } from '../services/delete.service';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -13,9 +16,8 @@ var client = connectToMongoDB();
  */
 const getHosts = (async (req: Request, res: Response) =>{
     (await client).connect();
-    const collection = await (await client).db('gui').collection('hosts');
+    const collection = (await client).db('gui').collection('hosts');
     const response = await collection.find().toArray();
-    console.log(response);
     res.send(response);
 })
 
@@ -28,7 +30,7 @@ const getHosts = (async (req: Request, res: Response) =>{
 const getOneHost = (async (req: Request, res: Response) => {
     const name = String(req.params.hostname);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('hosts');
+    var collection = (await client).db('gui').collection('hosts');
     var response = collection.find({"name": name}).toArray();
     res.send(response); 
 })
@@ -42,8 +44,10 @@ const getOneHost = (async (req: Request, res: Response) => {
 const deleteHost = (async (req:Request, res:Response) => {
     const name = String(req.params.hostname);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('hosts');
-    await collection.findOneAndDelete({ "name" : name });
+    var collection = (await client).db('gui').collection('hosts');
+    var deleted = await collection.findOne({ "name" : name });
+    var host_groups = (await client).db('gui').collection('host_groups');
+    deleteDocument(host_groups, 'hosts', 'host_ids', deleted?.name); 
     res.send('host ' + name + ' was deleted')
 })
 
@@ -55,10 +59,12 @@ const deleteHost = (async (req:Request, res:Response) => {
  */
 const postHost = (async (req:Request, res:Response) => {
     (await client).connect();
-    var collection = await (await client).db('gui').collection('hosts');
+    var collection = (await client).db('gui').collection('hosts');
+    let batch_ids = await get_batch_ids(client, req.body);
     collection.insertOne({
         "name":req.body.name,
         "batches": req.body.batches,
+        "batch_ids": batch_ids,
         "data": req.body.data
     });   
     res.json(req.body);
@@ -74,11 +80,15 @@ const postHost = (async (req:Request, res:Response) => {
 const updateHost = (async (req:Request, res:Response) => {
     let body = req.body;
     (await client).connect();
-    var collection = await (await client).db('gui').collection('hosts');
-    collection.updateOne({
+    var collection = (await client).db('gui').collection('hosts');
+    let doc = await collection.findOne({name: req.body.old_hostname});
+    
+    await collection.updateOne({
         "name": body.old_hostname
     }, {$set:{"name": body.new_hostname, "batches": body.batches,
-              "data": body.data},
+              "batch_ids": (JSON.stringify(req.body.batches) === JSON.stringify(doc?.batches)) ?     // update reference _ids if changes made 
+                            doc?.batches: await get_batch_ids(client, req.body),
+            "data": body.data},
      })
 
      if (body.new_hostname !== body.old_hostname) {            // Trigger update in hosts
