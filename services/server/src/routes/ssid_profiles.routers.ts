@@ -10,7 +10,7 @@ const {getSSIDProfiles,
 
 ssidProfiles.get('/', getSSIDProfiles);
 ssidProfiles.get('/:ssidProfile', getOneSSIDProfile);
-ssidProfiles.delete('/:ssidProfile-name', deleteSSIDProfile);
+ssidProfiles.delete('/:ssidProfile_name', deleteSSIDProfile);
 ssidProfiles.post('/create-ssidProfile', postSSIDProfile);
 ssidProfiles.put('/update-ssidProfile', updateSSIDProfile);
 
