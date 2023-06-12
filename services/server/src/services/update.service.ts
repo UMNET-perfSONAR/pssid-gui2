@@ -1,4 +1,3 @@
-import { connectToMongoDB } from './ideas.service';
 import { Collection, FindCursor, MongoClient, WithId } from 'mongodb';
 
 /**
@@ -8,6 +7,7 @@ import { Collection, FindCursor, MongoClient, WithId } from 'mongodb';
  * @param truth_col_name_name - name of collection serving as source of truth
  * @param outdated_col_name - name of collection that requires updating 
  * @param client - MongoClient instance connected to localhost://21707 
+ * 
  */
 // constructed/modified core logic based off of https://chat.openai.com/chat - citation needed?
 export async function updateCollection(outdated_col: string, truth_col_name:string, client:Promise<MongoClient>) {
@@ -25,13 +25,13 @@ export async function updateCollection(outdated_col: string, truth_col_name:stri
             {$set: { [`${truth_col_name}`]:  item_names}}
         )
     }
-    console.log("updated outdated_cols collection"); 
+    console.log(`updated ${outdated_col} collection`); 
 }
-
-
 /**
  * Enables templating of updateCollection() function above.
  *      Returns the matched documents between the current outdated document and the truth collection based off of _id
+ * 
+ * TODO: Determine if there is a better/more efficient way to do this 
  * 
  * @param outdated_col_doc - Current document we are iterating over
  * @param truth_collection - Reference to collection we are using as "source-of-truth"
@@ -54,9 +54,14 @@ async function item (outdated_col_doc: &any, truth_collection: &Collection, trut
         }
         else if (truth_col_name === 'schedules') {
             matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.schedule_ids}}).toArray();
+            console.log(matched_items);
         }
         else if (truth_col_name === 'jobs') {
             matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.job_ids}}).toArray();
+        }
+        else if (truth_col_name === 'tests') {
+            console.log("here");
+            matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.test_ids}}).toArray();
         }
         return matched_items; 
 }

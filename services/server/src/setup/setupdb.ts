@@ -1,10 +1,9 @@
 // Run this script while connected to MongoDB
 import { connectToMongoDB } from '../services/ideas.service';
 import { MongoClient, Db, MongoServerError, Collection, MongoDBNamespace } from "mongodb";
-//import { schedules } from './schedules';
 
 export async function startup() {
-    // connect to db
+    // connect to db 
     var client = connectToMongoDB();
     (await client).connect();
     console.log("Connected to MongoDB. Beginning setup now...");
@@ -23,31 +22,60 @@ export async function startup() {
         },
         {"name":"schedule_every_5_min",
          "repeat":"*/5 * * * *"
-        }])
+        }]);
 
     db.collection('hosts').insertMany([
         {"name":"rp1",
          "batches": [],
+         "batch_ids": [],
          "data": []
         },
         {"name":"rp2",
          "batches": [],
+         "batch_ids": [],
          "data": [] 
-        }
-    ])
-
-    db.collection('host_groups').insertMany([
-        {
-            "name": "chem_building",
-            "hosts": ["rp1", "rp1"],
-            "batches": ["batch_2", "my_batch"],
-            "data": []
         },
-        {
-            "name": "lsa_building",
-            "hosts": ["rp1"], 
-            "batches": ["all_batches"],
-            "data": []
+        {"name":"rp3",
+        "batches": [],
+        "batch_ids": [],
+        "data": [] 
         }
-    ])
+
+    ]);
+    db.collection('archivers').insertOne(
+        {
+            "name": "example_rabbitmq_archive",
+            "archiver": "rabbitmq",
+            "data": {
+                "_url": "amqp://elastic:elastic@pssid-elk.miserver.it.umich.edu",
+                "routing-key": "pscheduler_raw"  
+            }
+        }
+    );
+    db.collection('ssid_profiles').insertOne(
+        {
+            "name": "MWireless_profile",
+            "SSID": "MWireless",
+            "min_signal": -73
+        }
+    );
+    db.collection('tests').insertOne(
+        {
+            "name": "http-google",
+            "type": "http",
+            "spec": {
+                "url": "www.google.com"
+            }
+        }
+    )
+
+    db.collection('jobs').insertOne(
+        {
+            "name": "layer-2-auth",
+            "parallel": true,
+            "test_ids":[],
+            "tests": [],
+            "continue-if": true
+        }
+    )
 }

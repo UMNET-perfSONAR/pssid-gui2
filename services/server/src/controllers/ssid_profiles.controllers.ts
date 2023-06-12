@@ -1,41 +1,68 @@
 import express, { Express, Request, Response } from 'express';
-import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
+import { updateCollection } from '../services/update.service';
+import { deleteDocument } from '../services/delete.service';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
 
-// get all SSIDProfiles
+/**
+ * Return all ssid_profile information from mongodb 
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const getSSIDProfiles = (async (req: Request, res: Response) =>{
     (await client).connect();
-    const collection = await (await client).db('gui').collection('ssid_profiles');
+    const collection = (await client).db('gui').collection('ssid_profiles');
     const response = await collection.find().project({_id:0}).toArray();
-    console.log(response);
     res.send(response);
 })
 
-// get a single SSIDProfile
+/**
+ * Get one ssid_profile by 'name'
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const getOneSSIDProfile = (async (req: Request, res: Response) => {
     const name = String(req.params.SSIDProfilename);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('ssid_profiles');
+    var collection = (await client).db('gui').collection('ssid_profiles');
     var response = collection.find({"name": name}).toArray();
     res.send(response); 
 })
 
-// delete a single SSIDProfile
+/**
+ * Delete specified ssid_profile from database. ssid_profile to be deleted comes as URL parameter
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const deleteSSIDProfile = (async (req:Request, res:Response) => {
-    const name = String(req.params.SSIDProfilename);
+    const name = String(req.params.ssidProfile_name);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('ssid_profiles');
-    await collection.findOneAndDelete({ "name" : name });
+    var ssid_profile_col = (await client).db('gui').collection('ssid_profiles');
+    var batch_col = (await client).db('gui').collection('batches');
+
+    const deleted = await ssid_profile_col.findOne({ "name" : name });    
+
+    deleteDocument(batch_col, 'ssid_profiles', 'ssid_profile_ids', deleted?.name);        // delete references from other collections
+
+    await ssid_profile_col.findOneAndDelete({ "name" : name });                           // remove from collection 
+
     res.send('ssid_profile ' + name + ' was deleted')
 })
 
-// add a single SSIDProfile to db 
+/**
+ * Creates new ssid_profile entry in database.
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const postSSIDProfile = (async (req:Request, res:Response) => {
     (await client).connect();
-    var collection = await (await client).db('gui').collection('ssid_profiles');
+    var collection = (await client).db('gui').collection('ssid_profiles');
     collection.insertOne({
         "name": req.body.name,
         "SSID": req.body.ssid,
@@ -44,17 +71,26 @@ const postSSIDProfile = (async (req:Request, res:Response) => {
     res.json(req.body);
 })
 
-// TODO: Add option to provide meta-information 
-// completely update one SSIDProfile
+/**
+ * Updates ssid_profile with information specified by the user. 
+ * Triggers update in batches to ensure up to date information.
+ * 
+ * @param req - request information from client
+ * @param res - response sent back to client 
+ */
 const updateSSIDProfile = (async (req:Request, res:Response) => {
     let body = req.body;
     (await client).connect();
-    var collection = await (await client).db('gui').collection('ssid_profiles');
-    collection.updateOne({
+    var collection = (await client).db('gui').collection('ssid_profiles');
+    await collection.updateOne({
         "name": body.old_ssid_name
     }, {$set:{"name": body.new_ssid_name, "SSID": body.ssid,
               "min_signal": body.min_signal},
      })
+    
+    if (body.old_ssid_name !== body.new_ssid_name) {               // Trigger update in batches collection
+        updateCollection('batches', 'ssid_profiles', client)       // update batches using ssid_profiles collection
+    }
     res.json(body);
 } )
 module.exports = {getSSIDProfiles, 

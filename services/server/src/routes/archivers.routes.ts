@@ -10,7 +10,7 @@ const {getArchivers,
 
 archivers.get('/', getArchivers);
 archivers.get('/:archiver', getOneArchiver);
-archivers.delete('/:archiver-name', deleteArchiver);
+archivers.delete('/:archiver_name', deleteArchiver);
 archivers.post('/create-archiver', postArchiver);
 archivers.put('/update-archiver', updateArchiver);
 
