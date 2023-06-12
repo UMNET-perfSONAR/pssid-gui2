@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
+import { deleteDocument } from '../services/delete.service';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -18,7 +19,7 @@ const getTests = (async (req: Request, res: Response) =>{
 const getOneTest = (async (req: Request, res: Response) => {
     const name = String(req.params.testname);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('tests');
+    var collection = (await client).db('gui').collection('tests');
     var response = collection.find({"name": name}).toArray();
     res.send(response); 
 })
@@ -27,15 +28,21 @@ const getOneTest = (async (req: Request, res: Response) => {
 const deleteTest = (async (req:Request, res:Response) => {
     const name = String(req.params.testname);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('tests');
-    await collection.findOneAndDelete({ "name" : name });
+    var test_col = (await client).db('gui').collection('tests');
+    var job_col = (await client).db('gui').collection('jobs');
+
+    const deleted = await test_col.findOne({ "name" : name });    
+    deleteDocument(job_col, 'tests', 'test_ids', deleted?.name);        // delete references from other collections
+
+    await test_col.findOneAndDelete({ "name" : name });       
+
     res.send('test ' + name + ' was deleted')
 })
 
 // add a single test to db 
 const postTest = (async (req:Request, res:Response) => {
     (await client).connect();
-    var collection = await (await client).db('gui').collection('tests');
+    var collection = (await client).db('gui').collection('tests');
     collection.insertOne({
         "name":req.body.name,
         "type": req.body.type,

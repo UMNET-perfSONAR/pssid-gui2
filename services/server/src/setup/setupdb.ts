@@ -1,10 +1,9 @@
 // Run this script while connected to MongoDB
 import { connectToMongoDB } from '../services/ideas.service';
 import { MongoClient, Db, MongoServerError, Collection, MongoDBNamespace } from "mongodb";
-//import { schedules } from './schedules';
 
 export async function startup() {
-    // connect to db
+    // connect to db 
     var client = connectToMongoDB();
     (await client).connect();
     console.log("Connected to MongoDB. Beginning setup now...");
@@ -28,12 +27,20 @@ export async function startup() {
     db.collection('hosts').insertMany([
         {"name":"rp1",
          "batches": [],
+         "batch_ids": [],
          "data": []
         },
         {"name":"rp2",
          "batches": [],
+         "batch_ids": [],
          "data": [] 
+        },
+        {"name":"rp3",
+        "batches": [],
+        "batch_ids": [],
+        "data": [] 
         }
+
     ]);
     db.collection('archivers').insertOne(
         {

@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
+import { deleteDocument } from '../services/delete.service';
  
 var client = connectToMongoDB();
 
@@ -28,8 +29,15 @@ const getSchedules = (async (req: Request, res: Response) =>{
 const deleteSchedule = (async (req:Request, res:Response) => {
     const name = String(req.params.schedulename);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('schedules');
-    await collection.findOneAndDelete({ "schedule" : name });
+    const schedule_col = (await client).db('gui').collection('schedules');
+    const batch_col = (await client).db('gui').collection('batches');
+
+    const deleted = await schedule_col.findOne({ "name" : name });    
+
+    deleteDocument(batch_col, 'schedules', 'schedule_ids', deleted?.name);        // delete references from other collections
+
+    await schedule_col.findOneAndDelete({ "name" : name });       
+
     res.send('schedule ' + name + ' was deleted');
 })
 

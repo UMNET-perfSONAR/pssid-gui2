@@ -1,5 +1,4 @@
 import { Collection, FindCursor, MongoClient, WithId } from 'mongodb';
-
 /**
  * Iteratively "deletes" object that is referenced in other collections
  * Called in an HTTP DELETE request
@@ -14,7 +13,7 @@ import { Collection, FindCursor, MongoClient, WithId } from 'mongodb';
 
 export async function deleteDocument(outdated_collection:&Collection, truth_col_name:&string, name_ids:&string, deleted_item:&string) {
     const allOutdatedDocs = outdated_collection.find();
-
+ 
     for await (const outdated_col_doc of allOutdatedDocs) {
 
         const index = await outdated_col_doc?.[`${truth_col_name}`].indexOf(deleted_item);

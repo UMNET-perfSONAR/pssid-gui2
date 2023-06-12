@@ -2,6 +2,8 @@ import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
 import { get_test_ids } from '../services/utility.services';
+import { deleteDocument } from '../services/delete.service';
+import { join } from 'path';
 
 var client = connectToMongoDB();
 
@@ -40,10 +42,17 @@ const getOneJob = (async (req: Request, res: Response) => {
  * @param res - response sent back to client 
  */
 const deleteJob = (async (req:Request, res:Response) => {
-    const name = String(req.params.hostname);
+    const name = String(req.params.job);
+    
     (await client).connect();
-    var collection = (await client).db('gui').collection('jobs');
-    await collection.findOneAndDelete({ "name" : name });
+    const job_col = (await client).db('gui').collection('jobs');
+    const batch_col = (await client).db('gui').collection('batches');
+
+    const deleted = await job_col.findOne({ "name" : name });    
+    deleteDocument(batch_col, 'jobs', 'job_ids', deleted?.name);        // delete references from other collections
+
+    await job_col.findOneAndDelete({ "name" : name });       
+
     res.send('host ' + name + ' was deleted')
 })
 

@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
+import { deleteDocument } from '../services/delete.service';
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
 
@@ -40,10 +41,18 @@ const getOneArchiver = (async (req: Request, res: Response) => {
  * @param res - response sent back to client 
  */
 const deleteArchiver = (async (req:Request, res:Response) => {
-    const name = String(req.params.Archivername);
+    const name = String(req.params.archiver_name);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('archivers');
-    await collection.findOneAndDelete({ "name" : name });
+    var archiver_col = await (await client).db('gui').collection('archivers');
+
+    var batch_col = (await client).db('gui').collection('batches');
+
+    const deleted = await archiver_col.findOne({ "name" : name });    
+
+    deleteDocument(batch_col, 'archivers', 'archiver_ids', deleted?.name);        // delete references from other collections
+
+    await archiver_col.findOneAndDelete({ "name" : name });       
+
     res.send('archiver ' + name + ' was deleted')
 })
 

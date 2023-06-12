@@ -38,16 +38,22 @@ const getOneHost = (async (req: Request, res: Response) => {
 /**
  * Delete specified host from database. host to be deleted comes as URL parameter
  * 
+ * TODO - Compress to one lookup (findOneAndDelete)
+ * 
  * @param req - request information from client
  * @param res - response sent back to client 
  */
 const deleteHost = (async (req:Request, res:Response) => {
     const name = String(req.params.hostname);
     (await client).connect();
-    var collection = (await client).db('gui').collection('hosts');
-    var deleted = await collection.findOne({ "name" : name });
-    var host_groups = (await client).db('gui').collection('host_groups');
-    deleteDocument(host_groups, 'hosts', 'host_ids', deleted?.name); 
+    var hosts_col = (await client).db('gui').collection('hosts');
+    const deleted = await hosts_col.findOne({ "name" : name });
+   
+    var host_groups_col = (await client).db('gui').collection('host_groups');
+    deleteDocument(host_groups_col, 'hosts', 'host_ids', deleted?.name);           // delete references from other collections
+
+    await hosts_col.findOneAndDelete({ "name" : name });                           // remove from collection 
+
     res.send('host ' + name + ' was deleted')
 })
 
@@ -61,6 +67,7 @@ const postHost = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('hosts');
     let batch_ids = await get_batch_ids(client, req.body);
+    console.log(batch_ids);
     collection.insertOne({
         "name":req.body.name,
         "batches": req.body.batches,

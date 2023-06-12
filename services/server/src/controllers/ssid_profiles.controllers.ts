@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
+import { deleteDocument } from '../services/delete.service';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -39,10 +40,17 @@ const getOneSSIDProfile = (async (req: Request, res: Response) => {
  * @param res - response sent back to client 
  */
 const deleteSSIDProfile = (async (req:Request, res:Response) => {
-    const name = String(req.params.SSIDProfilename);
+    const name = String(req.params.ssidProfile_name);
     (await client).connect();
-    var collection = (await client).db('gui').collection('ssid_profiles');
-    await collection.findOneAndDelete({ "name" : name });
+    var ssid_profile_col = (await client).db('gui').collection('ssid_profiles');
+    var batch_col = (await client).db('gui').collection('batches');
+
+    const deleted = await ssid_profile_col.findOne({ "name" : name });    
+
+    deleteDocument(batch_col, 'ssid_profiles', 'ssid_profile_ids', deleted?.name);        // delete references from other collections
+
+    await ssid_profile_col.findOneAndDelete({ "name" : name });                           // remove from collection 
+
     res.send('ssid_profile ' + name + ' was deleted')
 })
 

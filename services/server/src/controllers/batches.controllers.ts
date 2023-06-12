@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from '../services/ideas.service';
 import { get_ssid_profile_ids, get_schedule_ids, get_job_ids, get_archiver_ids } from '../services/utility.services'
 import { updateCollection } from '../services/update.service';
+import { deleteDocument } from '../services/delete.service';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -42,10 +43,16 @@ const getOneBatch = (async (req: Request, res: Response) => {
  * @param res - response sent back to client 
  */
 const deleteBatch = (async (req:Request, res:Response) => {
-    const batch = String(req.params.batch);
+    const batch = String(req.params.batchname);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('batches');
-    await collection.findOneAndDelete({ "name" : batch });
+    let batch_col= (await client).db('gui').collection('batches');
+    let deleted = await batch_col.findOne({ "name" : batch });
+
+    for await (const item of ['hosts', 'host_groups']) {
+        console.log(item);
+        const outdated_collection = (await client).db('gui').collection(item); 
+        await deleteDocument(outdated_collection, 'batches', 'batch_ids', deleted?.name); 
+    }
     res.send('batch ' + batch + ' was deleted!')
 })
 
@@ -58,7 +65,7 @@ const deleteBatch = (async (req:Request, res:Response) => {
  */
 const postBatch = (async (req:Request, res:Response) => {
     (await client).connect();
-    var collection = await (await client).db('gui').collection('batches');
+    var collection = (await client).db('gui').collection('batches');
     var data = req.body; 
 
     const ssid_profile_ids = await get_ssid_profile_ids(client, data); 
