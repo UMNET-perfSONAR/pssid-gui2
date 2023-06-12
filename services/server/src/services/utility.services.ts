@@ -56,4 +56,24 @@ export async function get_test_ids(client: Promise<MongoClient>, data: any) {
    return arr;
 }
 
+export async function get_batch_ids(client: Promise<MongoClient>, data: any) {
+    // test to see if manual reference works 
+   const col = (await client).db('gui').collection('batches');
+   var arr = [];
+   arr.length += data.batches.length;
+       for (let i = 0; i < data.batches.length; i++) {
+           arr[i] = (await col.findOne({"name":`${data.batches[i]}`}))?._id
+       }
+   return arr;
+}
 
+export async function get_host_ids(client: Promise<MongoClient>, data: any) {
+    // test to see if manual reference works 
+   const col = (await client).db('gui').collection('hosts');
+   var arr = [];
+   arr.length += data.hosts.length;
+       for (let i = 0; i < data.hosts.length; i++) {
+           arr[i] = (await col.findOne({"name":`${data.hosts[i]}`}))?._id
+       }
+   return arr;
+}
