@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "Newsletter Subscription",
+    "description": "Sign up for free newsletters and get more delivered to your inbox",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 8,
+        "maxLength": 80,
+        "title": "Host Name",
+        "attrs": {
+          "placeholder": "Your Full Name",
+          "title": "Please enter your full name"
+        }
+      },
+      "agree": {
+        "type": "boolean",
+        "title": "Agree",
+        "description": "You agree to receive occasional updates and special offers for vue-json-schema updates.",
+        "default": false,
+        "attrs": {
+          "type": "checkbox"
+        }
+      }
+    },
+    "additionalProperties": false,
+    "required": ["name"]
+  }
