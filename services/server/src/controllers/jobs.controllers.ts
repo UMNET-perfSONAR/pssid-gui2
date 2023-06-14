@@ -3,7 +3,6 @@ import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
 import { get_test_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
-import { join } from 'path';
 
 var client = connectToMongoDB();
 
