@@ -22,10 +22,10 @@
 
     "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"],
       "pinia": ["node_modules/pinia/dist/pinia.esm.js"]
     },
-    "allowJs": true
+    "allowJs": true,
+    
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
   "references": [{ "path": "./tsconfig.node.json" }]

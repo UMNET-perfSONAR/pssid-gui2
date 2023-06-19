@@ -9,9 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "pinia": "^2.1.3",
+    "@formkit/themes": "^0.18.0-7d9b8a6",
+    "@formkit/vue": "^0.18.0-7d9b8a6",
+    "@jsonforms/vue": "^3.0.0",
+    "axios": "^1.4.0",
+    "bootstrap": "^4.6.0",
+    "pinia": "^2.1.4",
     "vue": "^3.2.47",
-    "vue-json-schema": "^1.1.1"
+    "vue-router": "^4.2.2"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.1.0",

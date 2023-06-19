@@ -47,7 +47,7 @@ header h1 {
   padding: 14px 16px;
   text-decoration: none;
   font-size: 17px;
-  color: #0c0c0c
+  color: #e7e7e7
 }
 
 .navbar a:hover {
@@ -61,11 +61,11 @@ header h1 {
 }
 
 .host-list {
-  max-width: 400px;
   margin: 50px;
 }
 
 .host {
+  width: 400px;
   padding: 6px 20px;
   background: #fff;
   margin-top: 20px;
@@ -76,7 +76,7 @@ header h1 {
   align-items: center;
 }
 
-/* put text/ icons in a line */
+/* put text icons in a line */
 .host h3, .host .icons {
   display: inline-block;
 }
@@ -91,31 +91,37 @@ header h1 {
   color: #bbb;
 }
 
+.host i.active {
+  color: #04AA6D;
+}
+
 .new-form {
   display: flex;
 }
 
-form {
-  max-width: 400px;
-  margin-top: 15px;
-  display: grid;
-  grid-template-columns: 3fr 1fr;
-  gap: 10px;
+.parent {
+  margin: 1rem;
+  padding: 2rem 2rem;
+  text-align: center;
 }
 
-form button {
-  background: #ffd859;
-  border: 0;
-  padding: 10px;
-  font-family: "Poppins";
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1em;
+.child {
+  display: inline-block;
+  padding: 1rem 5rem;
+  vertical-align: top;
 }
-form input {
-  border: 0;
-  padding: 10px;
-  border-radius: 6px;
-  color: #555;
-  font-size: 1em;
+
+.add_to_col {
+  display: flex;
+  flex-direction: column;
+}
+
+.loading {
+  max-width: 640px;
+  border: 1px solid #ffd859;
+  background: #ffe9a0;
+  color: #3a3a3a;
+  padding: 5px 0;
+  text-align: center;
+  margin: 30px auto;
 }
