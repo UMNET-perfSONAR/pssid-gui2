@@ -1,6 +1,5 @@
 // allows us to make a store
 import {defineStore} from 'pinia'
-import http from "../http-common";
 
 
 // defineStore(<unique-identifier-name>)
@@ -19,17 +18,6 @@ export const useHostStore = defineStore('hostStore', {
             // filter method is non destructive
             return this.hosts.filter(h => h['isFav'])
         },
-
-        favCount(): any{
-            return this.hosts.reduce((prev:any, cur:any) => {
-                return cur.isFav ? prev + 1 : prev
-            }, 0)
-        },
-
-        // arrow function. can't use "this" keyword. 
-        totalCount: (state) => {
-            return state.hosts.length
-        }
     },
 
     actions: {
@@ -40,13 +28,16 @@ export const useHostStore = defineStore('hostStore', {
             const data = await res.json()
             this.hosts = data;
             this.isLoading = false;
+            console.log('here');
+            console.log(data);
+            return data;
         },
 
         // add host to an array. take a host object and add to array
         async addHost(host:any) {
             this.isLoading = true;
             
-            const response = await fetch(
+            await fetch(
                 "http://localhost:8000/hosts/create-host",
                 {
                     method: 'POST',
@@ -57,17 +48,10 @@ export const useHostStore = defineStore('hostStore', {
                 }
             );
 
-            console.log('hi');
-            console.log(response.ok);
-            if (!response.ok) {
-                console.log('an error occurred');
-            }
-            this.isLoading=false;
-       
-            console.log('here');
-            // using json will include the host's unique id 
             this.hosts.push(host);
-         
+            console.log('added_host');
+            this.isLoading=false;
+                   // using json will include the host's unique id 
         },
 
         /**
@@ -75,7 +59,7 @@ export const useHostStore = defineStore('hostStore', {
          * @param host - Host we want to delete 
          */
         async deleteHost(host:any) {
-            const response = await fetch(
+            await fetch(
                 "http://localhost:8000/hosts/"+host.name,
                 {
                     method: 'DELETE',
@@ -84,6 +68,17 @@ export const useHostStore = defineStore('hostStore', {
             this.hosts = this.hosts.filter(h => {
                 return (h as any)._id!== host._id
             })
+        },
+
+        async deleteAll() {
+            console.log('called function');
+            await fetch(
+                "http://localhost:8000/hosts",
+                {
+                    method: 'DELETE',
+                }
+            );
+            this.hosts = [];
         },
 
         toggleHost(_id:any) {
