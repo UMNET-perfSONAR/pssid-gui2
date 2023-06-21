@@ -50,6 +50,12 @@ const routes =  [
         name: "ssid_profile_page",
         component: () => import("./views/ssid_profiles.vue")
     },
+    {
+        path: "/search",
+        alias: "/searches",
+        name: "search_page",
+        component: () => import("./views/searchbar.vue")
+    },
 
   ];
   

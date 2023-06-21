@@ -1,6 +1,6 @@
 <template>
-  <div id="app">
-    <h2> pSSID GUI 2.0 </h2>
+  <div id="app" class="header">
+    <h2 style="text-align: center;"> pSSID GUI 2.0 </h2>
 
     <!-- navbar -->
     <nav class="navbar navbar-expand navbar-dark bg-dark">
@@ -28,6 +28,9 @@
         <li class="nav-item">
           <router-link to="/batches" class="navbar-brand">Batches</router-link>
         </li>
+        <li class="nav-item">
+          <router-link to="/search" class="navbar-brand">Search</router-link>
+        </li>
       </div>
     </nav>
 
@@ -43,7 +46,6 @@
   import { ref } from 'vue';
   export default {
     name:"app"
-
   }
 
 </script>

@@ -14,18 +14,17 @@ body * {
 header {
   text-align: center;
   background: #e7e7e7;
-  padding-top: 10px;
+  padding-top: 25px;
   padding-bottom: 15px;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-header h1 {
+header h2 {
   margin:0;
   font-size: 2em;
   padding-top: 25px;
-  margin-left: 15px;
   color: #777;
 }
 
@@ -60,10 +59,6 @@ header h1 {
   color: white;
 }
 
-.host-list {
-  margin: 50px;
-}
-
 .host {
   width: 400px;
   padding: 6px 20px;
@@ -74,6 +69,25 @@ header h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.my_host {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  vertical-align: center;
+}
+
+.my_host p, .my_host .icons {
+  display: inline-block;
+}
+
+.my_host .icons {
+  text-align: right;
+}
+
+.my_host i.active {
+  color: #04AA6D;
 }
 
 /* put text icons in a line */
@@ -99,18 +113,6 @@ header h1 {
   display: flex;
 }
 
-.parent {
-  margin: 1rem;
-  padding: 2rem 2rem;
-  text-align: center;
-}
-
-.child {
-  display: inline-block;
-  padding: 1rem 5rem;
-  vertical-align: top;
-}
-
 .add_to_col {
   display: flex;
   flex-direction: column;
@@ -125,3 +127,5 @@ header h1 {
   text-align: center;
   margin: 30px auto;
 }
+
+

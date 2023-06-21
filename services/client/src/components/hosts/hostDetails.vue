@@ -1,6 +1,6 @@
 <template>
     <div class = 'host'>
-        <h3> {{ host.name }}</h3>
+        <p> {{ host.name }}</p>
         <!-- Insert an ICON or just change color when selected??? -->
         <div class = "icons">
             <i 

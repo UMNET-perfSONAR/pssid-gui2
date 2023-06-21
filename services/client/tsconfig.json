@@ -20,6 +20,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
+    /* Needed to find pinia??*/
     "baseUrl": "./",
     "paths": {
       "pinia": ["node_modules/pinia/dist/pinia.esm.js"]
