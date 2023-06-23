@@ -3,16 +3,14 @@ import {defineStore} from 'pinia'
 export const useGroupStore = defineStore('groupStore', {
     // create a state object -> can have different properties 
     state: () => ({
-        host_groups: [],
+        host_groups: [{}],
+        filteredData: [{}],
         isLoading: false
     }),
 
     // use to extract any relevant information/ can manipulate slightly
     getters: {
-        favs(): any {
-            // filter method is non destructive
-            return this.host_groups.filter(h => h['isFav'])
-        },
+
         // arrow function. can't use "this" keyword. 
         totalCount: (state) => {
             return state.host_groups.length
@@ -26,6 +24,7 @@ export const useGroupStore = defineStore('groupStore', {
             const res = await fetch('http://localhost:8000/host-groups')
             const data = await res.json()
             this.host_groups = data;
+            this.filteredData = data; 
             this.isLoading = false;
         },
 
@@ -46,6 +45,7 @@ export const useGroupStore = defineStore('groupStore', {
             );
 
             this.host_groups.push(host_group);
+            // TODO - Add to filtered data?? refilter data? - yes 
             this.isLoading=false;
         },
 
@@ -60,7 +60,11 @@ export const useGroupStore = defineStore('groupStore', {
                     method: 'DELETE',
                 }
             );
+            // TODO - add deletion here 
             this.host_groups = this.host_groups.filter(h => {
+                return (h as any)._id!== host_group._id
+            })
+            this.filteredData = this.filteredData.filter(h => {
                 return (h as any)._id!== host_group._id
             })
         },
@@ -74,14 +78,18 @@ export const useGroupStore = defineStore('groupStore', {
                 }
             );
             this.host_groups = [];
+            this.filteredData = [];
         },
 
-        toggleHost(_id:any) {
+        toggleHost(_id:string) {
             const host_groups = this.host_groups.find(h => (h as any)._id == _id)
             if (host_groups !== undefined) {
                 (host_groups as any).isFav = !(host_groups as any).isFav
             }
+        },
+        filterData(searchKey: string) {
+            const regex = new RegExp(searchKey, 'i');
+            this.filteredData = this.host_groups.filter(item => regex.test((item as any).name))
         }
     }
 })
-

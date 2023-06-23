@@ -1,7 +1,9 @@
 <template>
   <div>
 
-    
+    <div v-if="hostGroup.isLoading===true">
+      <p> Loading Host Group Page... </p>
+    </div>
     <!-- Add Host Button -->
     <div>
       <button @click="addHostForm" class="btn btn-primary" style="margin-bottom: 1em; margin-top: 1em;"> Add Host Group</button>
@@ -20,7 +22,7 @@
           <li
             class="list-group-item"
             :class="{active: index == currentIndex}"
-            v-for="(group, index) in filteredData"
+            v-for="(group, index) in hostGroup.filteredData"
             :key="index"
             @click="setActiveGroup(group, index)"
             >
@@ -69,6 +71,32 @@
               >
               </VueMultiselect>
             </div>
+
+            <!-- dynamic data section -->
+            <div class="form-inline"
+            v-for="(item, counter) in addedData"
+            v-bind:key="counter">
+              <input 
+                type="text"
+                placeholder="key"
+                v-model="item.key"
+                class="form-control"
+          
+              />
+              <input 
+                type="text"
+                placeholder="value"
+                v-model="item.value"
+                class="form-control"
+
+              />
+            <i class ="material-icons" 
+              @click="deleteParameter(counter)"
+              style="cursor: pointer;">delete</i>
+            </div>
+            <button @click="addParameter()" class="btn btn-primary" 
+            style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
+
           </div>
           <button class="btn btn-success"> Submit </button>
         </form>
@@ -149,17 +177,22 @@ import searchbar from './searchbar.vue';
         selectedBatch: ref(''),
         selectedGroup: ref(''),
         selectedHosts: ref(''),
-
+        addedData: [{
+          key:'',
+          value:''
+        }],
         searchKey: '',
         filteredData: [],
       }
     },
     watch: {
       searchKey() {
-        this.filterData();
+        //this.filterData();
+        this.hostGroup.filterData(this.searchKey);
       },
       hostGroup() {
-        this.filterData();
+        //this.filterData();
+        this.hostGroup.filterData(this.searchKey);
       }
     },
     async mounted() {
@@ -168,9 +201,13 @@ import searchbar from './searchbar.vue';
     },
 
     methods: {
-      filterData() {
-        const regex = new RegExp(this.searchKey, 'i');
-        this.filteredData = this.hostGroup.host_groups.filter(item => regex.test(item.name))
+      setActiveGroup(group, index=1) {
+        this.currentGroup = group;
+        this.currentIndex = index;
+        this.selectedGroup = group.name;
+        this.selectedBatch = group.batches;
+        this.selectedHosts = group.hosts;
+        this.display = '';
       },
       async handleSubmit() {
         if (this.newGroup.length > 0) {
@@ -185,17 +222,13 @@ import searchbar from './searchbar.vue';
           this.filterData();
         }
       },
-      setActiveGroup(group, index=1) {
-        this.currentGroup = group;
-        this.currentIndex = index;
-        this.selectedGroup = group.name;
-        this.selectedBatch = group.batches;
-        this.selectedHosts = group.hosts;
-        this.display = '';
-      },
       async loadHosts() {
-        this.host_options = this.hostStore.hosts
-        this.group_options = this.hostGroup.host_groups
+        this.host_options = await this.hostStore.hosts
+        this.group_options = await this.hostGroup.host_groups
+      },
+      filterData() {
+        const regex = new RegExp(this.searchKey, 'i');
+        this.filteredData = this.hostGroup.host_groups.filter(item => regex.test(item.name))
       },
       addHostForm() {
         this.display = 'add',
@@ -203,12 +236,25 @@ import searchbar from './searchbar.vue';
       },
       async deletegroup() {
         await this.hostGroup.deleteGroup(this.currentGroup);
+      },
+
+      // functions for dynamic form
+      addParameter() {
+        this.addedData.push({
+          key: '',
+          value: ''
+        })
+      },
+
+      deleteParameter(counter) {
+        this.addedData.splice(counter,1);
       }
     },
     setup() {
       const hostGroup = useGroupStore();
       hostGroup.getGroups();
-      return { hostGroup }
+      
+      return { }
     }
   })
 </script>
