@@ -5,23 +5,15 @@ export const useSsidStore = defineStore('ssidStore', {
     // create a state object -> can have different properties 
     state: () => ({
         // TODO: SET TASKS => HOSTS AND MAKE A GET REQUEST HERE TO SET = TO
-        ssid_profiles: [],
+        ssid_profiles: [{}],
         isLoading: false
     }),
-
-    // use to extract any relevant information/ can manipulate slightly
-    getters: {
-        // arrow function. can't use "this" keyword. 
-        totalCount: (state) => {
-            return state.ssid_profiles.length
-        }
-    },
 
     actions: {
         // TODO: Use Axios?? 
         async getSsidProfiles() {
             this.isLoading = true;
-            const res = await fetch('http://localhost:8000/ssid_profiles')
+            const res = await fetch('http://localhost:8000/ssid-profiles')
             const data = await res.json()
             this.ssid_profiles = data;
             this.isLoading = false;
@@ -32,7 +24,7 @@ export const useSsidStore = defineStore('ssidStore', {
             this.isLoading = true;
             
             const response = await fetch(
-                "http://localhost:8000/ssid_profiles/create-profile",
+                "http://localhost:8000/ssid-profiles/create-profile",
                 {
                     method: 'POST',
                     body: JSON.stringify(ssid_profile),
@@ -53,7 +45,7 @@ export const useSsidStore = defineStore('ssidStore', {
          */
         async deleteSsidProfile(ssid_profile:any) {
             await fetch(
-                "http://localhost:8000/ssid_profiles/"+ssid_profile.name,
+                "http://localhost:8000/ssid-profiles/"+ssid_profile.name,
                 {
                     method: 'DELETE',
                 }
@@ -66,19 +58,12 @@ export const useSsidStore = defineStore('ssidStore', {
         async deleteAll() {
             console.log('called function');
             await fetch(
-                "http://localhost:8000/ssid_profiles",
+                "http://localhost:8000/ssid-profiles",
                 {
                     method: 'DELETE',
                 }
             );
             this.ssid_profiles = [];
-        },
-
-        toggleSsidProfile(_id:any) {
-            const ssid_profile = this.ssid_profiles.find(h => (h as any)._id == _id)
-            if (ssid_profile !== undefined) {
-                (ssid_profile as any).isFav = !(ssid_profile as any).isFav
-            }
         }
     }
 })
