@@ -5,11 +5,15 @@ const {getTests,
     getOneTest, 
     deleteTest, 
     postTest,
-    updateTest} = require('../controllers/tests.controllers');
+    updateTest,
+    readFileNames,
+    readTestFile} = require('../controllers/tests.controllers');
 
 
 tests.get('/', getTests);
-tests.get('/:testname', getOneTest);
+tests.get('/test-files',readFileNames);
+tests.get('/read-test/:name', readTestFile);
+
 tests.delete('/:testname', deleteTest);
 tests.post('/create-test', postTest);
 

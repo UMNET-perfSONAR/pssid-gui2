@@ -3,6 +3,8 @@ import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
+import fs from 'fs';
+import path from 'path';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -10,8 +12,9 @@ var client = connectToMongoDB();
 // get all tests
 const getTests = (async (req: Request, res: Response) =>{
     (await client).connect();
-    const collection = await (await client).db('gui').collection('tests');
+    const collection = (await client).db('gui').collection('tests');
     const response = await collection.find().toArray();
+    console.log('tests')
     res.send(response);
 })
 
@@ -43,7 +46,8 @@ const deleteTest = (async (req:Request, res:Response) => {
 const postTest = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('tests');
-    collection.insertOne({
+    console.log('test insetion')
+    await collection.insertOne({
         "name":req.body.name,
         "type": req.body.type,
         "spec": req.body.spec
@@ -66,9 +70,51 @@ const updateTest = (async (req:Request, res:Response) => {
         await updateCollection('jobs', 'tests', client)           // update jobs using tests collection
     }
     res.json(body);
-} )
+})
+
+/**
+ * Read test option filenames from test_options
+ * 
+ * @param req - request information sent from client
+ * @param res - response sent back to client
+ */
+const readFileNames = ((req:Request, res:Response) => {
+    console.log(__dirname);
+    const directoryPath = path.join(__dirname,   '../test_options')
+    
+    fs.readdir(directoryPath, function(err, files) {
+        if (err) {
+            return console.log('Unable to scan directory:' + err)
+        }
+        let fileArray: string[] = [];
+        files.forEach(function(file) {
+            fileArray.push(file.slice(0, -5))
+            console.log(file.slice(0, -5));
+        })
+        res.send(fileArray);
+    })
+})
+
+/**
+ * Read selected filename (params.name) from test_options - send contents back as a json array 
+ * 
+ * @param req - request information sent from client
+ * @param res - response sent back to client
+ */
+const readTestFile = ((req:Request, res:Response) => {
+    console.log('reading selected file')
+
+    var name = '../test_options/' + req.params.name + '.json'
+
+    const filePath = path.join(__dirname, name);
+    var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));    
+    res.json(object);
+}) 
+
 module.exports = {getTests, 
                 getOneTest, 
                 deleteTest, 
                 postTest, 
-                updateTest};
+                updateTest, 
+                readFileNames,
+                readTestFile};

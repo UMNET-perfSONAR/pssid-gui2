@@ -1,51 +1,62 @@
-<template>   
-
-    <!-- loading -->
-    <div class="loading" v-if="hostStore.isLoading"> Loading hosts...</div>
-
-
-    <!-- individual hosts -->
-
-      <div class="col-md-6">
-        <h2> Hosts </h2>
-        <div  v-for="(host, index ) in hostStore.hosts" 
-        class="list-group-itme"
-        :key="index"
-        @click="setActiveHost(host, index)"
-        :class="{active: index==currentIndex}"> 
-          <!-- set up with component - set = to host each time -->
-          <hostDetails :host="host" @click=" selected_host = host.name, temp_host = host"/>
-        </div>
+<template>
+  <div>
+      <!-- Loading page feedback -->
+      <div v-if="archiverStore.isLoading===true"> 
+        <p> Loading archivers page... </p>
       </div>
 
-    <!-- display selected host's information / edit information -->
-    <div class="col-md-6">
-      <h2> Add Host </h2>
+      <!-- Add ssid_profile button -->
       <div>
-            <addHost />
+        <button @click="addArchiverForm" 
+        class="btn btn-primary" style="margin-bottom: 1em;"> Add Archiver </button>
+      </div>
+
+      <div class="list row"> 
+        <!-- archiver list -->
+        <div class="col-md-6">
+          <h3> Archiver List </h3>
+          <ul class="list-group" style="overflow: auto; height: 400px;">
+                    <li
+                        class="list-group-item"
+                        :class="{active: index == currentIndex}"
+                        v-for="(item, index) in archiverStore.archivers"
+                        :key="index"
+                        @click="setActiveArchiver(item, index)"
+                        >
+                        <p> {{ item.name }}</p>
+                    </li>
+                </ul>
+
         </div>
-    </div>
+ 
 
 
+
+      </div>
+
+
+
+
+
+  </div>
 </template>
 
 <script>
- 
-    import  hostDetails  from '../components/hosts/hostDetails.vue'
-    import addHost from '../components/hosts/addHost.vue'
-    import hostExpand from '../components/hosts/hostExpand.vue'
-    import editHost from '../components/hosts/editForm.vue'
-    import { useHostStore } from '../stores/host_store.ts'
-    import {ref} from 'vue'
+import { useArchiverStore } from '../stores/archiver.store.ts';
+  export default {
+    data() {
+      return {
+        archiverStore: useArchiverStore()
+      }
+    },
+    async mounted() {
+      this.archiverStore.getArchivers();
+    },
+    methods: {
+      setActiveArchiver() {
 
-    export default {
-        components: { hostDetails, addHost, hostExpand, editHost },
-            setup() {
-              const hostStore = useHostStore();
-              hostStore.getHosts();
-              const selected_host = ref('add')
-              const temp_host = {}
-              return { hostStore, selected_host, temp_host }
-            }
+      }
     }
+    
+  }
 </script>
