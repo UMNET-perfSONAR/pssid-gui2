@@ -3,7 +3,12 @@ import {defineStore} from 'pinia'
 export const useGroupStore = defineStore('groupStore', {
     // create a state object -> can have different properties 
     state: () => ({
-        host_groups: [{}],
+        host_groups: [{
+            name:'',
+            hosts: [''],
+            batches: [''],
+            data: [{}]
+        }],
         filteredData: [{}],
         isLoading: false
     }),
@@ -61,12 +66,8 @@ export const useGroupStore = defineStore('groupStore', {
                 }
             );
             // TODO - add deletion here 
-            this.host_groups = this.host_groups.filter(h => {
-                return (h as any)._id!== host_group._id
-            })
-            this.filteredData = this.filteredData.filter(h => {
-                return (h as any)._id!== host_group._id
-            })
+
+  
         },
 
         async deleteAll() {

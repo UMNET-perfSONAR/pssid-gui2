@@ -2,7 +2,7 @@
     <div>
         <!-- Loading page feedback -->
         <div v-if="ssidStore.isLoading===true"> 
-            <p> Loading schedules page... </p>
+            <p> Loading SSID Profiles page... </p>
         </div>
         
         <!-- Add ssid_profile button -->
@@ -28,9 +28,16 @@
 
             </div>
 
+            <!-- Add SSID profile -->
             <div class = 'col-md-6' v-if="display==='add'">
                 <h3> Add SSID Profile </h3>
-                <dynamicform :form_data="formstuff"></dynamicform>
+                <dynamicform  @formData="receiveEmit"
+                 :form_data="formstuff" :add="true"></dynamicform>
+            </div>
+
+            <div class = 'col-md-6' v-if="display!=='add'">
+                <h3> Edit SSID Profile </h3>
+                <dynamicform :current_item="currentItem" :add="false" :form_data="formstuff"></dynamicform>
             </div>
         </div>
 
@@ -40,8 +47,10 @@
 <script>
 import { useSsidStore } from '/src/stores/ssid_profiles_stores';
 import dynamicform from '../components/dynamicform.vue'
+import editDynamicForm from '../components/edit_dynamic_form.vue'
+import { number } from '@formkit/inputs';
     export default {
-        components: { dynamicform },
+        components: { dynamicform, editDynamicForm },
         data() {
             return {
                 ssidStore: useSsidStore(),
@@ -53,7 +62,7 @@ import dynamicform from '../components/dynamicform.vue'
                     'name': 'SSID Profile Name'
                 },{ 
                     'type': 'text',
-                    'name': 'SSID'
+                    'name': 'ssid'
                 }, {
                     'type': 'text',
                     'name': 'Number'
@@ -65,10 +74,24 @@ import dynamicform from '../components/dynamicform.vue'
         },
         methods: {
             addSsidForm() {
+                this.display = 'add';
+                this.currentIndex = {};
 
             },
-            setActiveSsid() {
-
+            setActiveSsid(ssid, index=1) {
+                this.currentIndex = index;
+                this.currentItem = ssid; 
+                this.display='';
+            },
+            receiveEmit(form_data) {
+                if(form_data.length > 0) {
+                    // TODO - template this to iterate over array and set name/ etc to be appropriate. will simplify tests file 
+                    this.ssidStore.addSsidProfile({
+                        name: form_data[0].value,
+                        ssid: form_data[1].value,
+                        min_signal: form_data[2].value
+                    })
+                }
             }
         }
         

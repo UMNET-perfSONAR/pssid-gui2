@@ -73,15 +73,17 @@
             </div>
 
             <!-- dynamic data section -->
+            <label for="params"> Optional Data </label>
             <div class="form-inline"
-            v-for="(item, counter) in addedData"
-            v-bind:key="counter">
+              v-for="(item, counter) in addedData"
+              v-bind:key="counter"
+              id="params"
+              style="margin-bottom: 1em;">
               <input 
                 type="text"
                 placeholder="key"
                 v-model="item.key"
                 class="form-control"
-          
               />
               <input 
                 type="text"
@@ -90,9 +92,9 @@
                 class="form-control"
 
               />
-            <i class ="material-icons" 
-              @click="deleteParameter(counter)"
-              style="cursor: pointer;">delete</i>
+              <i class ="material-icons" 
+                @click="deleteParameter(counter)"
+                style="cursor: pointer;">delete</i>
             </div>
             <button @click="addParameter()" class="btn btn-primary" 
             style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
@@ -141,10 +143,40 @@
               </VueMultiselect>
             </div>
           </div>
-          <button class="btn btn-success"> Submit </button>
-          <button class="btn btn-danger" @click="deletegroup"> Delete </button>
-        </form>
 
+          <!-- dynamic data section -->
+          <label for="params"> Optional Data </label>
+            <div class="form-inline"
+              v-for="(item, counter) in currentGroup.data"
+              v-bind:key="counter"
+              id="params"
+              style="margin-bottom: 1em;">
+              <input 
+                type="text"
+                placeholder="key"
+                v-model="item.key"
+                class="form-control"
+              />
+              <input 
+                type="text"
+                placeholder="value"
+                v-model="item.value"
+                class="form-control"
+
+              />
+              <i class ="material-icons" 
+                @click="deleteParameter('group', counter)"
+                style="cursor: pointer;">delete</i>
+            </div>
+            <button @click="addParameter('group')" class="btn btn-primary" 
+            style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
+
+          <div>
+            <button class="btn btn-success" style="margin-right: 1em;"> Submit </button>
+            <button class="btn btn-danger" @click="deletegroup"> Delete </button>
+          </div>
+
+        </form>
       </div>
     </div>
   </div>
@@ -162,7 +194,6 @@ import searchbar from './searchbar.vue';
     components: {VueMultiselect, searchbar},
     data() {
       return {
-        selected:null,
         host_options: [],
         group_options: [],
         options: ['batch1'],
@@ -177,10 +208,7 @@ import searchbar from './searchbar.vue';
         selectedBatch: ref(''),
         selectedGroup: ref(''),
         selectedHosts: ref(''),
-        addedData: [{
-          key:'',
-          value:''
-        }],
+        addedData: [{}],
         searchKey: '',
         filteredData: [],
       }
@@ -214,7 +242,8 @@ import searchbar from './searchbar.vue';
           this.hostGroup.addGroup({
             name: this.newGroup,
             batches: this.newBatch,
-            hosts: (this.newHosts.length == 0)? [] : this.newHosts.map(obj => obj.name)
+            hosts: (this.newHosts.length == 0)? [] : this.newHosts.map(obj => obj.name),
+            data: this.addedData
           })
           this.newGroup = ref(''),
           this.newBatch = ref(''),
@@ -235,19 +264,33 @@ import searchbar from './searchbar.vue';
         this.currentIndex = {};
       },
       async deletegroup() {
+        this.hostGroup.host_groups.splice(this.currentIndex,1);
         await this.hostGroup.deleteGroup(this.currentGroup);
       },
 
       // functions for dynamic form
-      addParameter() {
-        this.addedData.push({
-          key: '',
-          value: ''
-        })
+      addParameter(group) {
+        if (group === 'group') {
+          this.currentGroup.data.push({
+            key:'',
+            value:''
+          })
+        }
+        else {
+          this.addedData.push({
+            key: '',
+            value: ''
+          })
+        }
       },
-
-      deleteParameter(counter) {
-        this.addedData.splice(counter,1);
+   
+      deleteParameter(group, counter) {
+        if (group === 'group') {
+          this.currentGroup.data.splice(counter,1);
+        }
+        else {
+          this.addedData.splice(counter,1);
+        }
       }
     },
     setup() {
