@@ -8,16 +8,13 @@ export const useHostStore = defineStore('hostStore', {
     // create a state object -> can have different properties 
     state: () => ({
         // TODO: SET TASKS => HOSTS AND MAKE A GET REQUEST HERE TO SET = TO
-        hosts: [],
+        hosts: [{}],
         isLoading: false
     }),
 
     // use to extract any relevant information/ can manipulate slightly
     getters: {
-        favs(): any {
-            // filter method is non destructive
-            return this.hosts.filter(h => h['isFav'])
-        },
+
     },
 
     actions: {

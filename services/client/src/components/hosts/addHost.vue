@@ -23,17 +23,31 @@
                 >
              </VueMultiselect>
             </div>
-            <div class="form-group">
-                <label for="data"> Data </label>
-                <input
-                    type="text"
-                    placeholder="Optional data"
-                    v-model="newData" 
-                    id="data"
-                    name="data form"
-                    class="form-control"
-                >
+            <!-- dynamic data section -->
+            <div class="form-inline"
+            v-for="(item, counter) in addedData"
+            v-bind:key="counter">
+              <input 
+                type="text"
+                placeholder="key"
+                v-model="item.key"
+                class="form-control"
+          
+              />
+              <input 
+                type="text"
+                placeholder="value"
+                v-model="item.value"
+                class="form-control"
+
+              />
+              <i class ="material-icons" 
+                @click="deleteParameter(counter)"
+                style="cursor: pointer;">delete</i>
             </div>
+            <button @click="addParameter()" class="btn btn-primary" 
+            style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
+
             
         </div>
         <button class="btn btn-success"> Submit </button>
@@ -53,8 +67,24 @@ export default {
                 selected: null,
                 options: ['batch1', 'batch2'],
                 newBatch: ref(''),
-                newData: ref('')
+                newData: ref(''),
+                addedData: [{
+                    key:'',
+                    value:''
+                }],
             }
+        },
+        methods: {
+                  // functions for dynamic form
+            addParameter() {
+                this.addedData.push({
+                    key: '',
+                    value: ''
+                })
+            },
+        deleteParameter(counter) {
+            this.addedData.splice(counter,1);
+      }
         },
         setup() {
             const hostStore = useHostStore()

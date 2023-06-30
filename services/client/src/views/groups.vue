@@ -128,6 +128,8 @@
                 :options="host_options"
                 :multiple="true"
                 :close-on-select="false"
+                label="name"
+                track-by="name"
               >
               </VueMultiselect>
             </div>
@@ -172,10 +174,10 @@
             style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
 
           <div>
-            <button class="btn btn-success" style="margin-right: 1em;"> Submit </button>
+            <button class="btn btn-success" @click="editGroup"
+            style="margin-right: 1em;"> Submit </button>
             <button class="btn btn-danger" @click="deletegroup"> Delete </button>
           </div>
-
         </form>
       </div>
     </div>
@@ -197,20 +199,16 @@ import searchbar from './searchbar.vue';
         host_options: [],
         group_options: [],
         options: ['batch1'],
-        currentGroup: {},
-        currentIndex: {},
-        newHosts: ref(''),
-        newBatch: ref(''),
-        newGroup: ref(''),
-        hostStore: useHostStore(),
-        hostGroup: useGroupStore(),
-        display: ref('add'),
-        selectedBatch: ref(''),
-        selectedGroup: ref(''),
-        selectedHosts: ref(''),
+        currentGroup: {}, currentIndex: {},
+        newHosts: '', newBatch: '', newGroup: '',
+
+        display: 'add',
+        selectedBatch: '', selectedGroup: '', selectedHosts: '',
         addedData: [{}],
         searchKey: '',
         filteredData: [],
+        hostStore: useHostStore(),
+        hostGroup: useGroupStore(),
       }
     },
     watch: {
@@ -224,7 +222,9 @@ import searchbar from './searchbar.vue';
       }
     },
     async mounted() {
-      await this.loadHosts();
+      await this.hostStore.getHosts();
+      this.host_options = await this.hostStore.hosts
+      this.group_options = await this.hostGroup.host_groups
       this.filterData();
     },
 
@@ -251,10 +251,18 @@ import searchbar from './searchbar.vue';
           this.filterData();
         }
       },
-      async loadHosts() {
-        this.host_options = await this.hostStore.hosts
-        this.group_options = await this.hostGroup.host_groups
+      async editGroup() {
+        let object = {
+          new_hostgroup: this.selectedGroup,
+          old_hostgroup: this.currentGroup.name,
+          hosts: this.selectedHosts,
+          batches: this.selectedBatch,
+          data: this.currentGroup.data,
+        }
+        await this.hostGroup.editGroup(object);
+        await this.hostGroup.getGroups();
       },
+
       filterData() {
         const regex = new RegExp(this.searchKey, 'i');
         this.filteredData = this.hostGroup.host_groups.filter(item => regex.test(item.name))

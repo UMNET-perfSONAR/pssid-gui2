@@ -23,8 +23,8 @@ export const useSsidStore = defineStore('ssidStore', {
         async addSsidProfile(ssid_profile:any) {
             this.isLoading = true;
             
-            const response = await fetch(
-                "http://localhost:8000/ssid-profiles/create-profile",
+            await fetch(
+                "http://localhost:8000/ssid-profiles/create-ssidProfile",
                 {
                     method: 'POST',
                     body: JSON.stringify(ssid_profile),

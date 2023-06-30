@@ -23,8 +23,6 @@
                     :multiple="true"
                     :close-on-select="false"
                     :options="item.options"
-                    label="name"
-                    track-by="name"
                 >
                 </VueMultiselect>
             </div>
@@ -35,19 +33,17 @@
                     v-model="form_values[index].selected"
                     :multiple="false"
                     :close-on-select="true"
-                    :options="SsidStore.ssid_profiles"
+                    :options="singleOptions"
                     :searchable="false"
-                    track-by="name"
-                    label="name"
                     @select="sendFormType(form_values[index].selected)"
                 >
+                test 
                 </VueMultiselect>
             </div>
            
         </div>
         <div>
-            <button class="btn btn-success" @onclick="handleFormSubmit"
-            style="margin-right: 1em;"> Submit </button>
+            <button class="btn btn-success" style="margin-right: 1em;"> Submit </button>
         </div>
         
     </form>
@@ -56,32 +52,26 @@
 <script>
 import { ref } from 'vue'
 import VueMultiselect from 'vue-multiselect';
-import { useSsidStore } from '/src/stores/ssid_profiles_stores';
+
     export default {
         components: { VueMultiselect },
+        data() {
+            return {
+                form_values: this.form_data.map((item) => ({
+                    name: item.name,
+                    value: '',
+                    selected: []
+                }))
+            }
+        },
         props: {
             form_data: {
                 type: Array,
                 required: true
 
             },
-            add: {
-                type: Boolean,
-                required: true
-            },
-            current_item: {
-                required:false
-            }
-        },
-        data() {
-            return {
-                current: {},
-                SsidStore: useSsidStore(),
-                form_values: this.form_data.map((item) => ({
-                    name: item.name,
-                    value: '',
-                    selected: []
-                }))
+            singleOptions: {
+                type: Array
             }
         },
         methods: {
@@ -91,39 +81,21 @@ import { useSsidStore } from '/src/stores/ssid_profiles_stores';
                     value: item.value,
                     selected:item.selected
                 }))
-                console.log('dynamicfile')
-                this.$emit('formData', form_data)
+                this.$emit('alert', form_data)
             },
 
             sendFormType(form_type) {
                 this.$emit('render-dynamic-form', form_type)
-            },
-
-            async setUpData() {
-                await this.SsidStore.getSsidProfiles();
-                this.current = this.current_item;
-
-                console.log('hi')
-                this.form_values = this.form_data.map((item) => ({
-                name: item.name,
-                value: '',
-                selected: []
-            }))
-            console.log(this.form_values)
             }
 
         },
         // initialize form_values with enough "slots" for data entry
         mounted() {
-            this.setUpData();
-        },
-        watch: {
-            form_data() {
-                this.setUpData();
-            },
-            current_item() {
-                this.setUpData();
-            }
+            this.form_values = this.form_data.map((item) => ({
+                name: item.name,
+                value: '',
+                selected: []
+            }))
         }
 
     }

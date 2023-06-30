@@ -59,7 +59,8 @@
                         <dynamicform 
                             @formData="handleSubmit"
                             :form_data="testStore.test_options"
-                            :singleOptions="SsidStore.ssid_profiles">
+                            :current_item="selected_test"
+                             :add="true">
                         </dynamicform>
                     </div>
                 </form>
@@ -78,7 +79,7 @@
                             id="name"
                             class="form-control"
                             v-model="currentItem.name"/>
-                    </div>
+                </div>
 
                 <div style="margin-bottom: 1em;">
                         <label> Type Selection </label>
@@ -144,15 +145,19 @@
                 this.currentIndex = {};
                 this.test_name = '';
                 this.selected_test = '';
+                
                 this.showForm = false;
                 this.test = {}
+               
                 this.input_fields = {}
             },
             async setActiveTest(test, index=1) {
                 this.currentIndex=index;
                 this.currentItem=test;
+
                 this.test = test.type;
                 this.viewType = test.type;
+                
                 this.display='';
                 await this.testStore.getDesiredTest(test.type, 'selected');
                 console.log(this.testStore.selectedTest);
@@ -174,8 +179,8 @@
                     type: this.selected_test,
                     spec: spec_object
                 });
-                this.test_name=ref('');
-                this.selected_test=ref('');
+                this.test_name='';
+                this.selected_test='';
             }
         }
     }

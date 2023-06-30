@@ -54,6 +54,19 @@ export const useGroupStore = defineStore('groupStore', {
             this.isLoading=false;
         },
 
+        async editGroup(host_group: any) {
+            await fetch(
+                "http://localhost:8000/host-groups/update-hostgroup",
+                {
+                    method: 'PUT',
+                    mode:'cors',
+                    body: JSON.stringify(host_group),
+                    headers: {
+                        "Content-Type":"application/json"
+                    }
+                }
+            );
+        },
         /**
          * Delete host_groups from database and remove component from front end
          * @param host_groups - Host we want to delete 
@@ -66,8 +79,6 @@ export const useGroupStore = defineStore('groupStore', {
                 }
             );
             // TODO - add deletion here 
-
-  
         },
 
         async deleteAll() {
