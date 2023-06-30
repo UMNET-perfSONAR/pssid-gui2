@@ -14,7 +14,8 @@
            
         </div>
         <div>
-            <button class="btn btn-success" style="margin-right: 1em;"> Submit </button>
+            <button class="btn btn-success" @click="editCurItem"
+            style="margin-right: 1em;"> Submit </button>
             <button class="btn btn-danger" @click.prevent="deleteCurItem"> Delete </button>
         </div>
         
@@ -27,7 +28,7 @@ import { ref } from 'vue'
 import VueMultiselect from 'vue-multiselect';
 
     export default {
-        emits: ['deleteItem'],
+        emits: ['deleteItem', 'editItem'],
         data() {
             return {
                 input_fields: [],
@@ -44,6 +45,11 @@ import VueMultiselect from 'vue-multiselect';
         methods: {
             deleteCurItem() {
                 this.$emit('deleteItem')
+            },
+
+            editCurItem() {
+                console.log('edit cur item')
+                this.$emit('editItem', this.input_fields)
             },
 
             setUpData() {

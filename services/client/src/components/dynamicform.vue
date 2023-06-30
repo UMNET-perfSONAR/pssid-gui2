@@ -91,7 +91,6 @@ import { useSsidStore } from '/src/stores/ssid_profiles_stores';
                     value: item.value,
                     selected:item.selected
                 }))
-                console.log('dynamicfile')
                 this.$emit('formData', form_data)
             },
 

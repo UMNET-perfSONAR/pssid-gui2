@@ -65,6 +65,21 @@ export const useArchiverStore = defineStore('archiver', {
                    // using json will include the archiver's unique id 
         },
 
+        async editArchiver(archiver: any) {
+            console.log('edit archiver');
+            await fetch(
+                "http://localhost:8000/archivers/update-archiver",
+                {
+                    method: 'PUT',
+                    mode:'cors',
+                    body: JSON.stringify(archiver),
+                    headers: {
+                        "Content-Type":"application/json"
+                    }
+                }
+            );
+        },
+
         /**
          * Delete archiver from database and remove component from front end
          * @param archiver - Archiver we want to delete 

@@ -96,11 +96,14 @@
           <!-- render edit component if type of archiver remains the same -->
           <div v-if="formType === archiver_type"> 
             <editFormComp :current_item="currentItem" 
-                @deleteItem="deleteArchiver">
+                @deleteItem="deleteArchiver"
+                @editItem="editArchiver">
             </editFormComp>
           </div>
           <div v-else> 
-            <dynamicForm :form_data="this.archiverStore.selectedArchiver" :add="false">
+            <dynamicForm :form_data="this.archiverStore.selectedArchiver"
+            @formData="editArchiver"
+            :add="false">
             </dynamicForm>
           </div>
 
@@ -118,6 +121,7 @@ import VueMultiselect from 'vue-multiselect';
     components: { dynamicForm, VueMultiselect, editFormComp },
     data() {
       return {
+        // variables cor add form
         selected_archiver: '',
         archiver_name:'',
 
@@ -130,6 +134,7 @@ import VueMultiselect from 'vue-multiselect';
         // rendering of dynamic edit form 
         formType: '',
         archiver_type: '',
+        old_archiver_name: '',
 
         // relevant stores
         archiverStore: useArchiverStore()
@@ -143,7 +148,7 @@ import VueMultiselect from 'vue-multiselect';
       setActiveArchiver(archiver, index=1) {
         this.currentIndex=index;
         this.currentItem=archiver;
-        console.log(this.currentItem);
+        this.old_archiver_name=archiver.name;
         this.formType = archiver.archiver;
         this.archiver_type = archiver.archiver;
 
@@ -154,6 +159,22 @@ import VueMultiselect from 'vue-multiselect';
         this.display='add';
         this.currentIndex={};
 
+      },
+      // edit current item
+      async editArchiver(editFormInputs) {
+        const data = editFormInputs.reduce((result, item)=> {
+                    result[item.name] = item.value
+                    return result
+                    }, {});
+
+        const object = {
+          "old_arc_name" : this.old_archiver_name,
+          "new_arc_name" : this.currentItem.name,
+          "archiver" : this.currentItem.archiver,
+          "data" : data
+        }
+        await this.archiverStore.editArchiver(object);
+        await this.archiverStore.getArchivers();
       },
       // render form information from server
       async renderForm() {
