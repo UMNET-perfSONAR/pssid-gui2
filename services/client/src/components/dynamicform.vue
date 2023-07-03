@@ -15,6 +15,17 @@
                     v-model="form_values[index].value"
                 />
             </div>
+            <div v-if="item.type==='number'">
+                <label for="num"> {{ item.name }} </label>
+                <input
+                    type="number"
+                    required
+                    placeholder="0"
+                    id="num"
+                    class="form-control"
+                    v-model="form_values[index].value"
+                />
+            </div>
 
             <div v-if="item.type==='multiselect'">
                 <label> {{ item.name }}</label>

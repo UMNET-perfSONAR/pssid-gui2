@@ -55,6 +55,13 @@ import VueMultiselect from 'vue-multiselect';
             setUpData() {
                 // extract spec information 
                 this.input_fields = [];
+
+                console.log(this.current_item)
+                if (!this.current_item) {
+                    console.log('undefined')
+                }
+
+
                 const object = (this.current_item.archiver !== undefined) ? 
                             this.current_item.data : this.current_item.spec; 
                 this.input_fields = Object.entries(object).map(([name,value]) => ({

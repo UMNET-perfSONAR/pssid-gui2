@@ -65,8 +65,8 @@ export const useArchiverStore = defineStore('archiver', {
                    // using json will include the archiver's unique id 
         },
 
+        // edit archiver through put request
         async editArchiver(archiver: any) {
-            console.log('edit archiver');
             await fetch(
                 "http://localhost:8000/archivers/update-archiver",
                 {

@@ -98,10 +98,14 @@
                 <div v-if="viewType===test">
                     <editFormComp 
                               :current_item="currentItem"
+                              @editItem="editTest"
+                              @deleteItem="deleteTest"
                     > </editFormComp>
                 </div>
                 <div v-else>    
-                    <dynamicform :form_data="testStore.test_options">
+                    <dynamicform :form_data="testStore.test_options" :add="false"
+                    @formData="editTest"
+                    >
 
                     </dynamicform>
                 </div>
@@ -122,17 +126,22 @@
         components: { dynamicform , VueMultiselect, editFormComp },
         data() {
             return {
-                testStore: useTestStore(),
-                SsidStore: useSsidStore(),
+                // manage view of pages
                 currentIndex: {},
                 currentItem: {},
                 display: 'add',
                 showForm: false,
+                old_test_name: '',
+
                 test_name: '',
                 selected_test: '',
                 viewType: {},
                 test: {},
-                input_fields: []
+                input_fields: [],
+
+                // stores 
+                testStore: useTestStore(),
+                SsidStore: useSsidStore(),
             }
         },  
         async mounted() {
@@ -157,6 +166,7 @@
 
                 this.test = test.type;
                 this.viewType = test.type;
+                this.old_test_name = test.name;
                 
                 this.display='';
                 await this.testStore.getDesiredTest(test.type, 'selected');
@@ -166,8 +176,7 @@
                 this.viewType = form_type
                 await this.testStore.getDesiredTest(form_type, ''); 
                 this.showForm = true;
-            },
-            
+            },  
             // form_data in this case will be the "spec" information 
             async handleSubmit (form_data) {
                 const spec_object = form_data.reduce((result, item)=> {
@@ -181,6 +190,40 @@
                 });
                 this.test_name='';
                 this.selected_test='';
+            },
+
+            /**
+             * update current test item using put request
+             * 
+             * @param {*} editFormInputs - contains data to update test with 
+             */
+            async editTest(editFormInputs) {
+                console.log('editing test')
+                const data = editFormInputs.reduce((result, item)=> {
+                    result[item.name] = item.value
+                    return result
+                    }, {});
+
+                const object = {
+                    "old_testname" : this.old_test_name,
+                    "new_testname" : this.currentItem.name,
+                    "type" : this.currentItem.type,
+                    "spec" : data,
+                }
+                this.old_test_name = this.currentItem.name
+                await this.testStore.editTest(object);
+                await this.testStore.getTests();
+            },
+
+            /**
+             * delete test specified by currentItem 
+             */
+            async deleteTest() {
+                console.log('delete test')
+                this.testStore.tests.splice(this.currentIndex, 1);
+                await this.testStore.deleteTest(this.currentItem);
+                this.currentItem={};
+                this.currentIndex='';
             }
         }
     }

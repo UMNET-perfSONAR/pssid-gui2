@@ -21,6 +21,7 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Needed to find pinia??*/
+    "noImplicitAny": false,
     "baseUrl": "./",
     "paths": {
       "pinia": ["node_modules/pinia/dist/pinia.esm.js"]

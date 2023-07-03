@@ -50,9 +50,21 @@ export const useSsidStore = defineStore('ssidStore', {
                     method: 'DELETE',
                 }
             );
-            this.ssid_profiles = this.ssid_profiles.filter(h => {
-                return (h as any)._id!== ssid_profile._id
-            })
+        },
+
+        async editSsidProfile(ssid_profile:any) {
+            console.log('edit')
+            await fetch(
+                "http://localhost:8000/ssid-profiles/update-ssidProfile",
+                {
+                    method: "PUT",
+                    mode: "cors",
+                    body: JSON.stringify(ssid_profile),
+                    headers: {
+                        "Content-Type":"application/json"
+                    }
+                }
+            )
         },
 
         async deleteAll() {

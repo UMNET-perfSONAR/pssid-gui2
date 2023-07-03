@@ -37,7 +37,49 @@
 
             <div class = 'col-md-6' v-if="display!=='add'">
                 <h3> Edit SSID Profile </h3>
-                <dynamicform :current_item="currentItem" :add="false" :form_data="formstuff"></dynamicform>
+                <div style="margin-bottom:1em">
+                    <label> SSID Profile Name </label>
+                    <input
+                        type="text"
+                        placeholder="Enter ssid profile name here"
+                        required
+                        id="name"
+                        class="form-control"
+                        v-model="currentItem.name"
+                    />
+                </div>
+
+                <!-- ssid enter here -->
+                <div style="margin-bottom:1em">
+                    <label> SSID </label>
+                    <input
+                        type="text"
+                        placeholder="Enter ssid here"
+                        required
+                        id="name"
+                        class="form-control"
+                        v-model="currentItem.SSID"
+                        />
+
+                </div>
+                
+                <!-- Edit number -->
+                <div>
+                    <label for="num"> Number </label>
+                    <input 
+                        type="number" 
+                        required
+                        id="num"
+                        class="form-control"
+                        v-model="currentItem.min_signal"
+                        style="margin-bottom: 1em;"
+                    />
+                </div>
+                <button class="btn btn-success" @click="editCurItem"
+                    style="margin-right: 1em;"> Submit </button>
+                <button class="btn btn-danger" @click.prevent="deleteCurItem"> Delete </button>
+
+
             </div>
         </div>
 
@@ -56,6 +98,8 @@ import { number } from '@formkit/inputs';
                 ssidStore: useSsidStore(),
                 currentIndex: {},
                 currentItem: {},
+                old_ssidName: {},
+                value: {},
                 display: 'add',
                 formstuff: [{
                     'type': 'text',
@@ -64,7 +108,7 @@ import { number } from '@formkit/inputs';
                     'type': 'text',
                     'name': 'ssid'
                 }, {
-                    'type': 'text',
+                    'type': 'number',
                     'name': 'Number'
                 }]
             }
@@ -80,6 +124,7 @@ import { number } from '@formkit/inputs';
             },
             setActiveSsid(ssid, index=1) {
                 this.currentIndex = index;
+                this.old_ssidName = ssid.name;
                 this.currentItem = ssid; 
                 this.display='';
             },
@@ -92,8 +137,25 @@ import { number } from '@formkit/inputs';
                         min_signal: form_data[2].value
                     })
                 }
+            },
+            async editCurItem() {
+                const object = {   
+                    old_ssid_name: this.old_ssidName,
+                    new_ssid_name:  this.currentItem.name,
+                    ssid:  this.currentItem.SSID,
+                    min_signal: this.currentItem.min_signal
+                }
+                console.log(object)
+                await this.ssidStore.editSsidProfile(object);
+                await this.ssidStore.getSsidProfiles();
+
+            },
+            async deleteCurItem() {
+                this.ssidStore.ssid_profiles.splice(this.currentIndex, 1);
+                await this.ssidStore.deleteSsidProfile(this.currentItem);
+                this.currentIndex = {};
+                this.currentIndex = {};
             }
         }
-        
     }
 </script>

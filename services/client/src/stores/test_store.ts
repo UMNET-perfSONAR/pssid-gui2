@@ -44,6 +44,22 @@ export const useTestStore = defineStore('test', {
             this.isLoading = false;
         },
 
+        // edit test through put request
+        async editTest(test: any) {
+            console.log(test);
+            await fetch(
+                "http://localhost:8000/tests/update-test",
+                {
+                    method: 'PUT',
+                    mode:'cors',
+                    body: JSON.stringify(test),
+                    headers: {
+                        "Content-Type":"application/json"
+                    }
+                }
+            );
+        },
+
         // add test to an array. take a test object and add to array
         async addTest(test:any) {
             this.isLoading = true;
@@ -75,9 +91,6 @@ export const useTestStore = defineStore('test', {
                     method: 'DELETE',
                 }
             );
-            this.tests = this.tests.filter(h => {
-                return (h as any)._id!== test._id
-            })
         },
 
         async deleteAll() {

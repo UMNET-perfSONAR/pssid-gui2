@@ -90,7 +90,6 @@
                 placeholder="value"
                 v-model="item.value"
                 class="form-control"
-
               />
               <i class ="material-icons" 
                 @click="deleteParameter(counter)"

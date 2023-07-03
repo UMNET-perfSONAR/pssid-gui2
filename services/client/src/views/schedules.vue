@@ -44,11 +44,8 @@
                                 class="form-control"
                             />
                         </div>
-                        <div class="list row">
 
-
-
-                        </div>
+            
 
                     </div>
                 </form>
@@ -63,12 +60,14 @@
   import VueMultiselect from 'vue-multiselect'
   import { useScheduleStore } from '/src/stores/schedule_store';
   export default {
+    components: { VueMultiselect },
     data() {
         return {
             scheduleStore: useScheduleStore(),
             currentIndex: {},
             currentItem: {},
-            display: 'add'
+            display: 'add',
+            cronExpression: "*/1 * * * *"
         }
     },
     async mounted() {

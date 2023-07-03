@@ -102,8 +102,8 @@
           </div>
           <div v-else> 
             <dynamicForm :form_data="this.archiverStore.selectedArchiver"
-            @formData="editArchiver"
-            :add="false">
+                @formData="editArchiver"
+                :add="false">
             </dynamicForm>
           </div>
 
