@@ -50,7 +50,7 @@
                 </div>
             </form>
             -->
-            <dynamicform :form_data="form_layout" :add="true" @formData="addBatch">
+            <dynamicform @formData="addBatch" :form_layout="form_layout">
             </dynamicform>
             <div>
             </div>
@@ -132,8 +132,12 @@
                         v-model="currentItem.ttl"
                     />
                 </div>
-                <button class="btn btn-success" style="margin-bottom:2em"> Update </button>
-            </form>
+                <div style="margin-bottom:2em">
+                    <button class="btn btn-success" style="margin-right:1em"> Update </button>
+                    <button class="btn btn-danger" @click="deleteBatch"> Delete </button>
+                </div>
+
+            </form> 
         </div>
     </div>
   </div>
@@ -160,6 +164,7 @@
 
                 ssid_selection: [],
                 batch_name: '',
+                old_batchname: '',
 
                 // relevant stores 
                 batchStore: useBatchStore(),
@@ -222,6 +227,7 @@
                 this.currentItem=indexArray[0];
                 this.currentIndex=indexArray[1];
                 this.showAddBatch = false;
+                this.old_batchname=this.currentItem.name;
             },
             /**
              * Change local variables to view "Add Batch" sub-page
@@ -236,8 +242,6 @@
             * @param {name, ssid_profiles, jobs, schedules, archivers, priority, TTL} form_data 
             */
             async addBatch(form_data) {
-          
-                const object = form_data;
                 await this.batchStore.addBatch({
                     name: form_data[0].value,
                     priority: form_data[5].value,
@@ -250,10 +254,27 @@
             },
 
             /**
-             * edit batch in mongodb
+             * edit batch in mongodb - wired to server via PUT request
              */
             async editBatch() {
+                const updated_batch = {
+                    "old_batchname":this.old_batchname,
+                    "new_batchname":this.currentItem.name,
+                    "priority": this.currentItem.priority,
+                    "ttl": this.currentItem.ttl,
+                    "ssid_profiles": this.currentItem.ssid_profiles,
+                    "schedules": this.currentItem.schedules,
+                    "archivers": this.currentItem.archivers,
+                    "jobs": this.currentItem.jobs
+                }
+                console.log(updated_batch)
+                await this.batchStore.editBatch(updated_batch);
 
+            },
+
+            async deleteBatch() {
+                this.batchStore.batches.splice(this.currentIndex, 1); 
+                await this.batchStore.deleteBatch(this.currentItem);
             }
         }
      

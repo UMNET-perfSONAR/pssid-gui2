@@ -45,6 +45,20 @@ export const useBatchStore = defineStore('batchStore', {
                    // using json will include the batch's unique id 
         },
 
+        async editBatch(updated_batch_obj: JSON) {
+            await fetch(
+                "http://localhost:8000/batches/update-batch",
+                {
+                    method: "PUT",
+                    mode: "cors",
+                    body: JSON.stringify(updated_batch_obj),
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                }
+            )
+        },
+
         /**
          * Delete batch from database and remove component from front end
          * @param batch - Batch we want to delete 
@@ -56,9 +70,6 @@ export const useBatchStore = defineStore('batchStore', {
                     method: 'DELETE',
                 }
             );
-            this.batches = this.batches.filter(h => {
-                return (h as any)._id!== batch._id
-            })
         },
 
         async deleteAll() {
