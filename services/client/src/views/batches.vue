@@ -13,25 +13,127 @@
     </div>
 
     <div class="list row">
-        <div class="col-md-6"> 
+        <div class="col-md-6" v-if="batchStore.batches.length === 0">
+            <h3> Batch List </h3>
+            <p> Batch list is empty </p>
+        </div>
+        <div class="col-md-6" v-else> 
             <h3> Batch List </h3>
             <itemList :item-array="batchStore.batches" :display="showAddBatch"
                       @updateActive="updateActiveBatch"></itemList>
         </div>
+        <!-- Add batch component -->
         <div class="col-md-6" v-if="showAddBatch===true"> 
             <h3> Add Batch </h3>
-            <!-- ssid profiles -->
-            <dynamicform :form_data="formStuff" :add="true">
-
+            <!-- 
+            <form @submit.prevent="addBatch()">
+                <div class="form-group">
+                    <label> Batch Name </label>
+                    <input
+                        type="text"
+                        placeholder="Enter batch name here"
+                        v-model="batch_name"
+                        class="form-control"
+                    />
+                </div>
+                <div class="form-group"> 
+                    <label> SSID Profile Selection </label>
+                    <VueMultiselect
+                        v-model="ssid_selection"
+                        :multiple="true"
+                        close-on-select="false"
+                        :options="SsidStore.ssid_profiles"
+                        track-by="name"
+                        label="name"
+                        >
+                    </VueMultiselect>
+                </div>
+            </form>
+            -->
+            <dynamicform :form_data="form_layout" :add="true" @formData="addBatch">
             </dynamicform>
             <div>
             </div>
-
-
-
         </div>
         <div class="col-md-6" v-else> 
             <h3> Edit Batch </h3>
+            <form @submit.prevent="editBatch">
+                <div class="form-group">
+                    <label> Batch Name </label>
+                    <input
+                        type="text"
+                        placeholder="Enter batch name here"
+                        v-model="currentItem.name"
+                        class="form-control"
+                    />
+                </div>
+                <div class="form-group"> 
+                    <label> SSID Profile Selection </label>
+                    <VueMultiselect
+                        v-model="currentItem.ssid_profiles"
+                        :multiple="true"
+                        close-on-select="false"
+                        :options="SsidStore.ssid_profiles.map(item=> item.name)"
+                        >
+                    </VueMultiselect>
+                </div>
+                <!-- job selection-->
+                <div class="form-group"> 
+                    <label> Job Selection </label>
+                    <VueMultiselect
+                        v-model="currentItem.jobs"
+                        :multiple="true"
+                        close-on-select="false"
+                        :options="JobStore.jobs.map(item=>item.name)"
+                        >
+                    </VueMultiselect>
+                </div>
+                <!-- schedule selection -->
+                <div class="form-group"> 
+                    <label> Schedule Selection </label>
+                    <VueMultiselect
+                        v-model="currentItem.schedules"
+                        :multiple="true"
+                        close-on-select="false"
+                        :options="scheduleStore.schedules.map(item=>item.name)"
+                        >
+                    </VueMultiselect>
+                </div>
+                <!-- archiver selection -->
+                <div class="form-group"> 
+                    <label> Archiver Selection </label>
+                    <VueMultiselect
+                        v-model="currentItem.archivers"
+                        :multiple="true"
+                        close-on-select="false"
+                        :options="archiverStore.archivers.map(item=> item.name)"
+                        >
+                    </VueMultiselect>
+                </div>
+                <!-- priority-->
+                <div class="form-group">
+                    <label> Priority </label>
+                    <input
+                        type="number"
+                        placeholder="0"
+                        class="form-control"
+                        required
+                        v-model="currentItem.priority"
+                    />
+                </div>
+                <!-- TTL -->
+                <div class="form-group">
+                    <label> TTL </label>
+                    <input
+                        type="number"
+                        placeholder="0"
+                        class="form-control"
+                        required
+                        v-model="currentItem.ttl"
+                    />
+                </div>
+                <button class="btn btn-success" style="margin-bottom:2em"> Update </button>
+            </form>
         </div>
     </div>
   </div>
@@ -55,16 +157,18 @@
                 currentItem: {},
                 currentIndex: {},
                 showAddBatch: true,
+
+                ssid_selection: [],
+                batch_name: '',
+
+                // relevant stores 
                 batchStore: useBatchStore(),
                 SsidStore: useSsidStore(),
                 JobStore: useJobStore(),
                 scheduleStore: useScheduleStore(),
                 archiverStore: useArchiverStore(),
-                formStuff: []
+                form_layout: []
             }
-        },
-        setup() {
-
         },
         async mounted() {
             await this.batchStore.getBatches();
@@ -72,10 +176,12 @@
             await this.JobStore.getJobs();
             await this.scheduleStore.getSchedules();
             await this.archiverStore.getArchivers();
-            console.log(this.archiverStore.archivers);
-
-            console.log(this.SsidStore.ssid_profiles);
-            this.formStuff = [
+            // TODO - Implement normally? Do we want this format? 
+            this.form_layout = [
+                {
+                    'type': 'text',
+                    'name': 'Batch Name'
+                },
                 {
                     'type': 'multiselect',
                     'name': 'SSID Profile',
@@ -97,26 +203,57 @@
                     'options': this.archiverStore.archivers
                 },
                 {
-                    'type': 'text',
-                    'name': 'priority',
+                    'type': 'number',
+                    'name': 'Priority',
                 }, 
                 {
-                    'type': 'text',
+                    'type': 'number',
                     'name': 'TTL'
                 }
 
             ]
-            console.log(this.formStuff)
         },
         methods: {
-            // indexArray = [item, index]
+            /**
+             * Change active batch to match item and index from itemList component
+             * @param {item, index} indexArray 
+             */
             updateActiveBatch(indexArray) {
                 this.currentItem=indexArray[0];
                 this.currentIndex=indexArray[1];
                 this.showAddBatch = false;
             },
+            /**
+             * Change local variables to view "Add Batch" sub-page
+             */
             addBatchForm() {
                 this.showAddBatch=true;
+                this.currentItem={};
+                this.currentIndex={}
+            },
+           /**
+            * 
+            * @param {name, ssid_profiles, jobs, schedules, archivers, priority, TTL} form_data 
+            */
+            async addBatch(form_data) {
+          
+                const object = form_data;
+                await this.batchStore.addBatch({
+                    name: form_data[0].value,
+                    priority: form_data[5].value,
+                    ttl: form_data[6].value,
+                    ssid_profiles: (form_data[1].selected.length == 0)? [] : form_data[1].selected.map(obj => obj.name),
+                    schedules: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
+                    jobs: (form_data[2].selected.length == 0)? [] : form_data[2].selected.map(obj => obj.name),
+                    archivers: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
+                })
+            },
+
+            /**
+             * edit batch in mongodb
+             */
+            async editBatch() {
+
             }
         }
      
