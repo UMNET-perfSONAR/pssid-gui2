@@ -11,15 +11,12 @@
                     id="name"
                     class="form-control"
                 />
-           
         </div>
         <div>
             <button class="btn btn-success" @click="editCurItem"
             style="margin-right: 1em;"> Submit </button>
             <button class="btn btn-danger" @click.prevent="deleteCurItem"> Delete </button>
         </div>
-        
-
 </template>
 
 <script>

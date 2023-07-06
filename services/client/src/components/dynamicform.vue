@@ -1,7 +1,7 @@
 <template>
     <form @submit.prevent="handleFormSubmit()">
         <div 
-            v-for="(item, index) in form_data"
+            v-for="(item, index) in copy_of_data"
             v-bind:key="index"
             class = 'form-group'>
             <div v-if="item.type==='text'">
@@ -76,10 +76,6 @@ import { useSsidStore } from '/src/stores/ssid_profiles_stores';
                 required: true
 
             },
-            add: {
-                type: Boolean,
-                required: true
-            },
             current_item: {
                 required:false
             }
@@ -88,6 +84,7 @@ import { useSsidStore } from '/src/stores/ssid_profiles_stores';
             return {
                 current: {},
                 SsidStore: useSsidStore(),
+                copy_of_data: [],
                 form_values: this.form_data.map((item) => ({
                     name: item.name,
                     value: '',
@@ -110,17 +107,15 @@ import { useSsidStore } from '/src/stores/ssid_profiles_stores';
             },
 
             async setUpData() {
-                await this.SsidStore.getSsidProfiles();
-                this.current = this.current_item;
-
-                console.log('hi')
                 this.form_values = this.form_data.map((item) => ({
-                name: item.name,
-                value: '',
-                selected: []
-            }))
-            console.log(this.form_values)
-            }
+                    name: item.name,
+                    value: '',
+                    selected: []
+                }))
+                this.copy_of_data=this.form_data
+            //this.form_values=mapped;
+            await this.SsidStore.getSsidProfiles();
+        }
 
         },
         // initialize form_values with enough "slots" for data entry
@@ -135,7 +130,6 @@ import { useSsidStore } from '/src/stores/ssid_profiles_stores';
                 this.setUpData();
             }
         }
-
     }
 </script>
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
