@@ -54,7 +54,7 @@
                         >
                         </VueMultiselect>
                     </div>
-
+                    <!-- dynamic componnent-->
                     <div v-if="showForm===true">
                         <dynamicform 
                             @formData="handleSubmit"

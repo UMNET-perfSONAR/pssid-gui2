@@ -1,7 +1,7 @@
 <template>
     <div>
   
-      <cron-vuetify
+      <cron-vuetify style="width: 50%"
         v-model="value"
         :chip-props="{ color: 'success', textColor: 'white' }"
         @error="error=$event" />

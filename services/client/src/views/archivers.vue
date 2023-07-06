@@ -31,39 +31,38 @@
         <!-- Add form page -->
         <div class="col-md-6" v-if="display==='add'">
           <h3> Add Archiver </h3>
-          <!-- Non-dynamic components -->
-          <div style="margin-bottom: 1em;">
-            <label> Archiver Name </label>
-              <input
-                  type="text"
-                  placeholder="Enter name here"
-                  required
-                  id="name"
-                  class="form-control"
-                  v-model="archiver_name"/>
-          </div>          
-          <!-- Archiver type selection-->
-          <div style="margin-bottom: 1em;">
-            <label> Archiver Type Selection </label>
-              <VueMultiselect
-                v-model="selected_archiver"
-                :multiple="false"
-                :close-on-select="true"
-                :options="archiverStore.listOfOptions"
-                :searchable="false"
-                @select="renderAddForm()"
-                >
-              </VueMultiselect>
-          </div>
-
-          <!-- Dynamically render add form information -->
-          <div v-if="showForm===true">
-            <dynamicForm @formData="handleSubmit"
-            :form_data="archiverStore.selectedArchiver" :add="true">
-            </dynamicForm>
-          </div>
-
-          
+          <form>
+            <!-- Non-dynamic components -->
+            <div style="margin-bottom: 1em;">
+              <label> Archiver Name </label>
+                <input
+                    type="text"
+                    placeholder="Enter name here"
+                    required
+                    id="name"
+                    class="form-control"
+                    v-model="archiver_name"/>
+            </div>          
+            <!-- Archiver type selection-->
+            <div style="margin-bottom: 1em;">
+              <label> Archiver Type Selection </label>
+                <VueMultiselect
+                  v-model="selected_archiver"
+                  :multiple="false"
+                  :close-on-select="true"
+                  :options="archiverStore.listOfOptions"
+                  :searchable="false"
+                  @select="renderAddForm()"
+                  >
+                </VueMultiselect>
+            </div>
+            <!-- Dynamically render add form information -->
+            <div v-if="showForm===true">
+              <dynamicForm @formData="handleSubmit"
+              :form_data="archiverStore.selectedArchiver">
+              </dynamicForm>
+            </div>
+          </form>
         </div>
 
         <!-- Edit form page -->

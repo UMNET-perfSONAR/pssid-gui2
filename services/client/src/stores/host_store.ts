@@ -67,6 +67,22 @@ export const useHostStore = defineStore('hostStore', {
             })
         },
 
+        async editHost(updateHostObj:any) {
+            console.log('edit host')
+            await fetch(
+                "http://localhost:8000/hosts/update-host",
+                {
+                    method: "PUT",
+                    mode: "cors",
+                    body: JSON.stringify(updateHostObj),
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+ 
+                }
+            )
+        },
+
         async deleteAll() {
             console.log('called function');
             await fetch(

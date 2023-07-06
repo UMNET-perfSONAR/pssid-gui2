@@ -1,0 +1,36 @@
+<template>
+=    <div>
+        <!-- dynamic data section -->
+        <div class="form-inline" style="margin-bottom: 1em;"
+            v-for="(item, counter) in addedData"
+            v-bind:key="counter">
+            <input 
+                type="text"
+                placeholder="key"
+                v-model="item.key"
+                class="form-control"/>
+            <input 
+                type="text"
+                placeholder="value"
+                v-model="item.value"
+                class="form-control"
+            />
+            <i class ="material-icons" 
+            @click="deleteParameter(counter)"
+            style="cursor: pointer;">delete</i>
+        </div>
+    <button @click="addParameter()" class="btn btn-primary" 
+            style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
+    </div>
+</template>
+
+<script>
+    export default {
+        props: {
+            addedData: {
+                type: Array,
+                required: true
+            }
+        }
+    }
+</script>

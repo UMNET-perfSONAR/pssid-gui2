@@ -52,7 +52,7 @@
               <label for="host-select"> Host Selection </label>
               <VueMultiselect
                 v-model="newHosts"
-                :options="host_options"
+                :options="hostStore.hosts"
                 :multiple="true"
                 :close-on-select="false"
                 track-by="name"
@@ -65,7 +65,7 @@
               <label for="batch-select"> Batch Selection </label>
               <VueMultiselect
                 v-model="newBatch"
-                :options="options"
+                :options="batchStore.batches"
                 :multiple="true"
                 :close-on-select="false"
               >
@@ -123,12 +123,10 @@
             <div class= "form-group">
               <label for="host-select"> Host Selection </label>
               <VueMultiselect
-                v-model="selectedHosts"
-                :options="host_options"
+                v-model="currentGroup.hosts"
+                :options="hostStore.hosts.map(item=>item.name)"
                 :multiple="true"
                 :close-on-select="false"
-                label="name"
-                track-by="name"
               >
               </VueMultiselect>
             </div>
@@ -136,8 +134,8 @@
             <div class= "form-group">
               <label for="batch-select"> Batch Selection </label>
               <VueMultiselect
-                v-model="selectedBatch"
-                :options="options"
+                v-model="currentGroup.batches"
+                :options="batchStore.batches.map(item=>item.name)"
                 :multiple="true"
                 :close-on-select="false"
               >
@@ -185,6 +183,7 @@
 
 <script>
 import { useGroupStore } from '/src/stores/groups_stores';
+import { useBatchStore } from '/src/stores/batches.store';
 import { defineComponent } from 'vue';
 import VueMultiselect from 'vue-multiselect'
 import { ref } from 'vue'
@@ -195,19 +194,17 @@ import searchbar from './searchbar.vue';
     components: {VueMultiselect, searchbar},
     data() {
       return {
-        host_options: [],
-        group_options: [],
-        options: ['batch1'],
         currentGroup: {}, currentIndex: {},
         newHosts: '', newBatch: '', newGroup: '',
 
         display: 'add',
-        selectedBatch: '', selectedGroup: '', selectedHosts: '',
+        selectedBatch: '', selectedGroup: '', selectedHosts: [],
         addedData: [{}],
         searchKey: '',
         filteredData: [],
         hostStore: useHostStore(),
         hostGroup: useGroupStore(),
+        batchStore: useBatchStore(),
       }
     },
     watch: {
@@ -222,8 +219,8 @@ import searchbar from './searchbar.vue';
     },
     async mounted() {
       await this.hostStore.getHosts();
-      this.host_options = await this.hostStore.hosts
-      this.group_options = await this.hostGroup.host_groups
+      await this.hostGroup.getGroups();
+      await this.batchStore.getBatches();
       this.filterData();
     },
 
@@ -299,12 +296,6 @@ import searchbar from './searchbar.vue';
           this.addedData.splice(counter,1);
         }
       }
-    },
-    setup() {
-      const hostGroup = useGroupStore();
-      hostGroup.getGroups();
-      
-      return { }
     }
   })
 </script>
