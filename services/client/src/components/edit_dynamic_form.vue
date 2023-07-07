@@ -13,6 +13,9 @@
                 />
         </div>
         <div>
+            <dynamic_add_data :addedData="dynamic_options"></dynamic_add_data>
+        </div>
+        <div>
             <button class="btn btn-success" @click="editCurItem"
             style="margin-right: 1em;"> Submit </button>
             <button class="btn btn-danger" @click.prevent="deleteCurItem"> Delete </button>
@@ -23,9 +26,11 @@
 import { onMounted } from 'vue';
 import { ref } from 'vue'
 import VueMultiselect from 'vue-multiselect';
+import dynamic_add_data from '../components/dynamic_add_data.vue';
 
     export default {
         emits: ['deleteItem', 'editItem'],
+        components: { dynamic_add_data },
         data() {
             return {
                 input_fields: [],
@@ -54,13 +59,10 @@ import VueMultiselect from 'vue-multiselect';
                 this.input_fields = [];
 
                 console.log(this.current_item)
-                if (!this.current_item) {
-                    console.log('undefined')
-                }
-
 
                 const object = (this.current_item.archiver !== undefined) ? 
                             this.current_item.data : this.current_item.spec; 
+
                 this.input_fields = Object.entries(object).map(([name,value]) => ({
                     name,
                     value
@@ -70,6 +72,10 @@ import VueMultiselect from 'vue-multiselect';
         props: {
             current_item: {
                 required: true
+            },
+            dynamic_options: {
+                type: Array,
+                required: false,
             }
         }
       
