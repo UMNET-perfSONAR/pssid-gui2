@@ -1,15 +1,16 @@
 <template>
     <div class = 'host'>
-        <h3> {{ host.title }}</h3>
+        <p> {{ host.name }}</p>
         <!-- Insert an ICON or just change color when selected??? -->
         <div class = "icons">
             <i 
             class ="material-icons"
-            @click="hostStore.deleteHost(host.id)"
+            @click="hostStore.deleteHost(host)"
             >delete</i>
             <i
             class ="material-icons"
-            @click="hostStore.toggleHost(host.id)"
+            :class="{active: host.isFav}"
+            @click="hostStore.toggleHost(host._id)"
             >check_box_outline_blank
         </i>
         </div>
@@ -17,7 +18,7 @@
 </template>
 
 <script>
-import {useHostStore} from '../stores/hosts.store.ts'
+import {useHostStore} from '../../stores/host_store.ts'
     export default {
         // name of prop passed within for-loop in App.vue
         props: ['host'],

@@ -3,7 +3,8 @@ import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
-// TODO: Scope of client variable - Import from another module?
+import fs from 'fs';
+import path from 'path';
 var client = connectToMongoDB();
 
 /**
@@ -94,10 +95,54 @@ const updateArchiver = (async (req:Request, res:Response) => {
         updateCollection('batches', 'archivers', client)       // update batches using ssid_profiles collection
     }
     res.json(body);
-} )
+})
+
+/**
+ * Read archiver option filenames from archiver_options
+ * 
+ * @param req - request information sent from client
+ * @param res - response sent back to client
+ */
+const readFileNames = ((req:Request, res:Response) => {
+    console.log(__dirname);
+    const directoryPath = path.join(__dirname,   '../archiver_options')
+    
+    fs.readdir(directoryPath, function(err, files) {
+        if (err) {
+            return console.log('Unable to scan directory:' + err)
+        }
+        let fileArray: string[] = [];
+        files.forEach(function(file) {
+            fileArray.push(file.slice(0, -5))
+            console.log(file.slice(0, -5));
+        })
+        res.send(fileArray);
+    })
+})
+
+/**
+ * Read selected filename (params.name) from archiver_options - send contents back as a json array 
+ * 
+ * @param req - request information sent from client
+ * @param res - response sent back to client
+ */
+const readArchiverFile = ((req:Request, res:Response) => {
+    console.log('reading selected file')
+
+    var name = '../archiver_options/' + req.params.name + '.json'
+
+    const filePath = path.join(__dirname, name);
+    var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));    
+    res.json(object);
+}) 
+
+
+
 
 module.exports = {getArchivers, 
                 getOneArchiver, 
                 deleteArchiver, 
                 postArchiver, 
-                updateArchiver};
+                updateArchiver,
+                readFileNames,
+                readArchiverFile};

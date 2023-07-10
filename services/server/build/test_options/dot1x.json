@@ -1,0 +1,22 @@
+[
+    {
+        "type": "text",
+        "name": "Interface"
+    },
+    {
+        "type": "singleselect",
+        "name": "ssid"
+    },
+    {
+        "type": "text",
+        "name": "_username"
+    },
+    {
+        "type": "text",
+        "name": "_password"
+    },
+    {
+        "type": "text",
+        "name": "key-managemet"
+    }
+]

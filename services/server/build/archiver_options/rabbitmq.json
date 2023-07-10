@@ -1,0 +1,10 @@
+[
+    {
+        "type": "text",
+        "name": "_url"
+    },
+    {
+        "type": "text",
+        "name": "routing-key"
+    }
+]
