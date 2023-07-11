@@ -32,7 +32,7 @@
             <div class = 'col-md-6' v-if="display==='add'">
                 <h3> Add SSID Profile </h3>
                 <dynamicform  @formData="receiveEmit"
-                 :form_data="formstuff" :add="true"></dynamicform>
+                 :form_layout="formstuff"></dynamicform>
             </div>
 
             <div class = 'col-md-6' v-if="display!=='add'">

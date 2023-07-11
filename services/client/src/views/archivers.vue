@@ -136,7 +136,6 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
         showForm: false,
         currentIndex: {},
         currentItem: {},
-        Item: {},
         
         curr_data: [],
         // rendering of dynamic edit form 
@@ -184,7 +183,7 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
           data: json_object,
           archiver: archiver.archiver
         };
-        // set display related variables
+        // set display related variables 
         this.old_archiver_name=archiver.name;
         this.archiver_type = archiver.archiver;
         this.display=''
@@ -233,6 +232,7 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
         this.currentIndex='';
       },
       // format and submit data to DB
+      // TODO - Move most of this to the store. too much going on here
       async handleSubmit(form_data) {
         const spec_object = form_data.reduce((result, item)=> {
           console.log(item.name);
@@ -243,16 +243,12 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
           return result;        
         }, {});
 
-        console.log(spec_object);
         const data_object = this.optional_data.reduce((result, item)=> {
           result[item.key] = item.value
           return result
         }, {});
 
-        console.log(data_object)
-
         const obj = Object.assign(spec_object, data_object)
-        console.log(obj)
         await this.archiverStore.addArchiver({
           name: this.archiver_name,
           archiver: this.selected_archiver,

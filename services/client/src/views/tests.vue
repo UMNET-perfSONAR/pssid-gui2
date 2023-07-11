@@ -58,9 +58,10 @@
                     <div v-if="showForm===true">
                         <dynamicform 
                             @formData="handleSubmit"
-                            :form_data="testStore.test_options"
+                            :form_layout="testStore.test_options"
                             :current_item="selected_test"
-                             :add="true">
+                            :optional_data="optional_data"
+                             >
                         </dynamicform>
                     </div>
                 </form>
@@ -100,13 +101,13 @@
                               :current_item="currentItem"
                               @editItem="editTest"
                               @deleteItem="deleteTest"
+                              :dynamic_options="curr_data"
                     > </editFormComp>
                 </div>
                 <div v-else>    
-                    <dynamicform :form_data="testStore.test_options" :add="false"
+                    <dynamicform :form_layout="testStore.test_options"
                     @formData="editTest"
                     >
-
                     </dynamicform>
                 </div>
             </div>
@@ -133,11 +134,19 @@
                 showForm: false,
                 old_test_name: '',
 
+                optional_data: [{
+                    "key": '',
+                    "value": ''
+                }],
+
                 test_name: '',
                 selected_test: '',
                 viewType: {},
                 test: {},
                 input_fields: [],
+
+                // holds additional parameters for dynamic parts
+                curr_data:[],
 
                 // stores 
                 testStore: useTestStore(),
@@ -161,16 +170,37 @@
                 this.input_fields = {}
             },
             async setActiveTest(test, index=1) {
+
+                let ind = 0; 
+                const data = JSON.parse(JSON.stringify(test.spec));
+                this.viewType = test.type;
+                await this.testStore.getDesiredTest(test.type, 'selected');
+
+                const myJson = '{}';
+                let json_object = JSON.parse(myJson);
+                let param_data = JSON.parse(myJson);
+                this.curr_data = []
+
+                for (const [key,value] of Object.entries(data)) {
+                    if (ind++ < this.testStore.selectedTest.length-1) {
+                        json_object[key] = value;
+                    }
+                    else {
+                        this.curr_data.push({'key':key, 'value':value})
+                    }
+                    };
+
                 this.currentIndex=index;
-                this.currentItem=test;
+                this.currentItem= {
+                    name: test.name,
+                    spec: json_object,
+                    type: test.type
+                };
 
                 this.test = test.type;
-                this.viewType = test.type;
                 this.old_test_name = test.name;
                 
                 this.display='';
-                await this.testStore.getDesiredTest(test.type, 'selected');
-                console.log(this.testStore.selectedTest);
             },
             async renderForm(form_type) {
                 this.viewType = form_type
@@ -180,13 +210,22 @@
             // form_data in this case will be the "spec" information 
             async handleSubmit (form_data) {
                 const spec_object = form_data.reduce((result, item)=> {
+                    if (item.name==="Optional Data") {
+                        return result;
+                    }
                     result[item.name] = item.value
                     return result
                 }, {});
+                const data_object = this.optional_data.reduce((result, item)=> {
+                    result[item.key] = item.value
+                    return result
+                    }, {});
+                const obj = Object.assign(spec_object, data_object)
+
                 await this.testStore.addTest({
                     name: this.test_name,
                     type: this.selected_test,
-                    spec: spec_object
+                    spec: obj
                 });
                 this.test_name='';
                 this.selected_test='';
@@ -203,12 +242,17 @@
                     result[item.name] = item.value
                     return result
                     }, {});
+            
+                const appended_data=this.curr_data.reduce((result, item)=> {
+                          result[item.key] = item.value
+                            return result
+                    }, {})
 
                 const object = {
                     "old_testname" : this.old_test_name,
                     "new_testname" : this.currentItem.name,
                     "type" : this.currentItem.type,
-                    "spec" : data,
+                    "spec" : Object.assign(data, appended_data),
                 }
                 this.old_test_name = this.currentItem.name
                 await this.testStore.editTest(object);

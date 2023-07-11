@@ -31,24 +31,48 @@
             <!-- Add Schedule Form -->
             <div class="col-lg-6" v-if="display==='add'">
                 <h3> Add Schedule </h3>
-                <form @submit.prevent.handleSubmit> 
+                <form @submit.prevent="submitSchedule"> 
                     <div class="submit-form">
                         <div class="form-group">
                             <label for="name"> Schedule name</label>
                             <input 
                                 type="text"
                                 placeholder="Enter schedule name"
-                                v-model="schedulename"
+                                v-model="schedule_name"
                                 required
                                 id="name"
                                 class="form-control"
                             />
                         </div>
-
-            
-
                     </div>
+                    <cronstuff :init="cronExpression" @update-cron="cronExpression=$event"></cronstuff>
+                    <button class="btn btn-success"> Submit </button>
                 </form>
+            </div>
+            <!-- Edit Schedule Form -->
+            <div class="col-lg-6 col-md-6" v-if="display!=='add'">
+                <h3> Edit Schedule </h3>
+                <form @submit.prevent="editSchedule"> 
+                    <div class="submit-form">
+                        <div class="form-group">
+                            <label for="name"> Schedule name</label>
+                            <input 
+                                type="text"
+                                placeholder="Enter schedule name"
+                                v-model="currentItem.name"
+                                required
+                                id="name"
+                                class="form-control"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <cronstuff :init="currentItem.repeat" @update-cron="currentItem.repeat=$event"></cronstuff>
+                    </div>
+                    <button class="btn btn-success" style="margin-right: 1em;"> Update </button>
+                    <button class="btn btn-danger" @click="deleteSchedule"> Delete </button>
+                </form>
+
             </div>
 
         </div>
@@ -59,15 +83,19 @@
   <script>
   import VueMultiselect from 'vue-multiselect'
   import { useScheduleStore } from '/src/stores/schedule_store';
+  import cronstuff from '../views/searchbar.vue'
   export default {
-    components: { VueMultiselect },
+    components: { VueMultiselect, cronstuff },
     data() {
         return {
             scheduleStore: useScheduleStore(),
             currentIndex: {},
             currentItem: {},
             display: 'add',
-            cronExpression: "*/1 * * * *"
+
+            // for input binding
+            cronExpression: "* * * * *",
+            schedule_name: '',
         }
     },
     async mounted() {
@@ -83,9 +111,29 @@
             this.currentItem = schedule;
             this.display = 'edit';
         },
-
+        updateCronExp(updatedCronExp) {
+            this.cronExpression=updatedCronExp;
+        },
+        async submitSchedule() {
+            await this.scheduleStore.addSchedule({
+                "name": this.schedule_name,
+                "repeat": this.cronExpression
+            })
+            this.schedule_name='';
+            this.cronExpression='* * * * *'
+        },
+        async editSchedule() {
+            await this.scheduleStore.updateSchedule({
+                "old_schedule": '',
+                "new_schedule": this.currentItem.name,
+                "repeat": this.currentItem.repeat
+            });
+        },
+        async deleteSchedule() {
+            this.scheduleStore.schedules.splice(this.currentIndex, 1); 
+            await this.scheduleStore.deleteSchedule(this.currentItem)
+        }
     }
-
   }
   </script>
   

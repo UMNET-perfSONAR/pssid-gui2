@@ -1,7 +1,7 @@
 <template>
     <div>
   
-      <cron-vuetify style="width: 50%"
+      <cron-vuetify
         v-model="value"
         :chip-props="{ color: 'success', textColor: 'white' }"
         @error="error=$event" />
@@ -20,11 +20,21 @@
   
   <script>
   export default {
-  
+    emits: ['update-cron'],
     props: {
       init: {
         type: String,
         default: '* * * * *'
+      }
+    },
+    watch: {
+      value() {
+        this.$emit('update-cron', this.value);
+      },
+      init() {
+        this.value = this.init;
+        this.nextValue = this.init;
+        this.error= '';
       }
     },
   
