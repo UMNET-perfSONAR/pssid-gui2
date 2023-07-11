@@ -54,6 +54,11 @@
                 >
                 </VueMultiselect>
             </div>
+
+            <div v-if="item.type==='optional'"> 
+                <label>Additonal Data </label>
+                <dynamic_add_data :addedData="optional_data"></dynamic_add_data>
+            </div>
            
         </div>
         <div>
@@ -68,24 +73,30 @@
 import { ref } from 'vue'
 import VueMultiselect from 'vue-multiselect';
 import { useSsidStore } from '/src/stores/ssid_profiles_stores';
+import dynamic_add_data from './dynamic_add_data.vue';
     export default {
-        components: { VueMultiselect },
+        components: { VueMultiselect, dynamic_add_data },
         props: {
-            form_data: {
+            form_layout: {
                 type: Array,
                 required: true
 
             },
             current_item: {
                 required:false
+            },
+            optional_data: {
+                type: Array
             }
+            
         },
         data() {
             return {
                 current: {},
                 SsidStore: useSsidStore(),
+         
                 copy_of_data: [],
-                form_values: this.form_data.map((item) => ({
+                form_values: this.form_layout.map((item) => ({
                     name: item.name,
                     value: '',
                     selected: []
@@ -94,12 +105,12 @@ import { useSsidStore } from '/src/stores/ssid_profiles_stores';
         },
         methods: {
             handleFormSubmit() {
-                const form_data = this.form_values.map((item)=>({
+                const organized_data = this.form_values.map((item)=>({
                     name: item.name,
                     value: item.value,
-                    selected:item.selected
+                    selected: item.selected
                 }))
-                this.$emit('formData', form_data)
+                this.$emit('formData', organized_data)
             },
 
             sendFormType(form_type) {
@@ -107,12 +118,12 @@ import { useSsidStore } from '/src/stores/ssid_profiles_stores';
             },
 
             async setUpData() {
-                this.form_values = this.form_data.map((item) => ({
+                this.form_values = this.form_layout.map((item) => ({
                     name: item.name,
                     value: '',
                     selected: []
                 }))
-                this.copy_of_data=this.form_data
+                this.copy_of_data=this.form_layout
             //this.form_values=mapped;
             await this.SsidStore.getSsidProfiles();
         }
@@ -123,7 +134,7 @@ import { useSsidStore } from '/src/stores/ssid_profiles_stores';
             this.setUpData();
         },
         watch: {
-            form_data() {
+            form_layout() {
                 this.setUpData();
             },
             current_item() {

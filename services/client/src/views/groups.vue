@@ -17,6 +17,7 @@
           type="text"
           v-model="searchKey"
           placeholder="Search..."
+          class="form-control"
         />
         <ul class="list-group" style="overflow: auto; height: 400px;">
           <li
@@ -28,7 +29,7 @@
             >
               <p> {{ group.name }}</p>
           </li>
-        </ul>
+        </ul> 
       </div>
 
       <!-- Add Group Form -->
@@ -47,20 +48,52 @@
                 class="form-control"
               />
             </div>
+            <div class="form-group">
+              <label for="host-selection"> Host Selection </label>
+              <div id="host-selection">
+                <input
+                  type="text"
+                  placeholder="Search hosts..."
+                  class="form-control"
+                  v-model="hostSearchKey"
+                />
+                <ul v-if="view_host_options===true"
+                  class="list-group" style="overflow: auto; height: 175px; margin-bottom=1em">
+                    <li
+                      class="list-group-item"
+                      v-for="(host, index) in filteredHostData"
+                      :class="{active: host.selected === true}"
+                      :key="index"
+                      @click="host.selected = !host.selected"
+                      >
+                    <p> {{ host.name }}</p>
+                    </li>
+                </ul>
 
-            <div class= "form-group">
-              <label for="host-select"> Host Selection </label>
-              <VueMultiselect
-                v-model="newHosts"
-                :options="hostStore.hosts"
-                :multiple="true"
-                :close-on-select="false"
-                track-by="name"
-                label="name"
-              >
-              </VueMultiselect>
+                <!-- view selected hosts -->
+                <ul v-if="view_host_options===false"
+                  class="list-group" style="overflow: auto; height: 175px"
+                >
+                  <li
+                    class="list-group-item"
+                    v-for="(host,index) in selected_hosts"
+                    :key="index"
+                    @click="selectHost(host)"
+                  > 
+                    <p> {{ host.name }}</p>
+                  </li>
+                    
+                </ul>
+                <div style="margin-top: 1em;">
+                  <button @click="selectAllHosts" class="btn btn-primary col-md-6">Select All</button>
+                  <button v-if="view_host_options===true" @click="viewSelectedHosts" class="btn btn-secondary col-md-6">See Selected Hosts</button>
+                  <button v-else @click="view_host_options=true" class="btn btn-secondary col-md-6">
+                    See Filtered Hosts  
+                  </button>
+                </div>
+              </div>
+
             </div>
-
             <div class= "form-group">
               <label for="batch-select"> Batch Selection </label>
               <VueMultiselect
@@ -68,6 +101,8 @@
                 :options="batchStore.batches"
                 :multiple="true"
                 :close-on-select="false"
+                label="name"
+                track-by="name"
               >
               </VueMultiselect>
             </div>
@@ -99,7 +134,7 @@
             style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
 
           </div>
-          <button class="btn btn-success"> Submit </button>
+          <button class="btn btn-success" style="margin-bottom: 2em;"> Submit </button>
         </form>
       </div>
 
@@ -189,9 +224,10 @@ import VueMultiselect from 'vue-multiselect'
 import { ref } from 'vue'
 import { useHostStore } from '/src/stores/host_store.ts';
 import searchbar from './searchbar.vue';
+import itemList from '../components/list_items.vue'
 
   export default defineComponent({
-    components: {VueMultiselect, searchbar},
+    components: {VueMultiselect, searchbar, itemList},
     data() {
       return {
         currentGroup: {}, currentIndex: {},
@@ -200,11 +236,20 @@ import searchbar from './searchbar.vue';
         display: 'add',
         selectedBatch: '', selectedGroup: '', selectedHosts: [],
         addedData: [{}],
+
         searchKey: '',
         filteredData: [],
+        hostSearchKey: '',
+        filteredHostData: [],
+        copy_of_data: [],
+        view_host_options: true,
+        selectedHosts: [],
+
+        // relevant host stores
         hostStore: useHostStore(),
         hostGroup: useGroupStore(),
         batchStore: useBatchStore(),
+        selected_hosts: []
       }
     },
     watch: {
@@ -215,13 +260,23 @@ import searchbar from './searchbar.vue';
       hostGroup() {
         //this.filterData();
         this.hostGroup.filterData(this.searchKey);
+      },
+      hostSearchKey() {
+        this.filterHostData(this.hostSearchKey);
       }
     },
     async mounted() {
       await this.hostStore.getHosts();
       await this.hostGroup.getGroups();
       await this.batchStore.getBatches();
+      this.copy_of_data = this.hostStore.hosts.map((item, index) => ({
+        name: item.name,
+        selected: false,
+        index: index
+      }))
+      this.filteredHostData = this.copy_of_data;
       this.filterData();
+      this.filterHostData();
     },
 
     methods: {
@@ -234,17 +289,27 @@ import searchbar from './searchbar.vue';
         this.display = '';
       },
       async handleSubmit() {
+        this.selected_hosts = this.filteredHostData.filter(h => {
+                return h.selected == true
+            })
         if (this.newGroup.length > 0) {
           this.hostGroup.addGroup({
             name: this.newGroup,
             batches: this.newBatch,
-            hosts: (this.newHosts.length == 0)? [] : this.newHosts.map(obj => obj.name),
+            hosts: (this.selected_hosts.length == 0)? [] : this.selected_hosts.map(obj => obj.name),
             data: this.addedData
           })
-          this.newGroup = ref(''),
-          this.newBatch = ref(''),
-          this.newHosts = ref('')
-          this.filterData();
+          this.newGroup = '',
+          this.newBatch = [],
+          this.selected_hosts = [];
+          this.hostSearchKey = '';
+          this.view_host_options = true;
+          this.copy_of_data = this.copy_of_data.map(item => ({
+            name: item.name,
+            selected: false, 
+            index: item.index,
+          }))
+          this.filterHostData();
         }
       },
       async editGroup() {
@@ -258,20 +323,28 @@ import searchbar from './searchbar.vue';
         await this.hostGroup.editGroup(object);
         await this.hostGroup.getGroups();
       },
-
+      // filter host group data
       filterData() {
-        const regex = new RegExp(this.searchKey, 'i');
+        const regex = new RegExp(this.searchKey, 'img');
         this.filteredData = this.hostGroup.host_groups.filter(item => regex.test(item.name))
+      },
+      // filter host data 
+      filterHostData() {
+        const regex = new RegExp(this.hostSearchKey, 'img');
+        this.filteredHostData = this.copy_of_data.filter(item => regex.test(item.name))
+        console.log(this.filteredHostData);
       },
       addHostForm() {
         this.display = 'add',
         this.currentIndex = {};
+        this.selected_hosts = [];
+        this.hostSearchKey = '';
+        this.filterHostData();
       },
       async deletegroup() {
         this.hostGroup.host_groups.splice(this.currentIndex,1);
         await this.hostGroup.deleteGroup(this.currentGroup);
       },
-
       // functions for dynamic form
       addParameter(group) {
         if (group === 'group') {
@@ -287,7 +360,6 @@ import searchbar from './searchbar.vue';
           })
         }
       },
-   
       deleteParameter(group, counter) {
         if (group === 'group') {
           this.currentGroup.data.splice(counter,1);
@@ -295,8 +367,33 @@ import searchbar from './searchbar.vue';
         else {
           this.addedData.splice(counter,1);
         }
-      }
+      },
+      // add all selected hosts to selected arr
+      selectAllHosts() {
+        this.view_host_options=true;
+        for (const item of this.filteredHostData) {
+          // set appropriate values to true in copy_of_data
+          this.copy_of_data[item.index].selected = true;
+        }
+        this.filterHostData();
+      },
+      // select host under view selected hosts tab 
+      selectHost(host) {
+        this.copy_of_data[host.index].selected=false;
+        this.filterHostData();
+        this.selected_hosts=this.selected_hosts.filter(item => item.name!=host.name)
+      },
+      // view all selected hosts 
+      viewSelectedHosts() {
+        this.view_host_options=false;
+        console.log('view selected hosts')
+        this.selected_hosts=this.filteredHostData.filter(h => {
+                return h.selected == true
+            })
+        console.log(this.selected_hosts);
+      } 
     }
+    
   })
 </script>
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>

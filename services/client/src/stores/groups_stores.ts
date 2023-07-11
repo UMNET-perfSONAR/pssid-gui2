@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import { useHostStore } from './host_store';
 
 export const useGroupStore = defineStore('groupStore', {
     // create a state object -> can have different properties 
@@ -10,20 +11,12 @@ export const useGroupStore = defineStore('groupStore', {
             data: [{}]
         }],
         filteredData: [{}],
-        isLoading: false
+        isLoading: false,
+        filteredHostData: [{}],
+        hostData: [],
+        hostStore: useHostStore()
     }),
-
-    // use to extract any relevant information/ can manipulate slightly
-    getters: {
-
-        // arrow function. can't use "this" keyword. 
-        totalCount: (state) => {
-            return state.host_groups.length
-        }
-    },
-
     actions: {
-        // TODO: Use Axios?? 
         async getGroups() {
             this.isLoading = true;
             const res = await fetch('http://localhost:8000/host-groups')
@@ -32,7 +25,6 @@ export const useGroupStore = defineStore('groupStore', {
             this.filteredData = data; 
             this.isLoading = false;
         },
-
         // add host_groups to an array. take a host_groups object and add to array
         async addGroup(host_group:any) {
             this.isLoading = true;
@@ -102,6 +94,12 @@ export const useGroupStore = defineStore('groupStore', {
         filterData(searchKey: string) {
             const regex = new RegExp(searchKey, 'i');
             this.filteredData = this.host_groups.filter(item => regex.test((item as any).name))
-        }
+        },
+  
+        filterHostData(hostSearchKey:string) {
+            const regex = new RegExp(hostSearchKey, 'gim');
+            this.filteredHostData = this.hostData.filter(item => regex.test((item as any).name))
+        },
+        
     }
 })
