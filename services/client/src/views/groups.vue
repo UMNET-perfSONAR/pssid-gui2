@@ -48,19 +48,6 @@
                 class="form-control"
               />
             </div>
-            <!--
-            <div class= "form-group">
-              <label for="host-select"> Host Selection </label>
-              <VueMultiselect
-                v-model="newHosts"
-                :options="hostStore.hosts"
-                :multiple="true"
-                :close-on-select="false"
-                track-by="name"
-                label="name"
-              >
-              </VueMultiselect>
-            </div> -->
             <div class="form-group">
               <label for="host-selection"> Host Selection </label>
               <div id="host-selection">
@@ -70,19 +57,40 @@
                   class="form-control"
                   v-model="hostSearchKey"
                 />
-                  <ul class="list-group" style="overflow: auto; height: 175px;">
+                <ul v-if="view_host_options===true"
+                  class="list-group" style="overflow: auto; height: 175px; margin-bottom=1em">
                     <li
                       class="list-group-item"
-                      :class="{active: index == currentIndex}"
-                      v-for="(host, index) in hostGroup.filteredHostData"
+                      v-for="(host, index) in filteredHostData"
+                      :class="{active: host.selected === true}"
                       :key="index"
-                      @click="selectHost"
+                      @click="host.selected = !host.selected"
                       >
                     <p> {{ host.name }}</p>
                     </li>
-                  </ul>
-                  <button @click="selectHosts" class="btn btn-primary col-md-6">Select All</button>
-                  <button @click="seeSelected" class="btn btn-secondary col-md-6">See Selected Hosts</button>
+                </ul>
+
+                <!-- view selected hosts -->
+                <ul v-if="view_host_options===false"
+                  class="list-group" style="overflow: auto; height: 175px"
+                >
+                  <li
+                    class="list-group-item"
+                    v-for="(host,index) in selected_hosts"
+                    :key="index"
+                    @click="selectHost(host)"
+                  > 
+                    <p> {{ host.name }}</p>
+                  </li>
+                    
+                </ul>
+                <div style="margin-top: 1em;">
+                  <button @click="selectAllHosts" class="btn btn-primary col-md-6">Select All</button>
+                  <button v-if="view_host_options===true" @click="viewSelectedHosts" class="btn btn-secondary col-md-6">See Selected Hosts</button>
+                  <button v-else @click="view_host_options=true" class="btn btn-secondary col-md-6">
+                    See Filtered Hosts  
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -216,9 +224,10 @@ import VueMultiselect from 'vue-multiselect'
 import { ref } from 'vue'
 import { useHostStore } from '/src/stores/host_store.ts';
 import searchbar from './searchbar.vue';
+import itemList from '../components/list_items.vue'
 
   export default defineComponent({
-    components: {VueMultiselect, searchbar},
+    components: {VueMultiselect, searchbar, itemList},
     data() {
       return {
         currentGroup: {}, currentIndex: {},
@@ -233,6 +242,8 @@ import searchbar from './searchbar.vue';
         hostSearchKey: '',
         filteredHostData: [],
         copy_of_data: [],
+        view_host_options: true,
+        selectedHosts: [],
 
         // relevant host stores
         hostStore: useHostStore(),
@@ -251,7 +262,7 @@ import searchbar from './searchbar.vue';
         this.hostGroup.filterData(this.searchKey);
       },
       hostSearchKey() {
-        this.hostGroup.filterHostData(this.hostSearchKey);
+        this.filterHostData(this.hostSearchKey);
       }
     },
     async mounted() {
@@ -278,17 +289,27 @@ import searchbar from './searchbar.vue';
         this.display = '';
       },
       async handleSubmit() {
+        this.selected_hosts = this.filteredHostData.filter(h => {
+                return h.selected == true
+            })
         if (this.newGroup.length > 0) {
           this.hostGroup.addGroup({
             name: this.newGroup,
             batches: this.newBatch,
-            hosts: (this.newHosts.length == 0)? [] : this.newHosts.map(obj => obj.name),
+            hosts: (this.selected_hosts.length == 0)? [] : this.selected_hosts.map(obj => obj.name),
             data: this.addedData
           })
-          this.newGroup = ref(''),
-          this.newBatch = ref(''),
-          this.newHosts = ref('')
-          this.filterData();
+          this.newGroup = '',
+          this.newBatch = [],
+          this.selected_hosts = [];
+          this.hostSearchKey = '';
+          this.view_host_options = true;
+          this.copy_of_data = this.copy_of_data.map(item => ({
+            name: item.name,
+            selected: false, 
+            index: item.index,
+          }))
+          this.filterHostData();
         }
       },
       async editGroup() {
@@ -310,11 +331,15 @@ import searchbar from './searchbar.vue';
       // filter host data 
       filterHostData() {
         const regex = new RegExp(this.hostSearchKey, 'img');
-        this.filteredHostData = this.hostStore.hosts.filter(item => regex.test(item.name))
+        this.filteredHostData = this.copy_of_data.filter(item => regex.test(item.name))
+        console.log(this.filteredHostData);
       },
       addHostForm() {
         this.display = 'add',
         this.currentIndex = {};
+        this.selected_hosts = [];
+        this.hostSearchKey = '';
+        this.filterHostData();
       },
       async deletegroup() {
         this.hostGroup.host_groups.splice(this.currentIndex,1);
@@ -343,13 +368,32 @@ import searchbar from './searchbar.vue';
           this.addedData.splice(counter,1);
         }
       },
-      seeSelected() {
-      },
       // add all selected hosts to selected arr
-      selectHosts() {
-        this.filteredHostData
-      }
+      selectAllHosts() {
+        this.view_host_options=true;
+        for (const item of this.filteredHostData) {
+          // set appropriate values to true in copy_of_data
+          this.copy_of_data[item.index].selected = true;
+        }
+        this.filterHostData();
+      },
+      // select host under view selected hosts tab 
+      selectHost(host) {
+        this.copy_of_data[host.index].selected=false;
+        this.filterHostData();
+        this.selected_hosts=this.selected_hosts.filter(item => item.name!=host.name)
+      },
+      // view all selected hosts 
+      viewSelectedHosts() {
+        this.view_host_options=false;
+        console.log('view selected hosts')
+        this.selected_hosts=this.filteredHostData.filter(h => {
+                return h.selected == true
+            })
+        console.log(this.selected_hosts);
+      } 
     }
+    
   })
 </script>
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
