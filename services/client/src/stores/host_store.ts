@@ -25,8 +25,7 @@ export const useHostStore = defineStore('hostStore', {
             const data = await res.json()
             this.hosts = data;
             this.isLoading = false;
-            console.log('here');
-            console.log(data);
+           
             return data;
         },
 

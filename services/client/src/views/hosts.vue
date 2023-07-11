@@ -85,7 +85,7 @@
             >
           </VueMultiselect>
         </div>
-        <dynamic_add_data :addedData="this.currentItem.data"></dynamic_add_data>
+        <dynamic_add_data :addedData="data"></dynamic_add_data>
       <div>
           <button class="btn btn-success" style="margin-right: 1em;" > Update </button>
           <button class="btn btn-danger" @click="deletegroup"> Delete </button>
@@ -127,6 +127,7 @@
         selectedBatches:'',
         hostname: '',
         old_hostname: '',
+        data: [],
 
         // relevant stores 
         batchStore: useBatchStore(),
@@ -164,6 +165,10 @@
         this.currentIndex=indexArray[1];
         this.showAddHost=false;
         this.old_hostname=this.currentItem.name
+        this.data=Object.entries(this.currentItem.data).map(([name,value]) => ({
+                    name,
+                    value
+                }))
       },
       /**
        * edit host in database 
@@ -173,25 +178,24 @@
           "old_hostname": this.old_hostname,
           "new_hostname": this.currentItem.name,
           "batches": this.currentItem.batches,
-          "data": this.currentItem.data
+          "data": this.data.reduce((result, item)=> {
+                    result[item.key] = item.value
+                    return result
+        }, {})
         }
-        console.log(new_host_obj)
         await this.hostStore.editHost(new_host_obj);
+        await this.hostStore.getHosts();
       },
         // submit host information. reset info 
       async submitHost() {
-        /*
-        console.log(this.form_vals[0].name);
-        const data = this.form_vals.map((item)=>({
-                    name: item.name,
-                    value: item.value,
-                    selected:item.selected
-              }))
-        */
+        const spec_object = this.addedData.reduce((result, item)=> {
+                    result[item.key] = item.value
+                    return result
+        }, {});
         await this.hostStore.addHost({
           name: this.hostname,
           batches: (this.selectedBatches.length==0)?[]:this.selectedBatches.map((item) => item.name),          
-          data: this.addedData
+          data: spec_object
         });
         this.hostname='';
         this.selectedBatches=[];

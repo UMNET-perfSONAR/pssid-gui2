@@ -1,10 +1,7 @@
-// allows us to make a store
 import {defineStore} from 'pinia'
 
 export const useTestStore = defineStore('test', {
-    // create a state object -> can have different properties 
     state: () => ({
-        // TODO: SET TASKS => HOSTS AND MAKE A GET REQUEST HERE TO SET = TO
         tests: [{}],
         isLoading: false,
         listOfOptions: [],
@@ -13,7 +10,7 @@ export const useTestStore = defineStore('test', {
     }),
 
     actions: {
-        // TODO: Use Axios?? 
+
         async getTests() {
             this.isLoading = true;
             const res = await fetch('http://localhost:8000/tests')

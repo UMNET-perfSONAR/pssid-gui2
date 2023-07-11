@@ -51,10 +51,10 @@ const routes =  [
         component: () => import("./views/ssid_profiles.vue")
     },
     {
-        path: "/search",
-        alias: "/searches",
-        name: "search_page",
-        component: () => import("./views/searchbar.vue")
+        path: "/json",
+        alias: "/json",
+        name: "json_page",
+        component: () => import("./views/json_forms.vue")
     },
 
   ];

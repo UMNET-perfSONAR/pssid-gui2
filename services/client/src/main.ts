@@ -11,6 +11,7 @@ import router from './router'
 
 import cronCore from '@vue-js-cron/core'
 import './assets/main.css'
+import '@jsonforms/vue-vanilla/vanilla.css';
 
 
 import 'vuetify/styles'

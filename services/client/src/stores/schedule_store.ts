@@ -16,7 +16,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
             this.isLoading = false;
         },
 
-        async addSchedule(schedule:any) {
+        async addSchedule(schedule:JSON) {
             this.isLoading = true;
             await fetch(
                 "http://localhost:8000/schedules/create-schedule",
@@ -41,9 +41,6 @@ export const useScheduleStore = defineStore('scheduleStore', {
                     method: 'DELETE',
                 }
             );
-            this.schedules = this.schedules.filter(h => {
-                return (h as any)._id!== schedule._id
-            })
         },
 
     }

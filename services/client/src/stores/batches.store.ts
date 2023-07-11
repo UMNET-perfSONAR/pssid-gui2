@@ -19,8 +19,6 @@ export const useBatchStore = defineStore('batchStore', {
             const data = await res.json()
             this.batches = data;
             this.isLoading = false;
-            console.log('here');
-            console.log(data);
             return data;
         },
 

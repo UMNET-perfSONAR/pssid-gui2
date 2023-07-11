@@ -6,7 +6,7 @@
     <nav class="navbar navbar-expand navbar-dark">
 
       <router-link to="/hosts" class="navbar-brand">Hosts</router-link>
-      <div class="navbar-nav mr-auto" >
+      <div class="navbar-nav" >
         <li class="nav-item">
           <router-link to="/host_groups" class="navbar-brand">Groups</router-link>
         </li>
@@ -27,9 +27,6 @@
         </li>
         <li class="nav-item">
           <router-link to="/batches" class="navbar-brand">Batches</router-link>
-        </li>
-        <li class="nav-item">
-          <router-link to="/search" class="navbar-brand"> Search </router-link>
         </li>
       </div>
     </nav>

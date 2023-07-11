@@ -25,7 +25,7 @@ header h2 {
   margin:0;
   font-size: 2em;
   padding-top: 25px;
-  color: #777;
+  color: #0b0b0b;
 }
 
 /* navbar styling */
@@ -39,7 +39,7 @@ header h2 {
   cursor: pointer;
 }
 
-.navbar a {
+.navbar li {
   float: left;
   text-align: center;
   background-color: #706b6b;
