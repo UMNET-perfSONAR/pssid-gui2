@@ -1,2 +1,3 @@
 # pssid-gui2
-2.x
+
+Version 2.0 of the pSSID-GUI Web Application
