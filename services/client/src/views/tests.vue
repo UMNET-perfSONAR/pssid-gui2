@@ -58,7 +58,7 @@
                     <div v-if="showForm===true">
                         <dynamicform 
                             @formData="handleSubmit"
-                            :form_layout="testStore.test_options"
+                            :form_layout="all_test_options"
                             :current_item="selected_test"
                             :optional_data="optional_data"
                              >
@@ -105,8 +105,9 @@
                     > </editFormComp>
                 </div>
                 <div v-else>    
-                    <dynamicform :form_layout="testStore.test_options"
+                    <dynamicform :form_layout="all_test_options"
                     @formData="editTest"
+                    :optional_data="optional_data"
                     >
                     </dynamicform>
                 </div>
@@ -121,10 +122,11 @@
     import dynamicform from '../components/dynamicform.vue';
     import  VueMultiselect  from 'vue-multiselect';
     import editFormComp from '../components/edit_dynamic_form.vue';
+    import itemList from '../components/list_items.vue'
     import { ref } from 'vue'
 
     export default {
-        components: { dynamicform , VueMultiselect, editFormComp },
+        components: { dynamicform , VueMultiselect, editFormComp, itemList },
         data() {
             return {
                 // manage view of pages
@@ -147,6 +149,9 @@
 
                 // holds additional parameters for dynamic parts
                 curr_data:[],
+
+                // for dynamic form rendering 
+                all_test_options: [],
 
                 // stores 
                 testStore: useTestStore(),
@@ -174,22 +179,19 @@
                 let ind = 0; 
                 const data = JSON.parse(JSON.stringify(test.spec));
                 this.viewType = test.type;
-                await this.testStore.getDesiredTest(test.type, 'selected');
-
+                await this.testStore.getDesiredTest(test.type);
                 const myJson = '{}';
                 let json_object = JSON.parse(myJson);
-                let param_data = JSON.parse(myJson);
                 this.curr_data = []
-
+          
                 for (const [key,value] of Object.entries(data)) {
-                    if (ind++ < this.testStore.selectedTest.length-1) {
+                    if (ind++ < this.testStore.test_options.length) {
                         json_object[key] = value;
                     }
                     else {
                         this.curr_data.push({'key':key, 'value':value})
                     }
-                    };
-
+                };
                 this.currentIndex=index;
                 this.currentItem= {
                     name: test.name,
@@ -204,24 +206,14 @@
             },
             async renderForm(form_type) {
                 this.viewType = form_type
-                await this.testStore.getDesiredTest(form_type, ''); 
+                await this.testStore.getDesiredTest(form_type); 
+                this.all_test_options = this.testStore.test_options
+                this.all_test_options.push({'type':'optional', 'name': 'Optional Data'});
                 this.showForm = true;
             },  
             // form_data in this case will be the "spec" information 
             async handleSubmit (form_data) {
-                const spec_object = form_data.reduce((result, item)=> {
-                    if (item.name==="Optional Data") {
-                        return result;
-                    }
-                    result[item.name] = item.value
-                    return result
-                }, {});
-                const data_object = this.optional_data.reduce((result, item)=> {
-                    result[item.key] = item.value
-                    return result
-                    }, {});
-                const obj = Object.assign(spec_object, data_object)
-
+                const obj = this.testStore.formatPostData(form_data, this.optional_data);
                 await this.testStore.addTest({
                     name: this.test_name,
                     type: this.selected_test,
@@ -230,14 +222,12 @@
                 this.test_name='';
                 this.selected_test='';
             },
-
             /**
              * update current test item using put request
              * 
              * @param {*} editFormInputs - contains data to update test with 
              */
             async editTest(editFormInputs) {
-                console.log('editing test')
                 const data = editFormInputs.reduce((result, item)=> {
                     result[item.name] = item.value
                     return result
@@ -263,11 +253,11 @@
              * delete test specified by currentItem 
              */
             async deleteTest() {
-                console.log('delete test')
                 this.testStore.tests.splice(this.currentIndex, 1);
                 await this.testStore.deleteTest(this.currentItem);
                 this.currentItem={};
                 this.currentIndex='';
+                this.curr_data=[];
             }
         }
     }
