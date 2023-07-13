@@ -248,7 +248,6 @@
                 await this.testStore.editTest(object);
                 await this.testStore.getTests();
             },
-
             /**
              * delete test specified by currentItem 
              */

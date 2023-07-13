@@ -59,7 +59,7 @@
             <!-- Dynamically render add form information -->
             <div v-if="showForm===true">
               <dynamicForm @formData="handleSubmit"
-              :form_layout="archiverStore.selectedArchiver"
+              :form_layout="all_archiver_options"
               :optional_data="optional_data">
               </dynamicForm>
             </div>
@@ -102,9 +102,10 @@
             </editFormComp> 
           </div>
           <div v-else> 
-            <dynamicForm :form_data="this.archiverStore.selectedArchiver"
+            <dynamicForm :form_layout="all_archiver_options"
                 @formData="editArchiver"
-                :add="false">
+                :optional_data="optional_data"
+                >
             </dynamicForm>
           </div>
 
@@ -130,6 +131,8 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
           "key": '',
           "value": ''
         }],
+
+        all_archiver_options: [],
 
         // manage view of pages 
         display: 'add',
@@ -159,7 +162,7 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
         const data = JSON.parse(JSON.stringify(archiver.data))
         // load num 
         this.formType = archiver.archiver;
-        await this.archiverStore.getDesiredArchiver(this.formType, 'selected')
+        await this.archiverStore.getDesiredArchiver(this.formType)
         
         // use to extract data from archivers.data
         const myJson = '{}';
@@ -168,7 +171,7 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
         this.curr_data = []
 
         for (const [key,value] of Object.entries(data)) {
-          if (ind++ < this.archiverStore.selectedArchiver.length-1) {
+          if (ind++ < this.archiverStore.archiver_options.length-1) {
              console.log((`${key}:${value}`));
              json_object[key] = value;
           }
@@ -216,12 +219,16 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
       // render form information from server
       async renderForm() {
         this.formType=this.currentItem.archiver;
-        await this.archiverStore.getDesiredArchiver(this.formType, 'selected')
+        await this.archiverStore.getDesiredArchiver(this.formType)
+        this.all_archiver_options = this.archiverStore.archiver_options;
+        this.all_archiver_options.push({'type':'optional', 'name': 'Optional Data'});
         this.showForm=true; 
       },
 
       async renderAddForm() {
-        await this.archiverStore.getDesiredArchiver(this.selected_archiver, 'selected')
+        await this.archiverStore.getDesiredArchiver(this.selected_archiver)
+        this.all_archiver_options = this.archiverStore.archiver_options;
+        this.all_archiver_options.push({'type':'optional', 'name': 'Optional Data'});
         this.showForm=true; 
       },
 

@@ -88,7 +88,7 @@
         <dynamic_add_data :addedData="data"></dynamic_add_data>
       <div>
           <button class="btn btn-success" style="margin-right: 1em;" > Update </button>
-          <button class="btn btn-danger" @click="deletegroup"> Delete </button>
+          <button class="btn btn-danger" @click="deleteHost"> Delete </button>
       </div>
       </form>
      </div>
@@ -136,6 +136,7 @@
       }        
      },
      async mounted() {
+      await this.hostStore.getHosts();
       await this.batchStore.getBatches();
       this.form_data=[{
           "type":"text",
@@ -202,30 +203,21 @@
         this.addedData=[];
       },
   
-         deleteAllHosts() {
-          const h = useHostStore();
-          h.deleteAll();
-         },
-         addHostComp() {
+      addHostComp() {
           this.display='add'
           this.showAddHost=true;
           this.currentItem={};
           this.currentIndex={}
-         },
-         async deleteHost(host) {
-          const h = useHostStore();
-          h.deleteHost(host);
-          await this.groupStore.getGroups();
-         }
-     },
-     setup() {
-         const id = 0;
-         const hostStore = useHostStore();
-         hostStore.getHosts();
-
-         return { id,  hostStore }
+       },
+      async deleteHost() {
+        this.hostStore.hosts.splice(this.currentIndex,1);
+        await this.hostStore.deleteHost(this.currentItem);
+        this.currentItem={};
+        this.currentIndex={};
+        this.data=[];
+        // await this.groupStore.getGroups();
+       }
      }
-
      // updateSubmit function
  
  })

@@ -31,17 +31,14 @@ export const useArchiverStore = defineStore('archiver', {
             this.isLoading = false;
         },
 
-        async getDesiredArchiver(archiver_name: string, archiver_to_update:string) {
+        async getDesiredArchiver(archiver_name: string) {
             this.isLoading = true;
             console.log(archiver_name)
             const res = await fetch('http://localhost:8000/archivers/read-archiver/'+archiver_name)
             const data = await res.json();
-            if (archiver_to_update === 'selected') {
-                this.selectedArchiver = data;
-            }
-            else {
-                this.archiver_options = data; 
-            }
+     
+            this.archiver_options = data; 
+            
             this.isLoading = false;
         },
 

@@ -55,15 +55,13 @@ export const useHostStore = defineStore('hostStore', {
          * @param host - Host we want to delete 
          */
         async deleteHost(host:any) {
+            console.log(host)
             await fetch(
-                "http://localhost:8000/hosts/"+host.name,
+                "http://localhost:8000/hosts/"+host?.name,
                 {
                     method: 'DELETE',
                 }
             );
-            this.hosts = this.hosts.filter(h => {
-                return (h as any)._id!== host._id
-            })
         },
 
         async editHost(updateHostObj:any) {
