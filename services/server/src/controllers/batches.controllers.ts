@@ -77,8 +77,7 @@ const postBatch = (async (req:Request, res:Response) => {
     collection.insertOne({                                  // include names and _ids of objects 
         "name": data.name,
         "priority": data.priority,
-        "bssid_scan_interface": data.bssid_scan_interface,
-        "ttl": data.ttl, 
+        "bssid_scan_interface": data.bssid_scan,
         "ssid_profiles": data.ssid_profiles,
         "ssid_profile_ids": ssid_profile_ids,
         "schedules": data.schedules,
@@ -108,7 +107,7 @@ const updateBatch = (async (req:Request, res:Response) => {
     await collection.updateOne({
         "name": data.old_batchname
     }, {$set:{"name": data.new_batchname, "priority": data.priority,
-              "bssid_scan_interface":data.bssid_scan_interface, "ttl": data.ttl, 
+              "bssid_scan_interface":data.bssid_scan, "ttl": data.ttl, 
               "ssid_profiles":data.ssid_profiles, "schedules":data.schedules,
               "jobs": data.jobs, "archivers": data.archivers,
               "ssid_profile_ids": (JSON.stringify(data.ssid_profiles) === JSON.stringify(doc?.ssid_profiles)) ?     // update reference _ids if changes made 

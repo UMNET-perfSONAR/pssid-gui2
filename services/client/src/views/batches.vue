@@ -25,31 +25,7 @@
         <!-- Add batch component -->
         <div class="col-md-6" v-if="showAddBatch===true"> 
             <h3> Add Batch </h3>
-            <!-- 
-            <form @submit.prevent="addBatch()">
-                <div class="form-group">
-                    <label> Batch Name </label>
-                    <input
-                        type="text"
-                        placeholder="Enter batch name here"
-                        v-model="batch_name"
-                        class="form-control"
-                    />
-                </div>
-                <div class="form-group"> 
-                    <label> SSID Profile Selection </label>
-                    <VueMultiselect
-                        v-model="ssid_selection"
-                        :multiple="true"
-                        close-on-select="false"
-                        :options="SsidStore.ssid_profiles"
-                        track-by="name"
-                        label="name"
-                        >
-                    </VueMultiselect>
-                </div>
-            </form>
-            -->
+
             <dynamicform @formData="addBatch" :form_layout="form_layout">
             </dynamicform>
             <div>
@@ -64,6 +40,15 @@
                         type="text"
                         placeholder="Enter batch name here"
                         v-model="currentItem.name"
+                        class="form-control"
+                    />
+                </div>
+                <div class="form-group">
+                    <label> BSSID Scan Interface </label>
+                    <input
+                        type="text"
+                        placeholder="Enter here"
+                        v-model="currentItem.bssid_scan"
                         class="form-control"
                     />
                 </div>
@@ -121,17 +106,7 @@
                         v-model="currentItem.priority"
                     />
                 </div>
-                <!-- TTL -->
-                <div class="form-group">
-                    <label> TTL </label>
-                    <input
-                        type="number"
-                        placeholder="0"
-                        class="form-control"
-                        required
-                        v-model="currentItem.ttl"
-                    />
-                </div>
+  
                 <div style="margin-bottom:2em">
                     <button class="btn btn-success" style="margin-right:1em"> Update </button>
                     <button class="btn btn-danger" @click="deleteBatch"> Delete </button>
@@ -188,6 +163,10 @@
                     'name': 'Batch Name'
                 },
                 {
+                    'type': 'text',
+                    'name': 'BSSID Scan Interface'
+                },
+                {
                     'type': 'multiselect',
                     'name': 'SSID Profile',
                     'options': this.SsidStore.ssid_profiles
@@ -211,11 +190,6 @@
                     'type': 'number',
                     'name': 'Priority',
                 }, 
-                {
-                    'type': 'number',
-                    'name': 'TTL'
-                }
-
             ]
         },
         methods: {
@@ -244,12 +218,12 @@
             async addBatch(form_data) {
                 await this.batchStore.addBatch({
                     name: form_data[0].value,
-                    priority: form_data[5].value,
-                    ttl: form_data[6].value,
-                    ssid_profiles: (form_data[1].selected.length == 0)? [] : form_data[1].selected.map(obj => obj.name),
-                    schedules: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
-                    jobs: (form_data[2].selected.length == 0)? [] : form_data[2].selected.map(obj => obj.name),
-                    archivers: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
+                    bssid_scan: form_data[1].value,
+                    priority: form_data[6].value,
+                    ssid_profiles: (form_data[2].selected.length == 0)? [] : form_data[2].selected.map(obj => obj.name),
+                    schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
+                    jobs: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
+                    archivers: (form_data[5].selected.length == 0)? [] : form_data[5].selected.map(obj => obj.name),
                 })
             },
 
@@ -261,11 +235,11 @@
                     "old_batchname":this.old_batchname,
                     "new_batchname":this.currentItem.name,
                     "priority": this.currentItem.priority,
-                    "ttl": this.currentItem.ttl,
                     "ssid_profiles": this.currentItem.ssid_profiles,
                     "schedules": this.currentItem.schedules,
                     "archivers": this.currentItem.archivers,
-                    "jobs": this.currentItem.jobs
+                    "jobs": this.currentItem.jobs,
+                    "bssid_scan": this.currentItem.bssid_scan
                 }
                 console.log(updated_batch)
                 await this.batchStore.editBatch(updated_batch);

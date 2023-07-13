@@ -80,13 +80,6 @@ export const useBatchStore = defineStore('batchStore', {
             );
             this.batches = [];
         },
-
-        toggleBatch(_id:any) {
-            const batch = this.batches.find(h => (h as any)._id == _id)
-            if (batch !== undefined) {
-                (batch as any).isFav = !(batch as any).isFav
-            }
-        }
     }
 })
 
