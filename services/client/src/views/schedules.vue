@@ -92,6 +92,7 @@
             currentIndex: {},
             currentItem: {},
             display: 'add',
+            old_schedule_name: '',
 
             // for input binding
             cronExpression: "* * * * *",
@@ -109,6 +110,7 @@
         setActiveSchedule(schedule, index=1) {
             this.currentIndex = index;
             this.currentItem = schedule;
+            this.old_schedule_name = schedule.name;
             this.display = 'edit';
         },
         updateCronExp(updatedCronExp) {
@@ -124,7 +126,7 @@
         },
         async editSchedule() {
             await this.scheduleStore.updateSchedule({
-                "old_schedule": '',
+                "old_schedule": this.old_schedule_name,
                 "new_schedule": this.currentItem.name,
                 "repeat": this.currentItem.repeat
             });
@@ -132,6 +134,9 @@
         async deleteSchedule() {
             this.scheduleStore.schedules.splice(this.currentIndex, 1); 
             await this.scheduleStore.deleteSchedule(this.currentItem)
+            this.currentItem={};
+            this.cronExpression='';
+            this.currentIndex={};
         }
     }
   }
