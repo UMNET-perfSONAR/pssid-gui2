@@ -103,13 +103,13 @@ import { number } from '@formkit/inputs';
                 display: 'add',
                 formstuff: [{
                     'type': 'text',
-                    'name': 'SSID Profile Name'
+                    'name': 'Profile Name'
                 },{ 
                     'type': 'text',
-                    'name': 'ssid'
+                    'name': 'SSID'
                 }, {
                     'type': 'number',
-                    'name': 'Number'
+                    'name': 'RSSI'
                 }]
             }
         },
