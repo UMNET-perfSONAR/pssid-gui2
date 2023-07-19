@@ -80,6 +80,7 @@ import dynamic_add_data from './dynamic_add_data.vue';
             form_layout: {
                 type: Array,
                 required: true
+
             },
             current_item: {
                 required:false

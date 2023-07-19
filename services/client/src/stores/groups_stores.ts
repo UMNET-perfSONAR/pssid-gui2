@@ -92,12 +92,12 @@ export const useGroupStore = defineStore('groupStore', {
             }
         },
         filterData(searchKey: string) {
-            const regex = new RegExp(searchKey, 'i');
+            const regex = new RegExp(searchKey, 'iu');
             this.filteredData = this.host_groups.filter(item => regex.test((item as any).name))
         },
   
         filterHostData(hostSearchKey:string) {
-            const regex = new RegExp(hostSearchKey, 'gim');
+            const regex = new RegExp(hostSearchKey, 'imu');
             this.filteredHostData = this.hostData.filter(item => regex.test((item as any).name))
         },
         

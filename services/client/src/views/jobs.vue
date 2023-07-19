@@ -9,27 +9,14 @@
         <div>
             <button @click="addJobForm" class="btn btn-primary" style="margin-bottom: 1em;"> Add Job </button>
         </div>
-
+        <h3> Job List </h3>
         <div class="list row"> 
-            <!-- make separate component and emit active back to parent? -->
-            <div class="col-md-6"> 
-                <!-- job list -->
-                <h3> Job List </h3>
-                <ul class="list-group" style="overflow: auto; height: 400px;">
-                        <li
-                            class="list-group-item"
-                            :class="{active: index == currentIndex}"
-                            v-for="(item, index) in jobStore.jobs"
-                            :key="index"
-                            @click="setActiveJob(item, index)"
-                            >
-                            <p> {{ item.name }}</p>
-                        </li>
-                    </ul>
-            </div>
+            <itemList v-if="mount ==true" :itemArray="jobStore.jobs" :display="showAddJob" 
+                @updateActive="setActiveJob" style="cursor:pointer;"
+                class="col-md-6"></itemList>
 
             <!-- Add Form -->
-            <div class="col-md-6" v-if="display==='add'">
+            <div class="col-md-6" v-if="showAddJob==true">
                 <h3> Add Job </h3>
                 <form @submit.prevent="submitJob"> 
                     <div class="submit-form">
@@ -93,7 +80,7 @@
             </div>
 
             <!-- Edit Job Form -->
-            <div class="col-md-6" v-if="display!=='add'">
+            <div class="col-md-6" v-if="showAddJob==false">
                 <h3> Edit Job </h3>
                 <form @submit.prevent="editJob"> 
                     <div class="submit-form">
@@ -129,7 +116,7 @@
                                 required
                                 id="name"
                                 class="form-control"
-                                v-model="currentItem.continue_if"
+                                v-model="currentItem['continue-if']"
                             />
                         </div>
                         <!-- Parallel radio buttons -->
@@ -161,14 +148,14 @@
 </template>
 
 <script>
-    import { formToJSON } from 'axios';
     import { useJobStore } from '../stores/job_store.ts'
     import { useTestStore } from '../stores/test_store.ts';
     import dynamicform from '../components/dynamicform.vue';
     import VueMultiselect from 'vue-multiselect';
+    import itemList from '../components/list_items.vue'
 
     export default {
-        components: { dynamicform, VueMultiselect },
+        components: { dynamicform, VueMultiselect, itemList },
         data() {
             return {
                 // input binding 
@@ -178,12 +165,13 @@
                 selected_tests: [],
                 showAddForm: true,
                 old_job_name: '',
+                mount:false,
 
                 // select items/ switch from add to edit
                 currentIndex: {},
                 currentItem: {},
                 currentJobName: '',
-                display: 'add',
+                showAddJob: true,
 
                 // stores 
                 jobStore: useJobStore(),
@@ -193,20 +181,19 @@
         async mounted() {
             await this.jobStore.getJobs();
             await this.testStore.getTests();
-            console.log(this.testStore.tests);
+            this.mount = true;
         },
         methods: {
             addJobForm() {
-                this.display = 'add';
+                this.showAddJob = true;
                 this.currentIndex = {}; 
     
             },
-            setActiveJob(job, index=1) {
-                this.currentIndex = index;
-                this.currentItem = job;
-                this.old_job_name = job.name;
-                this.display = '';
-                console.log(job);
+            setActiveJob(indexArray) {
+                this.currentItem = indexArray[0];
+                this.currentIndex = indexArray[1];
+                this.showAddJob = false;
+                this.old_job_name = this.currentItem.name;
             },
             // submit job to backend 
             submitJob() {
@@ -214,7 +201,7 @@
                     this.jobStore.addJob({
                         name: this.job_name,
                         tests: (this.selected_tests.length == 0)? [] : this.selected_tests.map(obj => obj.name),
-                        continue_if: this.continue_if,
+                        "continue-if": this.continue_if,
                         parallel: this.parallel
                     }) 
                     // reset values
@@ -233,7 +220,7 @@
                         old_job: this.old_job_name,
                         new_job: this.currentItem.name,
                         parallel: this.currentItem.parallel,
-                        continue_if: this.currentItem.continue_if,
+                        "continue-if": this.currentItem['continue-if'],
                         tests: this.currentItem.tests
                 })
             }

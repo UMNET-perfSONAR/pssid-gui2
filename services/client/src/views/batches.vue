@@ -19,7 +19,7 @@
         </div>
         <div class="col-md-6" v-else> 
             <h3> Batch List </h3>
-            <itemList :item-array="batchStore.batches" :display="showAddBatch"
+            <itemList v-if="mount == true" :item-array="batchStore.batches" :display="showAddBatch"
                       @updateActive="updateActiveBatch"></itemList>
         </div>
         <!-- Add batch component -->
@@ -136,6 +136,7 @@
                 currentItem: {},
                 currentIndex: {},
                 showAddBatch: true,
+                mount: false,
 
                 ssid_selection: [],
                 batch_name: '',
@@ -190,7 +191,8 @@
                     'type': 'number',
                     'name': 'Priority',
                 }, 
-            ]
+            ];
+            this.mount = true;
         },
         methods: {
             /**

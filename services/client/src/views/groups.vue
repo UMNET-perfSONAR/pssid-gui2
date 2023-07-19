@@ -5,35 +5,22 @@
       <p> Loading Host Group Page... </p>
     </div>
     <!-- Add Host Button -->
-    <div>
-      <button @click="addHostForm" class="btn btn-primary" style="margin-bottom: 1em; margin-top: 1em;"> Add Host Group</button>
+    <div style="margin-bottom:1em">
+      <button @click="addHostForm" class="btn btn-primary" style="margin-right: 1em;"> Add Host Group</button>
+      <button class="btn btn-warning"> Submit to probes </button>
     </div>
     <div class="list row"> 
       <!-- Host Group List -->
       <div class="col-md-6">
         <h3> Host Group List </h3>
         <!-- regex search bar-->
-        <input style="margin-bottom: 1em"
-          type="text"
-          v-model="searchKey"
-          placeholder="Search..."
-          class="form-control"
-        />
-        <ul class="list-group" style="overflow: auto; height: 400px;">
-          <li
-            class="list-group-item"
-            :class="{active: index == currentIndex}"
-            v-for="(group, index) in hostGroup.filteredData"
-            :key="index"
-            @click="setActiveGroup(group, index)"
-            >
-              <p> {{ group.name }}</p>
-          </li>
-        </ul> 
+        <item-list v-if="mounted==true" :itemArray="hostGroup.host_groups" :display="showAddGroup"
+        @updateActive="updateActiveGroup" style="cursor: pointer;"
+        ></item-list>
       </div>
 
       <!-- Add Group Form -->
-      <div class = "col-md-6" v-if="display==='add'"> 
+      <div class = "col-md-6" v-if="showAddGroup==true"> 
         <h3> Add Host Group </h3>
         <form @submit.prevent="handleSubmit">
           <div class="submit-form">
@@ -48,56 +35,15 @@
                 class="form-control"
               />
             </div>
-            <div class="form-group">
-              <label for="host-selection"> Host Selection </label>
-              <div id="host-selection">
-                <input
-                  type="text"
-                  placeholder="Search hosts..."
-                  class="form-control"
-                  v-model="hostSearchKey"
-                />
-                <ul v-if="view_host_options===true"
-                  class="list-group" style="overflow: auto; height: 175px; margin-bottom=1em">
-                    <li
-                      class="list-group-item"
-                      v-for="(host, index) in filteredHostData"
-                      :class="{active: host.selected === true}"
-                      :key="index"
-                      @click="host.selected = !host.selected"
-                      >
-                    <p> {{ host.name }}</p>
-                    </li>
-                </ul>
+            <!-- host selection -->
+            <hostSelection v-if="mounted == true" :copy_of_data="copy_of_data
+            "></hostSelection>
 
-                <!-- view selected hosts -->
-                <ul v-if="view_host_options===false"
-                  class="list-group" style="overflow: auto; height: 175px"
-                >
-                  <li
-                    class="list-group-item"
-                    v-for="(host,index) in selected_hosts"
-                    :key="index"
-                    @click="selectHost(host)"
-                  > 
-                    <p> {{ host.name }}</p>
-                  </li>
-                    
-                </ul>
-                <div style="margin-top: 1em;">
-                  <button @click="selectAllHosts" class="btn btn-primary col-md-6">Select All</button>
-                  <button v-if="view_host_options===true" @click="viewSelectedHosts" class="btn btn-secondary col-md-6">See Selected Hosts</button>
-                  <button v-else @click="view_host_options=true" class="btn btn-secondary col-md-6">
-                    See Filtered Hosts  
-                  </button>
-                </div>
-              </div>
-
-            </div>
+            <!-- batch selection-->
             <div class= "form-group">
               <label for="batch-select"> Batch Selection </label>
               <VueMultiselect
-                v-model="newBatch"
+                v-model="selected_batches"
                 :options="batchStore.batches"
                 :multiple="true"
                 :close-on-select="false"
@@ -106,32 +52,15 @@
               >
               </VueMultiselect>
             </div>
+            <!-- Host Regex input -->
+            <div class="form-group">
+              <label> Host Regex Input </label>
+              <hostRegex :regex_array="regex"></hostRegex>
+            </div>
 
             <!-- dynamic data section -->
             <label for="params"> Optional Data </label>
-            <div class="form-inline"
-              v-for="(item, counter) in addedData"
-              v-bind:key="counter"
-              id="params"
-              style="margin-bottom: 1em;">
-              <input 
-                type="text"
-                placeholder="key"
-                v-model="item.key"
-                class="form-control"
-              />
-              <input 
-                type="text"
-                placeholder="value"
-                v-model="item.value"
-                class="form-control"
-              />
-              <i class ="material-icons" 
-                @click="deleteParameter(counter)"
-                style="cursor: pointer;">delete</i>
-            </div>
-            <button @click="addParameter()" class="btn btn-primary" 
-            style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
+            <dynamic_add_data :addedData="addedData"></dynamic_add_data>
 
           </div>
           <button class="btn btn-success" style="margin-bottom: 2em;"> Submit </button>
@@ -139,33 +68,28 @@
       </div>
 
       <!-- Edit Group Form -->
-      <div class = "col-md-6" v-if="display!=='add'">
+      <div class = "col-md-6" v-if="showAddGroup==false">
         <h3> Edit Host Group </h3>
         <form @submit.prevent="handleUpdate">
           <div class="submit-form">
+            <!-- host group -->
             <div class="form-group">
               <label for="groups"> Host Group </label>
               <input 
                 type="text"
                 placeholder="Enter host group name"
-                v-model="selectedGroup"
+                v-model="currentGroup.name"
                 required
                 id="groups"
                 class="form-control"
               />
             </div>
 
+            <!-- host selection -->
             <div class= "form-group">
-              <label for="host-select"> Host Selection </label>
-              <VueMultiselect
-                v-model="currentGroup.hosts"
-                :options="hostStore.hosts.map(item=>item.name)"
-                :multiple="true"
-                :close-on-select="false"
-              >
-              </VueMultiselect>
+              <hostSelection :copy_of_data="hosts_to_edit"></hostSelection>
             </div>
-
+            <!-- batch selection -->
             <div class= "form-group">
               <label for="batch-select"> Batch Selection </label>
               <VueMultiselect
@@ -177,37 +101,19 @@
               </VueMultiselect>
             </div>
           </div>
+          <!-- hosts regex -->
+          <div class="form-group">
+              <label> Host Regex Input </label>
+              <hostRegex :regex_array="edit_regex"></hostRegex>
+            </div>
 
           <!-- dynamic data section -->
           <label for="params"> Optional Data </label>
-            <div class="form-inline"
-              v-for="(item, counter) in currentGroup.data"
-              v-bind:key="counter"
-              id="params"
-              style="margin-bottom: 1em;">
-              <input 
-                type="text"
-                placeholder="key"
-                v-model="item.key"
-                class="form-control"
-              />
-              <input 
-                type="text"
-                placeholder="value"
-                v-model="item.value"
-                class="form-control"
-
-              />
-              <i class ="material-icons" 
-                @click="deleteParameter('group', counter)"
-                style="cursor: pointer;">delete</i>
-            </div>
-            <button @click="addParameter('group')" class="btn btn-primary" 
-            style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
+           <dynamic_add_data :addedData="edit_optional_data"></dynamic_add_data>
 
           <div>
             <button class="btn btn-success" @click="editGroup"
-            style="margin-right: 1em;"> Submit </button>
+            style="margin-right: 1em;"> Update </button>
             <button class="btn btn-danger" @click="deletegroup"> Delete </button>
           </div>
         </form>
@@ -219,50 +125,35 @@
 <script>
 import { useGroupStore } from '/src/stores/groups_stores';
 import { useBatchStore } from '/src/stores/batches.store';
-import { defineComponent } from 'vue';
-import VueMultiselect from 'vue-multiselect'
-import { ref } from 'vue'
 import { useHostStore } from '/src/stores/host_store.ts';
-import searchbar from './searchbar.vue';
+import { defineComponent } from 'vue';
+import hostRegex from '../components/hosts_regex.vue';
+import VueMultiselect from 'vue-multiselect'
 import itemList from '../components/list_items.vue'
-
+import dynamic_add_data from '../components/dynamic_add_data.vue';
+import hostSelection from '../forms/hostSelection.vue';
   export default defineComponent({
-    components: {VueMultiselect, searchbar, itemList},
+    components: {VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection},
     data() {
       return {
-        currentGroup: {}, currentIndex: {},
-        newHosts: '', newBatch: '', newGroup: '',
-
-        display: 'add',
-        selectedBatch: '', selectedGroup: '', selectedHosts: [],
+        currentGroup: [], currentIndex: {},
+        newHosts: '', selected_batches: '', newGroup: '',
+        showAddGroup: true,
+        selectedGroup: '', 
         addedData: [{}],
-
-        searchKey: '',
-        filteredData: [],
-        hostSearchKey: '',
-        filteredHostData: [],
         copy_of_data: [],
-        view_host_options: true,
-        selectedHosts: [],
+        hosts_to_edit: [],
+
+        edit_regex: [],
+        regex: [],
+        edit_optional_data: [],
+        selected_hosts: [],
+        mounted: false,
 
         // relevant host stores
         hostStore: useHostStore(),
         hostGroup: useGroupStore(),
         batchStore: useBatchStore(),
-        selected_hosts: []
-      }
-    },
-    watch: {
-      searchKey() {
-        //this.filterData();
-        this.hostGroup.filterData(this.searchKey);
-      },
-      hostGroup() {
-        //this.filterData();
-        this.hostGroup.filterData(this.searchKey);
-      },
-      hostSearchKey() {
-        this.filterHostData(this.hostSearchKey);
       }
     },
     async mounted() {
@@ -274,124 +165,90 @@ import itemList from '../components/list_items.vue'
         selected: false,
         index: index
       }))
-      this.filteredHostData = this.copy_of_data;
-      this.filterData();
-      this.filterHostData();
+      this.mounted = true;
     },
 
     methods: {
-      setActiveGroup(group, index=1) {
-        this.currentGroup = group;
-        this.currentIndex = index;
-        this.selectedGroup = group.name;
-        this.selectedBatch = group.batches;
-        this.selectedHosts = group.hosts;
-        this.display = '';
+      updateActiveGroup(indexArray){
+        this.currentGroup = indexArray[0];
+        this.currentIndex = indexArray[1];
+        this.selectedGroup = this.currentGroup.name;
+        this.showAddGroup = false;
+        this.edit_optional_data = Object.entries(this.currentGroup.data).map(([name,value]) => ({
+                    name,
+                    value
+                }));
+        this.hosts_to_edit = this.hostStore.hosts.map((item, index) => ({
+                                name: item.name,
+                                selected: false,
+                                index: index
+                                }));
+                    
+        this.currentGroup.hosts.forEach(element => {
+              console.log(element)
+              const ind = this.hosts_to_edit.findIndex((host) => element.name==host.name);
+              console.log(ind);
+              this.hosts_to_edit[ind].selected = true;
+        });
+        this.edit_regex = this.currentGroup.hosts_regex.map(item => ({regex:item}));
       },
       async handleSubmit() {
-        this.selected_hosts = this.filteredHostData.filter(h => {
+        this.selected_hosts = this.copy_of_data.filter(h => {
                 return h.selected == true
             })
         if (this.newGroup.length > 0) {
+          const spec_object = this.addedData.reduce((result, item)=> {
+                    result[item.key] = item.value
+                    return result
+            }, {});
           this.hostGroup.addGroup({
             name: this.newGroup,
-            batches: this.newBatch,
+            batches: (this.selected_batches.length == 0) ? [] : this.selected_batches.map(obj=>obj.name),
             hosts: (this.selected_hosts.length == 0)? [] : this.selected_hosts.map(obj => obj.name),
-            data: this.addedData
+            data: spec_object,
+            hosts_regex: (this.regex.length == 0)? [] : this.regex.map(obj => obj.regex)
           })
-          this.newGroup = '',
-          this.newBatch = [],
+          this.selected_batches = [],
           this.selected_hosts = [];
-          this.hostSearchKey = '';
-          this.view_host_options = true;
+          this.newGroup = '';
+          this.regex = [];
           this.copy_of_data = this.copy_of_data.map(item => ({
             name: item.name,
             selected: false, 
             index: item.index,
           }))
-          this.filterHostData();
         }
       },
       async editGroup() {
+        const new_selected_hosts = this.hosts_to_edit.filter(h => {
+                return h.selected == true
+        })
         let object = {
-          new_hostgroup: this.selectedGroup,
-          old_hostgroup: this.currentGroup.name,
-          hosts: this.selectedHosts,
-          batches: this.selectedBatch,
+          new_hostgroup: this.currentGroup.name,
+          old_hostgroup: this.selectedGroup,
+          hosts: (new_selected_hosts.length == 0) ? [] : new_selected_hosts.map(obj => obj.name),
+          batches: this.currentGroup.batches,
           data: this.currentGroup.data,
+          hosts_regex: (this.edit_regex.length == 0)? [] : this.edit_regex.map(obj => obj.regex)
         }
         await this.hostGroup.editGroup(object);
         await this.hostGroup.getGroups();
       },
-      // filter host group data
-      filterData() {
-        const regex = new RegExp(this.searchKey, 'img');
-        this.filteredData = this.hostGroup.host_groups.filter(item => regex.test(item.name))
-      },
-      // filter host data 
-      filterHostData() {
-        const regex = new RegExp(this.hostSearchKey, 'img');
-        this.filteredHostData = this.copy_of_data.filter(item => regex.test(item.name))
-        console.log(this.filteredHostData);
-      },
       addHostForm() {
-        this.display = 'add',
+        this.showAddGroup = true;
         this.currentIndex = {};
         this.selected_hosts = [];
-        this.hostSearchKey = '';
-        this.filterHostData();
       },
       async deletegroup() {
         this.hostGroup.host_groups.splice(this.currentIndex,1);
         await this.hostGroup.deleteGroup(this.currentGroup);
+        this.edit_regex = [];
+        this.hosts_to_edit = this.hostStore.hosts.map((item, index) => ({
+                                name: item.name,
+                                selected: false,
+                                index: index
+                                }));
       },
-      // functions for dynamic form
-      addParameter(group) {
-        if (group === 'group') {
-          this.currentGroup.data.push({
-            key:'',
-            value:''
-          })
-        }
-        else {
-          this.addedData.push({
-            key: '',
-            value: ''
-          })
-        }
-      },
-      deleteParameter(group, counter) {
-        if (group === 'group') {
-          this.currentGroup.data.splice(counter,1);
-        }
-        else {
-          this.addedData.splice(counter,1);
-        }
-      },
-      // add all selected hosts to selected arr
-      selectAllHosts() {
-        this.view_host_options=true;
-        for (const item of this.filteredHostData) {
-          // set appropriate values to true in copy_of_data
-          this.copy_of_data[item.index].selected = true;
-        }
-        this.filterHostData();
-      },
-      // select host under view selected hosts tab 
-      selectHost(host) {
-        this.copy_of_data[host.index].selected=false;
-        this.filterHostData();
-        this.selected_hosts=this.selected_hosts.filter(item => item.name!=host.name)
-      },
-      // view all selected hosts 
-      viewSelectedHosts() {
-        this.view_host_options=false;
-        console.log('view selected hosts')
-        this.selected_hosts=this.filteredHostData.filter(h => {
-                return h.selected == true
-            })
-        console.log(this.selected_hosts);
-      } 
     }
     
   })

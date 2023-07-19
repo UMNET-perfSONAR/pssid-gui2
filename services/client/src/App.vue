@@ -28,6 +28,7 @@
         <li class="nav-item">
           <router-link to="/batches" class="navbar-brand">Batches</router-link>
         </li>
+ 
       </div>
     </nav>
 

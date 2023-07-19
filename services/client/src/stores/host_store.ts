@@ -11,12 +11,6 @@ export const useHostStore = defineStore('hostStore', {
         hosts: [{}],
         isLoading: false
     }),
-
-    // use to extract any relevant information/ can manipulate slightly
-    getters: {
-
-    },
-
     actions: {
         // TODO: Use Axios?? 
         async getHosts() {
@@ -81,7 +75,6 @@ export const useHostStore = defineStore('hostStore', {
         },
 
         async deleteAll() {
-            console.log('called function');
             await fetch(
                 "http://localhost:8000/hosts",
                 {
@@ -89,6 +82,15 @@ export const useHostStore = defineStore('hostStore', {
                 }
             );
             this.hosts = [];
+        },
+        async createConfig() {
+            console.log('config')
+            await fetch(
+                'http://localhost:8000/hosts/config',
+                {
+                    method: 'POST',
+                }
+            ) 
         },
 
         toggleHost(_id:any) {

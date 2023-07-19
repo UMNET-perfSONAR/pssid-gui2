@@ -4,6 +4,7 @@ export const useTestStore = defineStore('test', {
     state: () => ({
         tests: [{}],
         isLoading: false,
+        isError: false,
         listOfOptions: [],
         selectedTest:[],
         test_options:[],
@@ -13,11 +14,17 @@ export const useTestStore = defineStore('test', {
     actions: {
 
         async getTests() {
-            this.isLoading = true;
-            const res = await fetch('http://localhost:8000/tests')
-            const data = await res.json()
-            this.tests = data;
-            this.isLoading = false;
+            try {
+                this.isLoading = true;
+                const res = await fetch('http://localhost:8000/tests')
+                const data = await res.json()
+                this.tests = data;
+                this.isLoading = false;
+            }
+            catch(error) {
+                console.error(error);
+                this.isError=true;
+            }
         },
 
         // get name of all available tests

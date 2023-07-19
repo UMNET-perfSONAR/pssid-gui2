@@ -10,26 +10,15 @@
         <button @click="addArchiverForm" 
         class="btn btn-primary" style="margin-bottom: 1em;"> Add Archiver </button>
       </div>
-
+      <h3>Archiver List</h3>
       <div class="list row"> 
         <!-- archiver list -->
-        <div class="col-md-6">
-          <h3> Archiver List </h3>
-          <ul class="list-group" style="overflow: auto; height: 400px;">
-            <li
-              class="list-group-item"
-              :class="{active: index == currentIndex}"
-              v-for="(item, index) in archiverStore.archivers"
-              :key="index"
-              @click="setActiveArchiver(item, index)"
-              >
-              <p> {{ item.name }}</p>
-              </li>
-          </ul>
-        </div>
+        <itemList v-if="mount == true" :item-array="archiverStore.archivers" :display="showAddArchiver"
+          @updateActive="updateActiveArchiver" style="cursor:pointer;" class="col-md-6"
+        ></itemList>
 
         <!-- Add form page -->
-        <div class="col-md-6" v-if="display==='add'">
+        <div class="col-md-6" v-if="showAddArchiver == true">
           <h3> Add Archiver </h3>
           <form>
             <!-- Non-dynamic components -->
@@ -67,7 +56,7 @@
         </div>
 
         <!-- Edit form page -->
-        <div class="col-md-6" v-if="display!=='add'">
+        <div class="col-md-6" v-if="showAddArchiver == false">
           <h3> Edit Archiver </h3>
           <!-- Non-dynamic componenets -->
           <div style="margin-bottom: 1em;">
@@ -120,8 +109,9 @@ import dynamicForm from '../components/dynamicform.vue';
 import editFormComp from '../components/edit_dynamic_form.vue';
 import VueMultiselect from 'vue-multiselect';
 import dynamic_add_data from '../components/dynamic_add_data.vue';
+import itemList from '../components/list_items.vue'
   export default {
-    components: { dynamicForm, VueMultiselect, editFormComp, dynamic_add_data },
+    components: { dynamicForm, VueMultiselect, editFormComp, dynamic_add_data, itemList },
     data() {
       return {
         // variables cor add form
@@ -131,11 +121,12 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
           "key": '',
           "value": ''
         }],
+        mount: false, 
 
         all_archiver_options: [],
 
         // manage view of pages 
-        display: 'add',
+        showAddArchiver:true,
         showForm: false,
         currentIndex: {},
         currentItem: {},
@@ -153,11 +144,16 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
     async mounted() {
       await this.archiverStore.getArchivers();
       await this.archiverStore.getArchiverNames();
+      this.mount = true; 
     },
     methods: {
-      async setActiveArchiver(archiver, index=1) {
-        // TODO - CLEANUP THIS FUNCTION 
-
+       /**
+       * update page to view selected host/ edit screen
+       * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
+       */
+      async updateActiveArchiver(indexArray) {
+        const archiver = indexArray[0];
+        const index = indexArray[1];
         let ind=0;
         const data = JSON.parse(JSON.stringify(archiver.data))
         // load num 
@@ -189,10 +185,10 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
         // set display related variables 
         this.old_archiver_name=archiver.name;
         this.archiver_type = archiver.archiver;
-        this.display=''
+        this.showAddArchiver=false;
       },
       addArchiverForm() {
-        this.display='add';
+        this.showAddArchiver=true;
         this.currentIndex={};
 
       },

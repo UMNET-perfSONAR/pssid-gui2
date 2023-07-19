@@ -22,7 +22,7 @@ export const useJobStore = defineStore('jobStore', {
         // add job to an array. take a job object and add to array
         async addJob(job:any) {
             this.isLoading = true;
-            
+            console.log(job);
             await fetch(
                 "http://localhost:8000/jobs/create-job",
                 {

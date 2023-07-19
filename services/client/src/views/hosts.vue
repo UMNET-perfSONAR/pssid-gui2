@@ -1,20 +1,15 @@
 <template>
-<!-- regex search bar -->
-
-  <button
-    class="btn btn-primary"
-    type="button"
-    @click="addHostComp"
-    style="margin-bottom: 1em;"
-  >  
-     Add Hosts
-  </button>
+  <!-- buttons -->
+  <div style="margin-bottom:1em;">
+    <button class="btn btn-primary" @click="addHostComp" style="margin-right: 1em;"> Add Hosts</button>
+    <button class="btn btn-warning" @click="hostStore.createConfig();"> Submit to probes </button>
+  </div>
   <div class="list row">
      <!-- List out the items -->
      <div class="col-md-6">
          <h3> Host list </h3>
-         <item-list :item-array="hostStore.hosts"  :display="showAddHost"
-         @updateActive="updateActiveHost" style="cursor: pointer;"> </item-list>
+         <item-list v-if="mounted==true" :itemArray="hostStore.hosts"  :display="showAddHost"
+         @updateActive="updateActiveHost" style="cursor: pointer;"></item-list>
      </div>
 
      <div v-if="showAddHost===true" class="col-md-6">
@@ -53,7 +48,6 @@
           -->
           <p> Optional Data </p>
           <dynamic_add_data :addedData="addedData"></dynamic_add_data>
-
           <button class="btn btn-success"> Submit </button>
 
       </form>
@@ -108,7 +102,7 @@
  import updateddynamicform from '../components/updated_dynamicform.vue'
 
  export default defineComponent({
-     components: { addhost, itemList, dynamic_add_data, VueMultiselect, updateddynamicform },
+     components: { addhost, itemList, dynamic_add_data, VueMultiselect, updateddynamicform},
      data() {    
       return {
         // for data binding and storage 
@@ -128,6 +122,7 @@
         hostname: '',
         old_hostname: '',
         data: [],
+        mounted: false,
 
         // relevant stores 
         batchStore: useBatchStore(),
@@ -138,6 +133,7 @@
      async mounted() {
       await this.hostStore.getHosts();
       await this.batchStore.getBatches();
+      console.log(this.hostStore.hosts);
       this.form_data=[{
           "type":"text",
           "name": "Host Name"
@@ -154,13 +150,15 @@
                 value: '',
                 selected: []
             }))
+      this.mounted=true;
+      console.log('we have mounted')
      },
+
      methods: {
       /**
        * update page to view selected host/ edit screen
        * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
        */
-
       updateActiveHost(indexArray) {
         this.currentItem=indexArray[0];
         this.currentIndex=indexArray[1];

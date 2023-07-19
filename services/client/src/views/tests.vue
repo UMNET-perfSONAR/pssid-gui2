@@ -9,25 +9,14 @@
         <div>
             <button @click="addTestForm" class="btn btn-primary" style="margin-bottom: 1em;"> Add Test </button>
         </div>
-
+        <h3> Test List </h3>
         <div class="list row"> 
             <!-- schedule list -->
-            <div class="col-md-6">
-                <h3> Test List </h3>            
-                <ul class="list-group" style="overflow: auto; height: 400px;">
-                    <li
-                        class="list-group-item"
-                        :class="{active: index == currentIndex}"
-                        v-for="(item, index) in testStore.tests"
-                        :key="index"
-                        @click="setActiveTest(item, index)"
-                        >
-                        <p> {{ item.name }}</p>
-                    </li>
-                </ul>
-            </div>
+            <itemList v-if="mount == true" :item-array="testStore.tests" :display="showAddTest"
+            @updateActive="updateActiveTest" style="cursor:pointer;" class="col-md-6"
+            ></itemList>
 
-            <div class="col-md-6" v-if="display==='add'">
+            <div class="col-md-6" v-if="showAddTest==true">
                 <h3> Add Test </h3>
                 <form>
                     <!-- Non-dynamic components -->
@@ -68,7 +57,7 @@
             </div>
    
 
-            <div class = 'col-md-6' v-if="display!=='add'">
+            <div class = 'col-md-6' v-if="showAddTest==false">
                 <h3> Edit Test </h3>
                 <!-- Non-dynamic components -->
                 <div style="margin-bottom: 1em;">
@@ -140,12 +129,14 @@
                     "key": '',
                     "value": ''
                 }],
+                mount: false,
 
                 test_name: '',
                 selected_test: '',
                 viewType: {},
                 test: {},
                 input_fields: [],
+                showAddTest: true,
 
                 // holds additional parameters for dynamic parts
                 curr_data:[],
@@ -160,11 +151,13 @@
         },  
         async mounted() {
             await this.testStore.getTests();
-            await this.testStore.getTestNames();            
+            await this.testStore.getTestNames();     
+            this.mount = true;       
         },
+
         methods: {
             addTestForm() {
-                this.display = 'add';
+                this.showAddTest = true;
                 this.currentIndex = {};
                 this.test_name = '';
                 this.selected_test = '';
@@ -174,8 +167,9 @@
                
                 this.input_fields = {}
             },
-            async setActiveTest(test, index=1) {
-
+            async updateActiveTest(itemArray) {
+                const test = itemArray[0];
+                const index = itemArray[1];
                 let ind = 0; 
                 const data = JSON.parse(JSON.stringify(test.spec));
                 this.viewType = test.type;
@@ -201,8 +195,7 @@
 
                 this.test = test.type;
                 this.old_test_name = test.name;
-                
-                this.display='';
+                this.showAddTest = false;
             },
             async renderForm(form_type) {
                 this.viewType = form_type
@@ -210,6 +203,7 @@
                 this.all_test_options = this.testStore.test_options
                 this.all_test_options.push({'type':'optional', 'name': 'Optional Data'});
                 this.showForm = true;
+                console.log(this.optional_data);
             },  
             // form_data in this case will be the "spec" information 
             async handleSubmit (form_data) {

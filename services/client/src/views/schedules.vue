@@ -12,24 +12,12 @@
 
         <div class="list row"> 
             <!-- schedule list -->
-            <div class="col-md-6">
-                <h3> Schedule List </h3>            
-                <ul class="list-group" style="overflow: auto; height: 400px;">
-                    <li
-                        class="list-group-item"
-                        :class="{active: index == currentIndex}"
-                        v-for="(schedule, index) in scheduleStore.schedules"
-                        :key="index"
-                        @click="setActiveSchedule(schedule, index)"
-                        >
-                        <p> {{ schedule.name }}</p>
-                    </li>
-                </ul>
-
-            </div>
+            <item-list v-if="mount==true" class="col-md-6" :item-array="scheduleStore.schedules"  :display="showAddSchedule"
+                @updateActive="updateActiveSchedule" style="cursor: pointer;"> 
+            </item-list>
 
             <!-- Add Schedule Form -->
-            <div class="col-lg-6" v-if="display==='add'">
+            <div class="col-lg-6" v-if="showAddSchedule==true">
                 <h3> Add Schedule </h3>
                 <form @submit.prevent="submitSchedule"> 
                     <div class="submit-form">
@@ -50,7 +38,7 @@
                 </form>
             </div>
             <!-- Edit Schedule Form -->
-            <div class="col-lg-6 col-md-6" v-if="display!=='add'">
+            <div class="col-lg-6 col-md-6" v-if="showAddSchedule==false">
                 <h3> Edit Schedule </h3>
                 <form @submit.prevent="editSchedule"> 
                     <div class="submit-form">
@@ -84,15 +72,17 @@
   import VueMultiselect from 'vue-multiselect'
   import { useScheduleStore } from '/src/stores/schedule_store';
   import cronstuff from '../views/searchbar.vue'
+  import itemList from '../components/list_items.vue';
   export default {
-    components: { VueMultiselect, cronstuff },
+    components: { VueMultiselect, cronstuff, itemList },
     data() {
         return {
             scheduleStore: useScheduleStore(),
             currentIndex: {},
             currentItem: {},
-            display: 'add',
             old_schedule_name: '',
+            showAddSchedule: true,
+            mount: false,
 
             // for input binding
             cronExpression: "* * * * *",
@@ -101,17 +91,18 @@
     },
     async mounted() {
         await this.scheduleStore.getSchedules();
+        this.mount = true;
     },
     methods: {
         addScheduleForm() {
-            this.display = 'add';
+            this.showAddSchedule = true;
             this.currentIndex = {};
         },
-        setActiveSchedule(schedule, index=1) {
-            this.currentIndex = index;
-            this.currentItem = schedule;
-            this.old_schedule_name = schedule.name;
-            this.display = 'edit';
+        updateActiveSchedule(indexArray) {
+            this.currentItem=indexArray[0];
+            this.currentIndex=indexArray[1];
+            this.old_schedule_name = this.currentItem.name;
+            this.showAddSchedule = false;
         },
         updateCronExp(updatedCronExp) {
             this.cronExpression=updatedCronExp;

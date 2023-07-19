@@ -51,10 +51,10 @@ const routes =  [
         component: () => import("./views/ssid_profiles.vue")
     },
     {
-        path: "/json",
-        alias: "/json",
+        path: "/newform",
+        alias: "/newform",
         name: "json_page",
-        component: () => import("./views/json_forms.vue")
+        component: () => import("./forms/addForm.vue")
     },
 
   ];
