@@ -2,7 +2,6 @@ import express, { Express, Request, Response } from 'express';
 var tests = express.Router();
 
 const {getTests, 
-    getOneTest, 
     deleteTest, 
     postTest,
     updateTest,
