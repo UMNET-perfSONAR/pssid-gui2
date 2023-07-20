@@ -66,6 +66,7 @@ const deleteBatch = (async (req:Request, res:Response) => {
             const outdated_collection = (await client).db('gui').collection(item); 
             await deleteDocument(outdated_collection, 'batches', 'batch_ids', deleted?.name); 
         }
+        await batch_col.findOneAndDelete({ "name" : batch });                           // remove from collection 
         res.send('batch ' + batch + ' was deleted!');
     }
     catch(error) {

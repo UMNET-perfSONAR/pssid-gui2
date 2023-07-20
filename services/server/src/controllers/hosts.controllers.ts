@@ -2,8 +2,8 @@ import express, { Express, NextFunction, Request, Response } from 'express';
 import { connectToMongoDB } from '../services/ideas.service';
 import { updateCollection } from '../services/update.service';
 import { get_batch_ids } from '../services/utility.services';
-import { hostname } from 'os';
 import { deleteDocument } from '../services/delete.service';
+import { create_config_file } from '../services/config.service';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -150,9 +150,23 @@ const updateHost = (async (req:Request, res:Response) => {
         res.status(500).json({message:"Server Error"});
     }
 } )
+
+const createConfig = (async (req: Request, res: Response) =>{
+    console.log('createConfig')
+    try {  
+        await create_config_file();
+        res.send('Config file created');
+    }
+    catch(error) {
+        console.error(error);
+        res.status(500).json({message:"Server Error"});
+    }
+})
+
 module.exports = {getHosts, 
-                getOneHost, 
-                deleteHost, 
-                postHost, 
-                deleteAll,
-                updateHost};
+                    getOneHost, 
+                    deleteHost, 
+                    postHost, 
+                    deleteAll,
+                    updateHost,
+                    createConfig};

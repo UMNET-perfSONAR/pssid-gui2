@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import { MongoClient, Db, MongoServerError, Collection, ObjectId } from "mongodb";
 import { connectToMongoDB } from '../services/ideas.service';
 import { get_batch_ids, get_host_ids } from '../services/utility.services';
+import { create_config_file } from '../services/config.service';
 
 var client = connectToMongoDB();
 
@@ -104,11 +105,10 @@ const postHostGroup = (async (req:Request, res:Response) => {
 const updateHostGroup = (async (req:Request, res:Response) => {
     try {
         (await client).connect();
-
-        console.log('update host group')
         let data = req.body;
         let collection = (await client).db('gui').collection('host_groups');
         let doc = await collection.findOne({name: req.body.old_hostgroup});
+        console.log(data.hosts_regex);
         await collection.updateOne({
             "name": data.old_hostgroup
         }, {$set:{"name": data.new_hostgroup, "hosts":data.hosts, 
@@ -127,8 +127,20 @@ const updateHostGroup = (async (req:Request, res:Response) => {
         res.status(500).json({message:"Server Error"});
     }
 } )
+
+const createConfig = (async (req: Request, res: Response) =>{
+    try {  
+        await create_config_file();
+        res.send('Config file created');
+    }
+    catch(error) {
+        console.error(error);
+        res.status(500).json({message:"Server Error"});
+    }
+})
 module.exports = {getHostGroups, 
                 getOneHostGroup, 
                 deleteHostGroup, 
                 postHostGroup, 
-                updateHostGroup};
+                updateHostGroup,
+                createConfig};

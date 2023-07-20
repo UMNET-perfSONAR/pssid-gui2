@@ -88,7 +88,7 @@ const postJob = (async (req:Request, res:Response) => {
             "parallel": req.body.parallel,
             "tests": req.body.tests,
             "test_ids": test_ids,
-            "continue_if": req.body.continue_if
+            "continue-if": req.body['continue-if']
         });   
         res.json(req.body);
     }
@@ -113,7 +113,7 @@ const updateJob = (async (req:Request, res:Response) => {
         let doc = await collection.findOne({name: req.body.old_job});
         await collection.updateOne({
             "name": body.old_job
-        }, {$set:{"name": body.new_job, "parallel": body.parallel, "continue_if": body.continue_if,
+        }, {$set:{"name": body.new_job, "parallel": body.parallel, "continue-if": body['continue-if'],
                 "test_ids": (JSON.stringify(doc?.tests) === JSON.stringify(body.tests)) 
                                 ? doc?.tests : await get_test_ids(client, body),
                 "tests": body.tests
