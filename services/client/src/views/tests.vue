@@ -207,14 +207,19 @@
             },  
             // form_data in this case will be the "spec" information 
             async handleSubmit (form_data) {
-                const obj = this.testStore.formatPostData(form_data, this.optional_data);
-                await this.testStore.addTest({
-                    name: this.test_name,
-                    type: this.selected_test,
-                    spec: obj
-                });
-                this.test_name='';
-                this.selected_test='';
+                if (this.test_name.length > 0) {
+                    const obj = this.testStore.formatPostData(form_data, this.optional_data);
+                    await this.testStore.addTest({
+                        name: this.test_name,
+                        type: this.selected_test,
+                        spec: obj
+                    });
+                    this.test_name='';
+                    this.selected_test='';
+                }
+                else {
+                    alert('Please add a test name!');
+                }
             },
             /**
              * update current test item using put request
@@ -222,6 +227,10 @@
              * @param {*} editFormInputs - contains data to update test with 
              */
             async editTest(editFormInputs) {
+                if (this.currentItem.name.length === 0) {
+                    alert('Please enter a test name!')
+                    return
+                }
                 const data = editFormInputs.reduce((result, item)=> {
                     result[item.name] = item.value
                     return result

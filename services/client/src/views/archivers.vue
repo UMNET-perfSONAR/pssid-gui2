@@ -117,10 +117,7 @@ import itemList from '../components/list_items.vue'
         // variables cor add form
         selected_archiver: '',
         archiver_name:'',
-        optional_data: [{
-          "key": '',
-          "value": ''
-        }],
+        optional_data: [],
         mount: false, 
 
         all_archiver_options: [],
@@ -194,6 +191,10 @@ import itemList from '../components/list_items.vue'
       },
       // edit current item
       async editArchiver(editFormInputs) {
+        if (this.currentItem.name.length === 0) {
+          alert('Please enter an archiver name!');
+          return;
+        }
         const data = editFormInputs.reduce((result, item)=> {
                     result[item.name] = item.value
                     return result
@@ -237,6 +238,10 @@ import itemList from '../components/list_items.vue'
       // format and submit data to DB
       // TODO - Move most of this to the store. too much going on here
       async handleSubmit(form_data) {
+        if (this.archiver_name.length==0) {
+            alert('Please enter an archiver name!');
+            return;
+        }
         const spec_object = form_data.reduce((result, item)=> {
           console.log(item.name);
           if (item.name==="Optional Data") {
