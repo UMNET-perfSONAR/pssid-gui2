@@ -130,7 +130,8 @@ const updateHostGroup = (async (req:Request, res:Response) => {
 
 const createConfig = (async (req: Request, res: Response) =>{
     try {  
-        await create_config_file();
+        let name = (req.body.length==0)? '?' : req.body.name;
+        await create_config_file(name, 'host_group');
         res.send('Config file created');
     }
     catch(error) {
