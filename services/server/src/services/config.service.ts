@@ -1,6 +1,7 @@
 // generate a config file from current state of DBs
 import { MongoClient } from 'mongodb';
 import { connectToMongoDB } from './ideas.service';
+import { exec } from 'node:child_process';
 const path = './config.json'
 const ini_path = './ansible.ini'
 const { writeFileSync } = require('fs');
@@ -74,6 +75,11 @@ export async function create_config_file() {
         writeIniFile(obj);    
         const clean_object = removeIdsProperties(obj);
         writeFileSync(path, JSON.stringify(clean_object, null, 2), 'utf8');
+        exec('./shellscript.sh', (err)=> {
+            if (err) {
+                console.log(err);
+            }
+        })
         console.log('Data successfully saved to disk');
     } catch (error) {
         console.log('An error has occurred ', error);
