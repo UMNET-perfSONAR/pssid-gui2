@@ -7,7 +7,7 @@
     <!-- Add Host Button -->
     <div style="margin-bottom:1em">
       <button @click="addHostForm" class="btn btn-primary" style="margin-right: 1em;"> Add Host Group</button>
-      <button class="btn btn-warning"> Submit to probes </button>
+      <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning"> Submit to probes </button>
     </div>
     <div class="list row"> 
       <!-- Host Group List -->
@@ -186,7 +186,8 @@ import hostSelection from '../forms/hostSelection.vue';
                     
         this.currentGroup.hosts.forEach(element => {
               console.log(element)
-              const ind = this.hosts_to_edit.findIndex((host) => element.name==host.name);
+              console.log(this.hosts_to_edit);
+              const ind = this.hosts_to_edit.findIndex((host) => element==host.name);
               console.log(ind);
               this.hosts_to_edit[ind].selected = true;
         });
