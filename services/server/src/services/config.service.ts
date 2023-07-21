@@ -16,6 +16,11 @@ async function get_collection(client: MongoClient, col: String) {
     return host_data;  
 }
 
+/**
+ * Removes **_ids fields from all objects in config.json file 
+ * @param obj - full config file with additional *_ids fields
+ * @returns - modified object with **_ids removed 
+ */
 function removeIdsProperties(obj:any) {
     for (const key in obj) {
         if (key.endsWith('_ids')) {
@@ -54,9 +59,8 @@ function writeIniFile(obj:&any) {
 }
  
 // serves as "driver" for this project 
-export async function create_config_file() {
+export async function create_config_file(name: string, click_context:string) {
     try {
-        let iniContent = '';
         const client = await connectToMongoDB();
         let host_data = await get_collection(client, "hosts");
         let schedule_data = await get_collection(client, "schedules");
@@ -75,11 +79,12 @@ export async function create_config_file() {
         writeIniFile(obj);    
         const clean_object = removeIdsProperties(obj);
         writeFileSync(path, JSON.stringify(clean_object, null, 2), 'utf8');
-        exec('./shellscript.sh', (err)=> {
-            if (err) {
-                console.log(err);
-            }
-        })
+        if (name === '?') {
+            exec(`'./shellscript.sh' '${name}'`, (err)=> {console.error(err)})
+        }
+        else {
+            exec(`'./shellscript.sh' '--${click_context}' '${name}'`, (err) => {console.error(err)})
+        }
         console.log('Data successfully saved to disk');
     } catch (error) {
         console.log('An error has occurred ', error);
