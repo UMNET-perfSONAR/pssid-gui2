@@ -2,7 +2,7 @@
   <!-- buttons -->
   <div style="margin-bottom:1em;">
     <button class="btn btn-primary" @click="addHostComp" style="margin-right: 1em;"> Add Hosts</button>
-    <button class="btn btn-warning" @click="hostStore.createConfig();"> Submit to probes </button>
+    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);"> Submit to probes </button>
   </div>
   <div class="list row">
      <!-- List out the items -->
@@ -114,7 +114,7 @@
         }],
 
         // rendering of subpages
-        currentItem: {},
+        currentItem: [],
         currentIndex: {},
         showAddHost: true,
         batch: [],
@@ -133,7 +133,6 @@
      async mounted() {
       await this.hostStore.getHosts();
       await this.batchStore.getBatches();
-      console.log(this.hostStore.hosts);
       this.form_data=[{
           "type":"text",
           "name": "Host Name"
@@ -151,7 +150,6 @@
                 selected: []
             }))
       this.mounted=true;
-      console.log('we have mounted')
      },
 
      methods: {
@@ -204,13 +202,13 @@
       addHostComp() {
           this.display='add'
           this.showAddHost=true;
-          this.currentItem={};
+          this.currentItem=[];
           this.currentIndex={}
        },
       async deleteHost() {
         this.hostStore.hosts.splice(this.currentIndex,1);
         await this.hostStore.deleteHost(this.currentItem);
-        this.currentItem={};
+        this.currentItem=[];
         this.currentIndex={};
         this.data=[];
         // await this.groupStore.getGroups();
