@@ -1,7 +1,9 @@
 <!-- List items dynamically. Emit click event back to local file -->
 <template>
-    <div>
-
+    <div v-if="itemArray.length === 0">
+        List is empty
+    </div>
+    <div v-else>
         <!-- regex search bar-->
         <input style="margin-bottom: 1em"
           type="text"
