@@ -11,7 +11,7 @@ const {getArchivers,
 
 archivers.get('/', getArchivers);
 archivers.get('/archiver-files',readFileNames);
-archivers.get('/read-test/:name', readArchiverFile);
+archivers.get('/read-archiver/:name', readArchiverFile);
 archivers.delete('/:archiver_name', deleteArchiver);
 archivers.post('/create-archiver', postArchiver);
 archivers.put('/update-archiver', updateArchiver);

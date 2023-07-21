@@ -9,27 +9,14 @@
         <div>
             <button @click="addJobForm" class="btn btn-primary" style="margin-bottom: 1em;"> Add Job </button>
         </div>
-
+        <h3> Job List </h3>
         <div class="list row"> 
-            <!-- make separate component and emit active back to parent? -->
-            <div class="col-md-6"> 
-                <!-- job list -->
-                <h3> Job List </h3>
-                <ul class="list-group" style="overflow: auto; height: 400px;">
-                        <li
-                            class="list-group-item"
-                            :class="{active: index == currentIndex}"
-                            v-for="(item, index) in jobStore.jobs"
-                            :key="index"
-                            @click="setActiveJob(item, index)"
-                            >
-                            <p> {{ item.name }}</p>
-                        </li>
-                    </ul>
-            </div>
+            <itemList v-if="mount ==true" :itemArray="jobStore.jobs" :display="showAddJob" 
+                @updateActive="setActiveJob" style="cursor:pointer;"
+                class="col-md-6"></itemList>
 
             <!-- Add Form -->
-            <div class="col-md-6" v-if="display==='add'">
+            <div class="col-md-6" v-if="showAddJob==true">
                 <h3> Add Job </h3>
                 <form @submit.prevent="submitJob"> 
                     <div class="submit-form">
@@ -61,18 +48,14 @@
                         <!-- Continue -If radio buttons -->
                         <div class="form-group">
                             <label style="margin-right:1em"> Continue-If:</label>
-                            <section>
-                                <input
-                                    type="radio"
-                                    v-model="continue_if"
-                                    class="radio-button"
-                                    value="True"/> True 
-                                <input
-                                    type="radio"
-                                    v-model="continue_if"
-                                    class="radio-button"
-                                    value="False"/> False
-                            </section>
+                            <input
+                                type="text"
+                                placeholder="Enter here"
+                                required
+                                id="name"
+                                class="form-control"
+                                v-model="continue_if"
+                            />
                         </div>
                         <!-- Parallel radio buttons -->
                         <div class="form-group">
@@ -97,9 +80,9 @@
             </div>
 
             <!-- Edit Job Form -->
-            <div class="col-md-6" v-if="display!=='add'">
+            <div class="col-md-6" v-if="showAddJob==false">
                 <h3> Edit Job </h3>
-                <form @submit.prevent="submitJob"> 
+                <form @submit.prevent="editJob"> 
                     <div class="submit-form">
                         <!-- Job name text box -->
                         <div class="form-group">
@@ -120,25 +103,21 @@
                                 v-model="currentItem.tests"
                                 :multiple="true"
                                 :close-on-select="false"
-                                :options="testStore.tests"
+                                :options="testStore.tests.map(item=>item.name)"
                             >
                             </VueMultiselect>
                         </div>
                         <!-- Continue -If radio buttons -->
                         <div class="form-group">
                             <label style="margin-right:1em"> Continue-If:</label>
-                            <section>
-                                <input
-                                    type="radio"
-                                    v-model="currentItem.continue_if"
-                                    class="radio-button"
-                                    value="True"/> True 
-                                <input
-                                    type="radio"
-                                    v-model="currentItem.continue_if"
-                                    class="radio-button"
-                                    value="False"/> False
-                            </section>
+                            <input
+                                type="text"
+                                placeholder="Enter here"
+                                required
+                                id="name"
+                                class="form-control"
+                                v-model="currentItem['continue-if']"
+                            />
                         </div>
                         <!-- Parallel radio buttons -->
                         <div class="form-group">
@@ -157,7 +136,7 @@
                             </section>
                         </div>
                         <div>
-                            <button class="btn btn-success" style="margin-right: 1em;"> Submit </button>
+                            <button class="btn btn-success" style="margin-right: 1em;"> Update </button>
                             <button class="btn btn-danger" @click.prevent="deleteJob"> Delete </button>
                         </div>
                     </div>
@@ -169,28 +148,30 @@
 </template>
 
 <script>
-    import { formToJSON } from 'axios';
     import { useJobStore } from '../stores/job_store.ts'
     import { useTestStore } from '../stores/test_store.ts';
     import dynamicform from '../components/dynamicform.vue';
     import VueMultiselect from 'vue-multiselect';
+    import itemList from '../components/list_items.vue'
 
     export default {
-        components: { dynamicform, VueMultiselect },
+        components: { dynamicform, VueMultiselect, itemList },
         data() {
             return {
                 // input binding 
                 parallel: '',
                 job_name: '',
-                continue_if: '',
+                continue_if: 'true',
                 selected_tests: [],
                 showAddForm: true,
+                old_job_name: '',
+                mount:false,
 
                 // select items/ switch from add to edit
                 currentIndex: {},
                 currentItem: {},
                 currentJobName: '',
-                display: 'add',
+                showAddJob: true,
 
                 // stores 
                 jobStore: useJobStore(),
@@ -200,20 +181,19 @@
         async mounted() {
             await this.jobStore.getJobs();
             await this.testStore.getTests();
-            console.log(this.testStore.tests);
+            this.mount = true;
         },
         methods: {
             addJobForm() {
-                this.display = 'add';
+                this.showAddJob = true;
                 this.currentIndex = {}; 
     
             },
-            setActiveJob(job, index=1) {
-                this.currentIndex = index;
-                this.currentItem = job;
-                console.log(this.currentItem);
-                this.display = '';
-  
+            setActiveJob(indexArray) {
+                this.currentItem = indexArray[0];
+                this.currentIndex = indexArray[1];
+                this.showAddJob = false;
+                this.old_job_name = this.currentItem.name;
             },
             // submit job to backend 
             submitJob() {
@@ -221,19 +201,28 @@
                     this.jobStore.addJob({
                         name: this.job_name,
                         tests: (this.selected_tests.length == 0)? [] : this.selected_tests.map(obj => obj.name),
-                        continue_if: this.continue_if,
+                        "continue-if": this.continue_if,
                         parallel: this.parallel
                     }) 
                     // reset values
                     this.job_name='';
                     this.parallel='';
-                    this.continue_if='';
+                    this.continue_if='true';
                     this.selected_tests=[]
                 }
             },
             async deleteJob() {
                 this.jobStore.jobs.splice(this.currentIndex,1);
                 await this.jobStore.deleteJob(this.currentItem);
+            },
+            async editJob() {
+                await this.jobStore.updateJob({
+                        old_job: this.old_job_name,
+                        new_job: this.currentItem.name,
+                        parallel: this.currentItem.parallel,
+                        "continue-if": this.currentItem['continue-if'],
+                        tests: this.currentItem.tests
+                })
             }
         }
         

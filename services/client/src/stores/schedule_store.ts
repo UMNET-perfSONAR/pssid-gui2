@@ -42,6 +42,20 @@ export const useScheduleStore = defineStore('scheduleStore', {
                 }
             );
         },
+        async updateSchedule(updateScheduleObj:any) {
+            await fetch(
+                "http://localhost:8000/schedules/update-schedule",
+                {
+                    method: "PUT",
+                    mode: "cors",
+                    body: JSON.stringify(updateScheduleObj),
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+ 
+                }
+            )
+        }
 
     }
 })

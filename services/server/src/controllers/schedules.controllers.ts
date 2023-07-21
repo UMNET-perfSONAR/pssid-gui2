@@ -13,10 +13,17 @@ var client = connectToMongoDB();
  * @param res - response sent back to client 
  */
 const getSchedules = (async (req: Request, res: Response) =>{
-    (await client).connect();
-    var collection = (await client).db("gui").collection("schedules");
-    const schedules = await collection.find().project({_id:0}).toArray();
-    res.send(schedules);
+    try {
+        (await client).connect();
+        var collection = (await client).db("gui").collection("schedules");
+        const schedules = await collection.find().project({_id:0}).toArray();
+        res.send(schedules);
+    }
+    catch(error) {
+        console.error(error);
+        res.status(500).json({message:"Server Error"});
+    }
+
 })
 
 
@@ -27,18 +34,24 @@ const getSchedules = (async (req: Request, res: Response) =>{
  * @param res - response sent back to client 
  */
 const deleteSchedule = (async (req:Request, res:Response) => {
-    const name = String(req.params.schedulename);
-    (await client).connect();
-    const schedule_col = (await client).db('gui').collection('schedules');
-    const batch_col = (await client).db('gui').collection('batches');
+    try {
+        const name = String(req.params.schedulename);
+        (await client).connect();
+        const schedule_col = (await client).db('gui').collection('schedules');
+        const batch_col = (await client).db('gui').collection('batches');
 
-    const deleted = await schedule_col.findOne({ "name" : name });    
+        const deleted = await schedule_col.findOne({ "name" : name });    
 
-    deleteDocument(batch_col, 'schedules', 'schedule_ids', deleted?.name);        // delete references from other collections
+        deleteDocument(batch_col, 'schedules', 'schedule_ids', deleted?.name);        // delete references from other collections
 
-    await schedule_col.findOneAndDelete({ "name" : name });       
+        await schedule_col.findOneAndDelete({ "name" : name });       
 
-    res.send('schedule ' + name + ' was deleted');
+        res.send('schedule ' + name + ' was deleted');
+    }
+    catch(error) {
+        console.error(error);
+        res.status(500).json({message:"Server Error"});
+    }
 })
 
 
@@ -49,13 +62,19 @@ const deleteSchedule = (async (req:Request, res:Response) => {
  * @param res - response sent back to client 
  */
 const postSchedule = (async (req:Request, res:Response) => {
-    (await client).connect();
-    var collection = await (await client).db('gui').collection('schedules');
-    collection.insertOne({
-        "schedule" : req.body.schedule,
-        "repeat" : req.body.repeat
-    });
-    res.json(req.body);
+    try {
+        (await client).connect();
+        var collection = (await client).db('gui').collection('schedules');
+        collection.insertOne({
+            "name" : req.body.name,
+            "repeat" : req.body.repeat
+        });
+        res.json(req.body);
+    }
+    catch(error) {
+        console.error(error);
+        res.status(500).json({message:"Server Error"});
+    }
 })
 
 /**
@@ -66,18 +85,24 @@ const postSchedule = (async (req:Request, res:Response) => {
  * @param res - response sent back to client 
  */
 const updateSchedule = (async (req:Request, res:Response) => {
-    (await client).connect();
-    var collection = (await client).db('gui').collection('schedules');
-    await collection.updateOne({
-        "name": req.body.old_schedule
-    }, {$set:{"name": req.body.new_schedule, "repeat":req.body.repeat}
-     });
-    
-    if (req.body.old_schedule !== req.body.new_schedule) {      // Trigger update in batches collection
-        await updateCollection('batches', 'schedules', client);        // update batches using schedules collection
+    try {
+        (await client).connect();
+        var collection = (await client).db('gui').collection('schedules');
+        await collection.updateOne({
+            "name": req.body.old_schedule
+        }, {$set:{"name": req.body.new_schedule, "repeat":req.body.repeat}
+        });
+        
+        if (req.body.old_schedule !== req.body.new_schedule) {      // Trigger update in batches collection
+            await updateCollection('batches', 'schedules', client);        // update batches using schedules collection
+        }
+        
+        res.json(req.body);
     }
-    
-    res.json(req.body);
+    catch(error) {
+        console.error(error);
+        res.status(500).json({message:"Server Error"});
+    }
 } )
 
 module.exports = {getSchedules, 

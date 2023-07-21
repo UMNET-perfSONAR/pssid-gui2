@@ -5,11 +5,13 @@ const {getHostGroups,
     getOneHostGroup, 
     deleteHostGroup, 
     postHostGroup, 
-    updateHostGroup} = require('../controllers/host-groups.contollers');
+    updateHostGroup,
+createConfig} = require('../controllers/host-groups.contollers');
 
 
 hostGroups.get('/', getHostGroups);
 hostGroups.get('/:host_group', getOneHostGroup);
+hostGroups.post('/config', createConfig);
 hostGroups.delete('/:host_group', deleteHostGroup);
 hostGroups.post('/create-hostgroup', postHostGroup);
 hostGroups.put('/update-hostgroup', updateHostGroup);

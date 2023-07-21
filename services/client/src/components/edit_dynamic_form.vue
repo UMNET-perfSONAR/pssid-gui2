@@ -13,6 +13,7 @@
                 />
         </div>
         <div>
+            <label>Optional Data</label>
             <dynamic_add_data :addedData="dynamic_options"></dynamic_add_data>
         </div>
         <div>
@@ -50,7 +51,6 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
             },
 
             editCurItem() {
-                console.log('edit cur item')
                 this.$emit('editItem', this.input_fields)
             },
 
@@ -58,15 +58,17 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
                 // extract spec information 
                 this.input_fields = [];
 
-                console.log(this.current_item)
-
                 const object = (this.current_item.archiver !== undefined) ? 
                             this.current_item.data : this.current_item.spec; 
-
-                this.input_fields = Object.entries(object).map(([name,value]) => ({
-                    name,
-                    value
+                if (object) {
+                    this.input_fields = Object.entries(object).map(([name,value]) => ({
+                         name,
+                        value
                 }))
+                }
+                else {
+                    this.input_fields = [];
+                }
             },
         }, 
         props: {

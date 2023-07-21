@@ -62,10 +62,12 @@ export const useBatchStore = defineStore('batchStore', {
          * @param batch - Batch we want to delete 
          */
         async deleteBatch(batch:any) {
+            console.log('delete');
             await fetch(
                 "http://localhost:8000/batches/"+batch.name,
                 {
                     method: 'DELETE',
+                    mode: 'cors'
                 }
             );
         },
@@ -80,13 +82,6 @@ export const useBatchStore = defineStore('batchStore', {
             );
             this.batches = [];
         },
-
-        toggleBatch(_id:any) {
-            const batch = this.batches.find(h => (h as any)._id == _id)
-            if (batch !== undefined) {
-                (batch as any).isFav = !(batch as any).isFav
-            }
-        }
     }
 })
 

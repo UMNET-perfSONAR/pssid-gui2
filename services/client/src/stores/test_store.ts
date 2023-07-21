@@ -4,19 +4,27 @@ export const useTestStore = defineStore('test', {
     state: () => ({
         tests: [{}],
         isLoading: false,
+        isError: false,
         listOfOptions: [],
         selectedTest:[],
         test_options:[],
+        curr_data:[]
     }),
 
     actions: {
 
         async getTests() {
-            this.isLoading = true;
-            const res = await fetch('http://localhost:8000/tests')
-            const data = await res.json()
-            this.tests = data;
-            this.isLoading = false;
+            try {
+                this.isLoading = true;
+                const res = await fetch('http://localhost:8000/tests')
+                const data = await res.json()
+                this.tests = data;
+                this.isLoading = false;
+            }
+            catch(error) {
+                console.error(error);
+                this.isError=true;
+            }
         },
 
         // get name of all available tests
@@ -28,16 +36,13 @@ export const useTestStore = defineStore('test', {
             this.isLoading = false;
         },
 
-        async getDesiredTest(test_name: string, test_to_update:string) {
+        async getDesiredTest(test_name: string) {
             this.isLoading = true;
             const res = await fetch('http://localhost:8000/tests/read-test/'+test_name)
             const data = await res.json();
-            if (test_to_update === 'selected') {
-                this.selectedTest = data;
-            }
-            else {
-                this.test_options = data; 
-            }
+    
+            this.test_options = data; 
+            
             this.isLoading = false;
         },
 
@@ -71,16 +76,10 @@ export const useTestStore = defineStore('test', {
                     }
                 }
             );
-            console.log('adding_test')
             this.tests.push(test);
             this.isLoading=false;
-                   // using json will include the test's unique id 
         },
 
-        /**
-         * Delete test from database and remove component from front end
-         * @param test - Test we want to delete 
-         */
         async deleteTest(test:any) {
             await fetch(
                 "http://localhost:8000/tests/"+test.name,
@@ -99,7 +98,23 @@ export const useTestStore = defineStore('test', {
                 }
             );
             this.tests = [];
-        }
+        },
+
+        formatPostData(form_data: Array<any>, optional_data: Array<any>) {
+            const spec_object = form_data.reduce((result, item)=> {
+                if (item.name==="Optional Data") {
+                    return result;
+                }
+                result[item.name] = item.value
+                return result
+            }, {});
+            const data_object = optional_data.reduce((result, item)=> {
+                result[item.key] = item.value
+                return result
+                }, {});
+            const obj = Object.assign(spec_object, data_object)
+            return obj;
+        },
     }
 })
 

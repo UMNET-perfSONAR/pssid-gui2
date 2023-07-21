@@ -10,26 +10,15 @@
         <button @click="addArchiverForm" 
         class="btn btn-primary" style="margin-bottom: 1em;"> Add Archiver </button>
       </div>
-
+      <h3>Archiver List</h3>
       <div class="list row"> 
         <!-- archiver list -->
-        <div class="col-md-6">
-          <h3> Archiver List </h3>
-          <ul class="list-group" style="overflow: auto; height: 400px;">
-            <li
-              class="list-group-item"
-              :class="{active: index == currentIndex}"
-              v-for="(item, index) in archiverStore.archivers"
-              :key="index"
-              @click="setActiveArchiver(item, index)"
-              >
-              <p> {{ item.name }}</p>
-              </li>
-          </ul>
-        </div>
+        <itemList v-if="mount == true" :item-array="archiverStore.archivers" :display="showAddArchiver"
+          @updateActive="updateActiveArchiver" style="cursor:pointer;" class="col-md-6"
+        ></itemList>
 
         <!-- Add form page -->
-        <div class="col-md-6" v-if="display==='add'">
+        <div class="col-md-6" v-if="showAddArchiver == true">
           <h3> Add Archiver </h3>
           <form>
             <!-- Non-dynamic components -->
@@ -59,7 +48,7 @@
             <!-- Dynamically render add form information -->
             <div v-if="showForm===true">
               <dynamicForm @formData="handleSubmit"
-              :form_layout="archiverStore.selectedArchiver"
+              :form_layout="all_archiver_options"
               :optional_data="optional_data">
               </dynamicForm>
             </div>
@@ -67,7 +56,7 @@
         </div>
 
         <!-- Edit form page -->
-        <div class="col-md-6" v-if="display!=='add'">
+        <div class="col-md-6" v-if="showAddArchiver == false">
           <h3> Edit Archiver </h3>
           <!-- Non-dynamic componenets -->
           <div style="margin-bottom: 1em;">
@@ -102,9 +91,10 @@
             </editFormComp> 
           </div>
           <div v-else> 
-            <dynamicForm :form_data="this.archiverStore.selectedArchiver"
+            <dynamicForm :form_layout="all_archiver_options"
                 @formData="editArchiver"
-                :add="false">
+                :optional_data="optional_data"
+                >
             </dynamicForm>
           </div>
 
@@ -119,20 +109,21 @@ import dynamicForm from '../components/dynamicform.vue';
 import editFormComp from '../components/edit_dynamic_form.vue';
 import VueMultiselect from 'vue-multiselect';
 import dynamic_add_data from '../components/dynamic_add_data.vue';
+import itemList from '../components/list_items.vue'
   export default {
-    components: { dynamicForm, VueMultiselect, editFormComp, dynamic_add_data },
+    components: { dynamicForm, VueMultiselect, editFormComp, dynamic_add_data, itemList },
     data() {
       return {
         // variables cor add form
         selected_archiver: '',
         archiver_name:'',
-        optional_data: [{
-          "key": '',
-          "value": ''
-        }],
+        optional_data: [],
+        mount: false, 
+
+        all_archiver_options: [],
 
         // manage view of pages 
-        display: 'add',
+        showAddArchiver:true,
         showForm: false,
         currentIndex: {},
         currentItem: {},
@@ -150,16 +141,21 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
     async mounted() {
       await this.archiverStore.getArchivers();
       await this.archiverStore.getArchiverNames();
+      this.mount = true; 
     },
     methods: {
-      async setActiveArchiver(archiver, index=1) {
-        // TODO - CLEANUP THIS FUNCTION 
-
+       /**
+       * update page to view selected host/ edit screen
+       * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
+       */
+      async updateActiveArchiver(indexArray) {
+        const archiver = indexArray[0];
+        const index = indexArray[1];
         let ind=0;
         const data = JSON.parse(JSON.stringify(archiver.data))
         // load num 
         this.formType = archiver.archiver;
-        await this.archiverStore.getDesiredArchiver(this.formType, 'selected')
+        await this.archiverStore.getDesiredArchiver(this.formType)
         
         // use to extract data from archivers.data
         const myJson = '{}';
@@ -168,7 +164,7 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
         this.curr_data = []
 
         for (const [key,value] of Object.entries(data)) {
-          if (ind++ < this.archiverStore.selectedArchiver.length-1) {
+          if (ind++ < this.archiverStore.archiver_options.length-1) {
              console.log((`${key}:${value}`));
              json_object[key] = value;
           }
@@ -186,15 +182,19 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
         // set display related variables 
         this.old_archiver_name=archiver.name;
         this.archiver_type = archiver.archiver;
-        this.display=''
+        this.showAddArchiver=false;
       },
       addArchiverForm() {
-        this.display='add';
+        this.showAddArchiver=true;
         this.currentIndex={};
 
       },
       // edit current item
       async editArchiver(editFormInputs) {
+        if (this.currentItem.name.length === 0) {
+          alert('Please enter an archiver name!');
+          return;
+        }
         const data = editFormInputs.reduce((result, item)=> {
                     result[item.name] = item.value
                     return result
@@ -216,12 +216,16 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
       // render form information from server
       async renderForm() {
         this.formType=this.currentItem.archiver;
-        await this.archiverStore.getDesiredArchiver(this.formType, 'selected')
+        await this.archiverStore.getDesiredArchiver(this.formType)
+        this.all_archiver_options = this.archiverStore.archiver_options;
+        this.all_archiver_options.push({'type':'optional', 'name': 'Optional Data'});
         this.showForm=true; 
       },
 
       async renderAddForm() {
-        await this.archiverStore.getDesiredArchiver(this.selected_archiver, 'selected')
+        await this.archiverStore.getDesiredArchiver(this.selected_archiver)
+        this.all_archiver_options = this.archiverStore.archiver_options;
+        this.all_archiver_options.push({'type':'optional', 'name': 'Optional Data'});
         this.showForm=true; 
       },
 
@@ -234,6 +238,10 @@ import dynamic_add_data from '../components/dynamic_add_data.vue';
       // format and submit data to DB
       // TODO - Move most of this to the store. too much going on here
       async handleSubmit(form_data) {
+        if (this.archiver_name.length==0) {
+            alert('Please enter an archiver name!');
+            return;
+        }
         const spec_object = form_data.reduce((result, item)=> {
           console.log(item.name);
           if (item.name==="Optional Data") {

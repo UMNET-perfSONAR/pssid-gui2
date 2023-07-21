@@ -11,12 +11,6 @@ export const useHostStore = defineStore('hostStore', {
         hosts: [{}],
         isLoading: false
     }),
-
-    // use to extract any relevant information/ can manipulate slightly
-    getters: {
-
-    },
-
     actions: {
         // TODO: Use Axios?? 
         async getHosts() {
@@ -55,15 +49,13 @@ export const useHostStore = defineStore('hostStore', {
          * @param host - Host we want to delete 
          */
         async deleteHost(host:any) {
+            console.log(host)
             await fetch(
-                "http://localhost:8000/hosts/"+host.name,
+                "http://localhost:8000/hosts/"+host?.name,
                 {
                     method: 'DELETE',
                 }
             );
-            this.hosts = this.hosts.filter(h => {
-                return (h as any)._id!== host._id
-            })
         },
 
         async editHost(updateHostObj:any) {
@@ -83,7 +75,6 @@ export const useHostStore = defineStore('hostStore', {
         },
 
         async deleteAll() {
-            console.log('called function');
             await fetch(
                 "http://localhost:8000/hosts",
                 {
@@ -92,13 +83,19 @@ export const useHostStore = defineStore('hostStore', {
             );
             this.hosts = [];
         },
-
-        toggleHost(_id:any) {
-            const host = this.hosts.find(h => (h as any)._id == _id)
-            if (host !== undefined) {
-                (host as any).isFav = !(host as any).isFav
-            }
-        }
+        async createConfig(currentHost: any) {
+            await fetch(
+                'http://localhost:8000/hosts/config',
+                {
+                    method: 'POST',
+                    body: JSON.stringify(currentHost),
+                    mode: 'cors',
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                }
+            ) 
+        },
     }
 })
 

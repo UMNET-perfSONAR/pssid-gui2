@@ -22,7 +22,7 @@ export const useJobStore = defineStore('jobStore', {
         // add job to an array. take a job object and add to array
         async addJob(job:any) {
             this.isLoading = true;
-            
+            console.log(job);
             await fetch(
                 "http://localhost:8000/jobs/create-job",
                 {
@@ -54,7 +54,6 @@ export const useJobStore = defineStore('jobStore', {
         },
 
         async deleteAll() {
-            console.log('called function');
             await fetch(
                 "http://localhost:8000/jobs",
                 {
@@ -62,6 +61,20 @@ export const useJobStore = defineStore('jobStore', {
                 }
             );
             this.jobs = [];
+        },
+        async updateJob(updatedJobObj) {
+            await fetch(
+                "http://localhost:8000/jobs/update-job",
+                {
+                    method: "PUT",
+                    mode: "cors",
+                    body: JSON.stringify(updatedJobObj),
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+ 
+                }
+            )
         }
     }
 })

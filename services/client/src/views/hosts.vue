@@ -1,20 +1,15 @@
 <template>
-<!-- regex search bar -->
-
-  <button
-    class="btn btn-primary"
-    type="button"
-    @click="addHostComp"
-    style="margin-bottom: 1em;"
-  >  
-     Add Hosts
-  </button>
+  <!-- buttons -->
+  <div style="margin-bottom:1em;">
+    <button class="btn btn-primary" @click="addHostComp" style="margin-right: 1em;"> Add Hosts</button>
+    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);"> Submit to probes </button>
+  </div>
   <div class="list row">
      <!-- List out the items -->
      <div class="col-md-6">
          <h3> Host list </h3>
-         <item-list :item-array="hostStore.hosts"  :display="showAddHost"
-         @updateActive="updateActiveHost" style="cursor: pointer;"> </item-list>
+         <item-list v-if="mounted==true" :itemArray="hostStore.hosts"  :display="showAddHost"
+         @updateActive="updateActiveHost" style="cursor: pointer;"></item-list>
      </div>
 
      <div v-if="showAddHost===true" class="col-md-6">
@@ -53,7 +48,6 @@
           -->
           <p> Optional Data </p>
           <dynamic_add_data :addedData="addedData"></dynamic_add_data>
-
           <button class="btn btn-success"> Submit </button>
 
       </form>
@@ -88,7 +82,7 @@
         <dynamic_add_data :addedData="data"></dynamic_add_data>
       <div>
           <button class="btn btn-success" style="margin-right: 1em;" > Update </button>
-          <button class="btn btn-danger" @click="deletegroup"> Delete </button>
+          <button class="btn btn-danger" @click="deleteHost"> Delete </button>
       </div>
       </form>
      </div>
@@ -108,7 +102,7 @@
  import updateddynamicform from '../components/updated_dynamicform.vue'
 
  export default defineComponent({
-     components: { addhost, itemList, dynamic_add_data, VueMultiselect, updateddynamicform },
+     components: { addhost, itemList, dynamic_add_data, VueMultiselect, updateddynamicform},
      data() {    
       return {
         // for data binding and storage 
@@ -120,7 +114,7 @@
         }],
 
         // rendering of subpages
-        currentItem: {},
+        currentItem: [],
         currentIndex: {},
         showAddHost: true,
         batch: [],
@@ -128,6 +122,7 @@
         hostname: '',
         old_hostname: '',
         data: [],
+        mounted: false,
 
         // relevant stores 
         batchStore: useBatchStore(),
@@ -136,6 +131,7 @@
       }        
      },
      async mounted() {
+      await this.hostStore.getHosts();
       await this.batchStore.getBatches();
       this.form_data=[{
           "type":"text",
@@ -153,13 +149,14 @@
                 value: '',
                 selected: []
             }))
+      this.mounted=true;
      },
+
      methods: {
       /**
        * update page to view selected host/ edit screen
        * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
        */
-
       updateActiveHost(indexArray) {
         this.currentItem=indexArray[0];
         this.currentIndex=indexArray[1];
@@ -202,30 +199,21 @@
         this.addedData=[];
       },
   
-         deleteAllHosts() {
-          const h = useHostStore();
-          h.deleteAll();
-         },
-         addHostComp() {
+      addHostComp() {
           this.display='add'
           this.showAddHost=true;
-          this.currentItem={};
+          this.currentItem=[];
           this.currentIndex={}
-         },
-         async deleteHost(host) {
-          const h = useHostStore();
-          h.deleteHost(host);
-          await this.groupStore.getGroups();
-         }
-     },
-     setup() {
-         const id = 0;
-         const hostStore = useHostStore();
-         hostStore.getHosts();
-
-         return { id,  hostStore }
+       },
+      async deleteHost() {
+        this.hostStore.hosts.splice(this.currentIndex,1);
+        await this.hostStore.deleteHost(this.currentItem);
+        this.currentItem=[];
+        this.currentIndex={};
+        this.data=[];
+        // await this.groupStore.getGroups();
+       }
      }
-
      // updateSubmit function
  
  })
