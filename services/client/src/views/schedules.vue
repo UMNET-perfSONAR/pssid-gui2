@@ -9,7 +9,7 @@
         <div>
             <button @click="addScheduleForm" class="btn btn-primary" style="margin-bottom: 1em;"> Add Schedule </button>
         </div>
-
+        <h3> Schedule List </h3>
         <div class="list row"> 
             <!-- schedule list -->
             <item-list v-if="mount==true" class="col-md-6" :item-array="scheduleStore.schedules"  :display="showAddSchedule"

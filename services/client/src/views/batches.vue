@@ -106,10 +106,10 @@
                         v-model="currentItem.priority"
                     />
                 </div>
-  
+                <!-- BUTTONS -->
                 <div style="margin-bottom:2em">
                     <button class="btn btn-success" style="margin-right:1em"> Update </button>
-                    <button class="btn btn-danger" @click="deleteBatch"> Delete </button>
+                    <button class="btn btn-danger" @click="deleteBatch" type="button"> Delete </button>
                 </div>
 
             </form> 
@@ -250,6 +250,7 @@
 
             async deleteBatch() {
                 this.batchStore.batches.splice(this.currentIndex, 1); 
+                console.log(this.batchStore.batches);
                 await this.batchStore.deleteBatch(this.currentItem);
             }
         }
