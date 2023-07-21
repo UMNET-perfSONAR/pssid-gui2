@@ -83,22 +83,19 @@ export const useHostStore = defineStore('hostStore', {
             );
             this.hosts = [];
         },
-        async createConfig() {
-            console.log('config')
+        async createConfig(currentHost: any) {
             await fetch(
                 'http://localhost:8000/hosts/config',
                 {
                     method: 'POST',
+                    body: JSON.stringify(currentHost),
+                    mode: 'cors',
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
                 }
             ) 
         },
-
-        toggleHost(_id:any) {
-            const host = this.hosts.find(h => (h as any)._id == _id)
-            if (host !== undefined) {
-                (host as any).isFav = !(host as any).isFav
-            }
-        }
     }
 })
 

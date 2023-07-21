@@ -115,26 +115,6 @@ export const useTestStore = defineStore('test', {
             const obj = Object.assign(spec_object, data_object)
             return obj;
         },
-        
-        async formatActiveData(test) {
-            let index = 0;
-            const data = JSON.parse(JSON.stringify(test?.spec));
-
-            await this.getDesiredTest(test?.type, 'selected');
-            const myJson = '{}';
-            let json_object = JSON.parse(myJson);
-            for (const [key,value] of Object.entries(data)) {
-                if (index++ < this.selectedTest.length-1) {
-                    json_object[key] = value;
-                }
-                else {
-                    this.curr_data.push({'key':key, 'value':value})          
-                }
-                };
-            
-            console.log(json_object)
-            return [json_object, this.curr_data]
-        }
     }
 })
 

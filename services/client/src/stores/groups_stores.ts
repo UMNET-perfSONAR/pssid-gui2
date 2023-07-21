@@ -8,13 +8,14 @@ export const useGroupStore = defineStore('groupStore', {
             name:'',
             hosts: [''],
             batches: [''],
-            data: [{}]
+            data: [{}],
         }],
         filteredData: [{}],
         isLoading: false,
         filteredHostData: [{}],
         hostData: [],
-        hostStore: useHostStore()
+        hostStore: useHostStore(),
+        isError: false
     }),
     actions: {
         async getGroups() {
@@ -85,21 +86,25 @@ export const useGroupStore = defineStore('groupStore', {
             this.filteredData = [];
         },
 
-        toggleHost(_id:string) {
-            const host_groups = this.host_groups.find(h => (h as any)._id == _id)
-            if (host_groups !== undefined) {
-                (host_groups as any).isFav = !(host_groups as any).isFav
+        async createConfig(currentGroup: any) {
+            try {
+                await fetch(
+                    'http://localhost:8000/host-groups/config',
+                    {
+                        method: 'POST',
+                        body: JSON.stringify(currentGroup),
+                        mode: 'cors',
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
+                    }
+                ) 
             }
+            catch(error) {
+                console.log(error);
+                this.isError=true;
+            }
+
         },
-        filterData(searchKey: string) {
-            const regex = new RegExp(searchKey, 'iu');
-            this.filteredData = this.host_groups.filter(item => regex.test((item as any).name))
-        },
-  
-        filterHostData(hostSearchKey:string) {
-            const regex = new RegExp(hostSearchKey, 'imu');
-            this.filteredHostData = this.hostData.filter(item => regex.test((item as any).name))
-        },
-        
     }
 })
