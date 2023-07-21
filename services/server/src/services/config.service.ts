@@ -2,36 +2,79 @@
 import { MongoClient } from 'mongodb';
 import { connectToMongoDB } from './ideas.service';
 const path = './config.json'
+const ini_path = './ansible.ini'
 const { writeFileSync } = require('fs');
-
-// TODO: Pass in database instance instead of MongoClient? 
+const ini = require('ini');
 
 // Templated for hosts AND schedules - Not sure if duplicate code is welcomed but can modify later 
 async function get_collection(client: MongoClient, col: String) {
-    (await client).connect();
-    const db = await (await client).db('gui');
+    client.connect();
+    const db = client.db('gui');
     const data = await db.collection(`${col}`).find().project({_id:0}).toArray();
     var host_data = {[`${col}`]:data};
     return host_data;  
 }
 
+function removeIdsProperties(obj:any) {
+    for (const key in obj) {
+        if (key.endsWith('_ids')) {
+            delete obj[key];
+        }
+        else if (typeof(obj[key])== 'object') {
+            removeIdsProperties(obj[key]);
+        }
+    }
+    return obj;
+}
 
+/**
+ * write ini file for ansible deployment 
+ * @param obj config file contents 
+ */
+function writeIniFile(obj:&any) {
+    let iniContent = ''
+    // print all hosts first
+    for (const host of obj.hosts.map((item:{name:string})=> item.name)) {
+        iniContent += host + '\n';
+    }
+    iniContent += '\n';
+
+    for (const group of obj.host_groups) {
+        iniContent += `[${group.name}]` + '\n'
+        if (group.hosts_regex.length !== 0) {
+            iniContent += '#Regex ' + `[${group.name}] [` + group.hosts_regex + ']\n';
+        }
+        for (const host of group.hosts) {
+            iniContent += host + '\n';
+        }
+        iniContent += '\n';
+    }
+    writeFileSync(ini_path, iniContent);
+}
+ 
 // serves as "driver" for this project 
 export async function create_config_file() {
-    const client = await connectToMongoDB();
-
-    let collectionList = ["hosts", "host_groups", "schedules"];
-    
-    let host_data = await get_collection(client, "hosts");
-    let schedule_data = await get_collection(client, "schedules");
-    let host_group_data = await get_collection(client, "host_groups");
-    let archiver_data = await get_collection(client, "archivers");
-    let job_data = await get_collection(client, "jobs");
-    let obj = Object.assign(host_data,  host_group_data, job_data, archiver_data, schedule_data);
-  
     try {
-    writeFileSync(path, JSON.stringify(obj, null, 2), 'utf8');
-    console.log('Data successfully saved to disk');
+        let iniContent = '';
+        const client = await connectToMongoDB();
+        let host_data = await get_collection(client, "hosts");
+        let schedule_data = await get_collection(client, "schedules");
+        let host_group_data = await get_collection(client, "host_groups");
+        let archiver_data = await get_collection(client, "archivers");
+        let job_data = await get_collection(client, "jobs");
+        let batch_data = await get_collection(client, "batches");
+        let ssid_data = await get_collection(client, "ssid_profiles");
+        let test_data = await get_collection(client, "tests");
+        let obj = Object.assign(host_data,  
+                                host_group_data, 
+                                archiver_data, schedule_data,
+                                ssid_data, test_data,
+                                job_data, batch_data);
+
+        writeIniFile(obj);    
+        const clean_object = removeIdsProperties(obj);
+        writeFileSync(path, JSON.stringify(clean_object, null, 2), 'utf8');
+        console.log('Data successfully saved to disk');
     } catch (error) {
         console.log('An error has occurred ', error);
     }
