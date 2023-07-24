@@ -9,72 +9,99 @@ export const useArchiverStore = defineStore('archiver', {
         listOfOptions: [],
         selectedArchiver:[],
         archiver_options:[],
+        isError: false,
     }),
 
     actions: {
         async getArchivers() {
-            this.isLoading = true;
-            const res = await fetch('http://localhost:8000/archivers')
-            const data = await res.json()
-            this.archivers = data;
-            this.isLoading = false;
+            try {
+                this.isLoading = true;
+                const res = await fetch('http://localhost:8000/archivers')
+                const data = await res.json()
+                this.archivers = data;
+                this.isLoading = false;
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
 
         // get name of all available archivers
         async getArchiverNames() {
-            this.isLoading = true;
-      
-            const res = await fetch('http://localhost:8000/archivers/archiver-files')
-            const data = await res.json();
-            this.listOfOptions = data;
-
-            this.isLoading = false;
+            try {
+                this.isLoading = true;
+                const res = await fetch('http://localhost:8000/archivers/archiver-files')
+                const data = await res.json();
+                this.listOfOptions = data;
+                this.isLoading = false;
+            }
+            catch(error) {
+                console.log(error);
+                this.isError = true;
+            }
         },
 
         async getDesiredArchiver(archiver_name: string) {
-            this.isLoading = true;
-            console.log(archiver_name)
-            const res = await fetch('http://localhost:8000/archivers/read-archiver/'+archiver_name)
-            const data = await res.json();
-     
-            this.archiver_options = data; 
-            
-            this.isLoading = false;
+            try {
+                this.isLoading = true;
+                console.log(archiver_name)
+                const res = await fetch('http://localhost:8000/archivers/read-archiver/'+archiver_name)
+                const data = await res.json();
+         
+                this.archiver_options = data; 
+                
+                this.isLoading = false;
+            }
+            catch(error) {
+                console.log(error);
+                this.isError = true;
+            }
         },
 
         // add archiver to an array. take a archiver object and add to array
         async addArchiver(archiver:any) {
-            this.isLoading = true;
-            
-            await fetch(
-                "http://localhost:8000/archivers/create-archiver",
-                {
-                    method: 'POST',
-                    body: JSON.stringify(archiver),
-                    headers: {
-                        "Content-Type": "application/json"
+            try {
+                this.isLoading = true;
+                await fetch(
+                    "http://localhost:8000/archivers/create-archiver",
+                    {
+                        method: 'POST',
+                        body: JSON.stringify(archiver),
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
                     }
-                }
-            );
-            console.log('adding_archiver')
-            this.archivers.push(archiver);
-            this.isLoading=false;
-                   // using json will include the archiver's unique id 
+                );
+                console.log('adding_archiver')
+                this.archivers.push(archiver);
+                this.isLoading=false;
+            }
+            catch(error) {
+                console.log(error);
+                this.isError = true;
+            }
         },
 
         // edit archiver through put request
         async editArchiver(archiver: any) {
-            await fetch(
-                "http://localhost:8000/archivers/update-archiver",
-                {
-                    method: 'PUT',
-                    mode:'cors',
-                    body: JSON.stringify(archiver),
-                    headers: {
-                        "Content-Type":"application/json"
+            try {
+                await fetch(
+                    "http://localhost:8000/archivers/update-archiver",
+                    {
+                        method: 'PUT',
+                        mode:'cors',
+                        body: JSON.stringify(archiver),
+                        headers: {
+                            "Content-Type":"application/json"
+                        }
                     }
-                }
-            );
+                );
+            }
+            catch(error) {
+                console.log(error);
+                this.isError = true;
+            }
         },
 
         /**
@@ -82,23 +109,35 @@ export const useArchiverStore = defineStore('archiver', {
          * @param archiver - Archiver we want to delete 
          */
         async deleteArchiver(archiver:any) {
-            await fetch(
-                "http://localhost:8000/archivers/"+archiver.name,
-                {
-                    method: 'DELETE',
-                }
-            );
+            try {
+                await fetch(
+                    "http://localhost:8000/archivers/"+archiver.name,
+                    {
+                        method: 'DELETE',
+                    }
+                );
+            }
+            catch(error) {
+                console.log(error);
+                this.isError = true;
+            }
         },
 
         async deleteAll() {
-            console.log('called function');
-            await fetch(
-                "http://localhost:8000/archivers",
-                {
-                    method: 'DELETE',
-                }
-            );
-            this.archivers = [];
+            try {
+                console.log('called function');
+                await fetch(
+                    "http://localhost:8000/archivers",
+                    {
+                        method: 'DELETE',
+                    }
+                );
+                this.archivers = [];
+            }
+            catch(error) {
+                console.log(error);
+                this.isError = true;
+            }
         }
     }
 })

@@ -8,53 +8,68 @@ export const useBatchStore = defineStore('batchStore', {
     // create a state object -> can have different properties 
     state: () => ({
         batches: [{}],
-        isLoading: false
+        isLoading: false,
+        isError: false
     }),
 
     actions: {
-        // TODO: Use Axios?? 
         async getBatches() {
-            this.isLoading = true;
-            const res = await fetch('http://localhost:8000/batches')
-            const data = await res.json()
-            this.batches = data;
-            this.isLoading = false;
-            return data;
+            try {
+                this.isLoading = true;
+                const res = await fetch('http://localhost:8000/batches')
+                const data = await res.json()
+                this.batches = data;
+                this.isLoading = false;
+                return data;
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
 
         // add batch to an array. take a batch object and add to array
         async addBatch(batch:any) {
-            this.isLoading = true;
-            
-            await fetch(
-                "http://localhost:8000/batches/create-batch",
-                {
-                    method: 'POST',
-                    body: JSON.stringify(batch),
-                    headers: {
-                        "Content-Type": "application/json"
+            try {
+                this.isLoading = true;
+                await fetch(
+                    "http://localhost:8000/batches/create-batch",
+                    {
+                        method: 'POST',
+                        body: JSON.stringify(batch),
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
                     }
-                }
-            );
-
-            this.batches.push(batch);
-            console.log('added_batch');
-            this.isLoading=false;
-                   // using json will include the batch's unique id 
+                );
+                this.batches.push(batch);
+                console.log('added_batch');
+                this.isLoading=false;
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
 
         async editBatch(updated_batch_obj: JSON) {
-            await fetch(
-                "http://localhost:8000/batches/update-batch",
-                {
-                    method: "PUT",
-                    mode: "cors",
-                    body: JSON.stringify(updated_batch_obj),
-                    headers: {
-                        "Content-Type": "application/json"
+            try {
+                await fetch(
+                    "http://localhost:8000/batches/update-batch",
+                    {
+                        method: "PUT",
+                        mode: "cors",
+                        body: JSON.stringify(updated_batch_obj),
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
                     }
-                }
-            )
+                )
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
 
         /**
@@ -62,25 +77,37 @@ export const useBatchStore = defineStore('batchStore', {
          * @param batch - Batch we want to delete 
          */
         async deleteBatch(batch:any) {
-            console.log('delete');
-            await fetch(
-                "http://localhost:8000/batches/"+batch.name,
-                {
-                    method: 'DELETE',
-                    mode: 'cors'
-                }
-            );
+            try {
+                console.log('delete');
+                await fetch(
+                    "http://localhost:8000/batches/"+batch.name,
+                    {
+                        method: 'DELETE',
+                        mode: 'cors'
+                    }
+                );
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
 
         async deleteAll() {
-            console.log('called function');
-            await fetch(
-                "http://localhost:8000/batches",
-                {
-                    method: 'DELETE',
-                }
-            );
-            this.batches = [];
+            try {
+                console.log('called function');
+                await fetch(
+                    "http://localhost:8000/batches",
+                    {
+                        method: 'DELETE',
+                    }
+                );
+                this.batches = [];
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
     }
 })

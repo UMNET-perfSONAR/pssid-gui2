@@ -1,47 +1,58 @@
-// allows us to make a store
 import {defineStore} from 'pinia'
 
-
-// defineStore(<unique-identifier-name>)
-// return value is func itself - > will use in vue components
 export const useHostStore = defineStore('hostStore', {
-    // create a state object -> can have different properties 
     state: () => ({
-        // TODO: SET TASKS => HOSTS AND MAKE A GET REQUEST HERE TO SET = TO
         hosts: [{}],
-        isLoading: false
+        isLoading: false,
+        isError: false
     }),
+
     actions: {
-        // TODO: Use Axios?? 
+
+        /**
+         * retrieve all host information from database
+         */
         async getHosts() {
-            this.isLoading = true;
-            const res = await fetch('http://localhost:8000/hosts')
-            const data = await res.json()
-            this.hosts = data;
-            this.isLoading = false;
-           
-            return data;
+            try {
+                this.isLoading = true;
+                const res = await fetch('http://localhost:8000/hosts')
+                const data = await res.json()
+                this.hosts = data;
+                this.isLoading = false;
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
 
-        // add host to an array. take a host object and add to array
+        /**
+         * Call on server to add to mongodb. Append host object to host array.
+         * @param host - host info from user input
+         */
         async addHost(host:any) {
-            this.isLoading = true;
-            
-            await fetch(
-                "http://localhost:8000/hosts/create-host",
-                {
-                    method: 'POST',
-                    body: JSON.stringify(host),
-                    headers: {
-                        "Content-Type": "application/json"
+            try {
+                this.isLoading = true;
+                
+                await fetch(
+                    "http://localhost:8000/hosts/create-host",
+                    {
+                        method: 'POST',
+                        body: JSON.stringify(host),
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
                     }
-                }
-            );
+                );
 
-            this.hosts.push(host);
-            console.log('added_host');
-            this.isLoading=false;
-                   // using json will include the host's unique id 
+                this.hosts.push(host);
+                console.log('added_host');
+                this.isLoading=false;
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
 
         /**
@@ -49,52 +60,87 @@ export const useHostStore = defineStore('hostStore', {
          * @param host - Host we want to delete 
          */
         async deleteHost(host:any) {
-            console.log(host)
-            await fetch(
-                "http://localhost:8000/hosts/"+host?.name,
-                {
-                    method: 'DELETE',
-                }
-            );
+            try {
+                console.log(host)
+                await fetch(
+                    "http://localhost:8000/hosts/"+host?.name,
+                    {
+                        method: 'DELETE',
+                    }
+                );
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
-
+        
+    /**
+     * Call on server to update current host object
+     * @param updateHostObj - includes all necessary information to update host 
+     */
         async editHost(updateHostObj:any) {
-            console.log('edit host')
-            await fetch(
-                "http://localhost:8000/hosts/update-host",
-                {
-                    method: "PUT",
-                    mode: "cors",
-                    body: JSON.stringify(updateHostObj),
-                    headers: {
-                        "Content-Type": "application/json"
+            try {
+                await fetch(
+                    "http://localhost:8000/hosts/update-host",
+                    {
+                        method: "PUT",
+                        mode: "cors",
+                        body: JSON.stringify(updateHostObj),
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
+    
                     }
- 
-                }
-            )
+                )
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
 
+        /**
+         * Call on server to  all hosts 
+         */
         async deleteAll() {
-            await fetch(
-                "http://localhost:8000/hosts",
-                {
-                    method: 'DELETE',
-                }
-            );
-            this.hosts = [];
-        },
-        async createConfig(currentHost: any) {
-            await fetch(
-                'http://localhost:8000/hosts/config',
-                {
-                    method: 'POST',
-                    body: JSON.stringify(currentHost),
-                    mode: 'cors',
-                    headers: {
-                        "Content-Type": "application/json"
+            try {
+                await fetch(
+                    "http://localhost:8000/hosts",
+                    {
+                        method: 'DELETE',
                     }
-                }
-            ) 
+                );
+                this.hosts = [];
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
+        },
+
+        /**
+         * Call on server to create config file and push probes to remote computers
+         * @param currentHost - host, if any, that submit to probes button was pushed. provides context
+         */
+        async createConfig(currentHost: any) {
+            try {
+                await fetch(
+                    'http://localhost:8000/hosts/config',
+                    {
+                        method: 'POST',
+                        body: JSON.stringify(currentHost),
+                        mode: 'cors',
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
+                    }
+                ) 
+            }
+            catch(error) {
+                console.error(error);
+                this.isError = true;
+            }
         },
     }
 })

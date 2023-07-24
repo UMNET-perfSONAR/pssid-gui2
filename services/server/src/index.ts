@@ -6,6 +6,7 @@ var bodyParser = require('body-parser');
 const app: Express = express();
 const port = 8000;
 
+// TODO - 
 const cors = require('cors');
 app.use(cors({
   origin: '*'
@@ -45,7 +46,6 @@ connectToMongoDB()
   .then(() => {
     app.listen(port, () => {
       console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
-      create_config_file();
     });
   })
   .catch((error: Error) => {

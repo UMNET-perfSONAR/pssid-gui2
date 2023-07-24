@@ -75,7 +75,7 @@ export async function startup() {
             "parallel": true,
             "test_ids":[],
             "tests": [],
-            "continue-if": true
+            "continue_if": true
         }
     )
 }

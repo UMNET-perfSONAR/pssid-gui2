@@ -1,0 +1,90 @@
+# Changelog
+
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [0.2.17](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.16...v0.2.17) (2021-04-08)
+
+### [0.2.16](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.15...v0.2.16) (2021-03-28)
+
+### [0.2.15](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.14...v0.2.15) (2021-03-28)
+
+### [0.2.14](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.13...v0.2.14) (2020-09-14)
+
+### [0.2.13](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.12...v0.2.13) (2020-08-19)
+
+
+### Features
+
+* make it possible to show/hide all tabs ([#52](https://github.com/karoletrych/vue-cron-editor/issues/52)) ([ed64c24](https://github.com/karoletrych/vue-cron-editor/commit/ed64c2403ec34e3b9b8302ca43088d8512b2f71a))
+
+### [0.2.12](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.10...v0.2.12) (2020-08-04)
+* add it translation
+### [0.2.11](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.10...v0.2.11) (2020-08-04)
+* make locale reactive
+### [0.2.10](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.9...v0.2.10) (2020-08-04)
+### Features
+
+* add pt translation
+
+
+### [0.2.9](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.8...v0.2.9) (2020-05-19)
+
+### [0.2.8](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.7...v0.2.8) (2020-04-22)
+
+
+### Features
+
+* add explaining of advanced expressions, move i18n to mixin ([0560d1f](https://github.com/karoletrych/vue-cron-editor/commit/0560d1f6dd391d088262626f554108c53a78e60a))
+
+### [0.2.7](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.6...v0.2.7) (2020-04-14)
+
+
+### Bug Fixes
+
+* preserve state on first switch of tab ([8b0371d](https://github.com/karoletrych/vue-cron-editor/commit/8b0371d692cf80ccea4e61b2c448b2fd01b8fb28))
+
+### [0.2.6](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.4...v0.2.6) (2020-04-14)
+
+
+### Features
+
+* preserve state on switch to advanced ([755edeb](https://github.com/karoletrych/vue-cron-editor/commit/755edebb715708ebfe41156443c5ff208f740ae0))
+
+
+### Bug Fixes
+
+* error on all days checked ([#33](https://github.com/karoletrych/vue-cron-editor/issues/33)) ([e13deeb](https://github.com/karoletrych/vue-cron-editor/commit/e13deebb2485df3cc1d64031398e6fb6593b53ae))
+
+### [0.2.5](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.4...v0.2.5) (2020-04-12)
+
+### [0.2.4](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.2...v0.2.4) (2020-04-12)
+
+
+### Bug Fixes
+
+* reopening expressions ([#32](https://github.com/karoletrych/vue-cron-editor/issues/32)) ([bdf7c61](https://github.com/karoletrych/vue-cron-editor/commit/bdf7c61fac2b94ee610057f2dd8fa922d3f6fa28))
+
+### [0.2.3](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.2...v0.2.3) (2020-04-12)
+
+
+### Bug Fixes
+
+* reopening expressions ([#32](https://github.com/karoletrych/vue-cron-editor/issues/32)) ([bdf7c61](https://github.com/karoletrych/vue-cron-editor/commit/bdf7c61fac2b94ee610057f2dd8fa922d3f6fa28))
+
+### [0.2.2](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.0...v0.2.2) (2020-04-12)
+
+### [0.2.1](https://github.com/karoletrych/vue-cron-editor/compare/v0.2.0...v0.2.1) (2020-04-12)
+
+## [0.2.0](https://github.com/karoletrych/vue-cron-editor/compare/v0.1.15...v0.2.0) (2020-04-12)
+
+### [0.1.16](https://github.com/karoletrych/vue-cron-editor/compare/v0.1.15...v0.1.16) (2020-04-12)
+
+### [0.1.15](https://github.com/karoletrych/vue-cron-editor/compare/v0.1.14...v0.1.15) (2020-04-02)
+
+### [0.1.14](https://github.com/karoletrych/vue-cron-editor/compare/v0.1.13...v0.1.14) (2020-04-02)
+
+### [0.1.13](https://github.com/karoletrych/vue-cron-editor/compare/v0.1.11...v0.1.13) (2020-03-16)
+
+### [0.1.2](https://github.com/karoletrych/vue-cron-editor/compare/v0.1.11...v0.1.2) (2020-03-16)
+
+### [0.1.1](https://github.com/karoletrych/vue-cron-editor/compare/v0.1.11...v0.1.1) (2020-01-22)
