@@ -4,8 +4,7 @@ import { connectToMongoDB } from './ideas.service';
 import { exec } from 'node:child_process';
 const path = './config.json'
 const ini_path = './ansible.ini'
-const { writeFileSync } = require('fs');
-const ini = require('ini');
+const { writeFileSync } = require('fs'); 
 
 // Templated for hosts AND schedules - Not sure if duplicate code is welcomed but can modify later 
 async function get_collection(client: MongoClient, col: String) {
