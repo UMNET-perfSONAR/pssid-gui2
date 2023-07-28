@@ -1,6 +1,8 @@
 [
     {
         "type": "text",
-        "name": "Interface"
+        "name": "Interface",
+        "default": "",
+        "required": false
     }
 ]
