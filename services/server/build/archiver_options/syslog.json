@@ -1,10 +1,10 @@
 [
     {
-        "type": "text",
-        "name": "ident"
+        "name":"identity",
+        "type":"text"
     },
     {
-        "type": "text",
-        "name": "facility"
+        "name": "facility",
+        "type":"text"
     }
 ]
