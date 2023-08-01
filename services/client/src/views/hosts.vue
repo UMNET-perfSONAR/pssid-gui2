@@ -39,13 +39,6 @@
             >
           </VueMultiselect>
         </div>
-
-        <!-- USE IF I WANT TO CLEAN CODE - PRODUCES MORE PROBLEMS
-          <updateddynamicform
-            :form_data="form_data"
-            :form_values="form_vals"
-          ></updateddynamicform>
-          -->
           <p> Optional Data </p>
           <dynamic_add_data :addedData="addedData"></dynamic_add_data>
           <button class="btn btn-success"> Submit </button>
@@ -162,10 +155,11 @@
         this.currentIndex=indexArray[1];
         this.showAddHost=false;
         this.old_hostname=this.currentItem.name
-        this.data=Object.entries(this.currentItem.data).map(([name,value]) => ({
-                    name,
+        this.data=Object.entries(this.currentItem.data).map(([key,value]) => ({
+                    key,
                     value
                 }))
+        console.log(this.data);
       },
       /**
        * edit host in database 
@@ -180,6 +174,7 @@
                     return result
         }, {})
         }
+        console.log(new_host_obj);
         await this.hostStore.editHost(new_host_obj);
         await this.hostStore.getHosts();
       },

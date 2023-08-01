@@ -172,10 +172,11 @@ import hostSelection from '../forms/hostSelection.vue';
       updateActiveGroup(indexArray){
         this.currentGroup = indexArray[0];
         this.currentIndex = indexArray[1];
+        console.log(this.currentGroup)
         this.selectedGroup = this.currentGroup.name;
         this.showAddGroup = false;
-        this.edit_optional_data = Object.entries(this.currentGroup.data).map(([name,value]) => ({
-                    name,
+        this.edit_optional_data = Object.entries(this.currentGroup.data).map(([key,value]) => ({
+                    key,
                     value
                 }));
         this.hosts_to_edit = this.hostStore.hosts.map((item, index) => ({
@@ -229,9 +230,13 @@ import hostSelection from '../forms/hostSelection.vue';
           old_hostgroup: this.selectedGroup,
           hosts: (new_selected_hosts.length == 0) ? [] : new_selected_hosts.map(obj => obj.name),
           batches: this.currentGroup.batches,
-          data: this.currentGroup.data,
+          data: this.edit_optional_data.reduce((result, item)=> {
+                    result[item.key] = item.value
+                    return result
+        }, {}),
           hosts_regex: (this.edit_regex.length == 0)? [] : this.edit_regex.map(obj => obj.regex)
         }
+        console.log(object);
         await this.hostGroup.editGroup(object);
         await this.hostGroup.getGroups();
       },
