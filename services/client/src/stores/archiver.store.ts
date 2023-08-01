@@ -46,7 +46,7 @@ export const useArchiverStore = defineStore('archiver', {
             try {
                 this.isLoading = true;
                 console.log(archiver_name)
-                const res = await fetch('http://localhost:8000/archivers/read-archiver/'+archiver_name)
+                const res = await fetch('http://'+ window.location.hostname +':8000/archivers/read-archiver/'+archiver_name)
                 const data = await res.json();
          
                 this.archiver_options = data; 
