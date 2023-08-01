@@ -1,54 +1,22 @@
-Collection Layouts in MongoDB:
+# Backend Notes
 
-Hosts:
-```
-host: { 
-    [{
-        name: "rp1",
-        batches: []
-        data: {}
-    }] 
-}
-```
-Host Groups:
-```
-host_groups: {
-    [{
-        name: "chem_building",
-        hosts: []
-        batches: []
-        data: {}
-    }]
-}
-```
-Archivers:
-```
-archivers: {
-    name: "example_rabbitmq_archie",
-    archiver: "rabbitmq",
-    "data": {
-        _url: "amqp://elastic:elastic@pssid-elk.miserver.it.umich.edu",
-        routing-key: "pscheduler_raw"  
-    }
-}
-```
-Schedules: 
-```
-schedules: {
-    [{
-        name: "schedule_every_1_min",
-        repeat: "*/1 * * * *"
-    }]
-}
-```
-SSID Profiles:
-```
-ssid_profiles: {[
-    {
-        name: "MWireless_profile",
-        SSID: "MWireless",
-        min_signal: -73
-    }
-]}
+To see final configuration file format, see [LINK](https://github.com/UMNET-perfSONAR/pSSID2/blob/main/pSSID_config.json)
 
-```
+Note that each component of the config file has its own:
+* Collection in MongoDB
+* Router
+* Controller
+
+This helps to separate our connections to the MongoDB database. 
+
+Note that in general, heavier computations live in the backend. This is meant to improve the overall performance of the web application.
+
+### Routers 
+Based on the URL in the HTTP request from the frontend, the router will "route", or call the appropriate controller function. 
+For instance, when a host is updated, an HTTP request i made to http://localhost:8000/hosts/update-host. The router then connects to the updateHost() function in the corresponding controller file. 
+
+### Controllers
+Function on the receiving end of an HTTP request. 
+Talks to MongoDB to manipulate data. 
+Sends a response back to the frontend to indicate that no errors were found.
+
