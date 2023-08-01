@@ -10,7 +10,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
     actions: {
         async getSchedules() {
             this.isLoading = true;
-            const res = await fetch('http://localhost:8000/schedules')
+            const res = await fetch('http://'+ window.location.hostname +':8000/schedules')
             const data = await res.json()
             this.schedules = data;
             this.isLoading = false;
@@ -19,7 +19,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
         async addSchedule(schedule:JSON) {
             this.isLoading = true;
             await fetch(
-                "http://localhost:8000/schedules/create-schedule",
+                'http://'+ window.location.hostname +':8000/schedules/create-schedule',
                 {
                     method: 'POST',
                     body: JSON.stringify(schedule),
@@ -30,13 +30,12 @@ export const useScheduleStore = defineStore('scheduleStore', {
                 }
             );
             this.schedules.push(schedule);
-            // TODO - Add to filtered data?? refilter data? - yes 
             this.isLoading=false;
         },
 
         async deleteSchedule(schedule:any) {
             await fetch(
-                "http://localhost:8000/schedules/"+schedule.name,
+                'http://'+ window.location.hostname +':8000/schedules/'+schedule.name,
                 {
                     method: 'DELETE',
                 }
@@ -44,7 +43,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
         },
         async updateSchedule(updateScheduleObj:any) {
             await fetch(
-                "http://localhost:8000/schedules/update-schedule",
+                'http://'+ window.location.hostname +':8000/schedules/update-schedule',
                 {
                     method: "PUT",
                     mode: "cors",

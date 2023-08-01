@@ -21,7 +21,7 @@ export const useGroupStore = defineStore('groupStore', {
         async getGroups() {
             try {
                 this.isLoading = true;
-                const res = await fetch('http://localhost:8000/host-groups')
+                const res = await fetch('http://'+ window.location.hostname +':8000/host-groups')
                 const data = await res.json()
                 this.host_groups = data;
                 this.filteredData = data; 
@@ -38,7 +38,7 @@ export const useGroupStore = defineStore('groupStore', {
                 this.isLoading = true;
                 
                 await fetch(
-                    "http://localhost:8000/host-groups/create-hostgroup",
+                    'http://'+ window.location.hostname +':8000/host-groups/create-hostgroup',
                     {
                         method: 'POST',
                         body: JSON.stringify(host_group),
@@ -61,7 +61,7 @@ export const useGroupStore = defineStore('groupStore', {
         async editGroup(host_group: any) {
             try {
                 await fetch(
-                    "http://localhost:8000/host-groups/update-hostgroup",
+                    'http://'+ window.location.hostname +':8000/host-groups/update-hostgroup',
                     {
                         method: 'PUT',
                         mode:'cors',
@@ -84,7 +84,7 @@ export const useGroupStore = defineStore('groupStore', {
         async deleteGroup(host_group:any) {
             try {
                 await fetch(
-                    "http://localhost:8000/host-groups/"+host_group.name,
+                    'http://'+ window.location.hostname +':8000/host-groups/'+host_group.name,
                     {
                         method: 'DELETE',
                     }
@@ -98,9 +98,8 @@ export const useGroupStore = defineStore('groupStore', {
 
         async deleteAll() {
             try {
-                console.log('called function');
                 await fetch(
-                    "http://localhost_groups:8000/host-groups",
+                    'http://'+ window.location.hostname +':8000/host-groups',
                     {
                         method: 'DELETE',
                     }
@@ -117,7 +116,7 @@ export const useGroupStore = defineStore('groupStore', {
         async createConfig(currentGroup: any) {
             try {
                 await fetch(
-                    'http://localhost:8000/host-groups/config',
+                    'http://'+ window.location.hostname + ':8000/host-groups/config',
                     {
                         method: 'POST',
                         body: JSON.stringify(currentGroup),

@@ -14,7 +14,7 @@ export const useJobStore = defineStore('jobStore', {
         async getJobs() {
             try {
                 this.isLoading = true;
-                const res = await fetch('http://localhost:8000/jobs')
+                const res = await fetch('http://'+ window.location.hostname +':8000/jobs')
                 const data = await res.json()
                 this.jobs = data;
                 this.isLoading = false;
@@ -34,7 +34,7 @@ export const useJobStore = defineStore('jobStore', {
                 this.isLoading = true;
                 console.log(job);
                 await fetch(
-                    "http://localhost:8000/jobs/create-job",
+                    'http://'+ window.location.hostname +':8000/jobs/create-job',
                     {
                         method: 'POST',
                         body: JSON.stringify(job),
@@ -59,7 +59,7 @@ export const useJobStore = defineStore('jobStore', {
         async deleteJob(job:any) {
             try {
                 await fetch(
-                    "http://localhost:8000/jobs/"+job.name,
+                    'http://'+ window.location.hostname +':8000/jobs/'+job.name,
                     {
                         method: 'DELETE',
                     }
@@ -77,7 +77,7 @@ export const useJobStore = defineStore('jobStore', {
         async deleteAll() {
             try {
                 await fetch(
-                    "http://localhost:8000/jobs",
+                    'http://'+ window.location.hostname +':8000/jobs',
                     {
                         method: 'DELETE',
                     }
@@ -97,7 +97,7 @@ export const useJobStore = defineStore('jobStore', {
         async updateJob(updatedJobObj) {
             try {
                 await fetch(
-                    "http://localhost:8000/jobs/update-job",
+                    'http://'+ window.location.hostname +':8000/jobs/update-job',
                     {
                         method: "PUT",
                         mode: "cors",

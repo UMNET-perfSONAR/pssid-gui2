@@ -13,7 +13,7 @@ export const useSsidStore = defineStore('ssidStore', {
         // TODO: Use Axios?? 
         async getSsidProfiles() {
             this.isLoading = true;
-            const res = await fetch('http://localhost:8000/ssid-profiles')
+            const res = await fetch('http://'+ window.location.hostname +':8000/ssid-profiles')
             const data = await res.json()
             this.ssid_profiles = data;
             this.isLoading = false;
@@ -24,7 +24,7 @@ export const useSsidStore = defineStore('ssidStore', {
             this.isLoading = true;
             
             await fetch(
-                "http://localhost:8000/ssid-profiles/create-ssidProfile",
+                'http://'+ window.location.hostname +':8000/ssid-profiles/create-ssidProfile',
                 {
                     method: 'POST',
                     body: JSON.stringify(ssid_profile),
@@ -36,7 +36,6 @@ export const useSsidStore = defineStore('ssidStore', {
 
             this.ssid_profiles.push(ssid_profile);
             this.isLoading=false;
-                   // using json will include the ssid_profile's unique id 
         },
 
         /**
@@ -45,7 +44,7 @@ export const useSsidStore = defineStore('ssidStore', {
          */
         async deleteSsidProfile(ssid_profile:any) {
             await fetch(
-                "http://localhost:8000/ssid-profiles/"+ssid_profile.name,
+                'http://'+ window.location.hostname +':8000/ssid-profiles/'+ssid_profile.name,
                 {
                     method: 'DELETE',
                 }
@@ -53,9 +52,8 @@ export const useSsidStore = defineStore('ssidStore', {
         },
 
         async editSsidProfile(ssid_profile:any) {
-            console.log('edit')
             await fetch(
-                "http://localhost:8000/ssid-profiles/update-ssidProfile",
+                'http://'+ window.location.hostname +':8000/ssid-profiles/update-ssidProfile',
                 {
                     method: "PUT",
                     mode: "cors",
@@ -68,9 +66,8 @@ export const useSsidStore = defineStore('ssidStore', {
         },
 
         async deleteAll() {
-            console.log('called function');
             await fetch(
-                "http://localhost:8000/ssid-profiles",
+                'http://'+ window.location.hostname +':8000/ssid-profiles',
                 {
                     method: 'DELETE',
                 }
