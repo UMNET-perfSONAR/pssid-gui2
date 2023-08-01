@@ -13,7 +13,7 @@ Note that in general, heavier computations live in the backend. This is meant to
 
 ### Routers 
 Based on the URL in the HTTP request from the frontend, the router will "route", or call the appropriate controller function. 
-For instance, when a host is updated, an HTTP request i made to http://localhost:8000/hosts/update-host. The router then connects to the updateHost() function in the corresponding controller file. 
+For instance, when a host is updated, an HTTP request is made to http://localhost:8000/hosts/update-host. The router then connects to the updateHost() function in the corresponding controller file. 
 
 ### Controllers
 Function on the receiving end of an HTTP request. 
