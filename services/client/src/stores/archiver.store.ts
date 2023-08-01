@@ -16,7 +16,7 @@ export const useArchiverStore = defineStore('archiver', {
         async getArchivers() {
             try {
                 this.isLoading = true;
-                const res = await fetch('http://localhost:8000/archivers')
+                const res = await fetch('http://' + window.location.hostname + ':8000/archivers')
                 const data = await res.json()
                 this.archivers = data;
                 this.isLoading = false;
@@ -31,7 +31,7 @@ export const useArchiverStore = defineStore('archiver', {
         async getArchiverNames() {
             try {
                 this.isLoading = true;
-                const res = await fetch('http://localhost:8000/archivers/archiver-files')
+                const res = await fetch('http://'+ window.location.hostname +':8000/archivers/archiver-files')
                 const data = await res.json();
                 this.listOfOptions = data;
                 this.isLoading = false;
@@ -64,7 +64,7 @@ export const useArchiverStore = defineStore('archiver', {
             try {
                 this.isLoading = true;
                 await fetch(
-                    "http://localhost:8000/archivers/create-archiver",
+                    'http://'+ window.location.hostname +":8000/archivers/create-archiver",
                     {
                         method: 'POST',
                         body: JSON.stringify(archiver),
@@ -87,7 +87,7 @@ export const useArchiverStore = defineStore('archiver', {
         async editArchiver(archiver: any) {
             try {
                 await fetch(
-                    "http://localhost:8000/archivers/update-archiver",
+                    'http://'+ window.location.hostname +':8000/archivers/update-archiver',
                     {
                         method: 'PUT',
                         mode:'cors',
@@ -111,7 +111,7 @@ export const useArchiverStore = defineStore('archiver', {
         async deleteArchiver(archiver:any) {
             try {
                 await fetch(
-                    "http://localhost:8000/archivers/"+archiver.name,
+                    'http://'+ window.location.hostname +':8000/archivers/'+archiver.name,
                     {
                         method: 'DELETE',
                     }
@@ -127,7 +127,7 @@ export const useArchiverStore = defineStore('archiver', {
             try {
                 console.log('called function');
                 await fetch(
-                    "http://localhost:8000/archivers",
+                    'http://'+ window.location.hostname +':8000/archivers',
                     {
                         method: 'DELETE',
                     }

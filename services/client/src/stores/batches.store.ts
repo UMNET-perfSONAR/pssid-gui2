@@ -16,7 +16,7 @@ export const useBatchStore = defineStore('batchStore', {
         async getBatches() {
             try {
                 this.isLoading = true;
-                const res = await fetch('http://localhost:8000/batches')
+                const res = await fetch('http://'+ window.location.hostname +':8000/batches')
                 const data = await res.json()
                 this.batches = data;
                 this.isLoading = false;
@@ -33,7 +33,7 @@ export const useBatchStore = defineStore('batchStore', {
             try {
                 this.isLoading = true;
                 await fetch(
-                    "http://localhost:8000/batches/create-batch",
+                    'http://'+ window.location.hostname +':8000/batches/create-batch',
                     {
                         method: 'POST',
                         body: JSON.stringify(batch),
@@ -55,7 +55,7 @@ export const useBatchStore = defineStore('batchStore', {
         async editBatch(updated_batch_obj: JSON) {
             try {
                 await fetch(
-                    "http://localhost:8000/batches/update-batch",
+                    'http://'+ window.location.hostname +':8000/batches/update-batch',
                     {
                         method: "PUT",
                         mode: "cors",
@@ -78,9 +78,8 @@ export const useBatchStore = defineStore('batchStore', {
          */
         async deleteBatch(batch:any) {
             try {
-                console.log('delete');
                 await fetch(
-                    "http://localhost:8000/batches/"+batch.name,
+                    'http://'+ window.location.hostname +':8000/batches/'+batch.name,
                     {
                         method: 'DELETE',
                         mode: 'cors'
@@ -95,9 +94,8 @@ export const useBatchStore = defineStore('batchStore', {
 
         async deleteAll() {
             try {
-                console.log('called function');
                 await fetch(
-                    "http://localhost:8000/batches",
+                    'http://'+ window.location.hostname +':8000/batches',
                     {
                         method: 'DELETE',
                     }

@@ -1,22 +1,14 @@
 [
     {
-        "type": "text",
-        "name": "Interface"
+        "name": "interface",
+        "type": "text"
     },
     {
-        "type": "singleselect",
-        "name": "ssid"
+        "name": "ssid",
+        "type": "text"
     },
     {
-        "type": "text",
-        "name": "_username"
-    },
-    {
-        "type": "text",
-        "name": "_password"
-    },
-    {
-        "type": "text",
-        "name": "key-managemet"
+        "name": "WPA-EAP",
+        "type": "text"
     }
 ]

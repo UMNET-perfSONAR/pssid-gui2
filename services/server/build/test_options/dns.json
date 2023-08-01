@@ -1,9 +1,10 @@
 [
     {
-        "type": "text",
-        "name": "Query"
-    },{
-        "type": "text",
-        "name": "Record"
+        "name":"Query",
+        "type":"text"
+    },
+    {
+        "name":"Record",
+        "type":"text"
     }
 ]

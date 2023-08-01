@@ -15,7 +15,7 @@ export const useHostStore = defineStore('hostStore', {
         async getHosts() {
             try {
                 this.isLoading = true;
-                const res = await fetch('http://localhost:8000/hosts')
+                const res = await fetch('http://'+ window.location.hostname +':8000/hosts')
                 const data = await res.json()
                 this.hosts = data;
                 this.isLoading = false;
@@ -35,7 +35,7 @@ export const useHostStore = defineStore('hostStore', {
                 this.isLoading = true;
                 
                 await fetch(
-                    "http://localhost:8000/hosts/create-host",
+                    'http://'+ window.location.hostname +':8000/hosts/create-host',
                     {
                         method: 'POST',
                         body: JSON.stringify(host),
@@ -63,7 +63,7 @@ export const useHostStore = defineStore('hostStore', {
             try {
                 console.log(host)
                 await fetch(
-                    "http://localhost:8000/hosts/"+host?.name,
+                    'http://'+ window.location.hostname +':8000/hosts/' +host?.name,
                     {
                         method: 'DELETE',
                     }
@@ -82,7 +82,7 @@ export const useHostStore = defineStore('hostStore', {
         async editHost(updateHostObj:any) {
             try {
                 await fetch(
-                    "http://localhost:8000/hosts/update-host",
+                    'http://'+ window.location.hostname +':8000/hosts/update-host',
                     {
                         method: "PUT",
                         mode: "cors",
@@ -106,7 +106,7 @@ export const useHostStore = defineStore('hostStore', {
         async deleteAll() {
             try {
                 await fetch(
-                    "http://localhost:8000/hosts",
+                    'http://'+ window.location.hostname +':8000/hosts',
                     {
                         method: 'DELETE',
                     }
@@ -126,7 +126,7 @@ export const useHostStore = defineStore('hostStore', {
         async createConfig(currentHost: any) {
             try {
                 await fetch(
-                    'http://localhost:8000/hosts/config',
+                    'http://'+ window.location.hostname +':8000/hosts/config',
                     {
                         method: 'POST',
                         body: JSON.stringify(currentHost),
