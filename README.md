@@ -5,10 +5,11 @@ Version 2.0 of the pSSID-GUI Web Application
 Installation available via Ansible Playbook
 * Requires Ansible to be installed locally.
 
-TODO: Insert link to ansible file?
+To install via Ansible, follow the steps in this [repository]((https://github.com/UMNET-perfSONAR/ansible_pssid_gui_2.0))
 
-### Install on a virtual machine
-Run the following code via terminal in the same directory as the playbook.yml file
-```
-ansible-playbook   --inventory inventory   --become   --become-method sudo   --become-user root   --ask-become-pass   --ask-pass   playbook.yml
-```
+----
+### pSSID Web Application 
+
+The web app is laid out as follows: 
+
+<img width="1368" alt="Screenshot 2023-08-02 at 3 36 19 PM" src="https://github.com/UMNET-perfSONAR/pssid-gui2/assets/74212084/cf7bba5f-74f5-4303-926f-c17a0cd17b81">
