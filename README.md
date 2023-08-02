@@ -12,4 +12,4 @@ To install via Ansible, follow the steps in this [repository]((https://github.co
 
 The web app is laid out as follows: 
 
-<img width="1368" alt="Screenshot 2023-08-02 at 3 36 19 PM" src="https://github.com/UMNET-perfSONAR/pssid-gui2/assets/74212084/cf7bba5f-74f5-4303-926f-c17a0cd17b81">
+<img width="700" alt="Screenshot 2023-08-02 at 3 36 19 PM" src="https://github.com/UMNET-perfSONAR/pssid-gui2/assets/74212084/cf7bba5f-74f5-4303-926f-c17a0cd17b81">
