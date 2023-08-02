@@ -5,7 +5,7 @@ Version 2.0 of the pSSID-GUI Web Application
 Installation available via Ansible Playbook
 * Requires Ansible to be installed locally.
 
-To install via Ansible, follow the steps in this [repository]((https://github.com/UMNET-perfSONAR/ansible_pssid_gui_2.0))
+To install via Ansible, follow the steps in this [repository](https://github.com/UMNET-perfSONAR/ansible_pssid_gui_2.0)
 
 ----
 ### pSSID Web Application 
