@@ -2,10 +2,12 @@
 import { MongoClient } from 'mongodb';
 import { connectToMongoDB } from './ideas.service';
 import { exec } from 'node:child_process';
-const path = './config.json'
-const ini_path = './ansible.ini'
+import path from 'path';
+import fs from 'fs';
 const { writeFileSync } = require('fs');
-const ini = require('ini');
+let config_path = './config.json';
+let ini_path = './ansible.ini';
+let shellscript_path = './shellscript.sh';
 
 // Templated for hosts AND schedules - Not sure if duplicate code is welcomed but can modify later 
 async function get_collection(client: MongoClient, col: String) {
@@ -57,10 +59,20 @@ function writeIniFile(obj:&any) {
     }
     writeFileSync(ini_path, iniContent);
 }
+
+function get_paths() { 
+    var name = '../../config_output.json';
+    const filePath = path.join(__dirname, name);
+    var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    config_path = object.config_path;
+    ini_path = object.inventory_path;
+    shellscript_path = object.shellscript_path;
+}
  
 // serves as "driver" for this project 
 export async function create_config_file(name: string, click_context:string) {
     try {
+        get_paths();
         const client = await connectToMongoDB();
         let host_data = await get_collection(client, "hosts");
         let schedule_data = await get_collection(client, "schedules");
@@ -78,12 +90,12 @@ export async function create_config_file(name: string, click_context:string) {
 
         writeIniFile(obj);    
         const clean_object = removeIdsProperties(obj);
-        writeFileSync(path, JSON.stringify(clean_object, null, 2), 'utf8');
+        writeFileSync(config_path, JSON.stringify(clean_object, null, 2), 'utf8');
         if (name === '?') {
-            exec(`'./shellscript.sh' '${name}'`, (err)=> {console.error(err)})
+            exec(`'${shellscript_path}' '${name}'`, (err)=> {console.error(err)})
         }
         else {
-            exec(`'./shellscript.sh' '--${click_context}' '${name}'`, (err) => {console.error(err)})
+            exec(`'${shellscript_path}' '--${click_context}' '${name}'`, (err) => {console.error(err)})
         }
         console.log('Data successfully saved to disk');
     } catch (error) {
