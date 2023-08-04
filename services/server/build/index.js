@@ -8,6 +8,7 @@ const ideas_service_1 = require("./services/ideas.service");
 var bodyParser = require('body-parser');
 const app = (0, express_1.default)();
 const port = 8000;
+// TODO - 
 const cors = require('cors');
 app.use(cors({
     origin: '*'
