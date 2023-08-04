@@ -6,8 +6,9 @@ export async function connectToMongoDB() {
     const client = new MongoClient(uri);
     await client.connect();
 
-    //await client.db("admin").command({ ping: 1 });
+    await client.db("admin").command({ ping: 1 });
     console.info(`Connected to MongoDB`);
+    return client;
 }
 
 async function applySchemaValidation(database: Db, collection: string, schema: Object) {

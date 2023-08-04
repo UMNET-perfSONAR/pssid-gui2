@@ -1,6 +1,6 @@
 // generate a config file from current state of DBs
 import { MongoClient } from 'mongodb';
-import { connectToMongoDB } from './ideas.service';
+import { connectToMongoDB } from './database.service';
 import { exec } from 'node:child_process';
 import path from 'path';
 import fs from 'fs';
@@ -9,13 +9,18 @@ let config_path = './config.json';
 let ini_path = './ansible.ini';
 let shellscript_path = './shellscript.sh';
 
-// Templated for hosts AND schedules - Not sure if duplicate code is welcomed but can modify later 
+/**
+ * Get specified collection data - flexible for all collections
+ * @param client - MongoClient instance
+ * @param col - collection name for extraction
+ * @returns - all data from a given collection
+ */
 async function get_collection(client: MongoClient, col: String) {
     client.connect();
     const db = client.db('gui');
     const data = await db.collection(`${col}`).find().project({_id:0}).toArray();
-    var host_data = {[`${col}`]:data};
-    return host_data;  
+    var collection_data = {[`${col}`]:data};
+    return collection_data;  
 }
 
 /**
@@ -36,7 +41,7 @@ function removeIdsProperties(obj:any) {
 }
 
 /**
- * write ini file for ansible deployment 
+ * write ansible inventory file for ansible 
  * @param obj config file contents 
  */
 function writeIniFile(obj:&any) {
@@ -60,6 +65,9 @@ function writeIniFile(obj:&any) {
     writeFileSync(ini_path, iniContent);
 }
 
+/**
+ * Gets shellscript, config file, and ansible inventory output paths
+ */
 function get_paths() { 
     var name = '../../config_output.json';
     const filePath = path.join(__dirname, name);
@@ -69,7 +77,11 @@ function get_paths() {
     shellscript_path = object.shellscript_path;
 }
  
-// serves as "driver" for this project 
+/**
+ * creates config file, ansible inventory, and executes shellscript 
+ * @param name - name of host or host_group where "submit to probes" was clicked. defaults to '*'
+ * @param click_context - context of which "submit to probes" was clicked - either hosts or host_groups
+ */
 export async function create_config_file(name: string, click_context:string) {
     try {
         get_paths();
