@@ -1,0 +1,110 @@
+{
+  "hosts": [
+    {
+      "name": "198.111.226.184",
+      "batches": [
+        "batch "
+      ],
+      "data": {
+        "new": "new_value"
+      }
+    },
+    {
+      "name": "198.111.226.179",
+      "batches": [
+        "batch "
+      ],
+      "data": {}
+    },
+    {
+      "name": "new_host",
+      "batches": [],
+      "data": {
+        "": ""
+      }
+    }
+  ],
+  "host_groups": [
+    {
+      "name": "hostgroups",
+      "batches": [],
+      "hosts": [
+        "198.111.226.179"
+      ],
+      "hosts_regex": [],
+      "data": {
+        "new": "parm"
+      }
+    },
+    {
+      "name": "chem_building",
+      "batches": [
+        "batch "
+      ],
+      "hosts": [
+        "198.111.226.184",
+        "198.111.226.179"
+      ],
+      "hosts_regex": [
+        "reg*",
+        "new_reg*"
+      ],
+      "data": {
+        "hi": "bye"
+      }
+    },
+    {
+      "name": "new_hostgroup",
+      "batches": [
+        "batch "
+      ],
+      "hosts": [
+        "198.111.226.184",
+        "198.111.226.179",
+        "new_host"
+      ],
+      "hosts_regex": [],
+      "data": {}
+    }
+  ],
+  "archivers": [
+    {
+      "name": "new_archiver",
+      "archiver": "syslog",
+      "data": {
+        "identity": "ident",
+        "facility": "facility"
+      }
+    }
+  ],
+  "schedules": [],
+  "ssid_profiles": [
+    {
+      "name": "newprofile",
+      "SSID": "ssid",
+      "min_signal": -75
+    }
+  ],
+  "tests": [
+    {
+      "name": "http",
+      "type": "http",
+      "spec": {
+        "url": "www.google.com",
+        "": ""
+      }
+    }
+  ],
+  "jobs": [],
+  "batches": [
+    {
+      "name": "batch ",
+      "priority": 1,
+      "bssid_scan_interface": "idk",
+      "ssid_profiles": [],
+      "schedules": [],
+      "jobs": [],
+      "archivers": []
+    }
+  ]
+}

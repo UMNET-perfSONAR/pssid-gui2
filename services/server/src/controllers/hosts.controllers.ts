@@ -1,5 +1,5 @@
 import express, { Express, NextFunction, Request, Response } from 'express';
-import { connectToMongoDB } from '../services/ideas.service';
+import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { get_batch_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
@@ -153,7 +153,7 @@ const updateHost = (async (req:Request, res:Response) => {
 
 const createConfig = (async (req: Request, res: Response) =>{
     try {  
-        let name = (req.body.length==0)? '?' : req.body.name;
+        let name = (req.body.length==0)? '*' : req.body.name;
         console.log('config creation')
         console.log(name);
         await create_config_file(name, 'host');

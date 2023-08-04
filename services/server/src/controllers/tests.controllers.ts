@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from 'express';
 import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
-import { connectToMongoDB } from '../services/ideas.service';
+import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
 import fs from 'fs';

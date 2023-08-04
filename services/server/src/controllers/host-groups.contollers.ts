@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from 'express';
 import { MongoClient, Db, MongoServerError, Collection, ObjectId } from "mongodb";
-import { connectToMongoDB } from '../services/ideas.service';
+import { connectToMongoDB } from '../services/database.service';
 import { get_batch_ids, get_host_ids } from '../services/utility.services';
 import { create_config_file } from '../services/config.service';
 
@@ -130,7 +130,7 @@ const updateHostGroup = (async (req:Request, res:Response) => {
 
 const createConfig = (async (req: Request, res: Response) =>{
     try {  
-        let name = (req.body.length==0)? '?' : req.body.name;
+        let name = (req.body.length==0)? '*' : req.body.name;
         await create_config_file(name, 'host_group');
         res.send('Config file created');
     }

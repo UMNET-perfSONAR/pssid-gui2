@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from 'express';
-import { connectToMongoDB } from '../services/ideas.service';
+import { connectToMongoDB } from '../services/database.service';
 import { get_ssid_profile_ids, get_schedule_ids, get_job_ids, get_archiver_ids } from '../services/utility.services'
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
