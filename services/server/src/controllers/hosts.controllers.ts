@@ -153,7 +153,7 @@ const updateHost = (async (req:Request, res:Response) => {
 
 const createConfig = (async (req: Request, res: Response) =>{
     try {  
-        let name = (req.body.length==0)? '?' : req.body.name;
+        let name = (req.body.length==0)? '*' : req.body.name;
         console.log('config creation')
         console.log(name);
         await create_config_file(name, 'host');

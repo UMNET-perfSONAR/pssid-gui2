@@ -91,12 +91,9 @@ export async function create_config_file(name: string, click_context:string) {
         writeIniFile(obj);    
         const clean_object = removeIdsProperties(obj);
         writeFileSync(config_path, JSON.stringify(clean_object, null, 2), 'utf8');
-        if (name === '?') {
-            exec(`'${shellscript_path}' '${name}'`, (err)=> {console.error(err)})
-        }
-        else {
-            exec(`'${shellscript_path}' '--${click_context}' '${name}'`, (err) => {console.error(err)})
-        }
+       
+        exec(`'${shellscript_path}' '--${click_context}' '${name}'`, (err) => {console.error(err)})
+        
         console.log('Data successfully saved to disk');
     } catch (error) {
         console.log('An error has occurred ', error);
