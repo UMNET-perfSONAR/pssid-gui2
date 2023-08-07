@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const ideas_service_1 = require("./services/ideas.service");
+const database_service_1 = require("./services/database.service");
 var bodyParser = require('body-parser');
 const app = (0, express_1.default)();
 const port = 8000;
@@ -38,7 +38,7 @@ app.get('/', (req, res) => {
     res.send('Express + TypeScript Server');
 });
 // first connect to MongoDB(), then communicate with the web app
-(0, ideas_service_1.connectToMongoDB)()
+(0, database_service_1.connectToMongoDB)()
     .then(() => {
     app.listen(port, () => {
         console.log(`⚡️[server]: Server is running at http://localhost:${port}`);

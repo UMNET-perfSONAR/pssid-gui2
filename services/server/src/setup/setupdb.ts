@@ -1,5 +1,5 @@
 // Run this script while connected to MongoDB
-import { connectToMongoDB } from '../services/ideas.service';
+import { connectToMongoDB } from '../services/database.service';
 import { MongoClient, Db, MongoServerError, Collection, MongoDBNamespace } from "mongodb";
 
 export async function startup() {
