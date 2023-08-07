@@ -89,17 +89,14 @@
  import { useBatchStore } from '../stores/batches.store';
  import { defineComponent } from 'vue';
  import itemList from '../components/list_items.vue';
- import addhost from '../components/hosts/addHost.vue'
  import dynamic_add_data from '../components/dynamic_add_data.vue';
  import VueMultiselect from 'vue-multiselect'
- import updateddynamicform from '../components/updated_dynamicform.vue'
 
  export default defineComponent({
-     components: { addhost, itemList, dynamic_add_data, VueMultiselect, updateddynamicform},
+     components: {itemList, dynamic_add_data, VueMultiselect},
      data() {    
       return {
         // for data binding and storage 
-        form_data: [],
         form_vals: [],
         addedData: [{
           'key':'',
@@ -126,23 +123,6 @@
      async mounted() {
       await this.hostStore.getHosts();
       await this.batchStore.getBatches();
-      this.form_data=[{
-          "type":"text",
-          "name": "Host Name"
-        },
-         {
-          "type": "multiselect",
-          "name": "Select Batches",
-          "options": this.batchStore.batches
-         },
-   
-      ]
-      this.form_vals=this.form_data.map((item) => ({
-                name: item.name,
-                value: '',
-                selected: []
-            }))
-      this.mounted=true;
      },
 
      methods: {
@@ -161,9 +141,8 @@
                 }))
         console.log(this.data);
       },
-      /**
-       * edit host in database 
-       */
+      
+      // edit host in database 
       async editHost() {
         const new_host_obj = {
           "old_hostname": this.old_hostname,
@@ -195,7 +174,6 @@
       },
   
       addHostComp() {
-          this.display='add'
           this.showAddHost=true;
           this.currentItem=[];
           this.currentIndex={}
@@ -206,10 +184,7 @@
         this.currentItem=[];
         this.currentIndex={};
         this.data=[];
-        // await this.groupStore.getGroups();
        }
-     }
-     // updateSubmit function
- 
+     } 
  })
 </script>
