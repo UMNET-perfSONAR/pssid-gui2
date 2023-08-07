@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from 'express';
-import { connectToMongoDB } from './services/ideas.service';
+import { connectToMongoDB } from './services/database.service';
 import { startup } from './setup/setupdb';
 import { create_config_file } from './services/config.service';
 var bodyParser = require('body-parser');

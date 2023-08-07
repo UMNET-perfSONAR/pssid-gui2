@@ -11,12 +11,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startup = void 0;
 // Run this script while connected to MongoDB
-const ideas_service_1 = require("../services/ideas.service");
-//import { schedules } from './schedules';
+const database_service_1 = require("../services/database.service");
 function startup() {
     return __awaiter(this, void 0, void 0, function* () {
-        // connect to db
-        var client = (0, ideas_service_1.connectToMongoDB)();
+        // connect to db 
+        var client = (0, database_service_1.connectToMongoDB)();
         (yield client).connect();
         console.log("Connected to MongoDB. Beginning setup now...");
         (yield client).db('gui').dropDatabase();
@@ -26,21 +25,57 @@ function startup() {
         collectionList.forEach(function (collectionName) { db.createCollection(collectionName); });
         // when this returns, should be able to convert json array -> json object -> correct formatting 
         db.collection('schedules').insertMany([
-            { "schedule": "schedule_every_1_min",
+            { "name": "schedule_every_1_min",
                 "repeat": "*/1 * * * *"
             },
-            { "schedule": "schedule_every_5_min",
+            { "name": "schedule_every_5_min",
                 "repeat": "*/5 * * * *"
             }
         ]);
         db.collection('hosts').insertMany([
-            { "host": "rp1",
-                "batches": ""
+            { "name": "rp1",
+                "batches": [],
+                "batch_ids": [],
+                "data": []
             },
-            { "host": "rp2",
-                "batches": ""
+            { "name": "rp2",
+                "batches": [],
+                "batch_ids": [],
+                "data": []
+            },
+            { "name": "rp3",
+                "batches": [],
+                "batch_ids": [],
+                "data": []
             }
         ]);
+        db.collection('archivers').insertOne({
+            "name": "example_rabbitmq_archive",
+            "archiver": "rabbitmq",
+            "data": {
+                "_url": "amqp://elastic:elastic@pssid-elk.miserver.it.umich.edu",
+                "routing-key": "pscheduler_raw"
+            }
+        });
+        db.collection('ssid_profiles').insertOne({
+            "name": "MWireless_profile",
+            "SSID": "MWireless",
+            "min_signal": -73
+        });
+        db.collection('tests').insertOne({
+            "name": "http-google",
+            "type": "http",
+            "spec": {
+                "url": "www.google.com"
+            }
+        });
+        db.collection('jobs').insertOne({
+            "name": "layer-2-auth",
+            "parallel": true,
+            "test_ids": [],
+            "tests": [],
+            "continue_if": true
+        });
     });
 }
 exports.startup = startup;
