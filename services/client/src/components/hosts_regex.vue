@@ -1,4 +1,5 @@
 <template>
+    <!-- dynamic addition of regex to apply to hosts -->
     <div class="form-inline" style="margin-bottom: 0.5em;"
     v-for="(item, counter) in regex_array"
     v-bind:key="counter">

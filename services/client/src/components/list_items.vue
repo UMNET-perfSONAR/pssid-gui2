@@ -1,4 +1,4 @@
-<!-- List items dynamically. Emit click event back to local file -->
+<!-- List items dynamically with regex search bar. Used in all files -->
 <template>
     <div v-if="itemArray.length === 0">
         List is empty
@@ -78,6 +78,9 @@ import { watch } from 'vue';
                     console.log(error);
                 }
                
+            },
+            itemArray() {
+                this.filteredArray=this.itemArray;
             }
         }
     }
