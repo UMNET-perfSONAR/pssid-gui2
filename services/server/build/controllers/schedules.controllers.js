@@ -10,42 +10,94 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const ideas_service_1 = require("../services/ideas.service");
+const update_service_1 = require("../services/update.service");
+const delete_service_1 = require("../services/delete.service");
 var client = (0, ideas_service_1.connectToMongoDB)();
-// get all schedules 
+/**
+ * Return all schedule information from mongodb
+ *
+ * @param req - request information from client
+ * @param res - response sent back to client
+ */
 const getSchedules = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    (yield client).connect();
-    var collection = (yield client).db("gui").collection("schedules");
-    const schedules = yield collection.find().project({ _id: 0 }).toArray();
-    res.send(schedules);
+    try {
+        (yield client).connect();
+        var collection = (yield client).db("gui").collection("schedules");
+        const schedules = yield collection.find().project({ _id: 0 }).toArray();
+        res.send(schedules);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
 }));
-// delete a schedule
+/**
+ * Delete specified schedule from database. schedule to be deleted comes as URL parameter
+ *
+ * @param req - request information from client
+ * @param res - response sent back to client
+ */
 const deleteSchedule = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const name = String(req.params.schedulename);
-    (yield client).connect();
-    var collection = yield (yield client).db('gui').collection('schedules');
-    yield collection.findOneAndDelete({ "schedule": name });
-    res.send('schedule ' + name + ' was deleted');
+    try {
+        const name = String(req.params.schedulename);
+        (yield client).connect();
+        const schedule_col = (yield client).db('gui').collection('schedules');
+        const batch_col = (yield client).db('gui').collection('batches');
+        const deleted = yield schedule_col.findOne({ "name": name });
+        (0, delete_service_1.deleteDocument)(batch_col, 'schedules', 'schedule_ids', deleted === null || deleted === void 0 ? void 0 : deleted.name); // delete references from other collections
+        yield schedule_col.findOneAndDelete({ "name": name });
+        res.send('schedule ' + name + ' was deleted');
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
 }));
-// add a single schedule to db 
+/**
+ * Creates new schedule entry in database.
+ *
+ * @param req - request information from client
+ * @param res - response sent back to client
+ */
 const postSchedule = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    (yield client).connect();
-    var collection = yield (yield client).db('gui').collection('schedules');
-    collection.insertOne({
-        "schedule": req.body.schedule,
-        "repeat": req.body.repeat
-    });
-    res.json(req.body);
+    try {
+        (yield client).connect();
+        var collection = (yield client).db('gui').collection('schedules');
+        collection.insertOne({
+            "name": req.body.name,
+            "repeat": req.body.repeat
+        });
+        res.json(req.body);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
 }));
-// TODO: Add option to provide meta-information 
-// completely update one schedule
+/**
+ * Updates schedule with information specified by the user.
+ * Triggers update in batches to ensure up to date information.
+ *
+ * @param req - request information from client
+ * @param res - response sent back to client
+ */
 const updateSchedule = ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    (yield client).connect();
-    var collection = yield (yield client).db('gui').collection('schedules');
-    collection.updateOne({
-        "schedule": req.body.old_schedule
-    }, { $set: { "schedule": req.body.new_schedule, "repeat": req.body.repeat }
-    });
-    res.json(req.body);
+    try {
+        (yield client).connect();
+        var collection = (yield client).db('gui').collection('schedules');
+        yield collection.updateOne({
+            "name": req.body.old_schedule
+        }, { $set: { "name": req.body.new_schedule, "repeat": req.body.repeat }
+        });
+        if (req.body.old_schedule !== req.body.new_schedule) { // Trigger update in batches collection
+            yield (0, update_service_1.updateCollection)('batches', 'schedules', client); // update batches using schedules collection
+        }
+        res.json(req.body);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
 }));
 module.exports = { getSchedules,
     deleteSchedule,
