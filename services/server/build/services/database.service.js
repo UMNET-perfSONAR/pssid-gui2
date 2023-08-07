@@ -16,8 +16,9 @@ function connectToMongoDB() {
         const uri = "mongodb://mongo:27017"; // instead of localhost:27017, use mongo:27017 as is defined in Docker
         const client = new mongodb_1.MongoClient(uri);
         yield client.connect();
-        //await client.db("admin").command({ ping: 1 });
+        yield client.db("admin").command({ ping: 1 });
         console.info(`Connected to MongoDB`);
+        return client;
     });
 }
 exports.connectToMongoDB = connectToMongoDB;
