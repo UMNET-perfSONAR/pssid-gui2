@@ -1,0 +1,11 @@
+- name: Copy config.json into all hosts
+  hosts: all
+  tasks:
+  - name: copy config.json
+    become: false
+    copy:
+      src: /Users/sastec/Downloads/gui/services/server/output/config.json
+      dest: /home/sastec/config.json
+      owner: sastec
+      mode: '0644'
+

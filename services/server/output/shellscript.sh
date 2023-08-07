@@ -1,6 +1,3 @@
 #!/bin/sh
 
-date >> log
-echo "Script name: $0" >> log
-echo "First parameter: $1" >> log
-echo "Second parameter: $2"  >> log
+ansible-playbook --become-user sastec --inventory-file ./src/ansible/hosts.ini ./src/ansible/config-to-probes-playbook.yaml
