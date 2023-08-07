@@ -8,3 +8,4 @@
       dest: /home/sastec/config.json
       owner: sastec
       mode: '0644'
+
