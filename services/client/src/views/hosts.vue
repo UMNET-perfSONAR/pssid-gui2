@@ -123,6 +123,7 @@
      async mounted() {
       await this.hostStore.getHosts();
       await this.batchStore.getBatches();
+      this.mounted=true;
      },
 
      methods: {
