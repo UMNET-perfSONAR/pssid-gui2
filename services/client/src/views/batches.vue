@@ -17,20 +17,21 @@
             <h3> Batch List </h3>
             <p> Batch list is empty </p>
         </div>
+        <!-- batch list and regex search bar -->
         <div class="col-md-6" v-else> 
             <h3> Batch List </h3>
             <itemList v-if="mount == true" :item-array="batchStore.batches" :display="showAddBatch"
                       @updateActive="updateActiveBatch"></itemList>
         </div>
-        <!-- Add batch component -->
+        <!-- Add batch form -->
         <div class="col-md-6" v-if="showAddBatch===true"> 
             <h3> Add Batch </h3>
-
             <dynamicform @formData="addBatch" :form_layout="form_layout">
             </dynamicform>
             <div>
-            </div>
         </div>
+        </div>
+        <!-- Edit batch form -->
         <div class="col-md-6" v-else> 
             <h3> Edit Batch </h3>
             <form @submit.prevent="editBatch">
@@ -157,7 +158,7 @@
             await this.JobStore.getJobs();
             await this.scheduleStore.getSchedules();
             await this.archiverStore.getArchivers();
-            // TODO - Implement normally? Do we want this format? 
+            // hardcode layout of batches form - edit this to add more fields
             this.form_layout = [
                 {
                     'type': 'text',
@@ -205,9 +206,8 @@
                 this.showAddBatch = false;
                 this.old_batchname=this.currentItem.name;
             },
-            /**
-             * Change local variables to view "Add Batch" sub-page
-             */
+            
+            // render add batch form 
             addBatchForm() {
                 this.showAddBatch=true;
                 this.currentItem={};
@@ -229,9 +229,7 @@
                 })
             },
 
-            /**
-             * edit batch in mongodb - wired to server via PUT request
-             */
+           // handle edit batch - send to editBatch in batches store
             async editBatch() {
                 const updated_batch = {
                     "old_batchname":this.old_batchname,
@@ -248,6 +246,7 @@
 
             },
 
+            // delete batch
             async deleteBatch() {
                 this.batchStore.batches.splice(this.currentIndex, 1); 
                 console.log(this.batchStore.batches);
