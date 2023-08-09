@@ -2,6 +2,7 @@
 
 As pSSID evolves, our configuration file requirements will shift. Below are some general steps to modify the web application to support importatn changes to the config file. There are examples of each step below, which should help with file navigation. 
 
+### When dynamicform.vue is not involved... 
 ### Frontend
 
 1. Add desired field to both the add and edit forms on the GUI (Located in services/client/src/views/)
@@ -68,6 +69,7 @@ async editHost() {
 }
 ```
 Note that we called the hostname property ```name``` in MongoDB in step 3 below, hence why we extract the value in the editHost function as this.currentItem.name.
+
 --- 
 ### Backend
 3. Add support to post and update functions
@@ -96,5 +98,56 @@ const postHost = (async (req:Request, res:Response) => {
 })
 ```
 Note that we wanted to add a ```name``` field to account for the ```hostname``` that users typed in the frontend. We called the key for the hostname ```name``` in the json object passed to the backend, which is why we are able to access that variable via ```req.body.name```
+
+---
+### When dynamicform.vue is involved...
+Things change a bit when dynamicform.vue is used! This component is used to dynamically render forms, so if we want to add new fields to a form rendered using dynamicform.vue, we need to make sure it's compatible with the input of dynamicform.vue. 
+
+Note that everything on the backend remains consistent with what is mentioned above! We only need to make slight modifications to our frontend process. 
+
+To add a field to the add form component, we must first add details related to the field in the ```data()``` section of the script. For instance, the ssid_profiles view file uses this, which is hardcoded as follows:
+```
+data() {
+return {
+ formstuff: [{
+   'type': 'text',
+   'name': 'Profile Name'
+ },{ 
+     'type': 'text',
+     'name': 'SSID'
+ }, {
+     'type': 'number',
+     'name': 'RSSI'
+  }],
+ }
+},
+```
+
+Be sure to add 'type' and 'name' fields. In the future, the 'required' field may be added!
+
+Adding data to the edit form component should be the the same as above if it is not added dynamically. 
+
+--- 
+
+To submit data that users input, we must retrieve the data from the form_data array that is emitted from the dynamicform.vue file. The relative order of the objects of the array will match that of objects passed into "formstuff" in the ```data()``` section. So in ssid_profiles, this looks like the following:
+
+```
+receiveEmit(form_data) {
+    if(form_data.length > 0) {
+        this.ssidStore.addSsidProfile({
+         name: form_data[0].value,
+         ssid: form_data[1].value,
+         min_signal: form_data[2].value
+         })
+       }
+    },
+```
+
+The edit form should work the same, for both dynamic and non-dynamic components. Both rely on the information stored in ```this.currentItem```
+
+
+
+
+
 
  
