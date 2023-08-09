@@ -7,7 +7,7 @@ As pSSID evolves, our configuration file requirements will shift. Below are some
 1. Add desired field to both the add and edit forms on the GUI (Located in services/client/src/views/)
   * For the add form, declare a new variable in the data() section to keep track of user input. Be sure to add ``` v-model: variable``` to the added field to ensure the input is bound to this ``` variable ```.
 
-  For instance, in the hosts.vue file, I added a text box to get the desired host name from the user. See example code below:
+  For instance, in the hosts.vue file, I added a text box to get the desired host name from the user. See add host example code below:
   ```
   <div class="form-group">
   <label for="hosts"> Hosts </label>
@@ -31,6 +31,22 @@ data() {
 ```
 
 * For the edit form, be sure to add ```v-model:currentItem.key``` to the added field, where ```.key``` is the name of the key of this variable in MongoDB. Make sure this key is consistent with ```desired_key_name``` in step 3.
+This will be very similar to the add host code above! Note that the ```v-model``` value changes to match the corresonding key value in MongoDB.
+
+```
+<div class="form-group">
+ <label for="hosts"> Hosts </label>
+ <input
+  type="text"
+  placeholder="Enter hostname"
+  v-model="this.currentItem.name" 
+  required
+  id="hosts"
+  name="host form"
+  class="form-control"
+ >  
+</div>
+```
 
 --- 
 
@@ -51,6 +67,7 @@ async editHost() {
   })
 }
 ```
+Note that we called the hostname property ```name``` in MongoDB in step 3 below, hence why we extract the value in the editHost function as this.currentItem.name.
 --- 
 ### Backend
 3. Add support to post and update functions
