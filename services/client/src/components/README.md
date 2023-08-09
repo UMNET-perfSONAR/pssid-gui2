@@ -1,4 +1,4 @@
-# About each file 
+# About each Client Component
 
 ### dynamic_add_data.vue
 Contains component to dynamically add optional data. Used in hosts, host groups, tests, and archivers. 
