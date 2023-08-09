@@ -4,7 +4,8 @@
 Some initial styling. May be outdated.
 
 #### Components
-Contains more complex, reusable components in web application. 
+Contains more complex, reusable components in web application. Some key files include: 
+* cron.vue - Cron scheduling component 
 * list_items.vue - Regex search bar and rendering for an arbitrary list of objects lives here. Each tab on the web page uses this.
 * dynamic_add_data.vue - Arbitrary dynamic data addition. Used in Hosts, Host Groups, Archivers, and Tests.
 * dynamicform.vue - Renders changing forms for archivers and tests
