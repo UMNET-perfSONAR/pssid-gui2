@@ -3,6 +3,12 @@
 ### config.service.ts
 Responsible for producing the config file, ansible inventory, and running the shellscript.sh file. All outputs originate from here.
 
+### database.service.ts
+Connects to MongoDB client instance
+
+### delete.service.ts
+Maintains data validity when an object is deleted. For instance, if a host is deleted, this verifies that that same host is deleted in every host_group object that references it. Meant to prevent future errors.
+
 ### update.service.ts
 Maintains data validity by updating outdated collections when a referenced collection's data changes. 
 
