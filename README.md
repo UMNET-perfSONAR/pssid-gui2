@@ -6,11 +6,20 @@ Installation available via Ansible Playbook
 * Requires Ansible to be installed locally.
 
 To install via Ansible, follow the steps in this [repository](https://github.com/UMNET-perfSONAR/ansible_pssid_gui_2.0)
+
 ---
 ### Relevant Links in this Repository
 
 [Steps to add fields to config file](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/README.md)
 
+#### Backend 
+[General Backend Notes](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/server/README.md)
+[About the Backend Folders](https://github.com/UMNET-perfSONAR/pssid-gui2/tree/main/services/server/src/README.md)
+[About Each Service File - In Server](https://github.com/UMNET-perfSONAR/pssid-gui2/tree/main/services/server/src/services/README.md)
+
+#### Frontend
+[About each Frontend Directory](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/client/src/README.md)
+[About each Client Component](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/client/src/components/README.md)
 
 ----
 ### pSSID Web Application 
