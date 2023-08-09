@@ -11,7 +11,7 @@
          <item-list v-if="mounted==true" :itemArray="hostStore.hosts"  :display="showAddHost"
          @updateActive="updateActiveHost" style="cursor: pointer;"></item-list>
      </div>
-
+     <!--Add Host Form -->
      <div v-if="showAddHost===true" class="col-md-6">
       <form @submit.prevent="submitHost()">
         <h3> Add Host </h3>
@@ -46,7 +46,7 @@
       </form>
      </div>
  
-    <!-- Display selected host information -->
+    <!-- Edit selected host form -->
      <div v-if="showAddHost===false" class="col-md-6">
       <form @submit.prevent="editHost">
         <h3> Edit Host </h3>
@@ -120,6 +120,7 @@
         groupStore: useGroupStore(),
       }        
      },
+     // load host and batch information automatically
      async mounted() {
       await this.hostStore.getHosts();
       await this.batchStore.getBatches();
@@ -158,7 +159,8 @@
         await this.hostStore.editHost(new_host_obj);
         await this.hostStore.getHosts();
       },
-        // submit host information. reset info 
+
+      // submit host information. reset info 
       async submitHost() {
         const spec_object = this.addedData.reduce((result, item)=> {
                     result[item.key] = item.value
@@ -166,7 +168,8 @@
         }, {});
         await this.hostStore.addHost({
           name: this.hostname,
-          batches: (this.selectedBatches.length==0)?[]:this.selectedBatches.map((item) => item.name),          
+          batches: (this.selectedBatches.length==0)?[]:
+                    this.selectedBatches.map((item) => item.name),          
           data: spec_object
         });
         this.hostname='';
@@ -174,11 +177,14 @@
         this.addedData=[];
       },
   
+      // render add host form
       addHostComp() {
           this.showAddHost=true;
           this.currentItem=[];
           this.currentIndex={}
        },
+      
+      // delete selected host
       async deleteHost() {
         this.hostStore.hosts.splice(this.currentIndex,1);
         await this.hostStore.deleteHost(this.currentItem);

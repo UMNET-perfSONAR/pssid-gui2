@@ -13,7 +13,7 @@
       <!-- Host Group List -->
       <div class="col-md-6">
         <h3> Host Group List </h3>
-        <!-- regex search bar-->
+        <!-- regex search bar and list of groups -->
         <item-list v-if="mounted==true" :itemArray="hostGroup.host_groups" :display="showAddGroup"
         @updateActive="updateActiveGroup" style="cursor: pointer;"
         ></item-list>
@@ -111,6 +111,7 @@
           <label for="params"> Optional Data </label>
            <dynamic_add_data :addedData="edit_optional_data"></dynamic_add_data>
 
+          <!-- update and delete buttons-->
           <div>
             <button class="btn btn-success" @click="editGroup"
             style="margin-right: 1em;"> Update </button>
@@ -169,10 +170,10 @@ import hostSelection from '../forms/hostSelection.vue';
     },
 
     methods: {
+      // render current active group
       updateActiveGroup(indexArray){
         this.currentGroup = indexArray[0];
         this.currentIndex = indexArray[1];
-        console.log(this.currentGroup)
         this.selectedGroup = this.currentGroup.name;
         this.showAddGroup = false;
         this.edit_optional_data = Object.entries(this.currentGroup.data).map(([key,value]) => ({
@@ -186,14 +187,13 @@ import hostSelection from '../forms/hostSelection.vue';
                                 }));
                     
         this.currentGroup.hosts.forEach(element => {
-              console.log(element)
-              console.log(this.hosts_to_edit);
               const ind = this.hosts_to_edit.findIndex((host) => element==host.name);
-              console.log(ind);
               this.hosts_to_edit[ind].selected = true;
         });
         this.edit_regex = this.currentGroup.hosts_regex.map(item => ({regex:item}));
       },
+
+      // submit group = send to addGroup store function
       async handleSubmit() {
         this.selected_hosts = this.copy_of_data.filter(h => {
                 return h.selected == true
@@ -221,6 +221,8 @@ import hostSelection from '../forms/hostSelection.vue';
           }))
         }
       },
+
+      // edit group - send to editGroup store function
       async editGroup() {
         const new_selected_hosts = this.hosts_to_edit.filter(h => {
                 return h.selected == true
@@ -240,11 +242,15 @@ import hostSelection from '../forms/hostSelection.vue';
         await this.hostGroup.editGroup(object);
         await this.hostGroup.getGroups();
       },
+
+      // display addGroup form
       addHostForm() {
         this.showAddGroup = true;
         this.currentIndex = {};
         this.selected_hosts = [];
       },
+
+      // delete host group
       async deletegroup() {
         this.hostGroup.host_groups.splice(this.currentIndex,1);
         await this.hostGroup.deleteGroup(this.currentGroup);

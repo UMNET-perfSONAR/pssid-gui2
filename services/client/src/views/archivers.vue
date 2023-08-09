@@ -144,6 +144,11 @@ import itemList from '../components/list_items.vue'
       this.mount = true; 
     },
     methods: {
+      // render add archiver form
+      addArchiverForm() {
+        this.showAddArchiver=true;
+        this.currentIndex={};
+      },
        /**
        * update page to view selected host/ edit screen
        * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
@@ -184,11 +189,7 @@ import itemList from '../components/list_items.vue'
         this.archiver_type = archiver.archiver;
         this.showAddArchiver=false;
       },
-      addArchiverForm() {
-        this.showAddArchiver=true;
-        this.currentIndex={};
 
-      },
       // edit current item
       async editArchiver(editFormInputs) {
         if (this.currentItem.name.length === 0) {
@@ -222,21 +223,22 @@ import itemList from '../components/list_items.vue'
         this.showForm=true; 
       },
 
+      // render add form information from server 
       async renderAddForm() {
         await this.archiverStore.getDesiredArchiver(this.selected_archiver)
         this.all_archiver_options = this.archiverStore.archiver_options;
         this.all_archiver_options.push({'type':'optional', 'name': 'Optional Data'});
         this.showForm=true; 
       },
-
+      // delete archiver
       async deleteArchiver() {
         this.archiverStore.archivers.splice(this.currentIndex, 1); 
         await this.archiverStore.deleteArchiver(this.currentItem);
         this.currentItem={};
         this.currentIndex='';
       },
-      // format and submit data to DB
-      // TODO - Move most of this to the store. too much going on here
+      
+      // submit archiver to database
       async handleSubmit(form_data) {
         if (this.archiver_name.length==0) {
             alert('Please enter an archiver name!');

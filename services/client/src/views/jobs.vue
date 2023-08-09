@@ -11,6 +11,7 @@
         </div>
         <h3> Job List </h3>
         <div class="list row"> 
+            <!-- job list and regex search bar-->
             <itemList v-if="mount ==true" :itemArray="jobStore.jobs" :display="showAddJob" 
                 @updateActive="setActiveJob" style="cursor:pointer;"
                 class="col-md-6"></itemList>
@@ -178,17 +179,19 @@
                 testStore: useTestStore(),
             }
         },
+        // load jobs and tests ahead of time
         async mounted() {
             await this.jobStore.getJobs();
             await this.testStore.getTests();
             this.mount = true;
         },
         methods: {
+            // render add job form
             addJobForm() {
                 this.showAddJob = true;
                 this.currentIndex = {}; 
-    
             },
+            // render edit job form for selected job
             setActiveJob(indexArray) {
                 this.currentItem = indexArray[0];
                 this.currentIndex = indexArray[1];
@@ -211,10 +214,12 @@
                     this.selected_tests=[]
                 }
             },
+            // delete job 
             async deleteJob() {
                 this.jobStore.jobs.splice(this.currentIndex,1);
                 await this.jobStore.deleteJob(this.currentItem);
             },
+            // edit job - pass to editJob in job store
             async editJob() {
                 await this.jobStore.updateJob({
                         old_job: this.old_job_name,
@@ -224,7 +229,6 @@
                         tests: this.currentItem.tests
                 })
             }
-        }
-        
+        } 
     }
 </script>

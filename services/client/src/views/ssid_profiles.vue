@@ -11,18 +11,18 @@
         </div>
         <h3> SSID Profile List </h3>
         <div class="list row"> 
-            <!-- schedule list -->
+            <!-- schedule list and regex searchbar -->
             <itemList v-if="mount == true" :item-array="ssidStore.ssid_profiles" :display="showAddSSID"
                 @updateActive="updateActiveSSID" style="cursor:pointer;" class="col-md-6"
             ></itemList>
 
-            <!-- Add SSID profile -->
+            <!-- Add SSID profile form -->
             <div class = 'col-md-6' v-if="showAddSSID==true">
                 <h3> Add SSID Profile </h3>
                 <dynamicform  @formData="receiveEmit"
                  :form_layout="formstuff"></dynamicform>
             </div>
-
+            <!-- Edit SSID Profile form -->
             <div class = 'col-md-6' v-if="showAddSSID==false">
                 <h3> Edit SSID Profile </h3>
                 <div style="margin-bottom:1em">
@@ -90,6 +90,7 @@ import itemList from '../components/list_items.vue';
                 value: {},
                 display: 'add',
                 showAddSSID: true,
+                // to add fields, add them here :) 
                 formstuff: [{
                     'type': 'text',
                     'name': 'Profile Name'
@@ -103,25 +104,27 @@ import itemList from '../components/list_items.vue';
                 mount:false
             }
         },
+        // load ssid profiles
         async mounted() {
             await this.ssidStore.getSsidProfiles();
             this.mount = true;
         },
         methods: {
+            // render ssid profile form 
             addSsidForm() {
                 this.showAddSSID=true;
                 this.currentIndex = {};
-
             },
+            // render edit ssid profile form
             updateActiveSSID(indexArray) {
                 this.currentItem=indexArray[0];
                 this.currentIndex=indexArray[1];
                 this.old_ssidName = this.currentItem.name;
                 this.showAddSSID=false;
             },
+            // add ssid profile - send to addSsidProfile in ssid_profile store 
             receiveEmit(form_data) {
                 if(form_data.length > 0) {
-                    // TODO - template this to iterate over array and set name/ etc to be appropriate. will simplify tests file 
                     this.ssidStore.addSsidProfile({
                         name: form_data[0].value,
                         ssid: form_data[1].value,
@@ -129,6 +132,7 @@ import itemList from '../components/list_items.vue';
                     })
                 }
             },
+            // edit ssid profile - send to addSsidProfile in ssid_profile store 
             async editCurItem() {
                 const object = {   
                     old_ssid_name: this.old_ssidName,
@@ -141,6 +145,7 @@ import itemList from '../components/list_items.vue';
                 await this.ssidStore.getSsidProfiles();
 
             },
+            // delete ssid_profile
             async deleteCurItem() {
                 this.ssidStore.ssid_profiles.splice(this.currentIndex, 1);
                 await this.ssidStore.deleteSsidProfile(this.currentItem);

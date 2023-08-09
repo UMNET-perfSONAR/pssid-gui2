@@ -1,6 +1,6 @@
 <template>
+  <!-- cron schedule component -->
     <div>
-  
       <cron-vuetify
         v-model="value"
         :chip-props="{ color: 'success', textColor: 'white' }"

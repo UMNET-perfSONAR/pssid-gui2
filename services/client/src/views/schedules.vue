@@ -11,7 +11,7 @@
         </div>
         <h3> Schedule List </h3>
         <div class="list row"> 
-            <!-- schedule list -->
+            <!-- schedule list and regex searchbar -->
             <item-list v-if="mount==true" class="col-md-6" :item-array="scheduleStore.schedules"  :display="showAddSchedule"
                 @updateActive="updateActiveSchedule" style="cursor: pointer;"> 
             </item-list>
@@ -62,7 +62,6 @@
                 </form>
 
             </div>
-
         </div>
     
     </div>
@@ -71,7 +70,7 @@
   <script>
   import VueMultiselect from 'vue-multiselect'
   import { useScheduleStore } from '/src/stores/schedule_store';
-  import cronstuff from '../views/searchbar.vue'
+  import cronstuff from '../components/cron.vue'
   import itemList from '../components/list_items.vue';
   export default {
     components: { VueMultiselect, cronstuff, itemList },
@@ -89,24 +88,29 @@
             schedule_name: '',
         }
     },
+    // load schedules 
     async mounted() {
         await this.scheduleStore.getSchedules();
         this.mount = true;
     },
     methods: {
+        // render add schedule form 
         addScheduleForm() {
             this.showAddSchedule = true;
             this.currentIndex = {};
         },
+        // render edit schedule form for selected schedule
         updateActiveSchedule(indexArray) {
             this.currentItem=indexArray[0];
             this.currentIndex=indexArray[1];
             this.old_schedule_name = this.currentItem.name;
             this.showAddSchedule = false;
         },
+        // update cron expression - do this inline?
         updateCronExp(updatedCronExp) {
             this.cronExpression=updatedCronExp;
         },
+        // submit schedule - pass along to addSchedule in schedule store 
         async submitSchedule() {
             await this.scheduleStore.addSchedule({
                 "name": this.schedule_name,
@@ -115,6 +119,7 @@
             this.schedule_name='';
             this.cronExpression='* * * * *'
         },
+        // eddit schedule - pass along to editSchedule in schedule store 
         async editSchedule() {
             await this.scheduleStore.updateSchedule({
                 "old_schedule": this.old_schedule_name,
@@ -122,6 +127,7 @@
                 "repeat": this.currentItem.repeat
             });
         },
+        // delete schedule - pass along to delete Schedule in schedule store
         async deleteSchedule() {
             this.scheduleStore.schedules.splice(this.currentIndex, 1); 
             await this.scheduleStore.deleteSchedule(this.currentItem)
@@ -132,5 +138,4 @@
     }
   }
   </script>
-  
   <style src="vue-multiselect/dist/vue-multiselect.css"></style>
