@@ -6,6 +6,11 @@ Installation available via Ansible Playbook
 * Requires Ansible to be installed locally.
 
 To install via Ansible, follow the steps in this [repository](https://github.com/UMNET-perfSONAR/ansible_pssid_gui_2.0)
+---
+### Relevant Links in this Repository
+
+[Steps to add fields to config file](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/README.md)
+
 
 ----
 ### pSSID Web Application 
