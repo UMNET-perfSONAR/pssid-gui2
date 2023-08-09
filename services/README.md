@@ -32,9 +32,11 @@ data() {
 
 * For the edit form, be sure to add ```v-model:currentItem.key``` to the added field, where ```.key``` is the name of the key of this variable in MongoDB. Make sure this key is consistent with ```desired_key_name``` in step 3.
 
+--- 
 
 2. Add support for new field in the submit and edit functions in the .vue file.
-  1. To do this, add ```desired_key_name : this.<variable>``` to json object sent to addObject or editObject (sometimes called updateObject) functions. Note that the ```<variable>``` in ```this.<variable>``` refers to whatever was chosen as the ```variable``` name in step 1.
+   
+ * To do this, add ```desired_key_name : this.<variable>``` to json object sent to addObject or editObject (sometimes called updateObject) functions. Note that the ```<variable>``` in ```this.<variable>``` refers to whatever was chosen as the ```variable``` name in step 1.
 
   Adding support for this will look like as follows:
 ```
@@ -49,10 +51,10 @@ async editHost() {
   })
 }
 ```
-
+--- 
 ### Backend
 3. Add support to post and update functions
-  1. Similar to the frontend, add ```desired_key_name : req.body.key_name``` to the json objects sent to the collection.insertOne() function in the POST handler and collection.updateOne() in the PUT handler. This is located in the /services/server/src/controllers files.
+* Similar to the frontend, add ```desired_key_name : req.body.key_name``` to the json objects sent to the collection.insertOne() function in the POST handler and collection.updateOne() in the PUT handler. This is located in the /services/server/src/controllers files.
 
 Continuting with the above example, this may look like as follows:
 ```
