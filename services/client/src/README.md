@@ -1,4 +1,4 @@
-### About each directory
+# About each frontend directory
 
 #### Assets
 Some initial styling. May be outdated.
