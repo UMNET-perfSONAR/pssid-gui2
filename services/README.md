@@ -5,7 +5,7 @@ As pSSID evolves, our configuration file requirements will shift. Below are some
 ### Frontend
 
 1. Add desired field to both the add and edit forms on the GUI (Located in services/client/src/views/)
-  1. For the add form, declare a new variable in the data() section to keep track of user input. Be sure to add ``` v-model: variable``` to the added field to ensure the input is bound to this ``` variable ```.
+  * For the add form, declare a new variable in the data() section to keep track of user input. Be sure to add ``` v-model: variable``` to the added field to ensure the input is bound to this ``` variable ```.
 
   For instance, in the hosts.vue file, I added a text box to get the desired host name from the user. See example code below:
   ```
@@ -30,7 +30,7 @@ data() {
 }
 ```
 
-  2. For the edit form, be sure to add ```v-model:currentItem.key``` to the added field, where ```.key``` is the name of the key of this variable in MongoDB. Make sure this key is consistent with ```desired_key_name``` in step 3.
+* For the edit form, be sure to add ```v-model:currentItem.key``` to the added field, where ```.key``` is the name of the key of this variable in MongoDB. Make sure this key is consistent with ```desired_key_name``` in step 3.
 
 
 2. Add support for new field in the submit and edit functions in the .vue file.
