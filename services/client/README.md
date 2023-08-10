@@ -20,6 +20,9 @@ Even if FormKit isn't used, I could outsource each minor component out to a sepa
 
 ### src/views/. 
 
-.vue files can be simplified significantly! If we take advantage of the src/components/dynamicform.vue and src/components/edit_dynamicform.vue files and retrofit these files accordingly, this will become MUCH cleaner. 
-* Can actually create a MongoDB collection with a "page" for each .vue file! Pull formstuff/layout stuff from there and index by name!
+* .vue files can be simplified significantly! If we take advantage of the src/components/dynamicform.vue and src/components/edit_dynamicform.vue files and retrofit these files accordingly, this will become MUCH cleaner. 
+  * Can actually create a MongoDB collection with a "page" for each .vue file! Pull formstuff/layout stuff from there and index by name! (Store a name and formlayout attribute in the database to make this work).
 
+* Move to [composition API]([url](https://vuejs.org/guide/extras/composition-api-faq.html)) layout! Currently using vue's options layout and it isn't the cleanest approach. Attempted to start this with the src/views/hosts.api.vue file! (Not perfectly functional but a good start :p)
+
+* Move some of the data formatting/ computation stuff (tests and archivers especially) to the corresponding /src/stores/ file. Will help trim files significantly. Ran out of time for this!
