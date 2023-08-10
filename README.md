@@ -10,7 +10,9 @@ To install via Ansible, follow the steps in this [repository](https://github.com
 ---
 ### Relevant Links in this Repository
 
-[Steps to add fields to config file](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/README.md)      
+[Steps to add fields to config file](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/README.md)  
+[Ideas for future improvement](https://github.com/UMNET-perfSONAR/pssid-gui2/tree/main/services/client) 
+* Feel free to email me with questions about where things are or what to improve! 
 
 #### Backend 
 [General Backend Notes](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/server/README.md)     
