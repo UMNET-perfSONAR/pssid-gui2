@@ -47,7 +47,7 @@
         </div>
             <!-- host buttons -->
             <div style="margin-top: 1em;">
-            <button type="button" @click="selectAllHosts" class="btn btn-primary col-md-6">Select All</button>
+            <button type="button" @click="selectAllHosts" class="btn btn-primary col-md-6" style="color:white">Select All</button>
             <button v-if="view_host_options===true" @click="viewSelectedHosts" class="btn btn-secondary col-md-6">See Selected Hosts</button>
             <button v-else @click="view_host_options=true" class="btn btn-secondary col-md-6">
                 See Filtered Hosts  
