@@ -19,8 +19,8 @@
         @click="deleteParameter(counter)"
         style="cursor: pointer;">delete</i>
     </div>
-    <button @click="addParameter()" class="btn btn-primary" 
-            style="margin-top: 1em; margin-bottom: 1em;"> Add parameter </button>
+    <button @click="addParameter()" class="btn btn-primary" type="button"
+            style="margin-top: 1em; margin-bottom: 1em; color:white"> Add parameter </button>
     </div>
 </template>
 

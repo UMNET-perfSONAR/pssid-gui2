@@ -15,7 +15,7 @@
     </div>
     <div>
         <button type ="button" @click="add_regex" class="btn btn-primary" 
-            style="margin-top: 1em; margin-bottom: 1em;"> Add Host Regex Specifier </button>
+            style="margin-top: 1em; margin-bottom: 1em; color: white;"> Add Host Regex Specifier </button>
     </div>
 
 </template>
