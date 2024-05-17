@@ -9,10 +9,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const ideas_service_1 = require("../services/ideas.service");
+const database_service_1 = require("../services/database.service");
 const update_service_1 = require("../services/update.service");
 const delete_service_1 = require("../services/delete.service");
-var client = (0, ideas_service_1.connectToMongoDB)();
+var client = (0, database_service_1.connectToMongoDB)();
 /**
  * Return all schedule information from mongodb
  *

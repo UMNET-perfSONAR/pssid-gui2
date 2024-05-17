@@ -5,11 +5,6 @@
         <p> Loading archivers page... </p>
       </div>
 
-      <!-- Add ssid_profile button -->
-      <div>
-        <button @click="addArchiverForm" 
-        class="btn btn-primary" style="margin-bottom: 1em;"> Add Archiver </button>
-      </div>
       <h3>Archiver List</h3>
       <div class="list row"> 
         <!-- archiver list -->
@@ -144,11 +139,6 @@ import itemList from '../components/list_items.vue'
       this.mount = true; 
     },
     methods: {
-      // render add archiver form
-      addArchiverForm() {
-        this.showAddArchiver=true;
-        this.currentIndex={};
-      },
        /**
        * update page to view selected host/ edit screen
        * @param {item, itemIndex} indexArray - holds currentItem and currentIndex

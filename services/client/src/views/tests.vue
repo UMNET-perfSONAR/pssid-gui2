@@ -5,10 +5,6 @@
             <p> Loading tests page... </p>
         </div>
 
-        <!-- Add ssid_profile button -->
-        <div>
-            <button @click="addTestForm" class="btn btn-primary" style="margin-bottom: 1em;"> Add Test </button>
-        </div>
         <h3> Test List </h3>
         <div class="list row"> 
             <!-- schedule list -->
@@ -156,17 +152,6 @@
         },
 
         methods: {
-            addTestForm() {
-                this.showAddTest = true;
-                this.currentIndex = {};
-                this.test_name = '';
-                this.selected_test = '';
-                
-                this.showForm = false;
-                this.test = {}
-               
-                this.input_fields = {}
-            },
             async updateActiveTest(itemArray) {
                 const test = itemArray[0];
                 const index = itemArray[1];

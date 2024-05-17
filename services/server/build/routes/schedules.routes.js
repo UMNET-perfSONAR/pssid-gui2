@@ -9,5 +9,5 @@ const { getSchedules, postSchedule, updateSchedule, deleteSchedule } = require('
 schedules.get('/', getSchedules);
 schedules.post('/create-schedule', postSchedule);
 schedules.put('/update-schedule', updateSchedule);
-schedules.delete('/delete/:schedule_name', deleteSchedule);
+schedules.delete('/:schedulename', deleteSchedule);
 module.exports = schedules;

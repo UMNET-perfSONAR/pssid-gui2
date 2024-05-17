@@ -4,9 +4,8 @@
     <div v-if="hostGroup.isLoading===true">
       <p> Loading Host Group Page... </p>
     </div>
-    <!-- Add Host Button -->
+
     <div style="margin-bottom:1em">
-      <button @click="addHostForm" class="btn btn-primary" style="margin-right: 1em;"> Add Host Group</button>
       <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning"> Submit to probes </button>
     </div>
     <div class="list row"> 
@@ -241,13 +240,6 @@ import hostSelection from '../forms/hostSelection.vue';
         console.log(object);
         await this.hostGroup.editGroup(object);
         await this.hostGroup.getGroups();
-      },
-
-      // display addGroup form
-      addHostForm() {
-        this.showAddGroup = true;
-        this.currentIndex = {};
-        this.selected_hosts = [];
       },
 
       // delete host group

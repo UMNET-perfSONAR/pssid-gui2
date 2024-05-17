@@ -5,10 +5,6 @@
             <p> Loading Job page </p>
         </div>
         
-        <!-- Add job button -->
-        <div>
-            <button @click="addJobForm" class="btn btn-primary" style="margin-bottom: 1em;"> Add Job </button>
-        </div>
         <h3> Job List </h3>
         <div class="list row"> 
             <!-- job list and regex search bar-->
@@ -186,11 +182,6 @@
             this.mount = true;
         },
         methods: {
-            // render add job form
-            addJobForm() {
-                this.showAddJob = true;
-                this.currentIndex = {}; 
-            },
             // render edit job form for selected job
             setActiveJob(indexArray) {
                 this.currentItem = indexArray[0];

@@ -5,10 +5,6 @@
             <p> Loading schedules page... </p>
         </div>
 
-        <!-- Add schedule button -->
-        <div>
-            <button @click="addScheduleForm" class="btn btn-primary" style="margin-bottom: 1em;"> Add Schedule </button>
-        </div>
         <h3> Schedule List </h3>
         <div class="list row"> 
             <!-- schedule list and regex searchbar -->
@@ -94,11 +90,6 @@
         this.mount = true;
     },
     methods: {
-        // render add schedule form 
-        addScheduleForm() {
-            this.showAddSchedule = true;
-            this.currentIndex = {};
-        },
         // render edit schedule form for selected schedule
         updateActiveSchedule(indexArray) {
             this.currentItem=indexArray[0];

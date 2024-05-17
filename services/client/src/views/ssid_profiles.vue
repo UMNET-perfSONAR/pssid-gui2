@@ -4,11 +4,7 @@
         <div v-if="ssidStore.isLoading===true"> 
             <p> Loading SSID Profiles page... </p>
         </div>
-        
-        <!-- Add ssid_profile button -->
-        <div>
-            <button @click="addSsidForm" class="btn btn-primary" style="margin-bottom: 1em;"> Add SSID Profile </button>
-        </div>
+
         <h3> SSID Profile List </h3>
         <div class="list row"> 
             <!-- schedule list and regex searchbar -->
@@ -110,11 +106,6 @@ import itemList from '../components/list_items.vue';
             this.mount = true;
         },
         methods: {
-            // render ssid profile form 
-            addSsidForm() {
-                this.showAddSSID=true;
-                this.currentIndex = {};
-            },
             // render edit ssid profile form
             updateActiveSSID(indexArray) {
                 this.currentItem=indexArray[0];

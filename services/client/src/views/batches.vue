@@ -5,13 +5,6 @@
         <p> Loading Batch page </p>
     </div>
 
-    <!-- Add batch button -->
-    <div>
-        <button @click="addBatchForm" class="btn btn-primary" style="margin-bottom: 1em;"> 
-           Add Batch 
-        </button>
-    </div>
-
     <div class="list row">
         <div class="col-md-6" v-if="batchStore.batches.length === 0">
             <h3> Batch List </h3>
@@ -207,12 +200,6 @@
                 this.old_batchname=this.currentItem.name;
             },
             
-            // render add batch form 
-            addBatchForm() {
-                this.showAddBatch=true;
-                this.currentItem={};
-                this.currentIndex={}
-            },
            /**
             * 
             * @param {name, ssid_profiles, jobs, schedules, archivers, priority, TTL} form_data 

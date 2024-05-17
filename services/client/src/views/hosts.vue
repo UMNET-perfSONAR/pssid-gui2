@@ -1,7 +1,6 @@
 <template>
   <!-- buttons -->
   <div style="margin-bottom:1em;">
-    <button class="btn btn-primary" @click="addHostComp" style="margin-right: 1em;"> Add Hosts</button>
     <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);"> Submit to probes </button>
   </div>
   <div class="list row">
@@ -176,13 +175,6 @@
         this.selectedBatches=[];
         this.addedData=[];
       },
-  
-      // render add host form
-      addHostComp() {
-          this.showAddHost=true;
-          this.currentItem=[];
-          this.currentIndex={}
-       },
       
       // delete selected host
       async deleteHost() {
