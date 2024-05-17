@@ -8,7 +8,7 @@ import fs from 'fs';
 const { writeFileSync } = require('fs');
 let config_path = './config.json';
 let ini_path = './ansible.ini';
-let shellscript_path = './shellscript.sh';
+let shellscript_path = './provision.sh';
 
 /**
  * Get specified collection data - flexible for all collections
