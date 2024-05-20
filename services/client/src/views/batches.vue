@@ -5,6 +5,14 @@
         <p> Loading Batch page </p>
     </div>
 
+    <!-- Add batch button -->
+    <div>
+      <button style="margin-bottom: 2em;" v-if="showAddBatch"></button>
+      <button @click="addBatchForm" class="btn btn-primary" v-if="!showAddBatch"
+	style="margin-bottom: 1em;"> 
+        Add Batch 
+      </button>
+    </div>
     <div class="list row">
         <div class="col-md-6" v-if="batchStore.batches.length === 0">
             <h3> Batch List </h3>
@@ -189,6 +197,12 @@
             this.mount = true;
         },
         methods: {
+	    // render add batch form 
+            addBatchForm() {
+                this.showAddBatch=true;
+                this.currentItem={};
+                this.currentIndex={}
+            },
             /**
              * Change active batch to match item and index from itemList component
              * @param {item, index} indexArray 

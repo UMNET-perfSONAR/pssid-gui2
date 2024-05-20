@@ -1,7 +1,10 @@
 <template>
   <!-- buttons -->
-  <div style="margin-bottom:1em;">
+  <div class="buttons" style="margin-bottom:1em;">
     <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);"> Submit to probes </button>
+    <button class="btn btn-primary" @click="addHostComp" v-if="!showAddHost"
+      style="margin-left: 1em;"> Add Hosts
+    </button>
   </div>
   <div class="list row">
      <!-- List out the items -->
@@ -176,6 +179,13 @@
         this.addedData=[];
       },
       
+      // render add host form
+      addHostComp() {
+          this.showAddHost=true;
+          this.currentItem=[];
+          this.currentIndex={}
+       },
+
       // delete selected host
       async deleteHost() {
         this.hostStore.hosts.splice(this.currentIndex,1);

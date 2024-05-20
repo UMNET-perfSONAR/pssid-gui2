@@ -4,7 +4,13 @@
         <div v-if="jobStore.isLoading===true">
             <p> Loading Job page </p>
         </div>
-        
+
+	<!-- Add job button -->
+        <div>
+	  <button style="margin-bottom: 2em;" v-if="showAddJob"></button>
+          <button @click="addJobForm" class="btn btn-primary" v-if="!showAddJob"
+	    style="margin-bottom: 1em;"> Add Job </button>
+        </div>
         <h3> Job List </h3>
         <div class="list row"> 
             <!-- job list and regex search bar-->
@@ -182,6 +188,11 @@
             this.mount = true;
         },
         methods: {
+            // render add job form
+            addJobForm() {
+                this.showAddJob = true;
+                this.currentIndex = {}; 
+            },
             // render edit job form for selected job
             setActiveJob(indexArray) {
                 this.currentItem = indexArray[0];

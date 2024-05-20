@@ -7,6 +7,9 @@
 
     <div style="margin-bottom:1em">
       <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning"> Submit to probes </button>
+      <button @click="addHostForm" class="btn btn-primary" v-if="showAddGroup==false"
+	style="margin-left: 1em;"> Add Host Group
+      </button>
     </div>
     <div class="list row"> 
       <!-- Host Group List -->
@@ -240,6 +243,13 @@ import hostSelection from '../forms/hostSelection.vue';
         console.log(object);
         await this.hostGroup.editGroup(object);
         await this.hostGroup.getGroups();
+      },
+
+      // display addGroup form
+      addHostForm() {
+          this.showAddGroup = true;
+          this.currentIndex = {};
+          this.selected_hosts = [];
       },
 
       // delete host group
