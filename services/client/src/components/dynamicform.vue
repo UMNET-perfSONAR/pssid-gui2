@@ -59,7 +59,16 @@
                 <label>Additonal Data </label>
                 <dynamic_add_data :addedData="optional_data"></dynamic_add_data>
             </div>
-           
+
+	    <div v-if="item.type==='toggle'">
+              <button
+                type="button"
+                class="btn btn-info"
+                @click="handleToggleClick(index)"
+              >
+                {{ form_values[index].value }}
+              </button>
+            </div>
         </div>
         <div>
             <button class="btn btn-success" @onclick="handleFormSubmit"
@@ -110,8 +119,17 @@ import dynamic_add_data from './dynamic_add_data.vue';
                     value: item.value,
                     selected: item.selected
                 }))
+	        console.log(organized_data);
                 this.$emit('formData', organized_data)
             },
+
+	    handleToggleClick(index) {
+	        const currentValue = this.form_values[index].value;
+	        const trueValue = this.form_values[index].trueValue;
+	        const falseValue = this.form_values[index].falseValue;
+	        const newValue = currentValue === trueValue ? falseValue : trueValue;
+	        this.form_values[index].value = newValue;
+	    },
 
             sendFormType(form_type) {
                 this.$emit('render-dynamic-form', form_type)
@@ -120,8 +138,10 @@ import dynamic_add_data from './dynamic_add_data.vue';
             async setUpData() {
                 this.form_values = this.form_layout.map((item) => ({
                     name: item.name,
-                    value: '',
-                    selected: []
+                    value: item.hasOwnProperty('defaultValue') ? item.defaultValue : '',
+                    selected: [],
+		    trueValue: item.hasOwnProperty('trueValue') ? item.trueValue : 'NA',
+		    falseValue: item.hasOwnProperty('falseValue') ? item.falseValue : 'NA'
                 }))
                 this.copy_of_data=this.form_layout
             //this.form_values=mapped;

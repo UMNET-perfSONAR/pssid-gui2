@@ -89,6 +89,7 @@ const postSSIDProfile = (async (req:Request, res:Response) => {
         await collection.insertOne({
             "name": req.body.name,
             "SSID": req.body.ssid,
+	    "test_level": req.body.test_level,
             "min_signal": req.body.min_signal
         });   
         res.json(req.body);
@@ -115,7 +116,7 @@ const updateSSIDProfile = (async (req:Request, res:Response) => {
         await collection.updateOne({
             "name": body.old_ssid_name
         }, {$set:{"name": body.new_ssid_name, "SSID": body.ssid,
-                  "min_signal": body.min_signal},
+                  "test_level": body.test_level, "min_signal": body.min_signal},
          })
         
         if (body.old_ssid_name !== body.new_ssid_name) {               // Trigger update in batches collection

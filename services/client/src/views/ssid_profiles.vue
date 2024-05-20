@@ -44,8 +44,17 @@
                         class="form-control"
                         v-model="currentItem.SSID"
                         />
-
                 </div>
+
+		<div style="margin-bottom: 1em">
+		  <button
+                    type="button"
+                    class="btn btn-info"
+                    @click="handleToggleEdit"
+		  >
+                    {{ currentItem.test_level }}
+		  </button>
+		</div>
                 
                 <!-- Edit number -->
                 <div>
@@ -93,7 +102,14 @@ import itemList from '../components/list_items.vue';
                 },{ 
                     'type': 'text',
                     'name': 'SSID'
-                }, {
+                },{
+		    'type': 'toggle',
+		    'name': 'SSID/BSSID',
+		    'trueValue': 'SSID',
+		    'falseValue': 'BSSID',
+		    'defaultValue': 'SSID'  // TODO: figure out the best default
+		},
+		  {
                     'type': 'number',
                     'name': 'RSSI'
                 }],
@@ -119,19 +135,26 @@ import itemList from '../components/list_items.vue';
                     this.ssidStore.addSsidProfile({
                         name: form_data[0].value,
                         ssid: form_data[1].value,
-                        min_signal: form_data[2].value
+		        test_level: form_data[2].value,
+                        min_signal: form_data[3].value
                     })
                 }
             },
+	    // It's OK to hardcode 'SSID' and 'BSSID' since we know that's what the toggle
+	    // will be and this does not handle generic toggle button clicks.
+	    handleToggleEdit() {
+	        this.currentItem.test_level = this.currentItem.test_level === 'SSID' ?
+		  'BSSID' : 'SSID';
+	    },
             // edit ssid profile - send to addSsidProfile in ssid_profile store 
             async editCurItem() {
                 const object = {   
                     old_ssid_name: this.old_ssidName,
                     new_ssid_name:  this.currentItem.name,
                     ssid:  this.currentItem.SSID,
+		    test_level: this.currentItem.test_level,
                     min_signal: this.currentItem.min_signal
                 }
-                console.log(object)
                 await this.ssidStore.editSsidProfile(object);
                 await this.ssidStore.getSsidProfiles();
 
@@ -142,7 +165,7 @@ import itemList from '../components/list_items.vue';
                 await this.ssidStore.deleteSsidProfile(this.currentItem);
                 this.currentIndex = {};
                 this.currentIndex = {};
-            }
+            },
         }
     }
 </script>

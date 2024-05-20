@@ -87,6 +87,7 @@ const postSSIDProfile = ((req, res) => __awaiter(void 0, void 0, void 0, functio
         yield collection.insertOne({
             "name": req.body.name,
             "SSID": req.body.ssid,
+            "test_level": req.body.test_level,
             "min_signal": req.body.min_signal
         });
         res.json(req.body);
@@ -112,7 +113,7 @@ const updateSSIDProfile = ((req, res) => __awaiter(void 0, void 0, void 0, funct
         yield collection.updateOne({
             "name": body.old_ssid_name
         }, { $set: { "name": body.new_ssid_name, "SSID": body.ssid,
-                "min_signal": body.min_signal },
+                "test_level": body.test_level, "min_signal": body.min_signal },
         });
         if (body.old_ssid_name !== body.new_ssid_name) { // Trigger update in batches collection
             (0, update_service_1.updateCollection)('batches', 'ssid_profiles', client); // update batches using ssid_profiles collection
