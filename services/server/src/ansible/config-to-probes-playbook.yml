@@ -1,0 +1,25 @@
+# - name: Copy config.json into all hosts
+#   hosts: all
+#   tasks:
+#   - name: copy config.json
+#     become: false
+#     copy:
+#       src: /Users/sastec/Downloads/gui/services/server/output/config.json
+#       dest: /home/sastec/config.json
+#       owner: sastec
+#       mode: '0644'
+
+### Eventually this script should have 3 steps
+### 1. Install/update pssid
+### 2. Copy pssid_config.json over
+### 3. Restart daemon
+
+# The following script is used to test that --limit works correctly.
+# What exactly it does does not matter since it will always fail on fictional hosts.
+- name: Print target hosts
+  hosts: all  # doesn't matter, actual target hosts are determined by --limit
+  gather_facts: false
+  tasks:
+    - name: get control host home directory
+      command: "echo ${HOME}"
+      register: control_home
