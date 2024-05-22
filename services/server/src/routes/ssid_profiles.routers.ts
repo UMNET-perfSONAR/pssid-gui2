@@ -2,10 +2,10 @@ import express, { Express, Request, Response } from 'express';
 var ssidProfiles = express.Router();
 
 const {getSSIDProfiles, 
-    getOneSSIDProfile, 
-    deleteSSIDProfile, 
-    postSSIDProfile, 
-    updateSSIDProfile} = require('../controllers/ssid_profiles.controllers');
+       getOneSSIDProfile, 
+       deleteSSIDProfile, 
+       postSSIDProfile, 
+       updateSSIDProfile} = require('../controllers/ssid_profiles.controllers');
 
 
 ssidProfiles.get('/', getSSIDProfiles);

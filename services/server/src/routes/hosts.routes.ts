@@ -2,12 +2,12 @@ import express, { Express, Request, Response } from 'express';
 var hosts = express.Router();
 
 const {getHosts, 
-    getOneHost, 
-    deleteHost, 
-    postHost,
-    deleteAll,
-    updateHost,
-createConfig} = require('../controllers/hosts.controllers');
+       getOneHost, 
+       deleteHost, 
+       postHost,
+       deleteAll,
+       updateHost,
+       createConfig} = require('../controllers/hosts.controllers');
 
 
 hosts.get('/', getHosts);

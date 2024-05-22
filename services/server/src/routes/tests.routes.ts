@@ -2,11 +2,11 @@ import express, { Express, Request, Response } from 'express';
 var tests = express.Router();
 
 const {getTests, 
-    deleteTest, 
-    postTest,
-    updateTest,
-    readFileNames,
-    readTestFile} = require('../controllers/tests.controllers');
+       deleteTest, 
+       postTest,
+       updateTest,
+       readFileNames,
+       readTestFile} = require('../controllers/tests.controllers');
 
 
 tests.get('/', getTests);
