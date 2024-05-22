@@ -1,8 +1,0 @@
-[
-    {
-        "type": "text",
-        "name": "url",
-        "default": "",
-        "required": false
-    }
-]

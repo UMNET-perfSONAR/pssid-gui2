@@ -19,4 +19,5 @@ COPY . .
 RUN npm run build && chmod -R g+rw /usr/src/app/client
 
 EXPOSE 8080
+
 CMD ["npm", "run", "dev"]
