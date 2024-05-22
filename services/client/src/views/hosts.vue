@@ -7,14 +7,14 @@
     </button>
   </div>
   <div class="list row">
-     <!-- List out the items -->
-     <div class="col-md-6">
-         <h3> Host list </h3>
-         <item-list v-if="mounted==true" :itemArray="hostStore.hosts"  :display="showAddHost"
-         @updateActive="updateActiveHost" style="cursor: pointer;"></item-list>
-     </div>
-     <!--Add Host Form -->
-     <div v-if="showAddHost===true" class="col-md-6">
+    <!-- List out the items -->
+    <div class="col-md-6">
+      <h3> Host list </h3>
+      <item-list v-if="mounted==true" :itemArray="hostStore.hosts"  :display="showAddHost"
+        @updateActive="updateActiveHost" style="cursor: pointer;"></item-list>
+    </div>
+    <!--Add Host Form -->
+    <div v-if="showAddHost===true" class="col-md-6">
       <form @submit.prevent="submitHost()">
         <h3> Add Host </h3>
         <div class="form-group">
@@ -38,18 +38,18 @@
             v-model="selectedBatches"
             track-by="name"
             label="name"
-            >
+          >
           </VueMultiselect>
         </div>
-          <p> Optional Data </p>
-          <dynamic_add_data :addedData="addedData"></dynamic_add_data>
-          <button class="btn btn-success"> Submit </button>
+        <p> Optional Data </p>
+        <dynamic_add_data :addedData="addedData"></dynamic_add_data>
+        <button class="btn btn-success"> Submit </button>
 
       </form>
-     </div>
- 
+    </div>
+    
     <!-- Edit selected host form -->
-     <div v-if="showAddHost===false" class="col-md-6">
+    <div v-if="showAddHost===false" class="col-md-6">
       <form @submit.prevent="editHost">
         <h3> Edit Host </h3>
         <div class="form-group">
@@ -71,17 +71,17 @@
             :close-on-select="false"
             :options="batchStore.batches.map(item=> item.name)"
             v-model="currentItem.batches"         
-            >
+          >
           </VueMultiselect>
         </div>
         <dynamic_add_data :addedData="data"></dynamic_add_data>
-      <div>
+	<div>
           <button class="btn btn-success" style="margin-right: 1em;" > Update </button>
           <button class="btn btn-danger" @click="deleteHost"> Delete </button>
-      </div>
+	</div>
       </form>
-     </div>
- </div>
+    </div>
+  </div>
 
 </template>
 
@@ -95,105 +95,105 @@
  import VueMultiselect from 'vue-multiselect'
 
  export default defineComponent({
-     components: {itemList, dynamic_add_data, VueMultiselect},
-     data() {    
-      return {
-        // for data binding and storage 
-        form_vals: [],
-        addedData: [{
-          'key':'',
-          'value': ''
-        }],
+   components: {itemList, dynamic_add_data, VueMultiselect},
+   data() {    
+     return {
+       // for data binding and storage 
+       form_vals: [],
+       addedData: [{
+         'key':'',
+         'value': ''
+       }],
 
-        // rendering of subpages
-        currentItem: [],
-        currentIndex: {},
-        showAddHost: true,
-        batch: [],
-        selectedBatches:'',
-        hostname: '',
-        old_hostname: '',
-        data: [],
-        mounted: false,
+       // rendering of subpages
+       currentItem: [],
+       currentIndex: {},
+       showAddHost: true,
+       batch: [],
+       selectedBatches:'',
+       hostname: '',
+       old_hostname: '',
+       data: [],
+       mounted: false,
 
-        // relevant stores 
-        batchStore: useBatchStore(),
-        hostStore: useHostStore(),
-        groupStore: useGroupStore(),
-      }        
+       // relevant stores 
+       batchStore: useBatchStore(),
+       hostStore: useHostStore(),
+       groupStore: useGroupStore(),
+     }        
+   },
+   // load host and batch information automatically
+   async mounted() {
+     await this.hostStore.getHosts();
+     await this.batchStore.getBatches();
+     this.mounted=true;
+   },
+
+   methods: {
+     /**
+      * update page to view selected host/ edit screen
+      * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
+      */
+     updateActiveHost(indexArray) {
+       this.currentItem=indexArray[0];
+       this.currentIndex=indexArray[1];
+       this.showAddHost=false;
+       this.old_hostname=this.currentItem.name
+       this.data=Object.entries(this.currentItem.data).map(([key,value]) => ({
+         key,
+         value
+       }))
+       console.log(this.data);
      },
-     // load host and batch information automatically
-     async mounted() {
-      await this.hostStore.getHosts();
-      await this.batchStore.getBatches();
-      this.mounted=true;
-     },
-
-     methods: {
-      /**
-       * update page to view selected host/ edit screen
-       * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
-       */
-      updateActiveHost(indexArray) {
-        this.currentItem=indexArray[0];
-        this.currentIndex=indexArray[1];
-        this.showAddHost=false;
-        this.old_hostname=this.currentItem.name
-        this.data=Object.entries(this.currentItem.data).map(([key,value]) => ({
-                    key,
-                    value
-                }))
-        console.log(this.data);
-      },
-      
-      // edit host in database 
-      async editHost() {
-        const new_host_obj = {
-          "old_hostname": this.old_hostname,
-          "new_hostname": this.currentItem.name,
-          "batches": this.currentItem.batches,
-          "data": this.data.reduce((result, item)=> {
-                    result[item.key] = item.value
-                    return result
-        }, {})
-        }
-        console.log(new_host_obj);
-        await this.hostStore.editHost(new_host_obj);
-        await this.hostStore.getHosts();
-      },
-
-      // submit host information. reset info 
-      async submitHost() {
-        const spec_object = this.addedData.reduce((result, item)=> {
-                    result[item.key] = item.value
-                    return result
-        }, {});
-        await this.hostStore.addHost({
-          name: this.hostname,
-          batches: (this.selectedBatches.length==0)?[]:
-                    this.selectedBatches.map((item) => item.name),          
-          data: spec_object
-        });
-        this.hostname='';
-        this.selectedBatches=[];
-        this.addedData=[];
-      },
-      
-      // render add host form
-      addHostComp() {
-          this.showAddHost=true;
-          this.currentItem=[];
-          this.currentIndex={}
-       },
-
-      // delete selected host
-      async deleteHost() {
-        this.hostStore.hosts.splice(this.currentIndex,1);
-        await this.hostStore.deleteHost(this.currentItem);
-        this.currentItem=[];
-        this.currentIndex={};
-        this.data=[];
+     
+     // edit host in database 
+     async editHost() {
+       const new_host_obj = {
+         "old_hostname": this.old_hostname,
+         "new_hostname": this.currentItem.name,
+         "batches": this.currentItem.batches,
+         "data": this.data.reduce((result, item)=> {
+           result[item.key] = item.value
+           return result
+         }, {})
        }
-     } 
+       console.log(new_host_obj);
+       await this.hostStore.editHost(new_host_obj);
+       await this.hostStore.getHosts();
+     },
+
+     // submit host information. reset info 
+     async submitHost() {
+       const spec_object = this.addedData.reduce((result, item)=> {
+         result[item.key] = item.value
+         return result
+       }, {});
+       await this.hostStore.addHost({
+         name: this.hostname,
+         batches: (this.selectedBatches.length==0)?[]:
+         this.selectedBatches.map((item) => item.name),          
+         data: spec_object
+       });
+       this.hostname='';
+       this.selectedBatches=[];
+       this.addedData=[];
+     },
+     
+     // render add host form
+     addHostComp() {
+       this.showAddHost=true;
+       this.currentItem=[];
+       this.currentIndex={}
+     },
+
+     // delete selected host
+     async deleteHost() {
+       this.hostStore.hosts.splice(this.currentIndex,1);
+       await this.hostStore.deleteHost(this.currentItem);
+       this.currentItem=[];
+       this.currentIndex={};
+       this.data=[];
+     }
+   } 
  })
 </script>

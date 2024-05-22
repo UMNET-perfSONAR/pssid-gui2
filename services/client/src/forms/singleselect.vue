@@ -1,7 +1,7 @@
 <template>
-    <div>
-        singleselect
-    </div>
+  <div>
+    singleselect
+  </div>
 </template>
 
 <script setup>

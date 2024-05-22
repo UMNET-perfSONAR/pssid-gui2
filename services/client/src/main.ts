@@ -23,9 +23,9 @@ import cronVuetify from '@vue-js-cron/vuetify'
 import '@vue-js-cron/vuetify/dist/vuetify.css'
 
 const vuetify = createVuetify({
-    components,
-    directives,
-  })
+  components,
+  directives,
+})
 
 
 const app = createApp(App);
