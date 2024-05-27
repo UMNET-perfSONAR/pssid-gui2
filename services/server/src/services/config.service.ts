@@ -6,9 +6,12 @@ import { exec } from 'node:child_process';
 import path from 'path';
 import fs from 'fs';
 const { writeFileSync } = require('fs');
-let config_path = './config.json';
-let ini_path = './ansible.ini';
-let shellscript_path = './provision.sh';
+// The following paths are read in from config_output.json. Initialize them to null
+// to ensure they are not used before being set in function `get_paths`.
+let output_directory: string | null = null;
+let config_path: string | null = null;
+let ini_path: string | null = null;
+let shellscript_path: string | null = null;
 
 /**
  * Get specified collection data - flexible for all collections
@@ -73,9 +76,17 @@ function get_paths() {
   var name = '../../config_output.json';
   const filePath = path.join(__dirname, name);
   var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  output_directory = object.output_directory;
   config_path = object.config_path;
   ini_path = object.inventory_path;
   shellscript_path = object.shellscript_path;
+  if (config_path === null || ini_path === null || shellscript_path === null) {
+    throw new Error('Paths not set in config_output.json');
+  }
+  // Ensure the parent output directory exists.
+  if (!fs.existsSync(output_directory)) {
+    fs.mkdirSync(output_directory, { recursive: true });
+  }
 }
 
 /**
