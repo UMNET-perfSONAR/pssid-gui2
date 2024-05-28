@@ -11,10 +11,10 @@ const cors = require('cors');
 app.use(cors({
   origin: '*'
 }))
- 
+
 // call just once to initialize some data in db - will eliminate later. serves as a "reset" for now
 // startup();
- 
+
 const hostroute=require("./routes/hosts.routes");
 const jobroute=require("./routes/jobs.routes");
 const scheduleroute=require("./routes/schedules.routes");
@@ -40,7 +40,7 @@ app.use("/tests", testroute);
 app.get('/', (req: Request, res: Response) => {
   res.send('Express + TypeScript Server');
 });
- 
+
 // first connect to MongoDB(), then communicate with the web app
 connectToMongoDB()
   .then(() => {

@@ -2,11 +2,11 @@ import express, { Express, Request, Response } from 'express';
 var hostGroups = express.Router();
 
 const {getHostGroups, 
-    getOneHostGroup, 
-    deleteHostGroup, 
-    postHostGroup, 
-    updateHostGroup,
-createConfig} = require('../controllers/host-groups.contollers');
+       getOneHostGroup, 
+       deleteHostGroup, 
+       postHostGroup, 
+       updateHostGroup,
+       createConfig} = require('../controllers/host-groups.contollers');
 
 
 hostGroups.get('/', getHostGroups);

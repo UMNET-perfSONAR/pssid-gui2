@@ -2,12 +2,12 @@ import express, { Express, Request, Response } from 'express';
 var jobs = express.Router();
 
 const {getJobs, 
-    getOneJob, 
-    deleteJob, 
-    postJob,
-    updateJob} = require('../controllers/jobs.controllers');
+       getOneJob, 
+       deleteJob, 
+       postJob,
+       updateJob} = require('../controllers/jobs.controllers');
 
- 
+
 jobs.get('/', getJobs);
 jobs.get('/:job', getOneJob);
 jobs.delete('/:job', deleteJob);

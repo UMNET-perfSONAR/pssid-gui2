@@ -2,11 +2,11 @@ import express, { Express, Request, Response } from 'express';
 var archivers = express.Router();
 
 const {getArchivers,
-    readFileNames, 
-    readArchiverFile,
-    deleteArchiver, 
-    postArchiver, 
-    updateArchiver} = require('../controllers/archivers.controllers');
+       readFileNames, 
+       readArchiverFile,
+       deleteArchiver, 
+       postArchiver, 
+       updateArchiver} = require('../controllers/archivers.controllers');
 
 
 archivers.get('/', getArchivers);

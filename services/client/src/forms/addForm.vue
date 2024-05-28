@@ -1,17 +1,17 @@
 <script setup>
-import { ref } from 'vue'
-import cleaned_dynamic from '../components/cleaned_dynamic.vue'
-const submitted = ref(false)
-const submitHandler = async () => {
-  // Let's pretend this is an ajax request:
-  await new Promise((r) => setTimeout(r, 1000))
-  submitted.value = true
-}
-const my_data=[{'type': 'text', 'name': 'Host'}]
+ import { ref } from 'vue'
+ import cleaned_dynamic from '../components/cleaned_dynamic.vue'
+ const submitted = ref(false)
+ const submitHandler = async () => {
+   // Let's pretend this is an ajax request:
+   await new Promise((r) => setTimeout(r, 1000))
+   submitted.value = true
+ }
+ const my_data=[{'type': 'text', 'name': 'Host'}]
 </script>
 
 <template>
-    <cleaned_dynamic :form_layout="my_data"></cleaned_dynamic>
+  <cleaned_dynamic :form_layout="my_data"></cleaned_dynamic>
 
 
   <FormKit

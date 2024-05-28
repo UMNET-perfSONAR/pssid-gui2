@@ -1,5 +1,6 @@
 {
-    "inventory_path": "./output/ansible.ini",
-    "config_path": "./output/config.json",
-    "shellscript_path": "./output/provision.sh"
+    "output_directory": "./output/",
+    "inventory_path": "./output/hosts.ini",
+    "config_path": "./output/pssid_config.json",
+    "shellscript_path": "./bin/provision.sh"
 }
