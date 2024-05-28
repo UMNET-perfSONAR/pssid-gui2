@@ -124,6 +124,10 @@ export const useHostStore = defineStore('hostStore', {
      * @param currentHost - host, if any, that submit to probes button was pushed. provides context
      */
     async createConfig(currentHost: any) {
+      if (currentHost.length === 0) {
+	alert("Select a host probe to submit to.");
+	return;
+      }
       try {
         await fetch(
           'http://'+ window.location.hostname + ':8000/hosts/config',
@@ -135,7 +139,8 @@ export const useHostStore = defineStore('hostStore', {
               "Content-Type": "application/json"
             }
           }
-        ) 
+        );
+        alert("Host submitted successfully!");
       }
       catch(error) {
         console.error(error);

@@ -125,7 +125,8 @@ export const useGroupStore = defineStore('groupStore', {
               "Content-Type": "application/json"
             }
           }
-        ) 
+        );
+        alert("Group submitted successfully!");
       }
       catch(error) {
         console.log(error);
