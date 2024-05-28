@@ -254,17 +254,26 @@
 
      // delete host group
      async deletegroup() {
-       this.hostGroup.host_groups.splice(this.currentIndex,1);
+       const deleteIndex = this.currentIndex;
+       this.hostGroup.host_groups.splice(deleteIndex, 1);
        await this.hostGroup.deleteGroup(this.currentGroup);
-       this.edit_regex = [];
-       this.hosts_to_edit = this.hostStore.hosts.map((item, index) => ({
-         name: item.name,
-         selected: false,
-         index: index
-       }));
+       // If the deleted group is the last one, clear the selection and show
+       // the add group page.
+       if (this.hostGroup.host_groups.length <= deleteIndex) {
+         this.edit_regex = [];
+         this.addHostForm();
+       }
+       // Otherwise, update the selection to the next group in the list,
+       // allowing users to potentially keep deleting without reselection.
+       else {
+         this.currentIndex = deleteIndex;
+         this.currentGroup = this.hostGroup.host_groups[deleteIndex];
+         this.updateActiveGroup([this.currentGroup, deleteIndex]);
+       }
      },
    }
    
  })
 </script>
+
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
