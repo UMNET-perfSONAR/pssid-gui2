@@ -175,7 +175,10 @@
        });
        this.hostname='';
        this.selectedBatches=[];
-       this.addedData=[];
+       this.addedData=[{
+         'key':'',
+         'value': ''
+       }];
      },
      
      // render add host form
