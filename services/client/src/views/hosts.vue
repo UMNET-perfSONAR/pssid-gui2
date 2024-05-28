@@ -192,9 +192,9 @@
        await this.hostStore.deleteHost(this.currentItem);
        // If the item deleted is the last one in the list, clear the selection.
        if (this.hostStore.hosts.length <= deleteIndex) {
-         this.currentItem=[];
-         this.currentIndex={};
          this.data = [];
+	 // Show Add Host page.
+	 this.addHostComp();
        }
        // If the item deleted is *not* the last one, then keep the same index and update
        // the selection such that users can seamlessly delete items without reselection.
