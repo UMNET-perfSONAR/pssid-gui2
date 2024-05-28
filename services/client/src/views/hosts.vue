@@ -143,7 +143,6 @@
          key,
          value
        }))
-       console.log(this.data);
      },
      
      // edit host in database 
@@ -188,11 +187,23 @@
 
      // delete selected host
      async deleteHost() {
-       this.hostStore.hosts.splice(this.currentIndex,1);
+       const deleteIndex = this.currentIndex;
+       this.hostStore.hosts.splice(deleteIndex, 1);
        await this.hostStore.deleteHost(this.currentItem);
-       this.currentItem=[];
-       this.currentIndex={};
-       this.data=[];
+       // If the item deleted is the last one in the list, clear the selection.
+       if (this.hostStore.hosts.length <= deleteIndex) {
+         this.currentItem=[];
+         this.currentIndex={};
+         this.data = [];
+       }
+       // If the item deleted is *not* the last one, then keep the same index and update
+       // the selection such that users can seamlessly delete items without reselection.
+       else {
+         this.currentIndex = deleteIndex;  // redundant but here for better clarity
+         this.currentItem = this.hostStore.hosts[deleteIndex];  // update currentItem
+	 // Update the selection.
+         this.updateActiveHost([this.currentItem, this.currentIndex]);
+       }
      }
    } 
  })

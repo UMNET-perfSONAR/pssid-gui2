@@ -61,11 +61,12 @@ const deleteHost = (async (req:Request, res:Response) => {
     (await client).connect();
     var hosts_col = (await client).db('gui').collection('hosts');
     const deleted = await hosts_col.findOne({ "name" : name });
-    
     var host_groups_col = (await client).db('gui').collection('host_groups');
-    deleteDocument(host_groups_col, 'hosts', 'host_ids', deleted?.name);           // delete references from other collections
 
-    await hosts_col.findOneAndDelete({ "name" : name });                           // remove from collection 
+    // Delete references from other collections
+    await deleteDocument(host_groups_col, 'hosts', 'host_ids', deleted?.name);
+    // Remove from collection
+    await hosts_col.findOneAndDelete({ "name" : name });
 
     res.send('host ' + name + ' was deleted')
   }
