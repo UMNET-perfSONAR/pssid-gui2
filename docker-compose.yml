@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   client:
+    image: pssid-gui2_client:latest
     build: ./services/client
     volumes:
       - ./services/client:/usr/src/app/client
@@ -10,6 +11,7 @@ services:
       - 8080:8080
 
   server:
+    image: pssid-gui2_server:latest
     restart: on-failure
     build: ./services/server
     volumes:
@@ -22,7 +24,8 @@ services:
     depends_on:
       - mongo
   mongo:
-    image: mongo
+    image: pssid-gui2_mongo:latest
+    build: ./services/database
     ports:
       - 27017:27017
     volumes: 
