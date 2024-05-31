@@ -5,7 +5,6 @@ services:
     image: pssid-gui2_client:latest
     build: ./services/client
     volumes:
-      - ./services/client:/usr/src/app/client
       - client_node_modules:/usr/src/app/client/node_modules
     ports:
       - 8080:8080
@@ -15,10 +14,10 @@ services:
     restart: on-failure
     build: ./services/server
     volumes:
-      - ./services/server:/usr/src/app/server
       - server_node_modules:/usr/src/app/server/node_modules
-      - /usr/local/pssid-gui/output:/usr/src/app/server/output
       - /usr/local/pssid-gui/bin:/usr/src/app/server/bin
+      - /usr/local/pssid-gui/lib:/usr/src/app/server/lib
+      - /usr/local/pssid-gui/output:/usr/src/app/server/output
     ports:
       - 8000:8000
     depends_on:
@@ -29,7 +28,7 @@ services:
     ports:
       - 27017:27017
     volumes: 
-      - ~/mongo/data:/data/db
+      - /usr/local/pssid-gui/mongo/data:/data/db
 
 volumes:
   client_node_modules:

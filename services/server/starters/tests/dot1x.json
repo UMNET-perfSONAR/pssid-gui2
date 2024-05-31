@@ -1,0 +1,14 @@
+[
+    {
+        "name": "interface",
+        "type": "text"
+    },
+    {
+        "name": "ssid",
+        "type": "text"
+    },
+    {
+        "name": "WPA-EAP",
+        "type": "text"
+    }
+]

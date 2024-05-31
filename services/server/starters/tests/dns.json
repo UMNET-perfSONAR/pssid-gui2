@@ -1,0 +1,10 @@
+[
+    {
+        "name":"Query",
+        "type":"text"
+    },
+    {
+        "name":"Record",
+        "type":"text"
+    }
+]
