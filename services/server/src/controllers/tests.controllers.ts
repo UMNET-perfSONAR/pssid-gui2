@@ -112,8 +112,8 @@ const updateTest = (async (req:Request, res:Response) => {
  */
 const readFileNames = ((req:Request, res:Response) => {
   try {
-    console.log(__dirname);
-    const directoryPath = path.join(__dirname,   '../test_options')
+    // TODO: consider reading the path from a config file
+    const directoryPath = "/usr/src/app/server/lib/tests";
     
     fs.readdir(directoryPath, function(err, files) {
       if (err) {
@@ -141,12 +141,10 @@ const readFileNames = ((req:Request, res:Response) => {
  */
 const readTestFile = ((req:Request, res:Response) => {
   try {
-    console.log('reading selected file')
+    // TODO: consider reading the path from a config file
+    const filePath = "/usr/src/app/server/lib/tests/" + req.params.name + ".json";
 
-    var name = '../test_options/' + req.params.name + '.json'
-    
-    const filePath = path.join(__dirname, name);
-    var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));    
+    var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     res.json(object);
   }
   catch(error) {

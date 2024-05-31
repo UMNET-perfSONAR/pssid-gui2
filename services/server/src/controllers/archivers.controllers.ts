@@ -134,8 +134,8 @@ const updateArchiver = (async (req:Request, res:Response) => {
  */
 const readFileNames = ((req:Request, res:Response) => {
   try {
-    console.log(__dirname);
-    const directoryPath = path.join(__dirname,   '../archiver_options')
+    // TODO: consider reading the path from a config file
+    const directoryPath = "/usr/src/app/server/lib/archivers";
     
     fs.readdir(directoryPath, function(err, files) {
       if (err) {
@@ -163,11 +163,8 @@ const readFileNames = ((req:Request, res:Response) => {
  */
 const readArchiverFile = ((req:Request, res:Response) => {
   try {
-    console.log('reading selected file')
-
-    var name = '../archiver_options/' + req.params.name + '.json'
-
-    const filePath = path.join(__dirname, name);
+    // TODO: consider reading the path from a config file
+    const filePath = '/usr/src/app/server/lib/archivers/' + req.params.name + '.json';
     var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));    
     res.json(object);
   }
