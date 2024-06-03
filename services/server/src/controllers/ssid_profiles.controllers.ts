@@ -83,7 +83,7 @@ const deleteSSIDProfile = (async (req:Request, res:Response) => {
 const postSSIDProfile = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
-    console.log('ssid')
+    console.log('ssid');
     var collection = (await client).db('gui').collection('ssid_profiles');
     
     await collection.insertOne({

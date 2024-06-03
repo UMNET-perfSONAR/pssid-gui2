@@ -80,7 +80,8 @@ function get_paths() {
   config_path = object.config_path;
   ini_path = object.inventory_path;
   shellscript_path = object.shellscript_path;
-  if (config_path === null || ini_path === null || shellscript_path === null) {
+  if (config_path === null || ini_path === null ||
+    shellscript_path === null || output_directory === null) {
     throw new Error('Paths not set in config_output.json');
   }
   // Ensure the parent output directory exists.

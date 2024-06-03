@@ -5,6 +5,7 @@ services:
     image: pssid-gui2_client:latest
     build: ./services/client
     volumes:
+      - ./services/client/src:/usr/src/app/client/src
       - client_node_modules:/usr/src/app/client/node_modules
     ports:
       - 8080:8080
@@ -14,6 +15,7 @@ services:
     restart: on-failure
     build: ./services/server
     volumes:
+      - ./services/server/src:/usr/src/app/server/src
       - server_node_modules:/usr/src/app/server/node_modules
       - /usr/local/pssid-gui/bin:/usr/src/app/server/bin
       - /usr/local/pssid-gui/lib:/usr/src/app/server/lib
