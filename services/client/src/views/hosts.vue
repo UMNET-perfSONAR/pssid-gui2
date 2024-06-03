@@ -75,10 +75,10 @@
           </VueMultiselect>
         </div>
         <dynamic_add_data :addedData="data"></dynamic_add_data>
-	<div>
+        <div>
           <button class="btn btn-success" style="margin-right: 1em;" > Update </button>
           <button class="btn btn-danger" @click="deleteHost"> Delete </button>
-	</div>
+        </div>
       </form>
     </div>
   </div>
@@ -196,15 +196,15 @@
        // If the item deleted is the last one in the list, clear the selection.
        if (this.hostStore.hosts.length <= deleteIndex) {
          this.data = [];
-	 // Show Add Host page.
-	 this.addHostComp();
+         // Show Add Host page.
+         this.addHostComp();
        }
        // If the item deleted is *not* the last one, then keep the same index and update
        // the selection such that users can seamlessly delete items without reselection.
        else {
          this.currentIndex = deleteIndex;  // redundant but here for better clarity
          this.currentItem = this.hostStore.hosts[deleteIndex];  // update currentItem
-	 // Update the selection.
+         // Update the selection.
          this.updateActiveHost([this.currentItem, this.currentIndex]);
        }
      }

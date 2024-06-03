@@ -9,7 +9,7 @@
     <div>
       <button style="margin-bottom: 2em;" v-if="showAddSSID"></button>
       <button @click="addSsidForm" class="btn btn-primary" v-if="!showAddSSID"
-	style="margin-bottom: 1em;"> Add SSID Profile </button>
+        style="margin-bottom: 1em;"> Add SSID Profile </button>
     </div>
     <h3> SSID Profile List </h3>
     <div class="list row"> 
@@ -52,15 +52,15 @@
           />
         </div>
 
-	<div style="margin-bottom: 1em">
-	  <button
+        <div style="margin-bottom: 1em">
+          <button
             type="button"
             class="btn btn-info"
             @click="handleToggleEdit"
-	  >
+          >
             {{ currentItem.test_level }}
-	  </button>
-	</div>
+          </button>
+        </div>
         
         <!-- Edit number -->
         <div>
@@ -109,13 +109,13 @@
          'type': 'text',
          'name': 'SSID'
        },{
-	 'type': 'toggle',
-	 'name': 'SSID/BSSID',
-	 'trueValue': 'SSID',
-	 'falseValue': 'BSSID',
-	 'defaultValue': 'SSID'  // TODO: figure out the best default
+         'type': 'toggle',
+         'name': 'SSID/BSSID',
+         'trueValue': 'SSID',
+         'falseValue': 'BSSID',
+         'defaultValue': 'SSID'  // TODO: figure out the best default
        },
-	 {
+         {
            'type': 'number',
            'name': 'RSSI'
        }],
@@ -146,7 +146,7 @@
          this.ssidStore.addSsidProfile({
            name: form_data[0].value,
            ssid: form_data[1].value,
-	   test_level: form_data[2].value,
+           test_level: form_data[2].value,
            min_signal: form_data[3].value
          })
        }
@@ -155,7 +155,7 @@
      // will be and this does not handle generic toggle button clicks.
      handleToggleEdit() {
        this.currentItem.test_level = this.currentItem.test_level === 'SSID' ?
-	 'BSSID' : 'SSID';
+         'BSSID' : 'SSID';
      },
      // edit ssid profile - send to addSsidProfile in ssid_profile store 
      async editCurItem() {
@@ -163,7 +163,7 @@
          old_ssid_name: this.old_ssidName,
          new_ssid_name:  this.currentItem.name,
          ssid:  this.currentItem.SSID,
-	 test_level: this.currentItem.test_level,
+         test_level: this.currentItem.test_level,
          min_signal: this.currentItem.min_signal
        }
        await this.ssidStore.editSsidProfile(object);
