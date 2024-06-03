@@ -12,15 +12,10 @@ RUN npm install
 # Copy project files and folders to the current working directory (i.e. 'server' folder)
 COPY . .
 
-# Create target directories for the starter files
-RUN mkdir -p bin lib
-
-# Copy starter files to the correct directories
-RUN cp starters/provision.sh bin/ && \
-    cp -r starters/archivers/ lib/ && \
-    cp -r starters/tests/ lib/
+# Ensure that entrypoint.sh is executable
+RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
 
-# Build and run the application with npm run dev
-CMD ["npm", "run", "dev"]
+# Build and run the application with entrypoint.sh
+CMD ["./entrypoint.sh"]
