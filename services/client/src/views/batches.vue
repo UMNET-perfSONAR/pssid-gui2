@@ -9,7 +9,7 @@
     <div>
       <button style="margin-bottom: 2em;" v-if="showAddBatch"></button>
       <button @click="addBatchForm" class="btn btn-primary" v-if="!showAddBatch"
-	style="margin-bottom: 1em;"> 
+        style="margin-bottom: 1em;">
         Add Batch 
       </button>
     </div>
@@ -21,7 +21,7 @@
       <!-- batch list and regex search bar -->
       <div class="col-md-6" v-else> 
         <h3> Batch List </h3>
-        <itemList v-if="mount == true" :item-array="batchStore.batches" :display="showAddBatch"
+        <itemList v-if="mount === true" :item-array="batchStore.batches" :display="showAddBatch"
           @updateActive="updateActiveBatch"></itemList>
       </div>
       <!-- Add batch form -->
@@ -46,11 +46,11 @@
             />
           </div>
           <div class="form-group">
-            <label> BSSID Scan Interface </label>
+            <label> Test Interface </label>
             <input
               type="text"
               placeholder="Enter here"
-              v-model="currentItem.bssid_scan"
+              v-model="currentItem.test_interface"
               class="form-control"
             />
           </div>
@@ -59,7 +59,7 @@
             <VueMultiselect
               v-model="currentItem.ssid_profiles"
               :multiple="true"
-              close-on-select="false"
+              :close-on-select="false"
               :options="SsidStore.ssid_profiles.map(item=> item.name)"
             >
             </VueMultiselect>
@@ -70,7 +70,7 @@
             <VueMultiselect
               v-model="currentItem.jobs"
               :multiple="true"
-              close-on-select="false"
+              :close-on-select="false"
               :options="JobStore.jobs.map(item=>item.name)"
             >
             </VueMultiselect>
@@ -81,7 +81,7 @@
             <VueMultiselect
               v-model="currentItem.schedules"
               :multiple="true"
-              close-on-select="false"
+              :close-on-select="false"
               :options="scheduleStore.schedules.map(item=>item.name)"
             >
             </VueMultiselect>
@@ -92,7 +92,7 @@
             <VueMultiselect
               v-model="currentItem.archivers"
               :multiple="true"
-              close-on-select="false"
+              :close-on-select="false"
               :options="archiverStore.archivers.map(item=> item.name)"
             >
             </VueMultiselect>
@@ -167,7 +167,7 @@
        },
        {
          'type': 'text',
-         'name': 'BSSID Scan Interface'
+         'name': 'Test Interface'
        },
        {
          'type': 'multiselect',
@@ -192,7 +192,7 @@
        {
          'type': 'number',
          'name': 'Priority',
-       }, 
+       },
      ];
      this.mount = true;
    },
@@ -221,7 +221,7 @@
      async addBatch(form_data) {
        await this.batchStore.addBatch({
          name: form_data[0].value,
-         bssid_scan: form_data[1].value,
+         test_interface: form_data[1].value,
          priority: form_data[6].value,
          ssid_profiles: (form_data[2].selected.length == 0)? [] : form_data[2].selected.map(obj => obj.name),
          schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
@@ -240,11 +240,10 @@
          "schedules": this.currentItem.schedules,
          "archivers": this.currentItem.archivers,
          "jobs": this.currentItem.jobs,
-         "bssid_scan": this.currentItem.bssid_scan
-       }
-       console.log(updated_batch)
+         "test_interface": this.currentItem.test_interface
+       };
        await this.batchStore.editBatch(updated_batch);
-
+       alert("Batch successfully updated!");
      },
 
      // delete batch
