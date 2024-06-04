@@ -9,7 +9,7 @@
     <div>
       <button style="margin-bottom: 2em;" v-if="showAddSSID"></button>
       <button @click="addSsidForm" class="btn btn-primary" v-if="!showAddSSID"
-	style="margin-bottom: 1em;"> Add SSID Profile </button>
+        style="margin-bottom: 1em;"> Add SSID Profile </button>
     </div>
     <h3> SSID Profile List </h3>
     <div class="list row"> 
@@ -48,23 +48,40 @@
             required
             id="name"
             class="form-control"
-            v-model="currentItem.SSID"
+            v-model="currentItem.ssid"
           />
         </div>
 
-	<div style="margin-bottom: 1em">
-	  <button
+        <div style="margin-bottom: 1em">
+          <div>
+            <label> Test Level </label>
+          </div>
+          <button
             type="button"
-            class="btn btn-info"
-            @click="handleToggleEdit"
-	  >
+            class="btn btn-primary"
+            @click="handleToggleEdit('SSID', 'BSSID', 'test_level')"
+          >
             {{ currentItem.test_level }}
-	  </button>
-	</div>
+          </button>
+        </div>
+
+        <div style="margin-bottom: 1em"
+          v-if="currentItem.test_level==='BSSID'">
+          <div>
+            <label> BSSID Scan </label>
+          </div>
+          <button
+            type="button"
+                  class="btn btn-primary"
+                  @click="handleToggleEdit('Enabled', 'Disabled', 'bssid_scan')"
+          >
+            {{ currentItem.bssid_scan }}
+          </button>
+        </div>
         
         <!-- Edit number -->
         <div>
-          <label for="num"> Number </label>
+          <label for="num"> RSSI </label>
           <input 
             type="number" 
             required
@@ -109,15 +126,24 @@
          'type': 'text',
          'name': 'SSID'
        },{
-	 'type': 'toggle',
-	 'name': 'SSID/BSSID',
-	 'trueValue': 'SSID',
-	 'falseValue': 'BSSID',
-	 'defaultValue': 'SSID'  // TODO: figure out the best default
-       },
-	 {
-           'type': 'number',
-           'name': 'RSSI'
+         'type': 'toggle',
+         'name': 'Test Level',
+         'trueValue': 'SSID',
+         'falseValue': 'BSSID',
+         'defaultValue': 'SSID',
+       },{
+         'type': 'toggle',
+         'name': 'BSSID Scan',
+         'trueValue': 'Enabled',
+         'falseValue': 'Disabled',
+         'defaultValue': 'Disabled',  // figure out the best default
+         'dependsOn': {
+           'name': 'Test Level',
+           'value': 'BSSID'
+         }
+       },{
+         'type': 'number',
+         'name': 'RSSI'
        }],
        mount:false
      }
@@ -146,29 +172,33 @@
          this.ssidStore.addSsidProfile({
            name: form_data[0].value,
            ssid: form_data[1].value,
-	   test_level: form_data[2].value,
-           min_signal: form_data[3].value
+           test_level: form_data[2].value,
+           bssid_scan: form_data[3].value,
+           min_signal: form_data[4].value
          })
        }
      },
-     // It's OK to hardcode 'SSID' and 'BSSID' since we know that's what the toggle
-     // will be and this does not handle generic toggle button clicks.
-     handleToggleEdit() {
-       this.currentItem.test_level = this.currentItem.test_level === 'SSID' ?
-	 'BSSID' : 'SSID';
+     handleToggleEdit(trueValue, falseValue, entry) {
+       this.currentItem[entry] = this.currentItem[entry] === trueValue ?
+         falseValue : trueValue;
      },
      // edit ssid profile - send to addSsidProfile in ssid_profile store 
      async editCurItem() {
        const object = {   
          old_ssid_name: this.old_ssidName,
          new_ssid_name:  this.currentItem.name,
-         ssid:  this.currentItem.SSID,
-	 test_level: this.currentItem.test_level,
+         ssid:  this.currentItem.ssid,
+         test_level: this.currentItem.test_level,
+         bssid_scan: this.currentItem.bssid_scan,
          min_signal: this.currentItem.min_signal
+       }
+       if (object.test_level === "SSID") {
+         object.bssid_scan = "Disabled";
+         this.currentItem.bssid_scan = "Disabled";
        }
        await this.ssidStore.editSsidProfile(object);
        await this.ssidStore.getSsidProfiles();
-
+       alert("Profile updated successfully!");
      },
      // delete ssid_profile
      async deleteCurItem() {

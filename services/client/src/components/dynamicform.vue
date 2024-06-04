@@ -60,10 +60,26 @@
         <dynamic_add_data :addedData="optional_data"></dynamic_add_data>
       </div>
 
-      <div v-if="item.type==='toggle'">
+      <!-- <div v-if="item.type==='toggle'">
+           <div>
+           <label> {{ item.name }} </label>
+           </div>
+           <button
+           type="button"
+           class="btn btn-info"
+           @click="handleToggleClick(index)"
+           >
+           {{ form_values[index].value }}
+           </button>
+           </div> -->
+
+      <div v-if="item.type==='toggle' && shouldDisplay(item)">
+        <div>
+          <label> {{ item.name }} </label>
+        </div>
         <button
           type="button"
-          class="btn btn-info"
+          class="btn btn-primary"
           @click="handleToggleClick(index)"
         >
           {{ form_values[index].value }}
@@ -140,12 +156,23 @@
          name: item.name,
          value: item.hasOwnProperty('defaultValue') ? item.defaultValue : '',
          selected: [],
-	 trueValue: item.hasOwnProperty('trueValue') ? item.trueValue : 'NA',
-	 falseValue: item.hasOwnProperty('falseValue') ? item.falseValue : 'NA'
+         trueValue: item.hasOwnProperty('trueValue') ? item.trueValue : 'NA',
+         falseValue: item.hasOwnProperty('falseValue') ? item.falseValue : 'NA'
        }))
        this.copy_of_data=this.form_layout
        //this.form_values=mapped;
        await this.SsidStore.getSsidProfiles();
+     },
+
+     /* Renders a button conditionally. */
+     shouldDisplay(item) {
+       if (item.dependsOn) {
+         // Check if the dependency is satisfied.
+         const dependency = this.form_values.find(i => i.name === item.dependsOn.name);
+         return dependency.value === item.dependsOn.value;
+       }
+       // If no dependency is provided, the button is always displayed.
+       return true;
      }
 
    },
