@@ -31,13 +31,13 @@
               required
               id="name"
               class="form-control"
-              v-model="archiver_name"/>
+              v-model="archiverName"/>
           </div>          
           <!-- Archiver type selection-->
           <div style="margin-bottom: 1em;">
             <label> Archiver Type Selection </label>
             <VueMultiselect
-              v-model="selected_archiver"
+              v-model="selectedArchiver"
               :multiple="false"
               :close-on-select="true"
               :options="archiverStore.listOfOptions"
@@ -49,8 +49,8 @@
           <!-- Dynamically render add form information -->
           <div v-if="showForm===true">
             <dynamicForm @formData="handleSubmit"
-              :form_layout="all_archiver_options"
-              :optional_data="optional_data">
+              :form_layout="allArchiverOptions"
+              :optional_data="addedOptionalData">
             </dynamicForm>
           </div>
         </form>
@@ -84,17 +84,17 @@
         </div>
         <!-- dynamic components -->
         <!-- render edit component if type of archiver remains the same -->
-        <div v-if="formType === archiver_type"> 
+        <div v-if="formType === archiverType">
           <editFormComp :current_item="currentItem" 
-            :dynamic_options="curr_data"
+            :dynamic_options="currOptionalData"
             @deleteItem="deleteArchiver"
             @editItem="editArchiver"> 
           </editFormComp> 
         </div>
         <div v-else> 
-          <dynamicForm :form_layout="all_archiver_options"
+          <dynamicForm :form_layout="allArchiverOptions"
             @formData="editArchiver"
-            :optional_data="optional_data"
+            :optional_data="currOptionalData"
           >
           </dynamicForm>
         </div>
@@ -115,27 +115,45 @@
    components: { dynamicForm, VueMultiselect, editFormComp, dynamic_add_data, itemList },
    data() {
      return {
-       // variables cor add form
-       selected_archiver: '',
-       archiver_name:'',
-       optional_data: [],
-       mount: false, 
+       mount: false,
 
-       all_archiver_options: [],
+       /*
+        *  Variables for the Add Archiver form
+        */
+       archiverName:'',
+       // Which type of archiver is selected
+       selectedArchiver: '',
+       // All archiver options for the selected archiver type
+       allArchiverOptions: [],
+       // List of optional data added
+       addedOptionalData: [],
 
-       // manage view of pages 
+       /*
+        * Variables that control which form is displayed,
+        * Add Archiver or Edit Archiver.
+        */
        showAddArchiver:true,
        showForm: false,
+
+       /*
+        * Variables for the Edit Archiver form
+        */
        currentIndex: {},
        currentItem: {},
-       
-       curr_data: [],
-       // rendering of dynamic edit form 
+       // List of optional data for the current selected archiver
+       currOptionalData: [],
+       // formType is the type of archiver form that is currently being displayed.
+       // It is automatically managed by the form component. It may or may not be
+       // the same as archiverType, which is the last saved/submitted archiver type.
        formType: '',
-       archiver_type: '',
-       old_archiver_name: '',
+       // archiverType is the last saved/submitted archiver type
+       archiverType: '',
+       // Last saved/submitted archiver name
+       oldArchiverName: '',
 
-       // relevant stores
+       /*
+        * Method(s) to access the store
+        */
        archiverStore: useArchiverStore()
      }
    },
@@ -148,46 +166,52 @@
      // render add archiver form
      addArchiverForm() {
        this.showAddArchiver=true;
+       this.currentItem={};
        this.currentIndex={};
      },
      /**
-      * update page to view selected host/ edit screen
+      * Update page to view selected host/ edit screen
       * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
       */
      async updateActiveArchiver(indexArray) {
+       // 1. Determine which archiver in Archiver List is selected.
        const archiver = indexArray[0];
        const index = indexArray[1];
-       let ind=0;
+       let ind = 0;
        const data = JSON.parse(JSON.stringify(archiver.data))
-       // load num 
+       // Obtain the structure of the selected archiver form.
        this.formType = archiver.archiver;
        await this.archiverStore.getDesiredArchiver(this.formType)
        
-       // use to extract data from archivers.data
+       // 2. Display the Edit Archiver form correctly.
        const myJson = '{}';
        let json_object = JSON.parse(myJson);
        let param_data = JSON.parse(myJson);
-       this.curr_data = []
-
+       this.currOptionalData = []
        for (const [key,value] of Object.entries(data)) {
-         if (ind++ < this.archiverStore.archiver_options.length-1) {
-           console.log((`${key}:${value}`));
+         // First store REQUIRED data entries under the current selected archiver option.
+         // (Different archiver options have different required data entries)
+         if (ind < this.archiverStore.archiver_options.length) {
            json_object[key] = value;
+           ind += 1;
          }
+         // Anything that follows is OPTIONAL data. Store them in a separate array.
          else {
-           this.curr_data.push({'key':key, 'value':value})
+           this.currOptionalData.push({'key':key, 'value':value})
          }
        };
 
+       // 3. Update control variables related to Archiver List.
+       // (These are mainly used by the list, e.g. which item is selected and what the
+       // current item is.)
        this.currentIndex=index;
        this.currentItem={
          name: archiver.name,
          data: json_object,
          archiver: archiver.archiver
        };
-       // set display related variables 
-       this.old_archiver_name=archiver.name;
-       this.archiver_type = archiver.archiver;
+       this.oldArchiverName=archiver.name;
+       this.archiverType = archiver.archiver;
        this.showAddArchiver=false;
      },
 
@@ -198,55 +222,67 @@
          return;
        }
        const data = editFormInputs.reduce((result, item)=> {
-         result[item.name] = item.value
-         return result
+         if (item.name !== "Optional Data" || item.value !== "") {
+           result[item.name] = item.value;
+         }
+         return result;
        }, {});
-       const appended_data=this.curr_data.reduce((result, item)=> {
+       const appended_data=this.currOptionalData.reduce((result, item)=> {
          result[item.key] = item.value
          return result
        }, {})
 
        const object = {
-         "old_arc_name" : this.old_archiver_name,
+         "old_arc_name" : this.oldArchiverName,
          "new_arc_name" : this.currentItem.name,
          "archiver" : this.currentItem.archiver,
          "data" : Object.assign(data, appended_data)
        }
        await this.archiverStore.editArchiver(object);
        await this.archiverStore.getArchivers();
+
+       alert('Archiver has been successfully edited!');
      },
      // render form information from server
      async renderForm() {
        this.formType=this.currentItem.archiver;
        await this.archiverStore.getDesiredArchiver(this.formType)
-       this.all_archiver_options = this.archiverStore.archiver_options;
-       this.all_archiver_options.push({'type':'optional', 'name': 'Optional Data'});
+       this.allArchiverOptions = this.archiverStore.archiver_options;
+       this.allArchiverOptions.push({'type':'optional', 'name': 'Optional Data'});
        this.showForm=true; 
      },
 
      // render add form information from server 
      async renderAddForm() {
-       await this.archiverStore.getDesiredArchiver(this.selected_archiver)
-       this.all_archiver_options = this.archiverStore.archiver_options;
-       this.all_archiver_options.push({'type':'optional', 'name': 'Optional Data'});
+       await this.archiverStore.getDesiredArchiver(this.selectedArchiver)
+       this.allArchiverOptions = this.archiverStore.archiver_options;
+       this.allArchiverOptions.push({'type':'optional', 'name': 'Optional Data'});
        this.showForm=true; 
      },
      // delete archiver
      async deleteArchiver() {
-       this.archiverStore.archivers.splice(this.currentIndex, 1); 
+       const deleteIndex = this.currentIndex;
+       this.archiverStore.archivers.splice(deleteIndex, 1);
        await this.archiverStore.deleteArchiver(this.currentItem);
-       this.currentItem={};
-       this.currentIndex='';
+       if (this.archiverStore.archivers.length <= deleteIndex) {
+         this.addArchiverForm();
+       }
+       else {
+         this.currentIndex = deleteIndex;
+         this.currentItem = this.archiverStore.archivers[deleteIndex];
+         this.updateActiveArchiver([this.currentItem, this.currentIndex]);
+       }
+       /* this.currentItem={};
+        * this.currentIndex=''; */
      },
      
      // submit archiver to database
      async handleSubmit(form_data) {
-       if (this.archiver_name.length==0) {
+       if (this.archiverName.length==0) {
          alert('Please enter an archiver name!');
          return;
        }
        const spec_object = form_data.reduce((result, item)=> {
-         console.log(item.name);
          if (item.name==="Optional Data") {
            return result;
          }
@@ -254,20 +290,27 @@
          return result;        
        }, {});
 
-       const data_object = this.optional_data.reduce((result, item)=> {
+       const data_object = this.addedOptionalData.reduce((result, item)=> {
          result[item.key] = item.value
          return result
        }, {});
 
        const obj = Object.assign(spec_object, data_object)
        await this.archiverStore.addArchiver({
-         name: this.archiver_name,
-         archiver: this.selected_archiver,
+         name: this.archiverName,
+         archiver: this.selectedArchiver,
          data: obj
        })
-       this.archiver_name = '';
-       this.archiver = '';
+       this.clearAddFormSelection();
+       this.addArchiverForm();
      },
+
+     clearAddFormSelection() {
+       this.selectedArchiver = '';
+       this.archiverName = '';
+       this.addedOptionalData = [];
+       this.allArchiverOptions = [];
+     }
    },
  }
 </script>

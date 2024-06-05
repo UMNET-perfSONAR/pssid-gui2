@@ -45,7 +45,6 @@ export const useArchiverStore = defineStore('archiver', {
     async getDesiredArchiver(archiver_name: string) {
       try {
         this.isLoading = true;
-        console.log(archiver_name)
         const res = await fetch('http://'+ window.location.hostname +':8000/archivers/read-archiver/'+archiver_name)
         const data = await res.json();
         
@@ -73,7 +72,6 @@ export const useArchiverStore = defineStore('archiver', {
             }
           }
         );
-        console.log('adding_archiver')
         this.archivers.push(archiver);
         this.isLoading=false;
       }
@@ -125,7 +123,6 @@ export const useArchiverStore = defineStore('archiver', {
 
     async deleteAll() {
       try {
-        console.log('called function');
         await fetch(
           'http://'+ window.location.hostname +':8000/archivers',
           {

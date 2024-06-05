@@ -60,19 +60,6 @@
         <dynamic_add_data :addedData="optional_data"></dynamic_add_data>
       </div>
 
-      <!-- <div v-if="item.type==='toggle'">
-           <div>
-           <label> {{ item.name }} </label>
-           </div>
-           <button
-           type="button"
-           class="btn btn-info"
-           @click="handleToggleClick(index)"
-           >
-           {{ form_values[index].value }}
-           </button>
-           </div> -->
-
       <div v-if="item.type==='toggle' && shouldDisplay(item)">
         <div>
           <label> {{ item.name }} </label>
@@ -135,7 +122,6 @@
          value: item.value,
          selected: item.selected
        }))
-       console.log(organized_data);
        this.$emit('formData', organized_data)
      },
 
