@@ -122,7 +122,9 @@
          value: item.value,
          selected: item.selected
        }))
-       this.$emit('formData', organized_data)
+       this.$emit('formData', organized_data);
+       // Clear the form after submission.
+       this.setUpData();
      },
 
      handleToggleClick(index) {
