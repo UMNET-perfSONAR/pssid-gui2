@@ -157,11 +157,13 @@
        archiverStore: useArchiverStore()
      }
    },
+
    async mounted() {
      await this.archiverStore.getArchivers();
      await this.archiverStore.getArchiverNames();
      this.mount = true; 
    },
+
    methods: {
      // render add archiver form
      addArchiverForm() {
@@ -169,6 +171,7 @@
        this.currentItem={};
        this.currentIndex={};
      },
+
      /**
       * Update page to view selected host/ edit screen
       * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
@@ -241,8 +244,12 @@
        await this.archiverStore.editArchiver(object);
        await this.archiverStore.getArchivers();
 
+       this.clearAddFormSelection();
+       this.addArchiverForm();
+
        alert('Archiver has been successfully edited!');
      },
+
      // render form information from server
      async renderForm() {
        this.formType=this.currentItem.archiver;
@@ -259,6 +266,7 @@
        this.allArchiverOptions.push({'type':'optional', 'name': 'Optional Data'});
        this.showForm=true; 
      },
+
      // delete archiver
      async deleteArchiver() {
        const deleteIndex = this.currentIndex;
@@ -272,8 +280,6 @@
          this.currentItem = this.archiverStore.archivers[deleteIndex];
          this.updateActiveArchiver([this.currentItem, this.currentIndex]);
        }
-       /* this.currentItem={};
-        * this.currentIndex=''; */
      },
      
      // submit archiver to database
