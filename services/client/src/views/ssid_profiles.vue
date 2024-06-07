@@ -111,14 +111,30 @@
    components: { dynamicform, editDynamicForm, itemList },
    data() {
      return {
+       /*
+        * Method(s) to access the store
+        */
        ssidStore: useSsidStore(),
+
+       /*
+        * Variables for the Edit SSID Profile form
+        */
        currentIndex: {},
        currentItem: {},
        old_ssidName: {},
        value: {},
+
+       /*
+        * Variables that control which form is displayed,
+        * Add SSID Profile or Edit SSID Profile.
+        */
        display: 'add',
        showAddSSID: true,
-       // to add fields, add them here :) 
+
+       /*
+        * Layout for the Add SSID Profile form.
+        * NOTE: if more fields are needed, add them here.
+        */
        formstuff: [{
          'type': 'text',
          'name': 'Profile Name'
@@ -145,20 +161,25 @@
          'type': 'number',
          'name': 'RSSI'
        }],
+
        mount:false
      }
    },
+
    // load ssid profiles
    async mounted() {
      await this.ssidStore.getSsidProfiles();
      this.mount = true;
    },
+
    methods: {
-     // render ssid profile form 
+     // Renders Add SSID Profile form
      addSsidForm() {
        this.showAddSSID=true;
        this.currentIndex = {};
+       this.currentItem = {};
      },
+
      // render edit ssid profile form
      updateActiveSSID(indexArray) {
        this.currentItem=indexArray[0];
@@ -166,23 +187,33 @@
        this.old_ssidName = this.currentItem.name;
        this.showAddSSID=false;
      },
+
      // add ssid profile - send to addSsidProfile in ssid_profile store 
      receiveEmit(form_data) {
        if(form_data.length > 0) {
-         this.ssidStore.addSsidProfile({
+         const object = {
            name: form_data[0].value,
            ssid: form_data[1].value,
            test_level: form_data[2].value,
            bssid_scan: form_data[3].value,
            min_signal: form_data[4].value
-         })
+         }
+         // bssid_scan is disabled if test_level is SSID.
+         if (object.test_level === "SSID") {
+           object.bssid_scan = "Disabled";
+         }
+         this.ssidStore.addSsidProfile(object);
        }
+       // Show add SSID form after adding.
+       this.addSsidForm();
      },
+
      handleToggleEdit(trueValue, falseValue, entry) {
        this.currentItem[entry] = this.currentItem[entry] === trueValue ?
          falseValue : trueValue;
      },
-     // edit ssid profile - send to addSsidProfile in ssid_profile store 
+
+     // Edits ssid profile - sends to addSsidProfile in ssid_profile store
      async editCurItem() {
        const object = {   
          old_ssid_name: this.old_ssidName,
@@ -192,20 +223,31 @@
          bssid_scan: this.currentItem.bssid_scan,
          min_signal: this.currentItem.min_signal
        }
+       // bssid_scan is disabled if test_level is SSID.
        if (object.test_level === "SSID") {
          object.bssid_scan = "Disabled";
          this.currentItem.bssid_scan = "Disabled";
        }
        await this.ssidStore.editSsidProfile(object);
        await this.ssidStore.getSsidProfiles();
-       alert("Profile updated successfully!");
+
+       this.addSsidForm();
+       alert("SSID Profile edited successfully!");
      },
-     // delete ssid_profile
+
+     // Deletes ssid_profile
      async deleteCurItem() {
-       this.ssidStore.ssid_profiles.splice(this.currentIndex, 1);
+       const deleteIndex = this.currentIndex;
+       this.ssidStore.ssid_profiles.splice(deleteIndex, 1);
        await this.ssidStore.deleteSsidProfile(this.currentItem);
-       this.currentIndex = {};
-       this.currentIndex = {};
+       if (this.ssidStore.ssid_profiles.length  <= deleteIndex) {
+         this.addSsidForm();
+       }
+       else {
+         this.currentIndex = deleteIndex;
+         this.currentItem = this.ssidStore.ssid_profiles[deleteIndex];
+         this.updateActiveSSID([this.currentItem, this.currentIndex]);
+       }
      },
    }
  }
