@@ -7,8 +7,8 @@
 
     <div style="margin-bottom:1em">
       <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning"> Submit to probes </button>
-      <button @click="addHostForm" class="btn btn-primary" v-if="showAddGroup==false"
-	style="margin-left: 1em;"> Add Host Group
+      <button @click="addGroupForm" class="btn btn-primary" v-if="showAddGroup==false"
+        style="margin-left: 1em;"> Add Host Group
       </button>
     </div>
     <div class="list row"> 
@@ -38,14 +38,14 @@
               />
             </div>
             <!-- host selection -->
-            <hostSelection v-if="mounted == true" :copy_of_data="copy_of_data
-				 "></hostSelection>
+            <hostSelection v-if="mounted == true" :copy_of_data="copyOfData
+                                 "></hostSelection>
 
             <!-- batch selection-->
             <div class= "form-group">
               <label for="batch-select"> Batch Selection </label>
               <VueMultiselect
-                v-model="selected_batches"
+                v-model="selectedBatches"
                 :options="batchStore.batches"
                 :multiple="true"
                 :close-on-select="false"
@@ -89,7 +89,7 @@
 
             <!-- host selection -->
             <div class= "form-group">
-              <hostSelection :copy_of_data="hosts_to_edit"></hostSelection>
+              <hostSelection :copy_of_data="hostsToEdit"></hostSelection>
             </div>
             <!-- batch selection -->
             <div class= "form-group">
@@ -106,12 +106,12 @@
           <!-- hosts regex -->
           <div class="form-group">
             <label> Host Regex Input </label>
-            <hostRegex :regex_array="edit_regex"></hostRegex>
+            <hostRegex :regex_array="editRegex"></hostRegex>
           </div>
 
           <!-- dynamic data section -->
           <label for="params"> Optional Data </label>
-          <dynamic_add_data :addedData="edit_optional_data"></dynamic_add_data>
+          <dynamic_add_data :addedData="editOptionalData"></dynamic_add_data>
 
           <!-- update and delete buttons-->
           <div>
@@ -139,31 +139,48 @@
    components: {VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection},
    data() {
      return {
-       currentGroup: [], currentIndex: {},
-       newHosts: '', selected_batches: '', newGroup: '',
-       showAddGroup: true,
-       selectedGroup: '', 
-       addedData: [{}],
-       copy_of_data: [],
-       hosts_to_edit: [],
-
-       edit_regex: [],
+       /*
+        * Variables for the Add Host form
+        */
+       selectedGroup: '',
+       selectedHosts: [],
+       selectedBatches: [],
        regex: [],
-       edit_optional_data: [],
-       selected_hosts: [],
+       addedData: [],
+
+       /*
+        * Variable that controls which form is displayed,
+        * Add Group or Edit Group.
+        */
+       showAddGroup: true,
+
+       /*
+        * Variables for the Edit Host form
+        */
+       currentGroup: [],
+       currentIndex: {},
+       newGroup: '',
+       copyOfData: [],
+       hostsToEdit: [],
+       editRegex: [],
+       editOptionalData: [],
+
        mounted: false,
 
-       // relevant host stores
+       /*
+        * Method(s) to access the store
+        */
        hostStore: useHostStore(),
        hostGroup: useGroupStore(),
        batchStore: useBatchStore(),
      }
    },
+
    async mounted() {
      await this.hostStore.getHosts();
      await this.hostGroup.getGroups();
      await this.batchStore.getBatches();
-     this.copy_of_data = this.hostStore.hosts.map((item, index) => ({
+     this.copyOfData = this.hostStore.hosts.map((item, index) => ({
        name: item.name,
        selected: false,
        index: index
@@ -172,32 +189,32 @@
    },
 
    methods: {
-     // render current active group
+     // Renders a current active group
      updateActiveGroup(indexArray){
        this.currentGroup = indexArray[0];
        this.currentIndex = indexArray[1];
        this.selectedGroup = this.currentGroup.name;
        this.showAddGroup = false;
-       this.edit_optional_data = Object.entries(this.currentGroup.data).map(([key,value]) => ({
+       this.editOptionalData = Object.entries(this.currentGroup.data).map(([key,value]) => ({
          key,
          value
        }));
-       this.hosts_to_edit = this.hostStore.hosts.map((item, index) => ({
+       this.hostsToEdit = this.hostStore.hosts.map((item, index) => ({
          name: item.name,
          selected: false,
          index: index
        }));
        
        this.currentGroup.hosts.forEach(element => {
-         const ind = this.hosts_to_edit.findIndex((host) => element==host.name);
-         this.hosts_to_edit[ind].selected = true;
+         const ind = this.hostsToEdit.findIndex((host) => element==host.name);
+         this.hostsToEdit[ind].selected = true;
        });
-       this.edit_regex = this.currentGroup.hosts_regex.map(item => ({regex:item}));
+       this.editRegex = this.currentGroup.hosts_regex.map(item => ({regex:item}));
      },
 
-     // submit group = send to addGroup store function
+     // Submits a newly added group
      async handleSubmit() {
-       this.selected_hosts = this.copy_of_data.filter(h => {
+       this.selectedHosts = this.copyOfData.filter(h => {
          return h.selected == true
        })
        if (this.newGroup.length > 0) {
@@ -207,52 +224,66 @@
          }, {});
          this.hostGroup.addGroup({
            name: this.newGroup,
-           batches: (this.selected_batches.length == 0) ? [] : this.selected_batches.map(obj=>obj.name),
-           hosts: (this.selected_hosts.length == 0)? [] : this.selected_hosts.map(obj => obj.name),
+           batches: (this.selectedBatches.length == 0) ? [] : this.selectedBatches.map(obj=>obj.name),
+           hosts: (this.selectedHosts.length == 0)? [] : this.selectedHosts.map(obj => obj.name),
            data: spec_object,
            hosts_regex: (this.regex.length == 0)? [] : this.regex.map(obj => obj.regex)
-         })
-         this.selected_batches = [],
-           this.selected_hosts = [];
+         });
+         this.selectedBatches = [];
+         this.selectedHosts = [];
          this.newGroup = '';
          this.regex = [];
-         this.copy_of_data = this.copy_of_data.map(item => ({
+         this.copyOfData = this.copyOfData.map(item => ({
            name: item.name,
            selected: false, 
            index: item.index,
          }))
        }
+
+       // Clear the form and show Add Group form again.
+       this.addGroupForm();
      },
 
-     // edit group - send to editGroup store function
+     // Edits a currently selected group
      async editGroup() {
-       const new_selected_hosts = this.hosts_to_edit.filter(h => {
+       const new_selected_hosts = this.hostsToEdit.filter(h => {
          return h.selected == true
        })
        let object = {
          new_hostgroup: this.currentGroup.name,
          old_hostgroup: this.selectedGroup,
-         hosts: (new_selected_hosts.length == 0) ? [] : new_selected_hosts.map(obj => obj.name),
+         hosts: (new_selected_hosts.length == 0) ?
+           [] : new_selected_hosts.map(obj => obj.name),
          batches: this.currentGroup.batches,
-         data: this.edit_optional_data.reduce((result, item)=> {
+         data: this.editOptionalData.reduce((result, item)=> {
            result[item.key] = item.value
            return result
          }, {}),
-         hosts_regex: (this.edit_regex.length == 0)? [] : this.edit_regex.map(obj => obj.regex)
+         hosts_regex: (this.editRegex.length == 0) ?
+           [] : this.editRegex.map(obj => obj.regex)
        }
-       console.log(object);
        await this.hostGroup.editGroup(object);
        await this.hostGroup.getGroups();
+
+       this.currentGroup = this.hostGroup.host_groups[this.currentIndex];
+       this.updateActiveGroup([this.currentGroup, this.currentIndex]);
+       alert("Group updated successfully!");
      },
 
-     // display addGroup form
-     addHostForm() {
+     // Renders Add Group form
+     addGroupForm() {
        this.showAddGroup = true;
        this.currentIndex = {};
-       this.selected_hosts = [];
+       this.currentGroup = [];
+
+       this.selectedGroup = '';
+       this.selectedHosts = [];
+       this.selectedBatches = [];
+       this.regex = [];
+       this.addedData = [];
      },
 
-     // delete host group
+     // Deletes a selected group
      async deletegroup() {
        const deleteIndex = this.currentIndex;
        this.hostGroup.host_groups.splice(deleteIndex, 1);
@@ -260,8 +291,8 @@
        // If the deleted group is the last one, clear the selection and show
        // the add group page.
        if (this.hostGroup.host_groups.length <= deleteIndex) {
-         this.edit_regex = [];
-         this.addHostForm();
+         this.editRegex = [];
+         this.addGroupForm();
        }
        // Otherwise, update the selection to the next group in the list,
        // allowing users to potentially keep deleting without reselection.
