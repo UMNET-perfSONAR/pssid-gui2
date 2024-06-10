@@ -244,9 +244,7 @@
        await this.archiverStore.editArchiver(object);
        await this.archiverStore.getArchivers();
 
-       this.clearAddFormSelection();
-       this.addArchiverForm();
-
+       this.updateActiveArchiver([this.currentItem, this.currentIndex]);
        alert('Archiver has been successfully edited!');
      },
 

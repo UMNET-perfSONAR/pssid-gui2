@@ -231,7 +231,7 @@
        await this.ssidStore.editSsidProfile(object);
        await this.ssidStore.getSsidProfiles();
 
-       this.addSsidForm();
+       this.updateActiveSSID([this.currentItem, this.currentIndex]);
        alert("SSID Profile edited successfully!");
      },
 
