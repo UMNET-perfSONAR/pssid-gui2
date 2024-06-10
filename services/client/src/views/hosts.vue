@@ -1,9 +1,11 @@
 <template>
   <!-- buttons -->
   <div class="buttons" style="margin-bottom:1em;">
-    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);"> Submit to probes </button>
+    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);">
+      Submit to Probes
+    </button>
     <button class="btn btn-primary" @click="addHostComp" v-if="!showAddHost"
-      style="margin-left: 1em;"> Add Hosts
+      style="margin-left: 1em;"> Add Host
     </button>
   </div>
   <div class="list row">
@@ -42,7 +44,7 @@
           </VueMultiselect>
         </div>
         <p> Optional Data </p>
-        <dynamic_add_data :addedData="addedData"></dynamic_add_data>
+        <dynamic_add_data :addedData="addedOptionalData"></dynamic_add_data>
         <button class="btn btn-success"> Submit </button>
 
       </form>
@@ -74,11 +76,11 @@
           >
           </VueMultiselect>
         </div>
-        <dynamic_add_data :addedData="data"></dynamic_add_data>
-	<div>
+        <dynamic_add_data :addedData="currOptionalData"></dynamic_add_data>
+        <div>
           <button class="btn btn-success" style="margin-right: 1em;" > Update </button>
-          <button class="btn btn-danger" @click="deleteHost"> Delete </button>
-	</div>
+          <button class="btn btn-danger" @click.prevent="deleteHost"> Delete </button>
+        </div>
       </form>
     </div>
   </div>
@@ -98,31 +100,38 @@
    components: {itemList, dynamic_add_data, VueMultiselect},
    data() {    
      return {
-       // for data binding and storage 
-       form_vals: [],
-       addedData: [{
-         'key':'',
-         'value': ''
-       }],
+       /*
+        * Variables for the Add Host form
+        */
+       hostname: '',
+       selectedBatches: [],
+       addedOptionalData: [],
 
-       // rendering of subpages
+       /*
+        * Variable that controls which form is displayed,
+        * Add Host or Edit Host.
+        */
+       showAddHost: true,
+
+       /*
+        * Variables for the Edit Host form
+        */
        currentItem: [],
        currentIndex: {},
-       showAddHost: true,
-       batch: [],
-       selectedBatches:'',
-       hostname: '',
        old_hostname: '',
-       data: [],
+       currOptionalData: [],
+
        mounted: false,
 
-       // relevant stores 
+       /*
+        * Method(s) to access the store
+        */
        batchStore: useBatchStore(),
        hostStore: useHostStore(),
        groupStore: useGroupStore(),
      }        
    },
-   // load host and batch information automatically
+
    async mounted() {
      await this.hostStore.getHosts();
      await this.batchStore.getBatches();
@@ -131,84 +140,89 @@
 
    methods: {
      /**
-      * update page to view selected host/ edit screen
+      * Updates page to view selected host/ edit screen
       * @param {item, itemIndex} indexArray - holds currentItem and currentIndex
       */
      updateActiveHost(indexArray) {
        this.currentItem=indexArray[0];
        this.currentIndex=indexArray[1];
        this.showAddHost=false;
-       this.old_hostname=this.currentItem.name
-       this.data=Object.entries(this.currentItem.data).map(([key,value]) => ({
+       this.old_hostname=this.currentItem.name;
+       this.currOptionalData=Object.entries(this.currentItem.data).map(([key,value]) => ({
          key,
          value
-       }))
+       }));
      },
-     
-     // edit host in database 
+
+     // Edits a selected host item
      async editHost() {
        const new_host_obj = {
          "old_hostname": this.old_hostname,
          "new_hostname": this.currentItem.name,
          "batches": this.currentItem.batches,
-         "data": this.data.reduce((result, item)=> {
+         "data": this.currOptionalData.reduce((result, item)=> {
            result[item.key] = item.value
            return result
          }, {})
-       }
-       console.log(new_host_obj);
+       };
        await this.hostStore.editHost(new_host_obj);
        await this.hostStore.getHosts();
+
+       // Update the currently selected item - this is to ensure correct display,
+       // not correct DB storage, which is already handled by hostStore.editHost.
+       this.currentItem = this.hostStore.hosts[this.currentIndex];
+       // Reselect the current item - crucial for
+       // consecutive edits of the same item.
+       this.updateActiveHost([this.currentItem, this.currentIndex]);
+
+       alert("Host updated successfully!");
      },
 
-     // submit host information. reset info 
+     // Submits host information and clears the Add Host form
      async submitHost() {
-       const spec_object = this.addedData.reduce((result, item)=> {
+       const spec_object = this.addedOptionalData.reduce((result, item)=> {
          result[item.key] = item.value
          return result
        }, {});
        await this.hostStore.addHost({
          name: this.hostname,
          batches: (this.selectedBatches.length==0)?[]:
-         this.selectedBatches.map((item) => item.name),          
+         this.selectedBatches.map((item) => item.name),
          data: spec_object
        });
        this.hostname='';
        this.selectedBatches=[];
-       this.addedData=[{
-         'key':'',
-         'value': ''
-       }];
+       this.addedOptionalData=[];
      },
      
-     // render add host form
+     // Renders Add Host form
      addHostComp() {
        this.showAddHost=true;
        this.currentItem=[];
-       this.currentIndex={}
+       this.currentIndex={};
      },
 
-     // delete selected host
+     // Deletes a selected host item
      async deleteHost() {
        const deleteIndex = this.currentIndex;
        this.hostStore.hosts.splice(deleteIndex, 1);
        await this.hostStore.deleteHost(this.currentItem);
        // If the item deleted is the last one in the list, clear the selection.
        if (this.hostStore.hosts.length <= deleteIndex) {
-         this.data = [];
-	 // Show Add Host page.
-	 this.addHostComp();
+         this.currOptionalData = [];
+         // Show Add Host page.
+         this.addHostComp();
        }
        // If the item deleted is *not* the last one, then keep the same index and update
        // the selection such that users can seamlessly delete items without reselection.
        else {
          this.currentIndex = deleteIndex;  // redundant but here for better clarity
          this.currentItem = this.hostStore.hosts[deleteIndex];  // update currentItem
-	 // Update the selection.
+         // Update the selection.
          this.updateActiveHost([this.currentItem, this.currentIndex]);
        }
      }
-   } 
+   }
  })
 </script>
 

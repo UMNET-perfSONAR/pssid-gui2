@@ -15,8 +15,8 @@ export const useHostStore = defineStore('hostStore', {
     async getHosts() {
       try {
         this.isLoading = true;
-        const res = await fetch('http://'+ window.location.hostname + ':8000/hosts')
-        const data = await res.json()
+        const res = await fetch('http://'+ window.location.hostname + ':8000/hosts');
+        const data = await res.json();
         this.hosts = data;
         this.isLoading = false;
       }
@@ -33,7 +33,6 @@ export const useHostStore = defineStore('hostStore', {
     async addHost(host:any) {
       try {
         this.isLoading = true;
-        console.log(host);
         await fetch(
           'http://'+ window.location.hostname + ':8000/hosts/create-host',
           {
@@ -46,7 +45,6 @@ export const useHostStore = defineStore('hostStore', {
           }
         );
         this.hosts.push(host);
-        console.log('added_host');
         this.isLoading=false;
       }
       catch(error) {
@@ -80,7 +78,6 @@ export const useHostStore = defineStore('hostStore', {
      */
     async editHost(updateHostObj:any) {
       try {
-        console.log(updateHostObj);
         await fetch(
           'http://'+ window.location.hostname + ':8000/hosts/update-host',
           {
