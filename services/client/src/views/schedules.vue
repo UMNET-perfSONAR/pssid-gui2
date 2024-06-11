@@ -8,9 +8,9 @@
     <!-- Add schedule button -->
     <div>
       <button v-if="showAddSchedule"
-		    style="margin-bottom: 2em;"></button>
+                    style="margin-bottom: 2em;"></button>
       <button @click="addScheduleForm" class="btn btn-primary" v-if="!showAddSchedule"
-					      style="margin-bottom: 1em;"> Add Schedule </button>
+                                              style="margin-bottom: 1em;"> Add Schedule </button>
     </div>
     <h3> Schedule List </h3>
     <div class="list row"> 
@@ -61,7 +61,7 @@
             <cronstuff :init="currentItem.repeat" @update-cron="currentItem.repeat=$event"></cronstuff>
           </div>
           <button class="btn btn-success" style="margin-right: 1em;"> Update </button>
-          <button class="btn btn-danger" @click="deleteSchedule"> Delete </button>
+          <button class="btn btn-danger" @click.prevent="deleteSchedule"> Delete </button>
         </form>
 
       </div>
@@ -91,17 +91,21 @@
        schedule_name: '',
      }
    },
+
    // load schedules 
    async mounted() {
      await this.scheduleStore.getSchedules();
      this.mount = true;
    },
+
    methods: {
      // render add schedule form 
      addScheduleForm() {
        this.showAddSchedule = true;
+       this.currentItem = {};
        this.currentIndex = {};
      },
+
      // render edit schedule form for selected schedule
      updateActiveSchedule(indexArray) {
        this.currentItem=indexArray[0];
@@ -109,10 +113,12 @@
        this.old_schedule_name = this.currentItem.name;
        this.showAddSchedule = false;
      },
+
      // update cron expression - do this inline?
      updateCronExp(updatedCronExp) {
        this.cronExpression=updatedCronExp;
      },
+
      // submit schedule - pass along to addSchedule in schedule store 
      async submitSchedule() {
        await this.scheduleStore.addSchedule({
@@ -122,6 +128,7 @@
        this.schedule_name='';
        this.cronExpression='* * * * *'
      },
+
      // eddit schedule - pass along to editSchedule in schedule store 
      async editSchedule() {
        await this.scheduleStore.updateSchedule({
@@ -129,14 +136,25 @@
          "new_schedule": this.currentItem.name,
          "repeat": this.currentItem.repeat
        });
+
+       this.currentItem = this.scheduleStore.schedules[this.currentIndex];
+       this.updateActiveSchedule([this.currentItem, this.currentIndex]);
+       alert("Schedule updated successfully!");
      },
+
      // delete schedule - pass along to delete Schedule in schedule store
      async deleteSchedule() {
-       this.scheduleStore.schedules.splice(this.currentIndex, 1); 
-       await this.scheduleStore.deleteSchedule(this.currentItem)
-       this.currentItem={};
-       this.cronExpression='';
-       this.currentIndex={};
+       const deleteIndex = this.currentIndex;
+       this.scheduleStore.schedules.splice(deleteIndex, 1);
+       await this.scheduleStore.deleteSchedule(this.currentItem);
+       if (this.scheduleStore.schedules.length <= deleteIndex) {
+         this.addScheduleForm();
+       }
+       else {
+         this.currentIndex = deleteIndex;
+         this.currentItem = this.scheduleStore.schedules[deleteIndex];
+         this.updateActiveSchedule([this.currentItem, this.currentIndex]);
+       }
      }
    }
  }
