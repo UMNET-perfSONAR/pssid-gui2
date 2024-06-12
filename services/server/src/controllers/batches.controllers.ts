@@ -62,7 +62,6 @@ const deleteBatch = (async (req:Request, res:Response) => {
     let deleted = await batch_col.findOne({ "name" : batch });
 
     for await (const item of ['hosts', 'host_groups']) {
-      console.log(item);
       const outdated_collection = (await client).db('gui').collection(item); 
       await deleteDocument(outdated_collection, 'batches', 'batch_ids', deleted?.name); 
     }
@@ -91,7 +90,6 @@ const postBatch = (async (req:Request, res:Response) => {
     const ssid_profile_ids = await get_ssid_profile_ids(client, data); 
     const schedule_ids = await get_schedule_ids(client, data); 
     const job_ids = await get_job_ids(client, data);
-    console.log(job_ids);
     const archiver_ids = await get_archiver_ids(client, data); 
 
     collection.insertOne({                                  // include names and _ids of objects 

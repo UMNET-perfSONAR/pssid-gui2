@@ -43,7 +43,6 @@ export const useBatchStore = defineStore('batchStore', {
           }
         );
         this.batches.push(batch);
-        console.log('added_batch');
         this.isLoading=false;
       }
       catch(error) {

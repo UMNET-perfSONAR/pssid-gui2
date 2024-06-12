@@ -135,22 +135,35 @@
    components: { itemList, dynamicform, VueMultiselect },
    data() {
      return {
+       /*
+        * Variables for the Add Batch page
+        */
+       batch_name: '',
+       ssid_selection: [],
+
+
+       /*
+        * Variable that controls which page to display,
+        * Add Batch or Edit Batch.
+        */
+       showAddBatch: true,
+
+       /*
+        * Variables for the Edit Batch page
+        */
        currentItem: {},
        currentIndex: {},
-       showAddBatch: true,
-       mount: false,
-
-       ssid_selection: [],
-       batch_name: '',
        old_batchname: '',
 
-       // relevant stores 
+       mount: false,
+       form_layout: [],
+
+       // Methods to access the store
        batchStore: useBatchStore(),
        SsidStore: useSsidStore(),
        JobStore: useJobStore(),
        scheduleStore: useScheduleStore(),
        archiverStore: useArchiverStore(),
-       form_layout: []
      }
    },
    async mounted() {
@@ -227,10 +240,11 @@
          schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
          jobs: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
          archivers: (form_data[5].selected.length == 0)? [] : form_data[5].selected.map(obj => obj.name),
-       })
+       });
+       this.addBatchForm();
      },
 
-     // handle edit batch - send to editBatch in batches store
+     // Edits a selected batch
      async editBatch() {
        const updated_batch = {
          "old_batchname":this.old_batchname,
@@ -243,17 +257,26 @@
          "test_interface": this.currentItem.test_interface
        };
        await this.batchStore.editBatch(updated_batch);
+
+       this.currentItem = this.batchStore.batches[this.currentIndex];
+       this.updateActiveBatch([this.currentItem, this.currentIndex]);
        alert("Batch successfully updated!");
      },
 
-     // delete batch
+     // Deletes a batch
      async deleteBatch() {
-       this.batchStore.batches.splice(this.currentIndex, 1); 
-       console.log(this.batchStore.batches);
+       const deleteIndex = this.currentIndex;
+       this.batchStore.batches.splice(deleteIndex, 1);
        await this.batchStore.deleteBatch(this.currentItem);
+       if (this.batchStore.batches.length <= deleteIndex) {
+         this.addBatchForm();
+       }
+       else {
+         this.currentIndex = deleteIndex;
+         this.currentItem = this.batchStore.batches[deleteIndex];
+         this.updateActiveBatch([this.currentItem, this.currentIndex]);
+       }
      }
    }
-   
-   
  }
 </script>
