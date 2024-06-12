@@ -9,7 +9,7 @@
     <div>
       <button style="margin-bottom: 2em;" v-if="showAddTest"></button>
       <button @click="addTestForm" class="btn btn-primary" v-if="!showAddTest"
-					  style="margin-bottom: 1em;"> Add Test </button>
+                                          style="margin-bottom: 1em;"> Add Test </button>
     </div>
     <h3> Test List </h3>
     <div class="list row"> 
@@ -47,11 +47,11 @@
           </div>
           <!-- dynamic componnent-->
           <div v-if="showForm===true">
-            <dynamicform 
+            <dynamicform
               @formData="handleSubmit"
-              :form_layout="all_test_options"
+              :form_layout="allTestOptions"
               :current_item="selected_test"
-              :optional_data="optional_data"
+              :optional_data="addedOptionalData"
             >
             </dynamicform>
           </div>
@@ -86,19 +86,18 @@
           </VueMultiselect>
         </div>
         <!-- dynamic components -->
-        <!-- Could have a v-if here - render either edit or add pending what dropdown value is currently selected -->
         <div v-if="viewType===test">
           <editFormComp 
             :current_item="currentItem"
             @editItem="editTest"
             @deleteItem="deleteTest"
-            :dynamic_options="curr_data"
+            :dynamic_options="currOptionalData"
           > </editFormComp>
         </div>
         <div v-else>    
-          <dynamicform :form_layout="all_test_options"
+          <dynamicform :form_layout="allTestOptions"
             @formData="editTest"
-            :optional_data="optional_data"
+            :optional_data="currOptionalData"
           >
           </dynamicform>
         </div>
@@ -120,128 +119,146 @@
    components: { dynamicform , VueMultiselect, editFormComp, itemList },
    data() {
      return {
-       // manage view of pages
-       currentIndex: {},
-       currentItem: {},
-       display: 'add',
-       showForm: false,
-       old_test_name: '',
-
-       optional_data: [{
-         "key": '',
-         "value": ''
-       }],
        mount: false,
 
+       /*
+        * Variables for the Add Test form
+        */
        test_name: '',
        selected_test: '',
        viewType: {},
-       test: {},
-       input_fields: [],
+       // Test options for the currently selected test type.
+       allTestOptions: [],
+       addedOptionalData: [],
+
+       /*
+        * Variables that control which form is displayed,
+        * Add Test or Edit Test.
+        */
        showAddTest: true,
+       // Whether or not to render a dynamic form. Becomes true
+       // when a test type is selected.
+       showForm: false,
 
-       // holds additional parameters for dynamic parts
-       curr_data:[],
+       /*
+        * Variables for the Edit Test form
+        */
+       currentItem: {},
+       currentIndex: {},
+       test: {},
+       old_test_name: '',
+       currOptionalData:[],
 
-       // for dynamic form rendering 
-       all_test_options: [],
-
-       // stores 
+       // Method(s) to access the store
        testStore: useTestStore(),
        SsidStore: useSsidStore(),
      }
-   },  
+   },
+
    async mounted() {
      await this.testStore.getTests();
      await this.testStore.getTestNames();     
-     this.mount = true;       
+     this.mount = true;
    },
 
    methods: {
      addTestForm() {
+       // Set control variables.
        this.showAddTest = true;
-       this.currentIndex = {};
+       this.showForm = false;
+
+       // Set variables related to the Add Test form.
        this.test_name = '';
        this.selected_test = '';
-       
-       this.showForm = false;
-       this.test = {}
-       
-       this.input_fields = {}
+       this.viewType = {};
+       this.allTestOptions = [];
+       this.addedOptionalData = [];
+
+       // Variables related to the Edit Test form are irrelevant
+       // since they will be immediately updated when a test is selected
+       // in method `updateActiveTest`.
      },
+
      async updateActiveTest(itemArray) {
+       // 1. Determine which test in Test List is selected.
        const test = itemArray[0];
        const index = itemArray[1];
        let ind = 0; 
        const data = JSON.parse(JSON.stringify(test.spec));
        this.viewType = test.type;
        await this.testStore.getDesiredTest(test.type);
+
+       // 2. Display the Edit Test form correctly.
        const myJson = '{}';
        let json_object = JSON.parse(myJson);
-       this.curr_data = []
-       
+       this.currOptionalData = []
        for (const [key,value] of Object.entries(data)) {
-         if (ind++ < this.testStore.test_options.length) {
+         if (ind < this.testStore.test_options.length) {
            json_object[key] = value;
+           ind += 1;
          }
          else {
-           this.curr_data.push({'key':key, 'value':value})
+           this.currOptionalData.push({'key':key, 'value':value})
          }
        };
+
+       // 3. Update control variables.
        this.currentIndex=index;
        this.currentItem= {
          name: test.name,
          spec: json_object,
          type: test.type
        };
-
-       this.test = test.type;
        this.old_test_name = test.name;
+       this.test = test.type;
        this.showAddTest = false;
      },
+
      async renderForm(form_type) {
        this.viewType = form_type
        await this.testStore.getDesiredTest(form_type); 
-       this.all_test_options = this.testStore.test_options
-       this.all_test_options.push({'type':'optional', 'name': 'Optional Data'});
+       this.allTestOptions = this.testStore.test_options
+       this.allTestOptions.push({'type':'optional', 'name': 'Optional Data'});
        this.showForm = true;
-       console.log(this.optional_data);
-     },  
-     // form_data in this case will be the "spec" information 
+     },
+
+     // Creates a new test.
      async handleSubmit (form_data) {
        if (this.test_name.length > 0) {
-         const obj = this.testStore.formatPostData(form_data, this.optional_data);
+         const obj = this.testStore.formatPostData(form_data, this.addedOptionalData);
          await this.testStore.addTest({
            name: this.test_name,
            type: this.selected_test,
            spec: obj
          });
-         this.test_name='';
-         this.selected_test='';
+         // Reset the form and allow users to add another test.
+         this.addTestForm();
        }
        else {
          alert('Please add a test name!');
        }
      },
+
      /**
-      * update current test item using put request
+      * Updates the current test item using put request
       * 
       * @param {*} editFormInputs - contains data to update test with 
       */
      async editTest(editFormInputs) {
        if (this.currentItem.name.length === 0) {
-         alert('Please enter a test name!')
-         return
+         alert('Please enter a test name!');
+         return;
        }
+       // Format *regular* dynamic data.
        const data = editFormInputs.reduce((result, item)=> {
          result[item.name] = item.value
          return result
        }, {});
-       
-       const appended_data=this.curr_data.reduce((result, item)=> {
+       // Format *optional* dynamic data.
+       const appended_data = this.currOptionalData.reduce((result, item)=> {
          result[item.key] = item.value
          return result
-       }, {})
+       }, {});
 
        const object = {
          "old_testname" : this.old_test_name,
@@ -252,16 +269,28 @@
        this.old_test_name = this.currentItem.name
        await this.testStore.editTest(object);
        await this.testStore.getTests();
+
+       // Reselect the same item to allow users to edit it again.
+       this.currentItem = this.testStore.tests[this.currentIndex];
+       this.updateActiveTest([this.currentItem, this.currentIndex]);
+       alert("Test updated successfully!");
      },
+
      /**
-      * delete test specified by currentItem 
+      * Deletes a test specified by currentItem.
       */
      async deleteTest() {
-       this.testStore.tests.splice(this.currentIndex, 1);
+       const deleteIndex = this.currentIndex;
+       this.testStore.tests.splice(deleteIndex, 1);
        await this.testStore.deleteTest(this.currentItem);
-       this.currentItem={};
-       this.currentIndex='';
-       this.curr_data=[];
+       if (this.testStore.tests.length <= deleteIndex) {
+         this.addTestForm();
+       }
+       else {
+         this.currentIndex = deleteIndex;
+         this.currentItem = this.testStore.tests[deleteIndex];
+         this.updateActiveTest([this.testStore.tests[deleteIndex], deleteIndex]);
+       }
      }
    }
  }
