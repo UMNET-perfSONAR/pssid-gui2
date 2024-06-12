@@ -16,10 +16,10 @@
         class="form-control"
       />
       <i class ="material-icons" 
-        @click="deleteParameter(counter)"
+        @click.prevent="deleteParameter(counter)"
         style="cursor: pointer;">delete</i>
     </div>
-    <button @click="addParameter()" class="btn btn-primary" type="button"
+    <button @click.prevent="addParameter" class="btn btn-primary" type="button"
       style="margin-top: 1em; margin-bottom: 1em; color:white"> Add parameter </button>
   </div>
 </template>

@@ -55,7 +55,7 @@
         </VueMultiselect>
       </div>
 
-      <div v-if="item.type==='optional'"> 
+      <div v-if="item.type==='optional'">
         <label>Additonal Data </label>
         <dynamic_add_data :addedData="optional_data"></dynamic_add_data>
       </div>
@@ -67,7 +67,7 @@
         <button
           type="button"
           class="btn btn-primary"
-          @click="handleToggleClick(index)"
+          @click.prevent="handleToggleClick(index)"
         >
           {{ form_values[index].value }}
         </button>
@@ -108,20 +108,31 @@
        SsidStore: useSsidStore(),
        
        copy_of_data: [],
-       form_values: this.form_layout.map((item) => ({
-         name: item.name,
-         value: '',
-         selected: []
-       }))
+       // INFO: form_layout contains the item {type: 'optional', name: "Optional Data"},
+       // which is correct since it is part of the form layout, namely
+       // <div v-if="item.type==='optional'">. We need it to render optional data.
+       // However, it should not be a part of the form_values array
+       // since optional data values are stored separately in the optional_data array,
+       // which is a reference to either addedOptionalData or currOptionalData in the
+       // parent (archivers/tests) components.
+       form_values: this.form_layout
+         .filter(item => item.type !== 'optional')
+         .map((item) => ({
+           name: item.name,
+           value: '',
+           selected: []
+         }))
      }
    },
    methods: {
      handleFormSubmit() {
-       const organized_data = this.form_values.map((item)=>({
-         name: item.name,
-         value: item.value,
-         selected: item.selected
-       }))
+       const organized_data = this.form_values
+         .filter(item => item.type !== 'optional')
+         .map((item)=>({
+           name: item.name,
+           value: item.value,
+           selected: item.selected
+         }));
        this.$emit('formData', organized_data);
        // Clear the form after submission.
        this.setUpData();
@@ -140,14 +151,16 @@
      },
 
      async setUpData() {
-       this.form_values = this.form_layout.map((item) => ({
-         name: item.name,
-         value: item.hasOwnProperty('defaultValue') ? item.defaultValue : '',
-         selected: [],
-         trueValue: item.hasOwnProperty('trueValue') ? item.trueValue : 'NA',
-         falseValue: item.hasOwnProperty('falseValue') ? item.falseValue : 'NA'
-       }))
-       this.copy_of_data=this.form_layout
+       this.form_values = this.form_layout
+         .filter(item => item.type !== 'optional')
+         .map((item) => ({
+           name: item.name,
+           value: item.hasOwnProperty('defaultValue') ? item.defaultValue : '',
+           selected: [],
+           trueValue: item.hasOwnProperty('trueValue') ? item.trueValue : 'NA',
+           falseValue: item.hasOwnProperty('falseValue') ? item.falseValue : 'NA'
+         }));
+       this.copy_of_data=this.form_layout;
        //this.form_values=mapped;
        await this.SsidStore.getSsidProfiles();
      },
