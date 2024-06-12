@@ -9,7 +9,7 @@
     <div>
       <button style="margin-bottom: 2em;" v-if="showAddJob"></button>
       <button @click="addJobForm" class="btn btn-primary" v-if="!showAddJob"
-	style="margin-bottom: 1em;"> Add Job </button>
+        style="margin-bottom: 1em;"> Add Job </button>
     </div>
     <h3> Job List </h3>
     <div class="list row"> 
@@ -32,7 +32,7 @@
                 required
                 id="name"
                 class="form-control"
-                v-model="job_name"
+                v-model="jobName"
               />
             </div>
             <!-- Test selection dropdown menu -->
@@ -161,67 +161,94 @@
    components: { dynamicform, VueMultiselect, itemList },
    data() {
      return {
-       // input binding 
-       parallel: '',
-       job_name: '',
-       continue_if: 'true',
+       /*
+        * Variables for the Add Job page
+        */
+       jobName: '',
        selected_tests: [],
-       showAddForm: true,
-       old_job_name: '',
-       mount:false,
+       continue_if: 'true',
+       parallel: '',
 
-       // select items/ switch from add to edit
-       currentIndex: {},
-       currentItem: {},
-       currentJobName: '',
+       /*
+        * Variables that control which form is displayed,
+        * Add Job or Edit Job.
+        */
        showAddJob: true,
 
-       // stores 
+       /*
+        * Variables for the Edit Job page
+        */
+       currentItem: {},
+       currentIndex: {},
+       old_job_name: '',
+
+       mount: false,
+
+       // Methods to access the store
        jobStore: useJobStore(),
        testStore: useTestStore(),
      }
    },
-   // load jobs and tests ahead of time
+
+   // Loads jobs and tests ahead of time
    async mounted() {
      await this.jobStore.getJobs();
      await this.testStore.getTests();
      this.mount = true;
    },
+
    methods: {
-     // render add job form
+     // Renders the Add Job form
      addJobForm() {
        this.showAddJob = true;
-       this.currentIndex = {}; 
+
+       this.jobName = '';
+       this.selected_tests = [];
+       this.continue_if = 'true';
+       this.parallel = '';
      },
-     // render edit job form for selected job
+
+     // Renders the Edit Job form for a selected job
      setActiveJob(indexArray) {
        this.currentItem = indexArray[0];
        this.currentIndex = indexArray[1];
        this.showAddJob = false;
        this.old_job_name = this.currentItem.name;
      },
-     // submit job to backend 
+
+     // Creates a new job
      submitJob() {
-       if(this.job_name.length > 0) {
+       if(this.jobName.length > 0) {
          this.jobStore.addJob({
-           name: this.job_name,
+           name: this.jobName,
            tests: (this.selected_tests.length == 0)? [] : this.selected_tests.map(obj => obj.name),
            "continue-if": this.continue_if,
            parallel: this.parallel
-         }) 
-         // reset values
-         this.job_name='';
-         this.parallel='';
-         this.continue_if='true';
-         this.selected_tests=[]
+         })
+         // Clear the form to allow users to add a new job.
+         this.addJobForm();
+       }
+       else {
+         alert("Please enter a job name");
        }
      },
-     // delete job 
+
+     // Deletes a job
      async deleteJob() {
-       this.jobStore.jobs.splice(this.currentIndex,1);
+       const deleteIndex = this.currentIndex;
+       this.jobStore.jobs.splice(deleteIndex, 1);
        await this.jobStore.deleteJob(this.currentItem);
+       if (this.jobStore.jobs.length <= deleteIndex) {
+         this.addJobForm();
+       }
+       else {
+         this.currentIndex = deleteIndex;
+         this.currentItem = this.jobStore.jobs[deleteIndex];
+         this.setActiveJob([this.currentItem, this.currentIndex]);
+       }
      },
-     // edit job - pass to editJob in job store
+
+     // Edits a selected job
      async editJob() {
        await this.jobStore.updateJob({
          old_job: this.old_job_name,
@@ -229,7 +256,11 @@
          parallel: this.currentItem.parallel,
          "continue-if": this.currentItem['continue-if'],
          tests: this.currentItem.tests
-       })
+       });
+
+       this.currentItem = this.jobStore.jobs[this.currentIndex];
+       this.setActiveJob([this.currentItem, this.currentIndex]);
+       alert("Job updated successfully!");
      }
    } 
  }
