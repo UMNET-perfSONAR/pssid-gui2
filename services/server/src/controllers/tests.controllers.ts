@@ -5,6 +5,7 @@ import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
 import fs from 'fs';
 import path from 'path';
+import { isNameInDB } from './helpers';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -74,6 +75,10 @@ const postTest = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
     var collection = (await client).db('gui').collection('tests');
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message:"Test already exists!"});
+    }
     await collection.insertOne({
       "name":req.body.name,
       "type": req.body.type,

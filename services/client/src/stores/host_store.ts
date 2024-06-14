@@ -33,7 +33,7 @@ export const useHostStore = defineStore('hostStore', {
     async addHost(host:any) {
       try {
         this.isLoading = true;
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname + ':8000/hosts/create-host',
           {
             method: 'POST',
@@ -44,7 +44,15 @@ export const useHostStore = defineStore('hostStore', {
             }
           }
         );
-        this.hosts.push(host);
+
+	if (response.ok) {
+	  this.hosts.push(host);
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
+
         this.isLoading=false;
       }
       catch(error) {

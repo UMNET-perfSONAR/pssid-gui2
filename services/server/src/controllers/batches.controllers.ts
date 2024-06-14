@@ -3,6 +3,7 @@ import { connectToMongoDB } from '../services/database.service';
 import { get_ssid_profile_ids, get_schedule_ids, get_job_ids, get_archiver_ids } from '../services/utility.services'
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
+import { isNameInDB } from './helpers';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -76,7 +77,7 @@ const deleteBatch = (async (req:Request, res:Response) => {
 
 /**
  * Creates new batch entry in database. Inserts ObjectId arrays for ssid_profiles, jobs, schedules, archivers 
- * to make compatible with future updates. 
+ * to make compatible with future updates.
  * 
  * @param req - request information from client
  * @param res - response sent back to client 
@@ -85,8 +86,12 @@ const postBatch = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
     var collection = (await client).db('gui').collection('batches');
-    var data = req.body; 
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message: "Batch already exists!"});
+    }
 
+    var data = req.body;
     const ssid_profile_ids = await get_ssid_profile_ids(client, data); 
     const schedule_ids = await get_schedule_ids(client, data); 
     const job_ids = await get_job_ids(client, data);

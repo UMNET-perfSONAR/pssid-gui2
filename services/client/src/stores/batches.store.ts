@@ -32,7 +32,7 @@ export const useBatchStore = defineStore('batchStore', {
     async addBatch(batch:any) {
       try {
         this.isLoading = true;
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname +':8000/batches/create-batch',
           {
             method: 'POST',
@@ -42,7 +42,15 @@ export const useBatchStore = defineStore('batchStore', {
             }
           }
         );
-        this.batches.push(batch);
+
+	if (response.ok) {
+	  this.batches.push(batch);
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
+
         this.isLoading=false;
       }
       catch(error) {

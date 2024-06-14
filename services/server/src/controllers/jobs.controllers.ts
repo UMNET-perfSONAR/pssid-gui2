@@ -3,6 +3,7 @@ import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { get_test_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
+import { isNameInDB } from './helpers';
 
 var client = connectToMongoDB();
 
@@ -82,6 +83,10 @@ const postJob = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
     var collection = (await client).db('gui').collection('jobs');
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message:"Job already exists!"});
+    }
     let test_ids = await get_test_ids(client, req.body); 
     await collection.insertOne({
       "name":req.body.name,

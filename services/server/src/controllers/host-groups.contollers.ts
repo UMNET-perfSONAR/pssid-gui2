@@ -3,6 +3,7 @@ import { MongoClient, Db, MongoServerError, Collection, ObjectId } from "mongodb
 import { connectToMongoDB } from '../services/database.service';
 import { get_batch_ids, get_host_ids } from '../services/utility.services';
 import { create_config_file } from '../services/config.service';
+import { isNameInDB } from './helpers';
 
 var client = connectToMongoDB();
 
@@ -76,6 +77,10 @@ const postHostGroup = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
     var collection = (await client).db('gui').collection('host_groups');
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message:"Group already exists!"});
+    }
     var data = req.body; 
 
     collection.insertOne({

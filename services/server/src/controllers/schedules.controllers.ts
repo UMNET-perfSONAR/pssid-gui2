@@ -3,6 +3,7 @@ import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
+import { isNameInDB } from './helpers';
 
 var client = connectToMongoDB();
 
@@ -65,6 +66,10 @@ const postSchedule = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
     var collection = (await client).db('gui').collection('schedules');
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message:"Schedule already exists!"});
+    }
     collection.insertOne({
       "name" : req.body.name,
       "repeat" : req.body.repeat

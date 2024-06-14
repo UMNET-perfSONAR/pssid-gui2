@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
+import { isNameInDB } from './helpers';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -83,9 +84,11 @@ const deleteSSIDProfile = (async (req:Request, res:Response) => {
 const postSSIDProfile = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
-    console.log('ssid');
     var collection = (await client).db('gui').collection('ssid_profiles');
-    
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message:"SSID Profile already exists!"});
+    }
     await collection.insertOne({
       "name": req.body.name,
       "ssid": req.body.ssid,

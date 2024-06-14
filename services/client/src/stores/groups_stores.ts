@@ -37,7 +37,7 @@ export const useGroupStore = defineStore('groupStore', {
       try {
         this.isLoading = true;
         
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname +':8000/host-groups/create-hostgroup',
           {
             method: 'POST',
@@ -49,7 +49,14 @@ export const useGroupStore = defineStore('groupStore', {
           }
         );
 
-        this.host_groups.push(host_group);
+	if (response.ok) {
+	  this.host_groups.push(host_group);
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
+
         this.isLoading=false;
       }
       catch(error) {

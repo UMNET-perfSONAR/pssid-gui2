@@ -4,6 +4,7 @@ import { updateCollection } from '../services/update.service';
 import { get_batch_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
 import { create_config_file } from '../services/config.service';
+import { isNameInDB } from './helpers';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -100,9 +101,13 @@ const deleteAll = (async (req:Request, res:Response) => {
  * @param res - response sent back to client 
  */
 const postHost = (async (req:Request, res:Response) => {
-  try { 
+  try {
     (await client).connect();
     var collection = (await client).db('gui').collection('hosts');
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message: "Host already exists!"});
+    }
     let batch_ids = await get_batch_ids(client, req.body);
     await collection.insertOne({
       "name":req.body.name,

@@ -66,7 +66,7 @@ export const useTestStore = defineStore('test', {
     async addTest(test:any) {
       this.isLoading = true;
       
-      await fetch(
+      const response = await fetch(
         'http://'+ window.location.hostname +':8000/tests/create-test',
         {
           method: 'POST',
@@ -76,7 +76,15 @@ export const useTestStore = defineStore('test', {
           }
         }
       );
-      this.tests.push(test);
+
+      if (response.ok) {
+	this.tests.push(test);
+      }
+      else {
+	const errorData = await response.json();
+	alert(errorData.message);
+      }
+
       this.isLoading=false;
     },
 

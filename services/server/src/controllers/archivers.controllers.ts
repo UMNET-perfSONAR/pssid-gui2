@@ -5,6 +5,8 @@ import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
 import fs from 'fs';
 import path from 'path';
+import { isNameInDB } from './helpers';
+
 var client = connectToMongoDB();
 
 // Retrieves the path to the archivers directory from the paths_config.json file.
@@ -92,6 +94,10 @@ const postArchiver = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
     var collection = (await client).db('gui').collection('archivers');
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message:"Archiver already exists!"});
+    }
     collection.insertOne({
       "name": req.body.name,
       "archiver": req.body.archiver,

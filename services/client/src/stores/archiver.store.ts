@@ -62,7 +62,7 @@ export const useArchiverStore = defineStore('archiver', {
     async addArchiver(archiver:any) {
       try {
         this.isLoading = true;
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname +":8000/archivers/create-archiver",
           {
             method: 'POST',
@@ -72,7 +72,15 @@ export const useArchiverStore = defineStore('archiver', {
             }
           }
         );
-        this.archivers.push(archiver);
+
+	if (response.ok) {
+	  this.archivers.push(archiver);
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
+
         this.isLoading=false;
       }
       catch(error) {

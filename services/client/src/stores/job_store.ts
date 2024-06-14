@@ -33,7 +33,7 @@ export const useJobStore = defineStore('jobStore', {
       try {
         this.isLoading = true;
         console.log(job);
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname +':8000/jobs/create-job',
           {
             method: 'POST',
@@ -43,7 +43,15 @@ export const useJobStore = defineStore('jobStore', {
             }
           }
         );
-        this.jobs.push(job);
+
+	if (response.ok) {
+          this.jobs.push(job);
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
+
         this.isLoading=false;
       }
       catch(error) {

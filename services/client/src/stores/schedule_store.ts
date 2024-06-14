@@ -18,7 +18,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
 
     async addSchedule(schedule:JSON) {
       this.isLoading = true;
-      await fetch(
+      const response = await fetch(
         'http://'+ window.location.hostname +':8000/schedules/create-schedule',
         {
           method: 'POST',
@@ -29,7 +29,15 @@ export const useScheduleStore = defineStore('scheduleStore', {
           }
         }
       );
-      this.schedules.push(schedule);
+
+      if (response.ok) {
+	this.schedules.push(schedule);
+      }
+      else {
+	const errorData = await response.json();
+	alert(errorData.message);
+      }
+
       this.isLoading=false;
     },
 
