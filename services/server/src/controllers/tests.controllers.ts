@@ -9,13 +9,20 @@ import path from 'path';
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
 
+// Retrieves the path to the tests directory from the paths_config.json file.
+const getTestsPath = (): string => {
+  const configFile = "../../paths_config.json";
+  const configFilePath = path.join(__dirname, configFile);
+  var object = JSON.parse(fs.readFileSync(configFilePath, 'utf-8'));
+  return object.tests_path;
+};
+
 // get all tests
 const getTests = (async (req: Request, res: Response) =>{
   try {
     (await client).connect();
     const collection = (await client).db('gui').collection('tests');
     const response = await collection.find().toArray();
-    console.log('tests')
     res.send(response);
   }
   catch(error) {
@@ -67,7 +74,6 @@ const postTest = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
     var collection = (await client).db('gui').collection('tests');
-    console.log('test insetion')
     await collection.insertOne({
       "name":req.body.name,
       "type": req.body.type,
@@ -112,8 +118,7 @@ const updateTest = (async (req:Request, res:Response) => {
  */
 const readFileNames = ((req:Request, res:Response) => {
   try {
-    // TODO: consider reading the path from a config file
-    const directoryPath = "/usr/src/app/server/lib/tests";
+    const directoryPath = getTestsPath();
     
     fs.readdir(directoryPath, function(err, files) {
       if (err) {
@@ -122,7 +127,6 @@ const readFileNames = ((req:Request, res:Response) => {
       let fileArray: string[] = [];
       files.forEach(function(file) {
         fileArray.push(file.slice(0, -5))
-        console.log(file.slice(0, -5));
       })
       res.send(fileArray);
     })
@@ -141,8 +145,7 @@ const readFileNames = ((req:Request, res:Response) => {
  */
 const readTestFile = ((req:Request, res:Response) => {
   try {
-    // TODO: consider reading the path from a config file
-    const filePath = "/usr/src/app/server/lib/tests/" + req.params.name + ".json";
+    const filePath = getTestsPath() + req.params.name + ".json";
 
     var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     res.json(object);

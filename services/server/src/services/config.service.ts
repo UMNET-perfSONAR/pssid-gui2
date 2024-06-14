@@ -6,7 +6,7 @@ import { exec } from 'node:child_process';
 import path from 'path';
 import fs from 'fs';
 const { writeFileSync } = require('fs');
-// The following paths are read in from config_output.json. Initialize them to null
+// The following paths are read in from paths_config.json. Initialize them to null
 // to ensure they are not used before being set in function `get_paths`.
 let output_directory: string | null = null;
 let config_path: string | null = null;
@@ -73,7 +73,7 @@ function writeIniFile(obj:&any) {
  * Gets shellscript, config file, and ansible inventory output paths
  */
 function get_paths() { 
-  var name = '../../config_output.json';
+  var name = '../../paths_config.json';
   const filePath = path.join(__dirname, name);
   var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   output_directory = object.output_directory;
@@ -82,7 +82,7 @@ function get_paths() {
   shellscript_path = object.shellscript_path;
   if (config_path === null || ini_path === null ||
     shellscript_path === null || output_directory === null) {
-    throw new Error('Paths not set in config_output.json');
+    throw new Error('Paths not set in paths_config.json');
   }
   // Ensure the parent output directory exists.
   if (!fs.existsSync(output_directory)) {

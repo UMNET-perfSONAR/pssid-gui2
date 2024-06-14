@@ -17,9 +17,9 @@ services:
     volumes:
       - ./services/server/src:/usr/src/app/server/src
       - server_node_modules:/usr/src/app/server/node_modules
-      - /usr/local/pssid-gui/bin:/usr/src/app/server/bin
-      - /usr/local/pssid-gui/lib:/usr/src/app/server/lib
-      - /usr/local/pssid-gui/output:/usr/src/app/server/output
+      - /usr/lib/exec/pssid:/usr/src/app/server/bin
+      - /var/lib/pssid/plugins:/usr/src/app/server/plugins
+      - /var/lib/pssid/output:/usr/src/app/server/output
     ports:
       - 8000:8000
     depends_on:
@@ -29,9 +29,10 @@ services:
     build: ./services/database
     ports:
       - 27017:27017
-    volumes: 
-      - /usr/local/pssid-gui/mongo/data:/data/db
+    volumes:
+      - mongo_db:/data/db
 
 volumes:
   client_node_modules:
   server_node_modules:
+  mongo_db:

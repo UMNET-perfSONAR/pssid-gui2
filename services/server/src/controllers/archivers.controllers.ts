@@ -7,6 +7,14 @@ import fs from 'fs';
 import path from 'path';
 var client = connectToMongoDB();
 
+// Retrieves the path to the archivers directory from the paths_config.json file.
+const getArchiversPath = (): string => {
+  const configFile = "../../paths_config.json";
+  const configFilePath = path.join(__dirname, configFile);
+  var object = JSON.parse(fs.readFileSync(configFilePath, 'utf-8'));
+  return object.archivers_path;
+};
+
 /**
  * Return all archiver information from mongodb 
  * 
@@ -134,8 +142,7 @@ const updateArchiver = (async (req:Request, res:Response) => {
  */
 const readFileNames = ((req:Request, res:Response) => {
   try {
-    // TODO: consider reading the path from a config file
-    const directoryPath = "/usr/src/app/server/lib/archivers";
+    const directoryPath = getArchiversPath();
     
     fs.readdir(directoryPath, function(err, files) {
       if (err) {
@@ -144,7 +151,6 @@ const readFileNames = ((req:Request, res:Response) => {
       let fileArray: string[] = [];
       files.forEach(function(file) {
         fileArray.push(file.slice(0, -5))
-        console.log(file.slice(0, -5));
       })
       res.send(fileArray);
     })
@@ -163,8 +169,7 @@ const readFileNames = ((req:Request, res:Response) => {
  */
 const readArchiverFile = ((req:Request, res:Response) => {
   try {
-    // TODO: consider reading the path from a config file
-    const filePath = '/usr/src/app/server/lib/archivers/' + req.params.name + '.json';
+    const filePath = getArchiversPath() + req.params.name + '.json';
     var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));    
     res.json(object);
   }
