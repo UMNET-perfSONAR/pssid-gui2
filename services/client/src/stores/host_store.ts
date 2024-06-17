@@ -86,7 +86,7 @@ export const useHostStore = defineStore('hostStore', {
      */
     async editHost(updateHostObj:any) {
       try {
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname + ':8000/hosts/update-host',
           {
             method: "PUT",
@@ -97,7 +97,14 @@ export const useHostStore = defineStore('hostStore', {
             }
 	    
           }
-        )
+        );
+	if (response.ok) {
+	  alert("Host updated successfully!");
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
       }
       catch(error) {
         console.error(error);

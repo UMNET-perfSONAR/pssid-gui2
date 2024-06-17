@@ -246,7 +246,6 @@
 
        this.currentItem = this.archiverStore.archivers[this.currentIndex];
        this.updateActiveArchiver([this.currentItem, this.currentIndex]);
-       alert('Archiver has been successfully edited!');
      },
 
      // render form information from server

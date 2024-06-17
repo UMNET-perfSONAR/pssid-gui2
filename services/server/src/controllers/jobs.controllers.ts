@@ -115,6 +115,10 @@ const updateJob = (async (req:Request, res:Response) => {
     let body = req.body;
     (await client).connect();
     var collection = (await client).db('gui').collection('jobs');
+    const isDuplicate = await isNameInDB(collection, body.new_job);
+    if (isDuplicate) {
+      return res.status(400).json({message:"Job already exists!"});
+    }
     let doc = await collection.findOne({name: req.body.old_job});
     await collection.updateOne({
       "name": body.old_job

@@ -267,7 +267,6 @@
 
        this.currentGroup = this.hostGroup.host_groups[this.currentIndex];
        this.updateActiveGroup([this.currentGroup, this.currentIndex]);
-       alert("Group updated successfully!");
      },
 
      // Renders Add Group form

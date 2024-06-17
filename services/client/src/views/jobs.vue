@@ -257,10 +257,10 @@
          "continue-if": this.currentItem['continue-if'],
          tests: this.currentItem.tests
        });
+       await this.jobStore.getJobs();
 
        this.currentItem = this.jobStore.jobs[this.currentIndex];
        this.setActiveJob([this.currentItem, this.currentIndex]);
-       alert("Job updated successfully!");
      }
    } 
  }

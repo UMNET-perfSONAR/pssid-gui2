@@ -117,6 +117,10 @@ const updateSSIDProfile = (async (req:Request, res:Response) => {
     (await client).connect();
     console.log(body.old_ssid_name);
     var collection = (await client).db('gui').collection('ssid_profiles');
+    const isDuplicate = await isNameInDB(collection, body.new_ssid_name);
+    if (isDuplicate) {
+      return res.status(400).json({message:"SSID Profile already exists!"});
+    }
     await collection.updateOne({
       "name": body.old_ssid_name
     }, {$set:{"name": body.new_ssid_name, "ssid": body.ssid,

@@ -92,7 +92,7 @@ export const useArchiverStore = defineStore('archiver', {
     // edit archiver through put request
     async editArchiver(archiver: any) {
       try {
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname +':8000/archivers/update-archiver',
           {
             method: 'PUT',
@@ -103,6 +103,13 @@ export const useArchiverStore = defineStore('archiver', {
             }
           }
         );
+	if (response.ok) {
+	  alert("Archiver updated successfully");
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
       }
       catch(error) {
         console.log(error);

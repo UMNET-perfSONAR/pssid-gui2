@@ -233,7 +233,6 @@
 
        this.currentItem = this.ssidStore.ssid_profiles[this.currentIndex];
        this.updateActiveSSID([this.currentItem, this.currentIndex]);
-       alert("SSID Profile edited successfully!");
      },
 
      // Deletes ssid_profile

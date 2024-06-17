@@ -67,7 +67,7 @@ export const useGroupStore = defineStore('groupStore', {
 
     async editGroup(host_group: any) {
       try {
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname +':8000/host-groups/update-hostgroup',
           {
             method: 'PUT',
@@ -78,6 +78,13 @@ export const useGroupStore = defineStore('groupStore', {
             }
           }
         );
+	if (response.ok) {
+	  alert("Group updated successfully!");
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
       }
       catch(error) {
         console.error(error);

@@ -50,7 +50,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
       );
     },
     async updateSchedule(updateScheduleObj:any) {
-      await fetch(
+      const response = await fetch(
         'http://'+ window.location.hostname +':8000/schedules/update-schedule',
         {
           method: "PUT",
@@ -61,7 +61,14 @@ export const useScheduleStore = defineStore('scheduleStore', {
           }
 	  
         }
-      )
+      );
+      if (response.ok) {
+	alert("Schedule updated successfully");
+      }
+      else {
+	const errorData = await response.json();
+	alert(errorData.message);
+      }
     }
 
   }

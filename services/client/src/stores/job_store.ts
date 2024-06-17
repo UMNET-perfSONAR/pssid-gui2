@@ -104,7 +104,7 @@ export const useJobStore = defineStore('jobStore', {
      */
     async updateJob(updatedJobObj) {
       try {
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname +':8000/jobs/update-job',
           {
             method: "PUT",
@@ -115,7 +115,14 @@ export const useJobStore = defineStore('jobStore', {
             }
 	    
           }
-        )
+        );
+	if (response.ok) {
+	  alert("Job updated successfully!");
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
       }
       catch(error) {
         console.error(error);

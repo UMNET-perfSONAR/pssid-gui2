@@ -59,7 +59,7 @@ export const useSsidStore = defineStore('ssidStore', {
     },
 
     async editSsidProfile(ssid_profile:any) {
-      await fetch(
+      const response = await fetch(
         'http://'+ window.location.hostname +':8000/ssid-profiles/update-ssidProfile',
         {
           method: "PUT",
@@ -69,7 +69,14 @@ export const useSsidStore = defineStore('ssidStore', {
             "Content-Type":"application/json"
           }
         }
-      )
+      );
+      if (response.ok) {
+	alert("SsidProfile updated successfully");
+      }
+      else {
+	const errorData = await response.json();
+	alert(errorData.message);
+      }
     },
 
     async deleteAll() {

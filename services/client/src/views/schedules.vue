@@ -136,10 +136,10 @@
          "new_schedule": this.currentItem.name,
          "repeat": this.currentItem.repeat
        });
+       await this.scheduleStore.getSchedules();
 
        this.currentItem = this.scheduleStore.schedules[this.currentIndex];
        this.updateActiveSchedule([this.currentItem, this.currentIndex]);
-       alert("Schedule updated successfully!");
      },
 
      // delete schedule - pass along to delete Schedule in schedule store

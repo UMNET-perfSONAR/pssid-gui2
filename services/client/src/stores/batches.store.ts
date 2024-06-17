@@ -61,7 +61,7 @@ export const useBatchStore = defineStore('batchStore', {
 
     async editBatch(updated_batch_obj: JSON) {
       try {
-        await fetch(
+        const response = await fetch(
           'http://'+ window.location.hostname +':8000/batches/update-batch',
           {
             method: "PUT",
@@ -71,7 +71,14 @@ export const useBatchStore = defineStore('batchStore', {
               "Content-Type": "application/json"
             }
           }
-        )
+        );
+	if (response.ok) {
+	  alert("Batch updated successfully");
+	}
+	else {
+	  const errorData = await response.json();
+	  alert(errorData.message);
+	}
       }
       catch(error) {
         console.error(error);

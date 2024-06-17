@@ -48,8 +48,7 @@ export const useTestStore = defineStore('test', {
 
     // edit test through put request
     async editTest(test: any) {
-      console.log(test);
-      await fetch(
+      const response = await fetch(
         'http://'+ window.location.hostname +':8000/tests/update-test',
         {
           method: 'PUT',
@@ -60,6 +59,13 @@ export const useTestStore = defineStore('test', {
           }
         }
       );
+      if (response.ok) {
+	alert("Test updated successfully");
+      }
+      else {
+	const errorData = await response.json();
+	alert(errorData.message);
+      }
     },
 
     // add test to an array. take a test object and add to array

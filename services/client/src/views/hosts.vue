@@ -174,8 +174,6 @@
        // Reselect the current item - crucial for
        // consecutive edits of the same item.
        this.updateActiveHost([this.currentItem, this.currentIndex]);
-
-       alert("Host updated successfully!");
      },
 
      // Submits host information and clears the Add Host form

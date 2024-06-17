@@ -257,10 +257,10 @@
          "test_interface": this.currentItem.test_interface
        };
        await this.batchStore.editBatch(updated_batch);
+       await this.batchStore.getBatches();
 
        this.currentItem = this.batchStore.batches[this.currentIndex];
        this.updateActiveBatch([this.currentItem, this.currentIndex]);
-       alert("Batch successfully updated!");
      },
 
      // Deletes a batch

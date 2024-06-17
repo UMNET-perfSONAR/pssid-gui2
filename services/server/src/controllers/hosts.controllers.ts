@@ -115,7 +115,6 @@ const postHost = (async (req:Request, res:Response) => {
       "batch_ids": batch_ids,
       "data": req.body.data
     });   
-    console.log(req.body)
     res.json(req.body);
   }
   catch(error) {
@@ -134,9 +133,12 @@ const postHost = (async (req:Request, res:Response) => {
 const updateHost = (async (req:Request, res:Response) => {
   try {
     let body = req.body;
-    console.log('updateHost controller');
     (await client).connect();
     var collection = (await client).db('gui').collection('hosts');
+    const isDuplicate = await isNameInDB(collection, req.body.new_hostname);
+    if (isDuplicate) {
+      return res.status(400).json({message: "Host already exists!"});
+    }
     let doc = await collection.findOne({name: req.body.old_hostname});
     await collection.updateOne({
       "name": body.old_hostname
@@ -144,10 +146,9 @@ const updateHost = (async (req:Request, res:Response) => {
               "batch_ids": (JSON.stringify(req.body.batches) === JSON.stringify(doc?.batches)) ?     // update reference _ids if changes made 
       doc?.batches: await get_batch_ids(client, req.body),
               "data": body.data},
-       })
-
+       });
     if (body.new_hostname !== body.old_hostname) {            // Trigger update in hosts
-      updateCollection('host_groups', 'hosts', client);      // update host_groups using hosts collection
+      await updateCollection('host_groups', 'hosts', client);      // update host_groups using hosts collection
     }
     res.json(body);
   }
@@ -160,8 +161,6 @@ const updateHost = (async (req:Request, res:Response) => {
 const createConfig = (async (req: Request, res: Response) =>{
   try {  
     let name = (req.body.length==0)? '*' : req.body.name;
-    console.log('config creation')
-    console.log(name);
     await create_config_file(name, 'host');
     res.send('Config file created');
   }

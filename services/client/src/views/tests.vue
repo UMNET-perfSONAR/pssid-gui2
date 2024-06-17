@@ -273,7 +273,6 @@
        // Reselect the same item to allow users to edit it again.
        this.currentItem = this.testStore.tests[this.currentIndex];
        this.updateActiveTest([this.currentItem, this.currentIndex]);
-       alert("Test updated successfully!");
      },
 
      /**
