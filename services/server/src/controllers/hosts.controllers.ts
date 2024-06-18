@@ -136,7 +136,7 @@ const updateHost = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('hosts');
     const isDuplicate = await isNameInDB(collection, req.body.new_hostname);
-    if (isDuplicate) {
+    if (isDuplicate && req.body.new_hostname !== req.body.old_hostname) {
       return res.status(400).json({message: "Host already exists!"});
     }
     let doc = await collection.findOne({name: req.body.old_hostname});

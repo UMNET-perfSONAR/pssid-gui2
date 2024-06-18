@@ -94,7 +94,7 @@ const updateSchedule = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('schedules');
     const isDuplicate = await isNameInDB(collection, req.body.new_schedule);
-    if (isDuplicate) {
+    if (isDuplicate && req.body.old_schedule !== req.body.new_schedule) {
       return res.status(400).json({message:"Schedule already exists!"});
     }
     await collection.updateOne({

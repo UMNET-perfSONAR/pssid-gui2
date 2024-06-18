@@ -124,7 +124,7 @@ const updateArchiver = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('archivers');
     const isDuplicate = await isNameInDB(collection, body.new_arc_name);
-    if (isDuplicate) {
+    if (isDuplicate && body.old_arc_name !== body.new_arc_name) {
       return res.status(400).json({message:"Archiver already exists!"});
     }
     // Update data - Do in two steps - error otherwise. TODO - Look into shortening this

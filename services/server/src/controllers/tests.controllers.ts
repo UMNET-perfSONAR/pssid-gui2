@@ -100,7 +100,7 @@ const updateTest = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('tests');
     const isDuplicate = await isNameInDB(collection, body.new_testname);
-    if (isDuplicate) {
+    if (isDuplicate && body.old_testname !== body.new_testname) {
       return res.status(400).json({message:"Test already exists!"});
     }
     await collection.updateOne({

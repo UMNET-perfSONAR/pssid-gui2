@@ -113,7 +113,7 @@ const updateHostGroup = (async (req:Request, res:Response) => {
     let data = req.body;
     let collection = (await client).db('gui').collection('host_groups');
     const isDuplicate = await isNameInDB(collection, data.new_hostgroup);
-    if (isDuplicate) {
+    if (isDuplicate && data.old_hostgroup !== data.new_hostgroup) {
       return res.status(400).json({message:"Group already exists!"});
     }
     let doc = await collection.findOne({name: req.body.old_hostgroup});

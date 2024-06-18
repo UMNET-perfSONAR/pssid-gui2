@@ -131,7 +131,7 @@ const updateBatch = (async (req:Request, res:Response) => {
     (await client).connect();
     let collection = (await client).db('gui').collection('batches');
     const isDuplicate = await isNameInDB(collection, req.body.new_batchname);
-    if (isDuplicate) {
+    if (isDuplicate && req.body.old_batchname !== req.body.new_batchname) {
       return res.status(400).json({message:"Batch already exists!"});
     }
     let data = req.body;
