@@ -1,11 +1,11 @@
 <template>
-    <div>
-        multiselect
-    </div>
+  <div>
+    multiselect
+  </div>
 </template>
 
 <script setup>
-import VueMultiselect from 'vue-multiselect'
+ import VueMultiselect from 'vue-multiselect'
 
 </script>
 

@@ -12,8 +12,10 @@ RUN npm install
 # Copy project files and folders to the current working directory (i.e. 'server' folder)
 COPY . .
 
-# Build app for production with minification
-# RUN npm run dev 
+# Ensure that entrypoint.sh is executable
+RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
-CMD ["npm", "run", "dev"]
+
+# Build and run the application with entrypoint.sh
+CMD ["./entrypoint.sh"]

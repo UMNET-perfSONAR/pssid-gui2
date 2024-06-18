@@ -28,7 +28,6 @@
         <li class="nav-item">
           <router-link to="/batches" class="navbar-brand">Batches</router-link>
         </li>
- 
       </div>
     </nav>
 
@@ -41,9 +40,9 @@
 
 
 <script >
-  import { ref } from 'vue';
-  export default {
-    name:"app"
-  }
+ import { ref } from 'vue';
+ export default {
+   name:"app"
+ }
 
 </script>

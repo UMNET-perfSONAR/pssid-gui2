@@ -1,5 +1,0 @@
-{
-    "inventory_path": "./output/ansible.ini",
-    "config_path": "./output/config.json",
-    "shellscript_path": "./output/shellscript.sh"
-}

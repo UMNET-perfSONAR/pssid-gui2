@@ -5,7 +5,17 @@ import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
 import fs from 'fs';
 import path from 'path';
+import { isNameInDB } from './helpers';
+
 var client = connectToMongoDB();
+
+// Retrieves the path to the archivers directory from the paths_config.json file.
+const getArchiversPath = (): string => {
+  const configFile = "../../paths_config.json";
+  const configFilePath = path.join(__dirname, configFile);
+  var object = JSON.parse(fs.readFileSync(configFilePath, 'utf-8'));
+  return object.archivers_path;
+};
 
 /**
  * Return all archiver information from mongodb 
@@ -14,16 +24,16 @@ var client = connectToMongoDB();
  * @param res - response sent back to client 
  */
 const getArchivers = (async (req: Request, res: Response) =>{
-    try {
-        (await client).connect();
-        const collection = (await client).db('gui').collection('archivers');
-        const response = await collection.find().project({_id:0}).toArray();
-        res.send(response);
-    }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+  try {
+    (await client).connect();
+    const collection = (await client).db('gui').collection('archivers');
+    const response = await collection.find().project({_id:0}).toArray();
+    res.send(response);
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -33,17 +43,17 @@ const getArchivers = (async (req: Request, res: Response) =>{
  * @param res - response sent back to client 
  */
 const getOneArchiver = (async (req: Request, res: Response) => {
-    try {
-        const name = String(req.params.Archivername);
-        (await client).connect();
-        var collection = (await client).db('gui').collection('archivers');
-        var response = collection.find({"name": name}).toArray();
-        res.send(response); 
-    }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+  try {
+    const name = String(req.params.Archivername);
+    (await client).connect();
+    var collection = (await client).db('gui').collection('archivers');
+    var response = collection.find({"name": name}).toArray();
+    res.send(response); 
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -53,25 +63,25 @@ const getOneArchiver = (async (req: Request, res: Response) => {
  * @param res - response sent back to client 
  */
 const deleteArchiver = (async (req:Request, res:Response) => {
-    try {
-        const name = String(req.params.archiver_name);
-        (await client).connect();
-        var archiver_col = (await client).db('gui').collection('archivers');
+  try {
+    const name = String(req.params.archiver_name);
+    (await client).connect();
+    var archiver_col = (await client).db('gui').collection('archivers');
 
-        var batch_col = (await client).db('gui').collection('batches');
+    var batch_col = (await client).db('gui').collection('batches');
 
-        const deleted = await archiver_col.findOne({ "name" : name });    
+    const deleted = await archiver_col.findOne({ "name" : name });    
 
-        deleteDocument(batch_col, 'archivers', 'archiver_ids', deleted?.name);        // delete references from other collections
+    deleteDocument(batch_col, 'archivers', 'archiver_ids', deleted?.name);        // delete references from other collections
 
-        await archiver_col.findOneAndDelete({ "name" : name });       
+    await archiver_col.findOneAndDelete({ "name" : name });       
 
-        res.send('archiver ' + name + ' was deleted')
-    }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+    res.send('archiver ' + name + ' was deleted')
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -81,20 +91,24 @@ const deleteArchiver = (async (req:Request, res:Response) => {
  * @param res - response sent back to client 
  */
 const postArchiver = (async (req:Request, res:Response) => {
-    try {
-        (await client).connect();
-        var collection = (await client).db('gui').collection('archivers');
-        collection.insertOne({
-            "name": req.body.name,
-            "archiver": req.body.archiver,
-            "data": req.body.data
-        });   
-        res.json(req.body);
+  try {
+    (await client).connect();
+    var collection = (await client).db('gui').collection('archivers');
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message:"Archiver already exists!"});
     }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+    collection.insertOne({
+      "name": req.body.name,
+      "archiver": req.body.archiver,
+      "data": req.body.data
+    });   
+    res.json(req.body);
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -105,25 +119,29 @@ const postArchiver = (async (req:Request, res:Response) => {
  * @param res - response sent back to client 
  */
 const updateArchiver = (async (req:Request, res:Response) => {
-    try {
-        let body = req.body;
-        (await client).connect();
-        var collection = (await client).db('gui').collection('archivers');
-        // Update data - Do in two steps - error otherwise. TODO - Look into shortening this
-        collection.updateOne({
-            "name": body.old_arc_name
-        }, {$set:{"name": body.new_arc_name, "archiver": body.archiver,
-                "data": body.data},
-        });
-        if (body.old_arc_name !== body.new_arc_name) {               // Trigger update in batches collection
-            updateCollection('batches', 'archivers', client)       // update batches using ssid_profiles collection
-        }
-        res.json(body);
+  try {
+    let body = req.body;
+    (await client).connect();
+    var collection = (await client).db('gui').collection('archivers');
+    const isDuplicate = await isNameInDB(collection, body.new_arc_name);
+    if (isDuplicate && body.old_arc_name !== body.new_arc_name) {
+      return res.status(400).json({message:"Archiver already exists!"});
     }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
+    // Update data - Do in two steps - error otherwise. TODO - Look into shortening this
+    collection.updateOne({
+      "name": body.old_arc_name
+    }, {$set:{"name": body.new_arc_name, "archiver": body.archiver,
+              "data": body.data},
+       });
+    if (body.old_arc_name !== body.new_arc_name) {               // Trigger update in batches collection
+      updateCollection('batches', 'archivers', client)       // update batches using ssid_profiles collection
     }
+    res.json(body);
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -133,26 +151,24 @@ const updateArchiver = (async (req:Request, res:Response) => {
  * @param res - response sent back to client
  */
 const readFileNames = ((req:Request, res:Response) => {
-    try {
-        console.log(__dirname);
-        const directoryPath = path.join(__dirname,   '../archiver_options')
-        
-        fs.readdir(directoryPath, function(err, files) {
-            if (err) {
-                return console.log('Unable to scan directory:' + err)
-            }
-            let fileArray: string[] = [];
-            files.forEach(function(file) {
-                fileArray.push(file.slice(0, -5))
-                console.log(file.slice(0, -5));
-            })
-            res.send(fileArray);
-        })
-    }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+  try {
+    const directoryPath = getArchiversPath();
+    
+    fs.readdir(directoryPath, function(err, files) {
+      if (err) {
+        return console.log('Unable to scan directory:' + err)
+      }
+      let fileArray: string[] = [];
+      files.forEach(function(file) {
+        fileArray.push(file.slice(0, -5))
+      })
+      res.send(fileArray);
+    })
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -162,25 +178,21 @@ const readFileNames = ((req:Request, res:Response) => {
  * @param res - response sent back to client
  */
 const readArchiverFile = ((req:Request, res:Response) => {
-    try {
-        console.log('reading selected file')
-
-        var name = '../archiver_options/' + req.params.name + '.json'
-
-        const filePath = path.join(__dirname, name);
-        var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));    
-        res.json(object);
-    }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+  try {
+    const filePath = getArchiversPath() + req.params.name + '.json';
+    var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));    
+    res.json(object);
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 }) 
 
 module.exports = {getArchivers, 
-                getOneArchiver, 
-                deleteArchiver, 
-                postArchiver, 
-                updateArchiver,
-                readFileNames,
-                readArchiverFile};
+                  getOneArchiver, 
+                  deleteArchiver, 
+                  postArchiver, 
+                  updateArchiver,
+                  readFileNames,
+                  readArchiverFile};

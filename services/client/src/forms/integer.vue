@@ -1,7 +1,7 @@
 <template>
-    <div>
-        integer
-    </div>
+  <div>
+    integer
+  </div>
 </template>
 
 <script setup>

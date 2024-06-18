@@ -1,0 +1,9 @@
+build/
+node_modules/
+log
+
+# Ignore all output files except provision.sh as this comes by default so that
+# the application can be used out of the box. Users have the choice of using their
+# own provision.sh.
+services/server/output/*
+!services/server/output/provision.sh

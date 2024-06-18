@@ -3,6 +3,7 @@ import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { get_test_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
+import { isNameInDB } from './helpers';
 
 var client = connectToMongoDB();
 
@@ -13,16 +14,16 @@ var client = connectToMongoDB();
  * @param res - response sent back to client 
  */
 const getJobs = (async (req: Request, res: Response) =>{
-    try {
-        (await client).connect();
-        const collection = (await client).db('gui').collection('jobs');
-        const response = await collection.find().project({_id:0}).toArray();
-        res.send(response);
-    }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+  try {
+    (await client).connect();
+    const collection = (await client).db('gui').collection('jobs');
+    const response = await collection.find().project({_id:0}).toArray();
+    res.send(response);
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -32,17 +33,17 @@ const getJobs = (async (req: Request, res: Response) =>{
  * @param res - response sent back to client 
  */
 const getOneJob = (async (req: Request, res: Response) => {
-    try {
-        const name = String(req.params.hostname);
-        (await client).connect();
-        var collection = (await client).db('gui').collection('jobs');
-        var response = collection.find({"name": name}).toArray();
-        res.send(response); 
-    }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+  try {
+    const name = String(req.params.hostname);
+    (await client).connect();
+    var collection = (await client).db('gui').collection('jobs');
+    var response = collection.find({"name": name}).toArray();
+    res.send(response); 
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -52,24 +53,24 @@ const getOneJob = (async (req: Request, res: Response) => {
  * @param res - response sent back to client 
  */
 const deleteJob = (async (req:Request, res:Response) => {
-    try {
-        const name = String(req.params.job);
-        
-        (await client).connect();
-        const job_col = (await client).db('gui').collection('jobs');
-        const batch_col = (await client).db('gui').collection('batches');
+  try {
+    const name = String(req.params.job);
+    
+    (await client).connect();
+    const job_col = (await client).db('gui').collection('jobs');
+    const batch_col = (await client).db('gui').collection('batches');
 
-        const deleted = await job_col.findOne({ "name" : name });    
-        deleteDocument(batch_col, 'jobs', 'job_ids', deleted?.name);        // delete references from other collections
+    const deleted = await job_col.findOne({ "name" : name });    
+    deleteDocument(batch_col, 'jobs', 'job_ids', deleted?.name);        // delete references from other collections
 
-        await job_col.findOneAndDelete({ "name" : name });       
+    await job_col.findOneAndDelete({ "name" : name });       
 
-        res.send('host ' + name + ' was deleted');
-    }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+    res.send('host ' + name + ' was deleted');
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -79,23 +80,27 @@ const deleteJob = (async (req:Request, res:Response) => {
  * @param res - response sent back to client 
  */
 const postJob = (async (req:Request, res:Response) => {
-    try {
-        (await client).connect();
-        var collection = (await client).db('gui').collection('jobs');
-        let test_ids = await get_test_ids(client, req.body); 
-        await collection.insertOne({
-            "name":req.body.name,
-            "parallel": req.body.parallel,
-            "tests": req.body.tests,
-            "test_ids": test_ids,
-            "continue-if": req.body['continue-if']
-        });   
-        res.json(req.body);
+  try {
+    (await client).connect();
+    var collection = (await client).db('gui').collection('jobs');
+    const isDuplicate = await isNameInDB(collection, req.body.name);
+    if (isDuplicate) {
+      return res.status(400).json({message:"Job already exists!"});
     }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
-    }
+    let test_ids = await get_test_ids(client, req.body); 
+    await collection.insertOne({
+      "name":req.body.name,
+      "parallel": req.body.parallel,
+      "tests": req.body.tests,
+      "test_ids": test_ids,
+      "continue-if": req.body['continue-if']
+    });   
+    res.json(req.body);
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 
 /**
@@ -106,31 +111,35 @@ const postJob = (async (req:Request, res:Response) => {
  * @param res - response sent back to client 
  */
 const updateJob = (async (req:Request, res:Response) => {
-    try {
-        let body = req.body;
-        (await client).connect();
-        var collection = (await client).db('gui').collection('jobs');
-        let doc = await collection.findOne({name: req.body.old_job});
-        await collection.updateOne({
-            "name": body.old_job
-        }, {$set:{"name": body.new_job, "parallel": body.parallel, "continue-if": body['continue-if'],
-                "test_ids": (JSON.stringify(doc?.tests) === JSON.stringify(body.tests)) 
-                                ? doc?.tests : await get_test_ids(client, body),
-                "tests": body.tests
-                } 
-        }) 
-        if (body.old_job !== body.new_job) {                           // Trigger update in batches collection
-            updateCollection('batches', 'jobs', client);               // update batches using jobs collection
-        }
-        res.json(body);
+  try {
+    let body = req.body;
+    (await client).connect();
+    var collection = (await client).db('gui').collection('jobs');
+    const isDuplicate = await isNameInDB(collection, body.new_job);
+    if (isDuplicate && body.old_job !== body.new_job) {
+      return res.status(400).json({message:"Job already exists!"});
     }
-    catch(error) {
-        console.error(error);
-        res.status(500).json({message:"Server Error"});
+    let doc = await collection.findOne({name: req.body.old_job});
+    await collection.updateOne({
+      "name": body.old_job
+    }, {$set:{"name": body.new_job, "parallel": body.parallel, "continue-if": body['continue-if'],
+              "test_ids": (JSON.stringify(doc?.tests) === JSON.stringify(body.tests)) 
+      ? doc?.tests : await get_test_ids(client, body),
+              "tests": body.tests
+             } 
+       }) 
+    if (body.old_job !== body.new_job) {                           // Trigger update in batches collection
+      updateCollection('batches', 'jobs', client);               // update batches using jobs collection
     }
+    res.json(body);
+  }
+  catch(error) {
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
 })
 module.exports = {getJobs, 
-                getOneJob, 
-                deleteJob, 
-                postJob, 
-                updateJob};
+                  getOneJob, 
+                  deleteJob, 
+                  postJob, 
+                  updateJob};

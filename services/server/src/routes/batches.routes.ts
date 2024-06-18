@@ -2,10 +2,10 @@ import express, { Express, Request, Response } from 'express';
 var batches = express.Router();
 
 const {getBatches, 
-    getOneBatch, 
-    deleteBatch, 
-    postBatch,
-    updateBatch} = require('../controllers/batches.controllers');
+       getOneBatch, 
+       deleteBatch, 
+       postBatch,
+       updateBatch} = require('../controllers/batches.controllers');
 
 
 batches.get('/', getBatches);
