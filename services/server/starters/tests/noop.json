@@ -3,10 +3,10 @@
     "parameters": [
         {
             "name":"fail",
-            "type":"number",
+            "type":"float",
             "default": 0,
-            "validator": "return true;",
-            "description": "fail should be a number"
+            "validator": "return typeof input === 'number' && input >= 0 && input <= 1;",
+            "description": "fail should be a number between 0 and 1"
         }
     ],
     "validator": "console.log('Global validator'); return true;"

@@ -13,7 +13,13 @@
             "type":"singleselect",
             "options": [
                 {"name": "A"},
-                {"name": "AAAA"}
+                {"name": "AAAA"},
+                {"name": "NS"},
+                {"name": "CNAME"},
+                {"name": "SOA"},
+                {"name": "PTR"},
+                {"name": "MX"},
+                {"name": "TXT"}
             ],
             "default": { "name": "A" },
             "validator": "return true;",
