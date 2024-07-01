@@ -90,10 +90,10 @@ const postJob = (async (req:Request, res:Response) => {
     let test_ids = await get_test_ids(client, req.body); 
     await collection.insertOne({
       "name":req.body.name,
-      "parallel": req.body.parallel,
       "tests": req.body.tests,
       "test_ids": test_ids,
-      "continue-if": req.body['continue-if']
+      "continue-if": req.body['continue-if'],
+      "backoff": req.body.backoff,
     });   
     res.json(req.body);
   }
@@ -122,7 +122,7 @@ const updateJob = (async (req:Request, res:Response) => {
     let doc = await collection.findOne({name: req.body.old_job});
     await collection.updateOne({
       "name": body.old_job
-    }, {$set:{"name": body.new_job, "parallel": body.parallel, "continue-if": body['continue-if'],
+    }, {$set:{"name": body.new_job, "backoff": body.backoff, "continue-if": body['continue-if'],
               "test_ids": (JSON.stringify(doc?.tests) === JSON.stringify(body.tests)) 
       ? doc?.tests : await get_test_ids(client, body),
               "tests": body.tests

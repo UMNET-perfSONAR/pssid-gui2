@@ -5,7 +5,7 @@
       <p> Loading tests page... </p>
     </div>
 
-    <!-- Add ssid_profile button -->
+    <!-- Add Test button -->
     <div>
       <button style="margin-bottom: 2em;" v-if="showAddTest"></button>
       <button @click="addTestForm" class="btn btn-primary" v-if="!showAddTest"
@@ -57,7 +57,6 @@
           </div>
         </form>
       </div>
-      
 
       <div class = 'col-md-6' v-if="showAddTest==false">
         <h3> Edit Test </h3>
@@ -94,7 +93,7 @@
             :dynamic_options="currOptionalData"
           > </editFormComp>
         </div>
-        <div v-else>    
+        <div v-else>
           <dynamicform :form_layout="allTestOptions"
             @formData="editTest"
             :optional_data="currOptionalData"
@@ -108,7 +107,6 @@
 
 <script>
  import { useTestStore } from '/src/stores/test_store';
- import { useSsidStore } from '/src/stores/ssid_profiles_stores';
  import dynamicform from '../components/dynamicform.vue';
  import  VueMultiselect  from 'vue-multiselect';
  import editFormComp from '../components/edit_dynamic_form.vue';
@@ -151,7 +149,6 @@
 
        // Method(s) to access the store
        testStore: useTestStore(),
-       SsidStore: useSsidStore(),
      }
    },
 
@@ -183,7 +180,7 @@
        // 1. Determine which test in Test List is selected.
        const test = itemArray[0];
        const index = itemArray[1];
-       let ind = 0; 
+
        const data = JSON.parse(JSON.stringify(test.spec));
        this.viewType = test.type;
        await this.testStore.getDesiredTest(test.type);
@@ -192,21 +189,23 @@
        const myJson = '{}';
        let json_object = JSON.parse(myJson);
        this.currOptionalData = []
-       for (const [key,value] of Object.entries(data)) {
-         if (ind < this.testStore.test_options.length) {
-           json_object[key] = value;
-           ind += 1;
-         }
-         else {
-           this.currOptionalData.push({'key':key, 'value':value})
-         }
-       };
+
+       // First slice the required fields from the data array.
+       const spec = data.slice(0, this.testStore.test_options.length);
+
+       // Then add optional data, if any.
+       let ind = this.testStore.test_options.length;
+       for (; ind < Object.keys(data).length; ind++) {
+         const itemKey = data[ind].key;
+         const itemValue = data[ind].value;
+         this.currOptionalData.push({'key': itemKey, 'value': itemValue});
+       }
 
        // 3. Update control variables.
        this.currentIndex=index;
        this.currentItem= {
          name: test.name,
-         spec: json_object,
+         spec: spec,
          type: test.type
        };
        this.old_test_name = test.name;
@@ -215,9 +214,9 @@
      },
 
      async renderForm(form_type) {
-       this.viewType = form_type
+       this.viewType = form_type;
        await this.testStore.getDesiredTest(form_type); 
-       this.allTestOptions = this.testStore.test_options
+       this.allTestOptions = this.testStore.test_options;
        this.allTestOptions.push({'type':'optional', 'name': 'Optional Data'});
        this.showForm = true;
      },
@@ -239,32 +238,63 @@
        }
      },
 
+     async validateTest(data) {
+       await this.testStore.getDesiredTest(this.currentItem.type);
+       this.allTestOptions = this.testStore.test_options;
+
+       let errorMessage = '';
+       Object.entries(data).forEach(([key, value]) => {
+         const testOption = this.allTestOptions.find(option => option.name === key);
+         const validatorStr = testOption.hasOwnProperty('validator') ?
+           testOption.validator : 'return true;';
+         const description = testOption.hasOwnProperty('description') ?
+           testOption.description : 'Invalid input for ' + key;
+         const validator = new Function('input', validatorStr);
+         if (!validator(value)) {
+           errorMessage += description + '\n';
+         }
+       });
+
+       return errorMessage;
+     },
+
      /**
       * Updates the current test item using put request
       * 
-      * @param {*} editFormInputs - contains data to update test with 
+      * @param {*} editFormInputs - an array where each entry is
+      * an input field and its metadata (validation, etc.)
       */
      async editTest(editFormInputs) {
+       // Validate that the name is not empty.
        if (this.currentItem.name.length === 0) {
          alert('Please enter a test name!');
          return;
        }
-       // Format *regular* dynamic data.
-       const data = editFormInputs.reduce((result, item)=> {
-         result[item.name] = item.value
-         return result
+
+       // validateTest does not need the metadata of each field. It knows that
+       // by calling getDesiredTest and it only needs the input value of each field.
+       const dataToValidate = editFormInputs.reduce((result, item)=> {
+         result[item.name] = item.value;
+         return result;
        }, {});
-       // Format *optional* dynamic data.
-       const appended_data = this.currOptionalData.reduce((result, item)=> {
-         result[item.key] = item.value
-         return result
-       }, {});
+       let errorMessage = await this.validateTest(dataToValidate);
+       if (errorMessage.length > 0) {
+         errorMessage = 'Please fix the following errors:\n' + errorMessage;
+         alert(errorMessage);
+
+         // Reselect the same item to allow users to edit it again.
+         await this.testStore.getTests();
+         this.currentItem = this.testStore.tests[this.currentIndex];
+         this.updateActiveTest([this.currentItem, this.currentIndex]);
+
+         return;
+       }
 
        const object = {
          "old_testname" : this.old_test_name,
          "new_testname" : this.currentItem.name,
          "type" : this.currentItem.type,
-         "spec" : Object.assign(data, appended_data),
+         "spec" : editFormInputs.concat(this.currOptionalData),
        }
        this.old_test_name = this.currentItem.name
        await this.testStore.editTest(object);

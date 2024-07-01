@@ -40,8 +40,9 @@ export const useTestStore = defineStore('test', {
       this.isLoading = true;
       const res = await fetch('http://'+ window.location.hostname +':8000/tests/read-test/'+test_name)
       const data = await res.json();
-      
-      this.test_options = data; 
+
+      // NOTE: this is the reason that global validation is not working
+      this.test_options = data.parameters;
       
       this.isLoading = false;
     },
@@ -114,19 +115,8 @@ export const useTestStore = defineStore('test', {
     },
 
     formatPostData(form_data: Array<any>, optional_data: Array<any>) {
-      const spec_object = form_data.reduce((result, item)=> {
-        if (item.name==="Optional Data") {
-          return result;
-        }
-        result[item.name] = item.value
-        return result
-      }, {});
-      const data_object = optional_data.reduce((result, item)=> {
-        result[item.key] = item.value
-        return result
-      }, {});
-      const obj = Object.assign(spec_object, data_object)
-      return obj;
+      const concatenatedArray = form_data.concat(optional_data);
+      return concatenatedArray;
     },
   }
 })

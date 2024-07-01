@@ -1,10 +1,30 @@
-[
-    {
-        "name":"Query",
-        "type":"text"
-    },
-    {
-        "name":"Record",
-        "type":"text"
-    }
-]
+{
+    "name": "dns",
+    "parameters": [
+        {
+            "name":"nameserver",
+            "type":"text",
+            "default": "",
+            "validator": "return input && !/\\s/.test(input);",
+            "description": "nameserver should be nonempty and free of whitespace"
+        },
+        {
+            "name":"record",
+            "type":"singleselect",
+            "options": [
+                {"name": "A"},
+                {"name": "AAAA"},
+                {"name": "NS"},
+                {"name": "CNAME"},
+                {"name": "SOA"},
+                {"name": "PTR"},
+                {"name": "MX"},
+                {"name": "TXT"}
+            ],
+            "default": { "name": "A" },
+            "validator": "return true;",
+            "description": "record should be one of the enum values"
+        }
+    ],
+    "validator": "console.log('Global validator'); return true;"
+}

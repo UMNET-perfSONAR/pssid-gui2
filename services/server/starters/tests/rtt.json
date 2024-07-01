@@ -1,0 +1,31 @@
+{
+    "name": "rtt",
+    "parameters": [
+        {
+            "name":"dest",
+            "type":"text",
+            "default": "",
+            "validator": "return input && !/\\s/.test(input);",
+            "description": "dest should be nonempty and free of whitespace"
+        },
+        {
+            "name":"length",
+            "type":"number",
+            "default": 512,
+            "validator": "return input > 0;",
+            "description": "length should be a positive integer"
+        },
+        {
+            "name":"protocol",
+            "type":"singleselect",
+            "options": [
+                {"name": "TCP"},
+                {"name": "UDP"}
+            ],
+            "default": { "name": "TCP" },
+            "validator": "return true;",
+            "description": "protocol should be either TCP or UDP"
+        }
+    ],
+    "validator": "console.log('Global validator'); return true;"
+}

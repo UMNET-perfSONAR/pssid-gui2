@@ -146,13 +146,13 @@
          'name': 'Test Level',
          'trueValue': 'SSID',
          'falseValue': 'BSSID',
-         'defaultValue': 'SSID',
+         'default': 'SSID',
        },{
          'type': 'toggle',
          'name': 'BSSID Scan',
          'trueValue': 'Enabled',
          'falseValue': 'Disabled',
-         'defaultValue': 'Disabled',  // figure out the best default
+         'default': 'Disabled',  // figure out the best default
          'dependsOn': {
            'name': 'Test Level',
            'value': 'BSSID'

@@ -1,8 +1,20 @@
-[
-    {
-        "type": "text",
-        "name": "url",
-        "default": "",
-        "required": false
-    }
-]
+{
+    "name": "http",
+    "parameters": [
+        {
+            "name":"url",
+            "type":"text",
+            "default": "",
+            "validator": "return input && !/\\s/.test(input);",
+            "description": "url should be nonempty and free of whitespace"
+        },
+        {
+            "name":"timeout",
+            "type":"text",
+            "default": "PT10S",
+            "validator": "return input && !/\\s/.test(input);",
+            "description": "timeout should be nonempty and free of whitespace"
+        }
+    ],
+    "validator": "console.log('Global validator'); return true;"
+}

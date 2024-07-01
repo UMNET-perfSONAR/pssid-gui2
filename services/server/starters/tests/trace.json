@@ -1,5 +1,5 @@
 {
-    "name": "throughput",
+    "name": "trace",
     "parameters": [
         {
             "name":"dest",

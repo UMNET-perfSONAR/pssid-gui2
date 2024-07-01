@@ -35,6 +35,7 @@
                 v-model="jobName"
               />
             </div>
+
             <!-- Test selection dropdown menu -->
             <div class="form-group"> 
               <label> Test Selection </label>
@@ -48,6 +49,7 @@
               >
               </VueMultiselect>
             </div>
+
             <!-- Continue -If radio buttons -->
             <div class="form-group">
               <label style="margin-right:1em"> Continue-If:</label>
@@ -60,22 +62,20 @@
                 v-model="continue_if"
               />
             </div>
-            <!-- Parallel radio buttons -->
+
+            <!-- Backoff input field -->
             <div class="form-group">
-              <label style="margin-right:1em"> Parallel:</label>
-              <section>
-                <input
-                  type="radio"
-                  v-model="parallel"
-                  class="radio-button"
-                  value="True"/> True 
-                <input
-                  type="radio"
-                  v-model="parallel"
-                  class="radio-button"
-                  value="False"/> False
-              </section>
+              <label style="margin-right:1em"> Backoff:</label>
+              <input
+                type="text"
+                placeholder="Enter here"
+                required
+                id="name"
+                class="form-control"
+                v-model="backoff"
+              />
             </div>
+
             <button class="btn btn-success"
               style="margin-right: 1em;"> Submit </button>
           </div>
@@ -99,6 +99,7 @@
                 v-model="currentItem.name"
               />
             </div>
+
             <!-- Test selection dropdown menu -->
             <div class="form-group"> 
               <label> Test Selection </label>
@@ -110,6 +111,7 @@
               >
               </VueMultiselect>
             </div>
+
             <!-- Continue -If radio buttons -->
             <div class="form-group">
               <label style="margin-right:1em"> Continue-If:</label>
@@ -122,22 +124,20 @@
                 v-model="currentItem['continue-if']"
               />
             </div>
-            <!-- Parallel radio buttons -->
+
+            <!-- Backoff input field -->
             <div class="form-group">
-              <label style="margin-right:1em"> Parallel:</label>
-              <section>
-                <input
-                  type="radio"
-                  v-model="currentItem.parallel"
-                  class="radio-button"
-                  value="True"/> True 
-                <input
-                  type="radio"
-                  v-model="currentItem.parallel"
-                  class="radio-button"
-                  value="False"/> False
-              </section>
+              <label style="margin-right:1em"> Backoff:</label>
+              <input
+                type="text"
+                placeholder="Enter here"
+                required
+                id="name"
+                class="form-control"
+                v-model="currentItem.backoff"
+              />
             </div>
+
             <div>
               <button class="btn btn-success" style="margin-right: 1em;"> Update </button>
               <button class="btn btn-danger" @click.prevent="deleteJob"> Delete </button>
@@ -153,12 +153,11 @@
 <script>
  import { useJobStore } from '../stores/job_store.ts'
  import { useTestStore } from '../stores/test_store.ts';
- import dynamicform from '../components/dynamicform.vue';
  import VueMultiselect from 'vue-multiselect';
  import itemList from '../components/list_items.vue'
 
  export default {
-   components: { dynamicform, VueMultiselect, itemList },
+   components: { VueMultiselect, itemList },
    data() {
      return {
        /*
@@ -167,7 +166,7 @@
        jobName: '',
        selected_tests: [],
        continue_if: 'true',
-       parallel: '',
+       backoff: "PT1S",
 
        /*
         * Variables that control which form is displayed,
@@ -205,7 +204,7 @@
        this.jobName = '';
        this.selected_tests = [];
        this.continue_if = 'true';
-       this.parallel = '';
+       this.backoff = "PT1S";
      },
 
      // Renders the Edit Job form for a selected job
@@ -218,12 +217,16 @@
 
      // Creates a new job
      submitJob() {
+       if (!this.validateNoWhitespace(this.backoff)) {
+         alert("Backoff cannot contain whitespace");
+         return;
+       }
        if(this.jobName.length > 0) {
          this.jobStore.addJob({
            name: this.jobName,
            tests: (this.selected_tests.length == 0)? [] : this.selected_tests.map(obj => obj.name),
            "continue-if": this.continue_if,
-           parallel: this.parallel
+           backoff: this.backoff
          })
          // Clear the form to allow users to add a new job.
          this.addJobForm();
@@ -250,18 +253,31 @@
 
      // Edits a selected job
      async editJob() {
+       if (!this.validateNoWhitespace(this.currentItem.backoff)) {
+         alert("Backoff cannot contain whitespace");
+         this.currentItem = this.jobStore.jobs[this.currentIndex];
+         this.setActiveJob([this.currentItem, this.currentIndex]);
+         return;
+       }
        await this.jobStore.updateJob({
          old_job: this.old_job_name,
          new_job: this.currentItem.name,
-         parallel: this.currentItem.parallel,
          "continue-if": this.currentItem['continue-if'],
-         tests: this.currentItem.tests
+         tests: this.currentItem.tests,
+         backoff: this.currentItem.backoff
        });
        await this.jobStore.getJobs();
 
        this.currentItem = this.jobStore.jobs[this.currentIndex];
        this.setActiveJob([this.currentItem, this.currentIndex]);
+     },
+
+     validateNoWhitespace(input) {
+       const whitespace = /\s/;
+       return !whitespace.test(input);
      }
    } 
  }
 </script>
+
+<style src="vue-multiselect/dist/vue-multiselect.css"></style>

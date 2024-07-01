@@ -1,0 +1,13 @@
+{
+    "name": "noop",
+    "parameters": [
+        {
+            "name":"fail",
+            "type":"float",
+            "default": 0,
+            "validator": "return typeof input === 'number' && input >= 0 && input <= 1;",
+            "description": "fail should be a number between 0 and 1"
+        }
+    ],
+    "validator": "console.log('Global validator'); return true;"
+}

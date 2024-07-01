@@ -1,12 +1,12 @@
 {
-    "name": "throughput",
+    "name": "idle",
     "parameters": [
         {
-            "name":"dest",
+            "name":"duration",
             "type":"text",
             "default": "",
             "validator": "return input && !/\\s/.test(input);",
-            "description": "dest should be nonempty and free of whitespace"
+            "description": "duration should be nonempty and free of whitespace"
         }
     ],
     "validator": "console.log('Global validator'); return true;"
