@@ -159,7 +159,7 @@
            type: item.type,
            options: item.options,
            value: item.default,
-           selected: [item.default],
+           selected: item.hasOwnProperty('default') ? [item.default] : [],
            trueValue: item.trueValue,
            falseValue: item.falseValue,
            validator: item.hasOwnProperty('validator') ? item.validator : 'return true;',
