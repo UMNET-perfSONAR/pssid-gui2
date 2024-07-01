@@ -60,22 +60,7 @@
                 v-model="continue_if"
               />
             </div>
-            <!-- Parallel radio buttons -->
-            <div class="form-group">
-              <label style="margin-right:1em"> Parallel:</label>
-              <section>
-                <input
-                  type="radio"
-                  v-model="parallel"
-                  class="radio-button"
-                  value="True"/> True 
-                <input
-                  type="radio"
-                  v-model="parallel"
-                  class="radio-button"
-                  value="False"/> False
-              </section>
-            </div>
+
             <button class="btn btn-success"
               style="margin-right: 1em;"> Submit </button>
           </div>
@@ -122,22 +107,7 @@
                 v-model="currentItem['continue-if']"
               />
             </div>
-            <!-- Parallel radio buttons -->
-            <div class="form-group">
-              <label style="margin-right:1em"> Parallel:</label>
-              <section>
-                <input
-                  type="radio"
-                  v-model="currentItem.parallel"
-                  class="radio-button"
-                  value="True"/> True 
-                <input
-                  type="radio"
-                  v-model="currentItem.parallel"
-                  class="radio-button"
-                  value="False"/> False
-              </section>
-            </div>
+
             <div>
               <button class="btn btn-success" style="margin-right: 1em;"> Update </button>
               <button class="btn btn-danger" @click.prevent="deleteJob"> Delete </button>
@@ -166,7 +136,6 @@
        jobName: '',
        selected_tests: [],
        continue_if: 'true',
-       parallel: '',
 
        /*
         * Variables that control which form is displayed,
@@ -204,7 +173,6 @@
        this.jobName = '';
        this.selected_tests = [];
        this.continue_if = 'true';
-       this.parallel = '';
      },
 
      // Renders the Edit Job form for a selected job
@@ -222,7 +190,6 @@
            name: this.jobName,
            tests: (this.selected_tests.length == 0)? [] : this.selected_tests.map(obj => obj.name),
            "continue-if": this.continue_if,
-           parallel: this.parallel
          })
          // Clear the form to allow users to add a new job.
          this.addJobForm();
@@ -252,7 +219,6 @@
        await this.jobStore.updateJob({
          old_job: this.old_job_name,
          new_job: this.currentItem.name,
-         parallel: this.currentItem.parallel,
          "continue-if": this.currentItem['continue-if'],
          tests: this.currentItem.tests
        });
