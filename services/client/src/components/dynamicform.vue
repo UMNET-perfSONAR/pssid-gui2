@@ -14,10 +14,23 @@
           v-model="form_values[index].value"
         />
       </div>
+
       <div v-if="item.type==='number'">
         <label for="num"> {{ item.name }} </label>
         <input
           type="number"
+          placeholder="0"
+          id="num"
+          class="form-control"
+          v-model="form_values[index].value"
+        />
+      </div>
+
+      <div v-if="item.type==='float'" >
+        <label for="num"> {{ item.name }} </label>
+        <input
+          type="number"
+          step="any"
           placeholder="0"
           id="num"
           class="form-control"

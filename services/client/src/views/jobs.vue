@@ -35,6 +35,7 @@
                 v-model="jobName"
               />
             </div>
+
             <!-- Test selection dropdown menu -->
             <div class="form-group"> 
               <label> Test Selection </label>
@@ -48,6 +49,7 @@
               >
               </VueMultiselect>
             </div>
+
             <!-- Continue -If radio buttons -->
             <div class="form-group">
               <label style="margin-right:1em"> Continue-If:</label>
@@ -58,6 +60,19 @@
                 id="name"
                 class="form-control"
                 v-model="continue_if"
+              />
+            </div>
+
+            <!-- Backoff input field -->
+            <div class="form-group">
+              <label style="margin-right:1em"> Backoff:</label>
+              <input
+                type="text"
+                placeholder="Enter here"
+                required
+                id="name"
+                class="form-control"
+                v-model="backoff"
               />
             </div>
 
@@ -84,6 +99,7 @@
                 v-model="currentItem.name"
               />
             </div>
+
             <!-- Test selection dropdown menu -->
             <div class="form-group"> 
               <label> Test Selection </label>
@@ -95,6 +111,7 @@
               >
               </VueMultiselect>
             </div>
+
             <!-- Continue -If radio buttons -->
             <div class="form-group">
               <label style="margin-right:1em"> Continue-If:</label>
@@ -105,6 +122,19 @@
                 id="name"
                 class="form-control"
                 v-model="currentItem['continue-if']"
+              />
+            </div>
+
+            <!-- Backoff input field -->
+            <div class="form-group">
+              <label style="margin-right:1em"> Backoff:</label>
+              <input
+                type="text"
+                placeholder="Enter here"
+                required
+                id="name"
+                class="form-control"
+                v-model="currentItem.backoff"
               />
             </div>
 
@@ -136,6 +166,7 @@
        jobName: '',
        selected_tests: [],
        continue_if: 'true',
+       backoff: "PT1S",
 
        /*
         * Variables that control which form is displayed,
@@ -173,6 +204,7 @@
        this.jobName = '';
        this.selected_tests = [];
        this.continue_if = 'true';
+       this.backoff = "PT1S";
      },
 
      // Renders the Edit Job form for a selected job
@@ -185,11 +217,16 @@
 
      // Creates a new job
      submitJob() {
+       if (!this.validateNoWhitespace(this.backoff)) {
+         alert("Backoff cannot contain whitespace");
+         return;
+       }
        if(this.jobName.length > 0) {
          this.jobStore.addJob({
            name: this.jobName,
            tests: (this.selected_tests.length == 0)? [] : this.selected_tests.map(obj => obj.name),
            "continue-if": this.continue_if,
+           backoff: this.backoff
          })
          // Clear the form to allow users to add a new job.
          this.addJobForm();
@@ -216,16 +253,28 @@
 
      // Edits a selected job
      async editJob() {
+       if (!this.validateNoWhitespace(this.currentItem.backoff)) {
+         alert("Backoff cannot contain whitespace");
+         this.currentItem = this.jobStore.jobs[this.currentIndex];
+         this.setActiveJob([this.currentItem, this.currentIndex]);
+         return;
+       }
        await this.jobStore.updateJob({
          old_job: this.old_job_name,
          new_job: this.currentItem.name,
          "continue-if": this.currentItem['continue-if'],
-         tests: this.currentItem.tests
+         tests: this.currentItem.tests,
+         backoff: this.currentItem.backoff
        });
        await this.jobStore.getJobs();
 
        this.currentItem = this.jobStore.jobs[this.currentIndex];
        this.setActiveJob([this.currentItem, this.currentIndex]);
+     },
+
+     validateNoWhitespace(input) {
+       const whitespace = /\s/;
+       return !whitespace.test(input);
      }
    } 
  }
