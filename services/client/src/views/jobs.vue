@@ -153,12 +153,11 @@
 <script>
  import { useJobStore } from '../stores/job_store.ts'
  import { useTestStore } from '../stores/test_store.ts';
- import dynamicform from '../components/dynamicform.vue';
  import VueMultiselect from 'vue-multiselect';
  import itemList from '../components/list_items.vue'
 
  export default {
-   components: { dynamicform, VueMultiselect, itemList },
+   components: { VueMultiselect, itemList },
    data() {
      return {
        /*
@@ -265,3 +264,5 @@
    } 
  }
 </script>
+
+<style src="vue-multiselect/dist/vue-multiselect.css"></style>
