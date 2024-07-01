@@ -1,6 +1,6 @@
 <template>
   <form @submit.prevent="handleFormSubmit()">
-    <div 
+    <div
       v-for="(item, index) in copy_of_data"
       v-bind:key="index"
       class = 'form-group'>
@@ -9,7 +9,6 @@
         <input
           type="text"
           placeholder="Enter here"
-          required
           id="name"
           class="form-control"
           v-model="form_values[index].value"
@@ -19,7 +18,6 @@
         <label for="num"> {{ item.name }} </label>
         <input
           type="number"
-          required
           placeholder="0"
           id="num"
           class="form-control"
@@ -41,12 +39,12 @@
       </div>
 
       <div v-if="item.type==='singleselect'">
-        <label> {{ item.name }}</label>
+        <label> {{ item.name }} </label>
         <VueMultiselect
           v-model="form_values[index].selected"
           :multiple="false"
           :close-on-select="true"
-          :options="SsidStore.ssid_profiles"
+          :options="item.options"
           :searchable="false"
           track-by="name"
           label="name"
@@ -84,7 +82,6 @@
 <script>
  import { ref } from 'vue'
  import VueMultiselect from 'vue-multiselect';
- import { useSsidStore } from '/src/stores/ssid_profiles_stores';
  import dynamic_add_data from './dynamic_add_data.vue';
  export default {
    components: { VueMultiselect, dynamic_add_data },
@@ -104,35 +101,32 @@
    },
    data() {
      return {
-       current: {},
-       SsidStore: useSsidStore(),
-       
+       // The following variables are initialized in setUpData
        copy_of_data: [],
-       // INFO: form_layout contains the item {type: 'optional', name: "Optional Data"},
-       // which is correct since it is part of the form layout, namely
-       // <div v-if="item.type==='optional'">. We need it to render optional data.
-       // However, it should not be a part of the form_values array
-       // since optional data values are stored separately in the optional_data array,
-       // which is a reference to either addedOptionalData or currOptionalData in the
-       // parent (archivers/tests) components.
-       form_values: this.form_layout
-         .filter(item => item.type !== 'optional')
-         .map((item) => ({
-           name: item.name,
-           value: '',
-           selected: []
-         }))
+       form_values: [],
+
+       // Variables for validation
+       /* form: {}, */
+       errors: {}
      }
    },
    methods: {
      handleFormSubmit() {
-       const organized_data = this.form_values
-         .filter(item => item.type !== 'optional')
-         .map((item)=>({
-           name: item.name,
-           value: item.value,
-           selected: item.selected
-         }));
+       this.form_values.forEach((field) => {
+         this.validateField(field);
+       });
+       if (Object.entries(this.errors).length > 0) {
+         let errorMessage = "Please fix the following errors:\n";
+         for (const [key, value] of Object.entries(this.errors)) {
+           errorMessage += `${key}: ${value}\n`;
+         }
+         alert(errorMessage);
+         this.errors = {};
+         return;
+       }
+       // INFO: Filtering here is technically unnecessary since this.form_values
+       // filters optional data out upon initialization.
+       const organized_data = this.form_values.filter(item => item.type !== 'optional');
        this.$emit('formData', organized_data);
        // Clear the form after submission.
        this.setUpData();
@@ -151,18 +145,28 @@
      },
 
      async setUpData() {
+       // INFO: form_layout contains the item {type: 'optional', name: "Optional Data"},
+       // which is correct since it is part of the form layout, namely
+       // <div v-if="item.type==='optional'">. We need it to render optional data.
+       // However, it should not be a part of the form_values array
+       // since optional data values are stored separately in the optional_data array,
+       // which is a reference to either addedOptionalData or currOptionalData in the
+       // parent (archivers/tests) components.
        this.form_values = this.form_layout
          .filter(item => item.type !== 'optional')
          .map((item) => ({
            name: item.name,
-           value: item.hasOwnProperty('defaultValue') ? item.defaultValue : '',
-           selected: [],
-           trueValue: item.hasOwnProperty('trueValue') ? item.trueValue : 'NA',
-           falseValue: item.hasOwnProperty('falseValue') ? item.falseValue : 'NA'
+           type: item.type,
+           options: item.options,
+           value: item.default,
+           selected: [item.default],
+           trueValue: item.trueValue,
+           falseValue: item.falseValue,
+           validator: item.hasOwnProperty('validator') ? item.validator : 'return true;',
+           description: item.hasOwnProperty('description') ?
+             item.description : 'Input is invalid'
          }));
-       this.copy_of_data=this.form_layout;
-       //this.form_values=mapped;
-       await this.SsidStore.getSsidProfiles();
+       this.copy_of_data = this.form_layout;
      },
 
      /* Renders a button conditionally. */
@@ -174,8 +178,15 @@
        }
        // If no dependency is provided, the button is always displayed.
        return true;
-     }
+     },
 
+     validateField(field) {
+       const value = field.value;
+       const validator = new Function('input', field.validator);
+       if (!validator(value)) {
+         this.errors[field.name] = field.description;
+       }
+     }
    },
    // initialize form_values with enough "slots" for data entry
    mounted() {
@@ -191,4 +202,5 @@
    }
  }
 </script>
+
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>

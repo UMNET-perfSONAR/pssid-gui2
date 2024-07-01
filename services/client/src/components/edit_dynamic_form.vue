@@ -1,21 +1,64 @@
 <template>
-  <div 
+  <div
     v-for="(item, index) in input_fields"
     v-bind:key="index"
-    class = 'form-group'>
-    <label> {{ item.name }} </label>
-    <input
-      type="text"
-      v-model= "input_fields[index].value"
-      required
-      id="name"
-      class="form-control"
-    />
-  </div>
+    class='form-group'>
+    <div v-if="item.type==='text'">
+      <label> {{ item.name }} </label>
+      <input
+        type="text"
+        placeholder="Enter here"
+        id="name"
+        class="form-control"
+        v-model="input_fields[index].value"
+      />
+    </div> <!-- end of text -->
+
+    <div v-if="item.type==='number'">
+      <label for="num"> {{ item.name }} </label>
+      <input
+        type="number"
+        placeholder="0"
+        id="num"
+        class="form-control"
+        v-model="input_fields[index].value"
+      />
+    </div> <!-- end of number -->
+
+    <div v-if="item.type==='multiselect'">
+      <label> {{ item.name }}</label>
+      <VueMultiselect
+        v-model="input_fields[index].selected"
+        :multiple="true"
+        :close-on-select="false"
+        :options="item.options"
+        label="name"
+        track-by="name"
+      >
+      </VueMultiselect>
+    </div> <!-- end of multiselect -->
+
+    <div v-if="item.type==='singleselect'">
+      <label> {{ item.name }} </label>
+      <VueMultiselect
+        v-model="input_fields[index].selected"
+        :multiple="false"
+        :close-on-select="true"
+        :options="item.options"
+        :searchable="false"
+        track-by="name"
+        label="name"
+      >
+      </VueMultiselect>
+    </div> <!-- end of singleselect -->
+
+  </div> <!-- end of form-group -->
+
   <div>
-    <label>Optional Data</label>
+    <label>Additional Data</label>
     <dynamic_add_data :addedData="dynamic_options"></dynamic_add_data>
-  </div>
+  </div> <!-- end of optional -->
+
   <div>
     <button class="btn btn-success" @click="editCurItem"
       style="margin-right: 1em;"> Submit </button>
@@ -25,13 +68,13 @@
 
 <script>
  import { onMounted } from 'vue';
- import { ref } from 'vue'
+ import { ref } from 'vue';
  import VueMultiselect from 'vue-multiselect';
- import dynamic_add_data from '../components/dynamic_add_data.vue';
+ import dynamic_add_data from '/usr/src/app/client/src/components/dynamic_add_data.vue';
 
  export default {
    emits: ['deleteItem', 'editItem'],
-   components: { dynamic_add_data },
+   components: { VueMultiselect, dynamic_add_data },
    data() {
      return {
        input_fields: [],
@@ -55,20 +98,7 @@
      },
 
      setUpData() {
-       // extract spec information 
-       this.input_fields = [];
-
-       const object = (this.current_item.archiver !== undefined) ? 
-         this.current_item.data : this.current_item.spec; 
-       if (object) {
-         this.input_fields = Object.entries(object).map(([name,value]) => ({
-           name,
-           value
-         }))
-       }
-       else {
-         this.input_fields = [];
-       }
+       this.input_fields = this.current_item.spec;
      },
    }, 
    props: {
