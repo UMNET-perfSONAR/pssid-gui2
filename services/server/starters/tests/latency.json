@@ -1,6 +1,13 @@
-[
-    {
-        "name":"dest",
-        "type":"text"
-    }
-]
+{
+    "name": "latency",
+    "parameters": [
+        {
+            "name":"dest",
+            "type":"text",
+            "default": "",
+            "validator": "return input && !/\\s/.test(input);",
+            "description": "dest should be nonempty and free of whitespace"
+        }
+    ],
+    "validator": "console.log('Global validator'); return true;"
+}

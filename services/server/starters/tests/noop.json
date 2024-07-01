@@ -1,0 +1,13 @@
+{
+    "name": "noop",
+    "parameters": [
+        {
+            "name":"fail",
+            "type":"number",
+            "default": 0,
+            "validator": "return true;",
+            "description": "fail should be a number"
+        }
+    ],
+    "validator": "console.log('Global validator'); return true;"
+}
