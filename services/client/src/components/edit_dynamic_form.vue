@@ -55,7 +55,7 @@
   </div> <!-- end of form-group -->
 
   <div>
-    <label>Additional Data</label>
+    <label>Optional Data</label>
     <dynamic_add_data :addedData="dynamic_options"></dynamic_add_data>
   </div> <!-- end of optional -->
 

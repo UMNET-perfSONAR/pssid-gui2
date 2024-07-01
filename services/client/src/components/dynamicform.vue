@@ -54,7 +54,7 @@
       </div>
 
       <div v-if="item.type==='optional'">
-        <label>Additonal Data </label>
+        <label>Optional Data </label>
         <dynamic_add_data :addedData="optional_data"></dynamic_add_data>
       </div>
 
