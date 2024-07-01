@@ -86,17 +86,6 @@
             >
             </VueMultiselect>
           </div>
-          <!-- archiver selection -->
-          <div class="form-group"> 
-            <label> Archiver Selection </label>
-            <VueMultiselect
-              v-model="currentItem.archivers"
-              :multiple="true"
-              :close-on-select="false"
-              :options="archiverStore.archivers.map(item=> item.name)"
-            >
-            </VueMultiselect>
-          </div>
           <!-- priority-->
           <div class="form-group">
             <label> Priority </label>
@@ -129,7 +118,6 @@
  import { useSsidStore } from '../stores/ssid_profiles_stores';
  import { useJobStore } from '../stores/job_store';
  import { useScheduleStore } from '../stores/schedule_store';
- import { useArchiverStore } from '../stores/archiver.store';
  
  export default {
    components: { itemList, dynamicform, VueMultiselect },
@@ -163,7 +151,6 @@
        SsidStore: useSsidStore(),
        JobStore: useJobStore(),
        scheduleStore: useScheduleStore(),
-       archiverStore: useArchiverStore(),
      }
    },
    async mounted() {
@@ -171,7 +158,6 @@
      await this.SsidStore.getSsidProfiles();
      await this.JobStore.getJobs();
      await this.scheduleStore.getSchedules();
-     await this.archiverStore.getArchivers();
      // hardcode layout of batches form - edit this to add more fields
      this.form_layout = [
        {
@@ -196,11 +182,6 @@
          'type': 'multiselect',
          'name': 'Schedule Selection',
          'options': this.scheduleStore.schedules
-       },
-       {
-         'type': 'multiselect',
-         'name': 'Archiver Selection',
-         'options': this.archiverStore.archivers
        },
        {
          'type': 'number',
@@ -229,7 +210,7 @@
      
      /**
       * 
-      * @param {name, ssid_profiles, jobs, schedules, archivers, priority, TTL} form_data 
+      * @param {name, ssid_profiles, jobs, schedules, priority, TTL} form_data 
       */
      async addBatch(form_data) {
        await this.batchStore.addBatch({
@@ -239,7 +220,6 @@
          ssid_profiles: (form_data[2].selected.length == 0)? [] : form_data[2].selected.map(obj => obj.name),
          schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
          jobs: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
-         archivers: (form_data[5].selected.length == 0)? [] : form_data[5].selected.map(obj => obj.name),
        });
        this.addBatchForm();
      },
@@ -252,7 +232,6 @@
          "priority": this.currentItem.priority,
          "ssid_profiles": this.currentItem.ssid_profiles,
          "schedules": this.currentItem.schedules,
-         "archivers": this.currentItem.archivers,
          "jobs": this.currentItem.jobs,
          "test_interface": this.currentItem.test_interface
        };

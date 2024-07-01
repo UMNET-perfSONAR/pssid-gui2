@@ -10,9 +10,9 @@
         <li class="nav-item">
           <router-link to="/host_groups" class="navbar-brand">Groups</router-link>
         </li>
-        <li class="nav-item">
-          <router-link to="/archivers" class="navbar-brand">Archivers</router-link>
-        </li>
+        <!-- <li class="nav-item">
+             <router-link to="/archivers" class="navbar-brand">Archivers</router-link>
+             </li> -->
         <li class="nav-item">
           <router-link to="/schedules" class="navbar-brand">Schedules</router-link>
         </li>
