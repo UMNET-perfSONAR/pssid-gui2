@@ -39,19 +39,6 @@
           />
         </div>
 
-        <!-- ssid enter here -->
-        <div style="margin-bottom:1em">
-          <label> SSID </label>
-          <input
-            type="text"
-            placeholder="Enter ssid here"
-            required
-            id="name"
-            class="form-control"
-            v-model="currentItem.ssid"
-          />
-        </div>
-
         <div style="margin-bottom: 1em">
           <div>
             <label> Test Level </label>
@@ -138,9 +125,6 @@
        formstuff: [{
          'type': 'text',
          'name': 'Profile Name'
-       },{ 
-         'type': 'text',
-         'name': 'SSID'
        },{
          'type': 'toggle',
          'name': 'Test Level',
@@ -193,10 +177,9 @@
        if(form_data.length > 0) {
          const object = {
            name: form_data[0].value,
-           ssid: form_data[1].value,
-           test_level: form_data[2].value,
-           bssid_scan: form_data[3].value,
-           min_signal: form_data[4].value
+           test_level: form_data[1].value,
+           bssid_scan: form_data[2].value,
+           min_signal: form_data[3].value
          }
          // bssid_scan is disabled if test_level is SSID.
          if (object.test_level === "SSID") {
@@ -218,7 +201,6 @@
        const object = {   
          old_ssid_name: this.old_ssidName,
          new_ssid_name:  this.currentItem.name,
-         ssid:  this.currentItem.ssid,
          test_level: this.currentItem.test_level,
          bssid_scan: this.currentItem.bssid_scan,
          min_signal: this.currentItem.min_signal

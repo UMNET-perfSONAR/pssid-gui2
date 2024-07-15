@@ -91,7 +91,6 @@ const postSSIDProfile = (async (req:Request, res:Response) => {
     }
     await collection.insertOne({
       "name": req.body.name,
-      "ssid": req.body.ssid,
       "test_level": req.body.test_level,
       "bssid_scan": req.body.bssid_scan,
       "min_signal": req.body.min_signal
@@ -123,7 +122,7 @@ const updateSSIDProfile = (async (req:Request, res:Response) => {
     }
     await collection.updateOne({
       "name": body.old_ssid_name
-    }, {$set:{"name": body.new_ssid_name, "ssid": body.ssid,
+    }, {$set:{"name": body.new_ssid_name,
               "test_level": body.test_level, "bssid_scan": body.bssid_scan,
 	      "min_signal": body.min_signal},
        })
