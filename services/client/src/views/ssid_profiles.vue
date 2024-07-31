@@ -39,49 +39,9 @@
           />
         </div>
 
-        <div style="margin-bottom: 1em">
-          <div>
-            <label> Test Level </label>
-          </div>
-          <button
-            type="button"
-            class="btn btn-primary"
-            @click="handleToggleEdit('SSID', 'BSSID', 'test_level')"
-          >
-            {{ currentItem.test_level }}
-          </button>
-        </div>
-
-        <div style="margin-bottom: 1em"
-          v-if="currentItem.test_level==='BSSID'">
-          <div>
-            <label> BSSID Scan </label>
-          </div>
-          <button
-            type="button"
-                  class="btn btn-primary"
-                  @click="handleToggleEdit('Enabled', 'Disabled', 'bssid_scan')"
-          >
-            {{ currentItem.bssid_scan }}
-          </button>
-        </div>
-        
-        <!-- Edit number -->
-        <div>
-          <label for="num"> RSSI </label>
-          <input 
-            type="number" 
-            required
-            id="num"
-            class="form-control"
-            v-model="currentItem.min_signal"
-            style="margin-bottom: 1em;"
-          />
-        </div>
         <button class="btn btn-success" @click="editCurItem"
           style="margin-right: 1em;"> Submit </button>
         <button class="btn btn-danger" @click.prevent="deleteCurItem"> Delete </button>
-
 
       </div>
     </div>
@@ -125,25 +85,6 @@
        formstuff: [{
          'type': 'text',
          'name': 'Profile Name'
-       },{
-         'type': 'toggle',
-         'name': 'Test Level',
-         'trueValue': 'SSID',
-         'falseValue': 'BSSID',
-         'default': 'SSID',
-       },{
-         'type': 'toggle',
-         'name': 'BSSID Scan',
-         'trueValue': 'Enabled',
-         'falseValue': 'Disabled',
-         'default': 'Disabled',  // figure out the best default
-         'dependsOn': {
-           'name': 'Test Level',
-           'value': 'BSSID'
-         }
-       },{
-         'type': 'number',
-         'name': 'RSSI'
        }],
 
        mount:false
@@ -176,40 +117,22 @@
      receiveEmit(form_data) {
        if(form_data.length > 0) {
          const object = {
-           name: form_data[0].value,
-           test_level: form_data[1].value,
-           bssid_scan: form_data[2].value,
-           min_signal: form_data[3].value
+           name: form_data[0].value
          }
-         // bssid_scan is disabled if test_level is SSID.
-         if (object.test_level === "SSID") {
-           object.bssid_scan = "Disabled";
-         }
+
          this.ssidStore.addSsidProfile(object);
        }
        // Show add SSID form after adding.
        this.addSsidForm();
      },
 
-     handleToggleEdit(trueValue, falseValue, entry) {
-       this.currentItem[entry] = this.currentItem[entry] === trueValue ?
-         falseValue : trueValue;
-     },
-
      // Edits ssid profile - sends to addSsidProfile in ssid_profile store
      async editCurItem() {
        const object = {   
          old_ssid_name: this.old_ssidName,
-         new_ssid_name:  this.currentItem.name,
-         test_level: this.currentItem.test_level,
-         bssid_scan: this.currentItem.bssid_scan,
-         min_signal: this.currentItem.min_signal
+         new_ssid_name: this.currentItem.name,
        }
-       // bssid_scan is disabled if test_level is SSID.
-       if (object.test_level === "SSID") {
-         object.bssid_scan = "Disabled";
-         this.currentItem.bssid_scan = "Disabled";
-       }
+
        await this.ssidStore.editSsidProfile(object);
        await this.ssidStore.getSsidProfiles();
 
