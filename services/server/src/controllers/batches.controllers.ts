@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from '../services/database.service';
-import { get_ssid_profile_ids, get_schedule_ids, get_job_ids, get_archiver_ids } from '../services/utility.services'
+import { get_ssid_profile_ids, get_schedule_ids, get_job_ids } from '../services/utility.services'
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
 import { isNameInDB } from './helpers';
@@ -76,7 +76,7 @@ const deleteBatch = (async (req:Request, res:Response) => {
 })
 
 /**
- * Creates new batch entry in database. Inserts ObjectId arrays for ssid_profiles, jobs, schedules, archivers 
+ * Creates new batch entry in database. Inserts ObjectId arrays for ssid_profiles, jobs, schedules
  * to make compatible with future updates.
  * 
  * @param req - request information from client
@@ -95,7 +95,6 @@ const postBatch = (async (req:Request, res:Response) => {
     const ssid_profile_ids = await get_ssid_profile_ids(client, data); 
     const schedule_ids = await get_schedule_ids(client, data); 
     const job_ids = await get_job_ids(client, data);
-    const archiver_ids = await get_archiver_ids(client, data); 
 
     collection.insertOne({                                  // include names and _ids of objects 
       "name": data.name,
@@ -106,9 +105,7 @@ const postBatch = (async (req:Request, res:Response) => {
       "schedules": data.schedules,
       "schedule_ids": schedule_ids,
       "jobs": data.jobs,
-      "job_ids": job_ids,
-      "archivers": data.archivers,
-      "archiver_ids": archiver_ids
+      "job_ids": job_ids
     });
     res.json(data);
   }
@@ -142,15 +139,12 @@ const updateBatch = (async (req:Request, res:Response) => {
     }, {$set:{"name": data.new_batchname, "priority": data.priority,
               "test_interface":data.test_interface, "ttl": data.ttl,
               "ssid_profiles":data.ssid_profiles, "schedules":data.schedules,
-              "jobs": data.jobs, "archivers": data.archivers,
+              "jobs": data.jobs,
               "ssid_profile_ids": (JSON.stringify(data.ssid_profiles) === JSON.stringify(doc?.ssid_profiles)) ?     // update reference _ids if changes made 
       doc?.ssid_profile_ids: await get_ssid_profile_ids(client, data),
 
               "schedule_ids": (JSON.stringify(data.schedules) === JSON.stringify(doc?.schedules)) ? 
       doc?.schedules: await get_schedule_ids(client, data),
-
-              "archiver_ids": (JSON.stringify(data.archivers) === JSON.stringify(doc?.archivers)) ?
-      doc?.archiver_ids: await get_archiver_ids(client, data),
 
               "job_ids": (JSON.stringify(data.jobs) === JSON.stringify(doc?.jobs)) ? 
       doc?.job_ids: await get_job_ids(client, data),

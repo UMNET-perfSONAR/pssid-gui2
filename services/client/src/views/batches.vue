@@ -216,7 +216,7 @@
        await this.batchStore.addBatch({
          name: form_data[0].value,
          test_interface: form_data[1].value,
-         priority: form_data[6].value,
+         priority: form_data[5].value,
          ssid_profiles: (form_data[2].selected.length == 0)? [] : form_data[2].selected.map(obj => obj.name),
          schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
          jobs: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
