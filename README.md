@@ -20,7 +20,6 @@ in the same directory. You may need `sudo` access to run docker compose.
 [Ideas for future improvement](https://github.com/UMNET-perfSONAR/pssid-gui2/tree/main/services/client)
 
 #### Backend 
-[General Backend Notes](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/server/README.md)     
 [About the Backend Folders](https://github.com/UMNET-perfSONAR/pssid-gui2/tree/main/services/server/src/README.md)     
 [About Each Service File - In Server](https://github.com/UMNET-perfSONAR/pssid-gui2/tree/main/services/server/src/services/README.md)     
 
