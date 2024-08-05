@@ -4,7 +4,7 @@ Version 2.0 of the pSSID-GUI Web Application
 
 ## Installation
 ### Ansible
-Follow the steps in this 
+Follow the steps in this
 [repository](https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy).
 ### Source Code
 Clone this repository and run
