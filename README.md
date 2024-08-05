@@ -2,17 +2,22 @@
 
 Version 2.0 of the pSSID-GUI Web Application
 
-Installation available via Ansible Playbook
-* Requires Ansible to be installed locally.
-
-To install via Ansible, follow the steps in this [repository](https://github.com/UMNET-perfSONAR/ansible_pssid_gui_2.0)
+## Installation
+### Ansible
+Follow the steps in this 
+[repository](https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy).
+### Source Code
+Clone this repository and run
+```
+docker-compose -f docker-compose.yml up -d
+```
+in the same directory. You may need `sudo` access to run docker compose.
 
 ---
 ### Important README Links in this Repository
 
 [Steps to add fields to config file](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/README.md)  
-[Ideas for future improvement](https://github.com/UMNET-perfSONAR/pssid-gui2/tree/main/services/client) 
-* Feel free to email me with questions about where things are or what to improve! 
+[Ideas for future improvement](https://github.com/UMNET-perfSONAR/pssid-gui2/tree/main/services/client)
 
 #### Backend 
 [General Backend Notes](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/server/README.md)     
@@ -24,25 +29,52 @@ To install via Ansible, follow the steps in this [repository](https://github.com
 [About each Client Component](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/client/src/components/README.md)     
 
 ----
-### pSSID Web Application 
-##### About the Config File
+## pSSID GUI Web Application
+### System Overview
+The core application consists of three Docker containers, client, server, and MongoDB.
+Users directly interact with the client container, which will in turn communicate with
+the backend server and database containers. Test templates are files on disk that
+define the rules for each test, i.e., what configuration fields should be provided
+for each test type. Dynamics forms are then geneated on the frontend based on the
+rules defined in the templates.
 
-This web app is meant to simplfy the creation and modification of the configuration file that is pushed to Raspberry Pis to monitor WiFi networks via pSSID and perfSONAR. The configuration file is broken up into 8 components: hosts, host groups, archivers, schedules, ssid profiles, tests, jobs, and batches. See the breakdown below: 
+<p align="center">
+<img width="80%" alt="config-file-anatomy" src="assets/gui-controller.png">
+</p>
 
-<img width="700" alt="image" src="https://github.com/UMNET-perfSONAR/pssid-gui2/assets/74212084/384bb68b-aa29-432a-87b1-30528e921289">
+The web application outputs two files, `hosts.ini` and `pssid_conf.json`. The latter
+is the pSSID daemon config file described below,
+which essentially contains the batches to be scheduled. The
+former, `hosts.ini`, is an Ansible inventory containing the list of hosts and groups
+defined on the GUI. They provide information about what to do (`pssid_conf.json`) on
+which probes (`hosts.ini`). The provisioning scripts will use Ansible to copy the
+daemon config file onto the probes defined in `hosts.ini`,
+and pSSID daemon on each probe will run accordingly.
 
-Note that the web application produces a configuration file and an ansible inventory to represent the current state of the database. These files are then pushed to the probes. 
+### Output pSSID Daemon Config File
+The output configuration file is broken up into 7 components: hosts, host groups,
+schedules, SSID profiles, tests, jobs, and batches, each corresponding to a page
+on the GUI dashboard. See the breakdown below:
 
-##### Graphical User Interface
-The web application has eight separate tabs, one for each component of the configuration file. 
+<p align="center">
+<img width="80%" alt="config-file-anatomy" src="assets/config-file-anatomy.png">
+</p>
 
-Each tab has the ability to create, read, update, and delete its own data. Each tab has the following:
-* List of current objects in MongoDB collection
-  * Includes Regex search bar to search through objects
+At a high level, we use template files **on disk** to define a test. We then use tests
+to define a job. Eventually, we use SSID profiles, schedules, and jobs to define a
+batch and run batches, not raw tests, on the probes.
+
+### Graphical User Interface
+The web application has seven separate tabs, one for each component of the
+configuration file.
+
+Each tab has the ability to create, read, update, and delete its own data.
+Each tab has the following:
+* List of current objects in the MongoDB collection
+  * inclduing a regex search bar to search through objects
 * Add object form
-* Edit object form that appears after clicking on the name of an object
-  * Can delete objects from here
+* Edit/delete object form that appears after clicking on the name of an object
 
-<img width="700" alt="Screenshot 2023-08-02 at 3 36 19 PM" src="https://github.com/UMNET-perfSONAR/pssid-gui2/assets/74212084/cf7bba5f-74f5-4303-926f-c17a0cd17b81">
-
-
+<p align="center">
+<img width="80%" alt="gui-screenshot" src="assets/gui-screenshot.png">
+</p>
