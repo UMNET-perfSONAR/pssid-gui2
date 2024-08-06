@@ -90,6 +90,78 @@ function get_paths() {
   }
 }
 
+/*
+ * Formats a test spec.
+ *
+ * See comments below for formatTestData for the format of a test spec
+ * and the role of this function.
+ */
+export function formatTestSpec(spec: Array<any>) {
+  const result_spec: any = {};
+  spec.forEach((element) => {
+    if (element.type === "text" || element.type === "number" ||
+      element.type === "float") {
+      result_spec[element.name] = element.value;
+    }
+    else if (element.type === "singleselect") {
+      result_spec[element.name] = element.selected.name;
+    }
+
+    // multiselect is not allowed in test specs.
+    else if (element.type === "multiselect") {
+      throw new Error(
+	"Multiselect is not allowed in test specs: ${JSON.stringify(element)}"
+      );
+    }
+
+    // The only other type of data is user-defined optional data, which should
+    // be a key-value pair without other fields.
+    else if (!element.hasOwnProperty('type')) {
+      if (!element.hasOwnProperty('key') || !element.hasOwnProperty('value')) {
+	throw new Error(`Invalid test specs found: ${JSON.stringify(element)}`);
+      }
+      result_spec[element.key] = element.value;
+    }
+  });
+
+  return result_spec;
+}
+
+/*
+ * Formats test data to be written to the output config file.
+ *
+ * It's necessary for test specs only because of the dynamic form used in the frontend.
+ * Extra information is stored in the DB in order to render frontend pages correctly,
+ * but the backend perfSONAR has strict field requirements and does not accept extra
+ * fields. The functionality of this function is to extract essential fields right
+ * before generating the config file, while leaving extra fields intact in the DB.
+ *
+ * A valid test has the following format
+ * {
+ *   "name": "<test_name>",
+ *   "type": "<test_type>",
+ *   "spec": {
+ *     "<key>": "<value>",
+ *     ...
+ *   }
+ * }
+ *
+ * This function extracts the name and type of a test and calls formatTestSpec to
+ * extract the spec field.
+ */
+export async function formatTestData(test_data: Array<any>) {
+  const formatted_data_array: any = [];
+  test_data.forEach((test) => {
+    const formatted_test: any = {};
+    formatted_test['name'] = test.name;
+    formatted_test['type'] = test.type;
+    formatted_test['spec'] = formatTestSpec(test.spec);
+    formatted_data_array.push(formatted_test);
+  });
+  const formatted_data = {"tests": formatted_data_array};
+  return formatted_data;
+}
+
 /**
  * creates config file, ansible inventory, and executes shellscript 
  * @param name - name of host or host_group where "submit to probes" was clicked. defaults to '*'
@@ -102,15 +174,15 @@ export async function create_config_file(name: string, click_context:string) {
     let host_data = await get_collection(client, "hosts");
     let schedule_data = await get_collection(client, "schedules");
     let host_group_data = await get_collection(client, "host_groups");
-    let archiver_data = await get_collection(client, "archivers");
     let job_data = await get_collection(client, "jobs");
     let batch_data = await get_collection(client, "batches");
     let ssid_data = await get_collection(client, "ssid_profiles");
     let test_data = await get_collection(client, "tests");
+    let formatted_test_data = await formatTestData(test_data.tests);
     let obj = Object.assign(host_data,  
                             host_group_data, 
-                            archiver_data, schedule_data,
-                            ssid_data, test_data,
+                            schedule_data,
+                            ssid_data, formatted_test_data,
                             job_data, batch_data);
 
     writeIniFile(obj);    
