@@ -87,13 +87,17 @@ const postJob = (async (req:Request, res:Response) => {
     if (isDuplicate) {
       return res.status(400).json({message:"Job already exists!"});
     }
-    let test_ids = await get_test_ids(client, req.body); 
+    let test_ids = await get_test_ids(client, req.body);
+    // NOTE the parallel field is required by perfSONAR and should always be true
+    // so it's hardcoded into the database.
+    // The user can't change it and the button has been removed from the GUI.
     await collection.insertOne({
       "name":req.body.name,
       "tests": req.body.tests,
       "test_ids": test_ids,
       "continue-if": req.body['continue-if'],
       "backoff": req.body.backoff,
+      "parallel": "True"
     });   
     res.json(req.body);
   }
