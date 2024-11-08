@@ -82,3 +82,35 @@ Each tab has the following:
 <p align="center">
 <img width="80%" alt="gui-screenshot" src="assets/gui-screenshot.png">
 </p>
+
+## Troubleshooting
+In case the service is not available, a quick way to restart it is to directly run
+the `up.sh` script on the VM.
+
+First check if there are any lingering Docker containers still up and running
+```
+docker ps
+```
+
+When the service runs correctly, there should be three containers associated with it.
+```
+pssid-gui2_server_1
+pssid-gui2_mongo_1
+pssid-gui2_client_1
+```
+
+If the service is down, some of them might be missing from the list and some of them
+might still be running. Stop all lingering containers.
+```
+docker stop <container ID/name>
+```
+
+Then free up used resources to prepare for a restart
+```
+sudo docker system prune -af
+```
+
+Finally run the script to start the service
+```
+sh ~/up.sh
+```
