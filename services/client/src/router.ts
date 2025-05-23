@@ -32,12 +32,12 @@ const routes =  [
     name: "test_page",
     component: () => import("./views/tests.vue")
   },
-  {
-    path: "/jobs",
-    alias: "/job",
-    name: "job_page",
-    component: () => import("./views/jobs.vue")
-  },
+  // {
+  //   path: "/jobs",
+  //   alias: "/job",
+  //   name: "job_page",
+  //   component: () => import("./views/jobs.vue")
+  // },
   {
     path: "/schedules",
     alias: "/schedule",
