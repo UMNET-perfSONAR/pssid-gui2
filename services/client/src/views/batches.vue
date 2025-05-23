@@ -64,14 +64,26 @@
             >
             </VueMultiselect>
           </div>
-          <!-- job selection-->
-          <div class="form-group"> 
+          <!-- job selection (INACTIVE) -->
+          <!-- <div class="form-group"> 
             <label> Job Selection </label>
             <VueMultiselect
               v-model="currentItem.jobs"
               :multiple="true"
               :close-on-select="false"
               :options="JobStore.jobs.map(item=>item.name)"
+            >
+            </VueMultiselect>
+          </div> -->
+
+          <!-- job selection-->
+          <div class="form-group"> 
+            <label> Test Selection </label>
+            <VueMultiselect
+              v-model="currentItem.tests"
+              :multiple="true"
+              :close-on-select="false"
+              :options="TestStore.tests.map(item=>item.name)"
             >
             </VueMultiselect>
           </div>
@@ -116,8 +128,9 @@
  import VueMultiselect from 'vue-multiselect'
 
  import { useSsidStore } from '../stores/ssid_profiles_stores';
- import { useJobStore } from '../stores/job_store';
+//  import { useJobStore } from '../stores/job_store';
  import { useScheduleStore } from '../stores/schedule_store';
+ import { useTestStore } from '../stores/test_store';
  
  export default {
    components: { itemList, dynamicform, VueMultiselect },
@@ -149,14 +162,16 @@
        // Methods to access the store
        batchStore: useBatchStore(),
        SsidStore: useSsidStore(),
-       JobStore: useJobStore(),
+      //  JobStore: useJobStore(),
+       TestStore: useTestStore(),
        scheduleStore: useScheduleStore(),
      }
    },
    async mounted() {
      await this.batchStore.getBatches();
      await this.SsidStore.getSsidProfiles();
-     await this.JobStore.getJobs();
+    //  await this.JobStore.getJobs();
+    await this.TestStore.getTests();
      await this.scheduleStore.getSchedules();
      // hardcode layout of batches form - edit this to add more fields
      this.form_layout = [
@@ -173,10 +188,15 @@
          'name': 'SSID Profile',
          'options': this.SsidStore.ssid_profiles
        },
+      //  {
+      //    'type': 'multiselect',
+      //    'name': 'Job Selection',
+      //    'options': this.JobStore.jobs
+      //  },
        {
          'type': 'multiselect',
-         'name': 'Job Selection',
-         'options': this.JobStore.jobs
+         'name': 'Test Selection',
+         'options': this.TestStore.tests
        },
        {
          'type': 'multiselect',
@@ -210,7 +230,7 @@
      
      /**
       * 
-      * @param {name, ssid_profiles, jobs, schedules, priority, TTL} form_data 
+      * @param {name, ssid_profiles, tests, schedules, priority, TTL} form_data // replaced jobs with tests
       */
      async addBatch(form_data) {
        await this.batchStore.addBatch({
@@ -219,7 +239,8 @@
          priority: form_data[5].value,
          ssid_profiles: (form_data[2].selected.length == 0)? [] : form_data[2].selected.map(obj => obj.name),
          schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
-         jobs: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
+        //  jobs: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
+         tests: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
        });
        this.addBatchForm();
      },
@@ -232,7 +253,8 @@
          "priority": this.currentItem.priority,
          "ssid_profiles": this.currentItem.ssid_profiles,
          "schedules": this.currentItem.schedules,
-         "jobs": this.currentItem.jobs,
+        //  "jobs": this.currentItem.jobs,
+         "tests": this.currentItem.tests,
          "test_interface": this.currentItem.test_interface
        };
        await this.batchStore.editBatch(updated_batch);

@@ -23,7 +23,7 @@
           <router-link to="/tests" class="navbar-brand">Tests</router-link>
         </li>
         <li class="nav-item">
-          <router-link to="/jobs" class="navbar-brand">Jobs</router-link>
+          <router-link to="/jobs" class="navbar-brand">Jobs (INACTIVE)</router-link>
         </li>
         <li class="nav-item">
           <router-link to="/batches" class="navbar-brand">Batches</router-link>
