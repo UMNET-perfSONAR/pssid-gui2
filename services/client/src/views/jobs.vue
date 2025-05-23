@@ -11,7 +11,7 @@
       <button @click="addJobForm" class="btn btn-primary" v-if="!showAddJob"
         style="margin-bottom: 1em;"> Add Job </button>
     </div>
-    <h3> Job List </h3>
+    <h3> Job List (INACTIVE)</h3>
     <div class="list row"> 
       <!-- job list and regex search bar-->
       <itemList v-if="mount ==true" :itemArray="jobStore.jobs" :display="showAddJob" 
