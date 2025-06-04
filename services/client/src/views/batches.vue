@@ -76,14 +76,14 @@
             </VueMultiselect>
           </div> -->
 
-          <!-- job selection-->
+          <!-- test selection-->
           <div class="form-group"> 
             <label> Test Selection </label>
             <VueMultiselect
               v-model="currentItem.tests"
               :multiple="true"
               :close-on-select="false"
-              :options="TestStore.tests.map(item=>item.name)"
+              :options="TestStore.tests.map(item=> item.name)"
             >
             </VueMultiselect>
           </div>
@@ -128,7 +128,7 @@
  import VueMultiselect from 'vue-multiselect'
 
  import { useSsidStore } from '../stores/ssid_profiles_stores';
-//  import { useJobStore } from '../stores/job_store';
+ import { useJobStore } from '../stores/job_store';
  import { useScheduleStore } from '../stores/schedule_store';
  import { useTestStore } from '../stores/test_store';
  
@@ -162,16 +162,18 @@
        // Methods to access the store
        batchStore: useBatchStore(),
        SsidStore: useSsidStore(),
-      //  JobStore: useJobStore(),
+       JobStore: useJobStore(),
        TestStore: useTestStore(),
        scheduleStore: useScheduleStore(),
      }
    },
    async mounted() {
      await this.batchStore.getBatches();
+    //  console.log(this.batchStore.getBatches())
      await this.SsidStore.getSsidProfiles();
-    //  await this.JobStore.getJobs();
-    await this.TestStore.getTests();
+     await this.JobStore.getJobs();
+    //  console.log(this.JobStore.getJobs());
+     await this.TestStore.getTests(); // this is how you retrieve tests that were made
      await this.scheduleStore.getSchedules();
      // hardcode layout of batches form - edit this to add more fields
      this.form_layout = [
@@ -230,16 +232,26 @@
      
      /**
       * 
-      * @param {name, ssid_profiles, tests, schedules, priority, TTL} form_data // replaced jobs with tests
+      * @param {name, ssid_profiles, jobs, schedules, priority, TTL} form_data // replaced jobs with tests
       */
      async addBatch(form_data) {
+       // create a hidden job to be added to the batch, job name is based off of current batch
+       const job = {
+        name: `${form_data[0].value}_job`,
+        tests: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name), // use selected tests from the form
+        "continue-if": "true",  // default continue-if value
+        backoff: "PT1S",  // default backoff value
+       };
+
+       await this.JobStore.addJob(job);
+      
        await this.batchStore.addBatch({
          name: form_data[0].value,
          test_interface: form_data[1].value,
          priority: form_data[5].value,
          ssid_profiles: (form_data[2].selected.length == 0)? [] : form_data[2].selected.map(obj => obj.name),
          schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
-        //  jobs: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
+         jobs: [job.name],
          tests: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
        });
        this.addBatchForm();
@@ -267,6 +279,13 @@
      // Deletes a batch
      async deleteBatch() {
        const deleteIndex = this.currentIndex;
+       if (this.currentItem.jobs) {
+         try {
+          await this.JobStore.deleteJob({ name: this.currentItem.jobs });
+         } catch (error) {
+          console.error('Error deleting job:', error);
+         }
+       } // delete associated jobs
        this.batchStore.batches.splice(deleteIndex, 1);
        await this.batchStore.deleteBatch(this.currentItem);
        if (this.batchStore.batches.length <= deleteIndex) {

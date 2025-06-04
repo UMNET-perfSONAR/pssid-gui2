@@ -18,10 +18,12 @@ export const useJobStore = defineStore('jobStore', {
         const data = await res.json()
         this.jobs = data;
         this.isLoading = false;
+        // return data;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
+        // return [];
       }
     },
 
