@@ -16,7 +16,12 @@ export const useBatchStore = defineStore('batchStore', {
     async getBatches() {
       try {
         this.isLoading = true;
-        const res = await fetch('http://'+ window.location.hostname +':8000/batches')
+        const res = await fetch(
+          'https://'+ window.location.hostname +':8000/batches',
+          {
+            credentials: 'include',
+          }
+        )
         const data = await res.json()
         this.batches = data;
         this.isLoading = false;
@@ -33,13 +38,14 @@ export const useBatchStore = defineStore('batchStore', {
       try {
         this.isLoading = true;
         const response = await fetch(
-          'http://'+ window.location.hostname +':8000/batches/create-batch',
+          'https://'+ window.location.hostname +':8000/batches/create-batch',
           {
             method: 'POST',
             body: JSON.stringify(batch),
             headers: {
               "Content-Type": "application/json"
-            }
+            },
+            credentials: 'include',
           }
         );
 
@@ -62,14 +68,15 @@ export const useBatchStore = defineStore('batchStore', {
     async editBatch(updated_batch_obj: JSON) {
       try {
         const response = await fetch(
-          'http://'+ window.location.hostname +':8000/batches/update-batch',
+          'https://'+ window.location.hostname +':8000/batches/update-batch',
           {
             method: "PUT",
             mode: "cors",
             body: JSON.stringify(updated_batch_obj),
             headers: {
               "Content-Type": "application/json"
-            }
+            },
+            credentials: 'include',
           }
         );
 	if (response.ok) {
@@ -93,11 +100,12 @@ export const useBatchStore = defineStore('batchStore', {
     async deleteBatch(batch:any) {
       try {
         await fetch(
-          'http://'+ window.location.hostname +':8000/batches/'+batch.name,
+          'https://'+ window.location.hostname +':8000/batches/'+batch.name,
           {
             method: 'DELETE',
-            mode: 'cors'
-          }
+            mode: 'cors',
+            credentials: 'include'
+          },
         );
       }
       catch(error) {
@@ -109,9 +117,10 @@ export const useBatchStore = defineStore('batchStore', {
     async deleteAll() {
       try {
         await fetch(
-          'http://'+ window.location.hostname +':8000/batches',
+          'https://'+ window.location.hostname +':8000/batches',
           {
             method: 'DELETE',
+            credentials: 'include'
           }
         );
         this.batches = [];

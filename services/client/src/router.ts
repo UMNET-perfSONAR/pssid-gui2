@@ -4,7 +4,22 @@ const routes =  [
   // TODO: Add additional routes 
   {
     path: "/",
-    alias: "/hosts",
+    redirect: "/login"
+  },
+  {
+    path: "/login",
+    name: "Login",
+    component: {
+      created() {
+        window.location.href = "https://pssid-web-dev.miserver.it.umich.edu:8000/login?returnTo=https://pssid-web-dev.miserver.it.umich.edu:8080/hosts";
+      },
+      render() {
+        return null;
+      }
+    }
+  },
+  {
+    path: "/hosts",
     name: "host_page",
     component: () => import("./views/hosts.vue")
   },

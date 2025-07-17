@@ -2,4 +2,4 @@
 
 echo "Current PATH: $PATH" >> log 2>&1
 
-echo "Running tests on ${1}: ${2} at $(date)" >> log 2>&1
+echo "Running tests on ${1}: ${2} at $(date)\n" >> log 2>&1

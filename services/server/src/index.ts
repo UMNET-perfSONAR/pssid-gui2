@@ -1,16 +1,56 @@
+// process.env.DEBUG = 'openid-client,express-openid-connect:*';
+
+import https from 'https';
+import fs from 'fs';
 import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from './services/database.service';
+import { auth } from 'express-openid-connect';
+import { requiresAuth } from 'express-openid-connect';
 import { startup } from './setup/setupdb';
 import { create_config_file } from './services/config.service';
+import dotenv from 'dotenv';
+dotenv.config();
 var bodyParser = require('body-parser');
 const app: Express = express();
 const port = 8000;
 
+const httpsOptions = {
+  key: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem'),
+  cert: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem'),
+};
+
+app.set('trust proxy', true);
+
 // TODO - 
 const cors = require('cors');
 app.use(cors({
-  origin: '*'
+  origin: 'https://pssid-web-dev.miserver.it.umich.edu:8080',
+  credentials: true
 }))
+
+app.use(
+  auth({
+    issuerBaseURL: process.env.ISSUER_BASE_URL,
+    baseURL: process.env.BASE_URL,
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    secret: process.env.SECRET,
+    clientAuthMethod:'client_secret_post',
+    idpLogout: true,
+    authRequired: false,
+    auth0Logout: true,
+    authorizationParams: {
+      response_type: 'code',
+      scope: 'openid profile email edumember_ismemberof groups ismemberof edumember',
+    },
+    session: {
+      cookie: {
+        sameSite: 'None',
+        secure: true
+      }
+    },
+  })
+);
 
 // call just once to initialize some data in db - will eliminate later. serves as a "reset" for now
 // startup();
@@ -36,16 +76,24 @@ app.use("/batches", batchroute);
 app.use("/ssid-profiles", ssidprofileroute);
 app.use("/tests", testroute);
 
-// url that requests root route (specified by /) with GET method triggers function below 
-app.get('/', (req: Request, res: Response) => {
-  res.send('Express + TypeScript Server');
+// force login on '/'
+app.get('/', requiresAuth(), (req: Request, res: Response) => {
+  // console.log("Hello:", req.oidc.user);
+  // console.log("------");
+  // const idToken = req.oidc.idToken;
+  // if (idToken) {
+  //   const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
+  //   console.log(payload);
+  // }
+
+  res.redirect('https://pssid-web-dev.miserver.it.umich.edu:8080/hosts');
 });
 
 // first connect to MongoDB(), then communicate with the web app
 connectToMongoDB()
   .then(() => {
-    app.listen(port, () => {
-      console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
+    https.createServer(httpsOptions, app).listen(port, () => {
+      console.log('HTTPS server running at https://pssid-web-dev.miserver.it.umich.edu:8000');
     });
   })
   .catch((error: Error) => {

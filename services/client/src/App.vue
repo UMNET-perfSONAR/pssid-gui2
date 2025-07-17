@@ -1,7 +1,6 @@
 <template>
   <div id="app" class="header">
     <h2 style="text-align: center; margin-bottom: 1em; margin-top: 1em;"> pSSID GUI 2.0 </h2>
-
     <!-- navbar -->
     <nav class="navbar navbar-expand navbar-dark">
 

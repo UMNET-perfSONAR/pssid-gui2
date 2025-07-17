@@ -188,6 +188,7 @@ export async function create_config_file(name: string, click_context:string) {
     writeIniFile(obj);    
     const clean_object = removeIdsProperties(obj);
     const config_content = JSON.stringify(clean_object, null, 2) + '\n';
+    console.log("Writing config file...");
     writeFileSync(config_path, config_content, 'utf8');
     
     exec(`'${shellscript_path}' '${click_context}' '${name}'`, (err) => {console.error(err)})

@@ -21,8 +21,13 @@ export const useGroupStore = defineStore('groupStore', {
     async getGroups() {
       try {
         this.isLoading = true;
-        const res = await fetch('http://'+ window.location.hostname +':8000/host-groups')
-        const data = await res.json()
+        const res = await fetch(
+          'https://'+ window.location.hostname +':8000/host-groups',
+        {
+          credentials: 'include'
+        }
+      );
+        const data = await res.json();
         this.host_groups = data;
         this.filteredData = data; 
         this.isLoading = false;
@@ -38,14 +43,15 @@ export const useGroupStore = defineStore('groupStore', {
         this.isLoading = true;
         
         const response = await fetch(
-          'http://'+ window.location.hostname +':8000/host-groups/create-hostgroup',
+          'https://'+ window.location.hostname +':8000/host-groups/create-hostgroup',
           {
             method: 'POST',
             body: JSON.stringify(host_group),
             mode: 'cors',
             headers: {
               "Content-Type": "application/json"
-            }
+            },
+            credentials: 'include'
           }
         );
 
@@ -68,14 +74,15 @@ export const useGroupStore = defineStore('groupStore', {
     async editGroup(host_group: any) {
       try {
         const response = await fetch(
-          'http://'+ window.location.hostname +':8000/host-groups/update-hostgroup',
+          'https://'+ window.location.hostname +':8000/host-groups/update-hostgroup',
           {
             method: 'PUT',
             mode:'cors',
             body: JSON.stringify(host_group),
             headers: {
               "Content-Type":"application/json"
-            }
+            },
+            credentials: 'include'
           }
         );
 	if (response.ok) {
@@ -98,10 +105,11 @@ export const useGroupStore = defineStore('groupStore', {
     async deleteGroup(host_group:any) {
       try {
         await fetch(
-          'http://'+ window.location.hostname +':8000/host-groups/'+host_group.name,
+          'https://'+ window.location.hostname +':8000/host-groups/'+host_group.name,
           {
             method: 'DELETE',
-          }
+            credentials: 'include'
+          },
         );
       }
       catch(error) {
@@ -113,10 +121,11 @@ export const useGroupStore = defineStore('groupStore', {
     async deleteAll() {
       try {
         await fetch(
-          'http://'+ window.location.hostname +':8000/host-groups',
+          'https://'+ window.location.hostname +':8000/host-groups',
           {
             method: 'DELETE',
-          }
+            credentials: 'include'
+          },
         );
         this.host_groups = [];
         this.filteredData = [];
@@ -130,14 +139,15 @@ export const useGroupStore = defineStore('groupStore', {
     async createConfig(currentGroup: any) {
       try {
         await fetch(
-          'http://'+ window.location.hostname + ':8000/host-groups/config',
+          'https://'+ window.location.hostname + ':8000/host-groups/config',
           {
             method: 'POST',
             body: JSON.stringify(currentGroup),
             mode: 'cors',
             headers: {
               "Content-Type": "application/json"
-            }
+            },
+            credentials: 'include'
           }
         );
         alert("Group submitted successfully!");

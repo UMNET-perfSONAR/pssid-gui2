@@ -7,3 +7,10 @@ log
 # own provision.sh.
 services/server/output/*
 !services/server/output/provision.sh
+services/server/.env
+/certs/*
+**/certs/*
+services/client/certs/*
+*.crt
+*.key
+*.pem

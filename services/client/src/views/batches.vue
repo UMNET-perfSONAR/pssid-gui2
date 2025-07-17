@@ -274,8 +274,6 @@
           console.error('Error deleting old job:', error);
         }
         
-        console.log(this.currentItem.tests);
-        console.log("-");
         const updatedJob = {
           name: newJobName,
           // if there exists currentItem.tests and length is greater than 0, use it, otherwise empty array

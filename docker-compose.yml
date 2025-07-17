@@ -7,6 +7,8 @@ services:
     volumes:
       - ./services/client/src:/usr/src/app/client/src
       - client_node_modules:/usr/src/app/client/node_modules
+      - ./certs/pssid-web-dev.miserver.it.umich.edu.pem:/usr/src/app/certs/pssid-web-dev.miserver.it.umich.edu.pem
+      - ./certs/pssid-web-dev.miserver.it.umich.edu-key.pem:/usr/src/app/certs/pssid-web-dev.miserver.it.umich.edu-key.pem
     ports:
       - 8080:8080
 
@@ -16,10 +18,13 @@ services:
     build: ./services/server
     volumes:
       - ./services/server/src:/usr/src/app/server/src
+      - ./services/server/.env:/usr/src/app/server/.env
       - server_node_modules:/usr/src/app/server/node_modules
       - /usr/lib/exec/pssid:/usr/src/app/server/bin
       - /var/lib/pssid/plugins:/usr/src/app/server/plugins
       - /var/lib/pssid/output:/usr/src/app/server/output
+      - ./certs/pssid-web-dev.miserver.it.umich.edu.pem:/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem
+      - ./certs/pssid-web-dev.miserver.it.umich.edu-key.pem:/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem
     ports:
       - 8000:8000
     depends_on:

@@ -15,7 +15,9 @@ export const useHostStore = defineStore('hostStore', {
     async getHosts() {
       try {
         this.isLoading = true;
-        const res = await fetch('http://'+ window.location.hostname + ':8000/hosts');
+        const res = await fetch('https://' + window.location.hostname + ':8000/hosts', {
+          credentials: 'include'
+        });
         const data = await res.json();
         this.hosts = data;
         this.isLoading = false;
@@ -34,11 +36,12 @@ export const useHostStore = defineStore('hostStore', {
       try {
         this.isLoading = true;
         const response = await fetch(
-          'http://'+ window.location.hostname + ':8000/hosts/create-host',
+          'https://'+ window.location.hostname + ':8000/hosts/create-host',
           {
             method: 'POST',
             body: JSON.stringify(host),
             mode: 'cors',
+            credentials: 'include',
             headers: {
               "Content-Type": "application/json"
             }
@@ -68,9 +71,10 @@ export const useHostStore = defineStore('hostStore', {
     async deleteHost(host:any) {
       try {
         await fetch(
-          'http://'+ window.location.hostname + ':8000/hosts/' +host?.name,
+          'https://'+ window.location.hostname + ':8000/hosts/' +host?.name,
           {
             method: 'DELETE',
+            credentials: 'include',
           }
         ); 
       }
@@ -87,10 +91,11 @@ export const useHostStore = defineStore('hostStore', {
     async editHost(updateHostObj:any) {
       try {
         const response = await fetch(
-          'http://'+ window.location.hostname + ':8000/hosts/update-host',
+          'https://'+ window.location.hostname + ':8000/hosts/update-host',
           {
             method: "PUT",
             mode: "cors",
+            credentials: 'include',
             body: JSON.stringify(updateHostObj),
             headers: {
               "Content-Type": "application/json"
@@ -118,7 +123,7 @@ export const useHostStore = defineStore('hostStore', {
     async deleteAll() {
       try {
         await fetch(
-          'http://'+ window.location.hostname + ':8000/hosts',
+          'https://'+ window.location.hostname + ':8000/hosts',
           {
             method: 'DELETE',
           }
@@ -142,7 +147,7 @@ export const useHostStore = defineStore('hostStore', {
       }
       try {
         await fetch(
-          'http://'+ window.location.hostname + ':8000/hosts/config',
+          'https://'+ window.location.hostname + ':8000/hosts/config',
           {
             method: 'POST',
             body: JSON.stringify(currentHost),

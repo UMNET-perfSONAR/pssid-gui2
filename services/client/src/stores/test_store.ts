@@ -16,7 +16,9 @@ export const useTestStore = defineStore('test', {
     async getTests() {
       try {
         this.isLoading = true;
-        const res = await fetch('http://'+ window.location.hostname +':8000/tests')
+        const res = await fetch('https://'+ window.location.hostname +':8000/tests', {
+          credentials: 'include'
+        });
         const data = await res.json()
         this.tests = data;
         this.isLoading = false;
@@ -30,7 +32,9 @@ export const useTestStore = defineStore('test', {
     // get name of all available tests
     async getTestNames() {
       this.isLoading = true;
-      const res = await fetch('http://'+ window.location.hostname +':8000/tests/test-files')
+      const res = await fetch('https://'+ window.location.hostname +':8000/tests/test-files', {
+        credentials: 'include'
+      })
       const data = await res.json();
       this.listOfOptions = data;
       this.isLoading = false;
@@ -38,7 +42,7 @@ export const useTestStore = defineStore('test', {
 
     async getDesiredTest(test_name: string) {
       this.isLoading = true;
-      const res = await fetch('http://'+ window.location.hostname +':8000/tests/read-test/'+test_name)
+      const res = await fetch('https://'+ window.location.hostname +':8000/tests/read-test/'+test_name)
       const data = await res.json();
 
       // NOTE: this is the reason that global validation is not working
@@ -50,11 +54,12 @@ export const useTestStore = defineStore('test', {
     // edit test through put request
     async editTest(test: any) {
       const response = await fetch(
-        'http://'+ window.location.hostname +':8000/tests/update-test',
+        'https://'+ window.location.hostname +':8000/tests/update-test',
         {
           method: 'PUT',
           mode:'cors',
           body: JSON.stringify(test),
+          credentials: 'include',
           headers: {
             "Content-Type":"application/json"
           }
@@ -74,10 +79,11 @@ export const useTestStore = defineStore('test', {
       this.isLoading = true;
       
       const response = await fetch(
-        'http://'+ window.location.hostname +':8000/tests/create-test',
+        'https://'+ window.location.hostname +':8000/tests/create-test',
         {
           method: 'POST',
           body: JSON.stringify(test),
+          credentials: 'include',
           headers: {
             "Content-Type": "application/json"
           }
@@ -97,18 +103,20 @@ export const useTestStore = defineStore('test', {
 
     async deleteTest(test:any) {
       await fetch(
-        'http://'+ window.location.hostname +':8000/tests/'+test.name,
+        'https://'+ window.location.hostname +':8000/tests/'+test.name,
         {
           method: 'DELETE',
+          credentials: 'include'
         }
       );
     },
 
     async deleteAll() {
       await fetch(
-        'http://'+ window.location.hostname +':8000/tests',
+        'https://'+ window.location.hostname +':8000/tests',
         {
           method: 'DELETE',
+          credentials: 'include'
         }
       );
       this.tests = [];

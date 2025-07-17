@@ -15,9 +15,16 @@ RUN npm install
 # Copy project files and folders to the current working directory (i.e. 'client' folder)
 COPY . .
 
+# Make sure your wait script is present
+COPY certs.sh ./certs.sh
+
+# Make the wait script executable
+RUN chmod +x ./certs.sh && chmod -R g+rw /usr/src/app/client
+
 # Build app for production with minification
-RUN npm run build && chmod -R g+rw /usr/src/app/client
+# RUN npm run build && chmod -R g+rw /usr/src/app/client
 
 EXPOSE 8080
 
-CMD ["npm", "run", "dev"]
+# CMD ["npm", "run", "dev"]
+CMD ["./certs.sh"]

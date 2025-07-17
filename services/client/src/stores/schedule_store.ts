@@ -10,8 +10,13 @@ export const useScheduleStore = defineStore('scheduleStore', {
   actions: {
     async getSchedules() {
       this.isLoading = true;
-      const res = await fetch('http://'+ window.location.hostname +':8000/schedules')
-      const data = await res.json()
+      const res = await fetch(
+        'https://'+ window.location.hostname +':8000/schedules',
+        {
+          credentials: 'include'
+        }
+      );
+      const data = await res.json();
       this.schedules = data;
       this.isLoading = false;
     },
@@ -19,14 +24,15 @@ export const useScheduleStore = defineStore('scheduleStore', {
     async addSchedule(schedule:JSON) {
       this.isLoading = true;
       const response = await fetch(
-        'http://'+ window.location.hostname +':8000/schedules/create-schedule',
+        'https://'+ window.location.hostname +':8000/schedules/create-schedule',
         {
           method: 'POST',
           body: JSON.stringify(schedule),
           mode: 'cors',
           headers: {
             "Content-Type": "application/json"
-          }
+          },
+          credentials: 'include'
         }
       );
 
@@ -43,23 +49,24 @@ export const useScheduleStore = defineStore('scheduleStore', {
 
     async deleteSchedule(schedule:any) {
       await fetch(
-        'http://'+ window.location.hostname +':8000/schedules/'+schedule.name,
+        'https://'+ window.location.hostname +':8000/schedules/'+schedule.name,
         {
           method: 'DELETE',
+          credentials: 'include'
         }
       );
     },
     async updateSchedule(updateScheduleObj:any) {
       const response = await fetch(
-        'http://'+ window.location.hostname +':8000/schedules/update-schedule',
+        'https://'+ window.location.hostname +':8000/schedules/update-schedule',
         {
           method: "PUT",
           mode: "cors",
           body: JSON.stringify(updateScheduleObj),
           headers: {
             "Content-Type": "application/json"
-          }
-	  
+          },
+          credentials: 'include'
         }
       );
       if (response.ok) {
