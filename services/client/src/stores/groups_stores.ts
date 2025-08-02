@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia'
 import { useHostStore } from './host_store';
+import config from '../shared/config' 
 
 export const useGroupStore = defineStore('groupStore', {
   // create a state object -> can have different properties 
@@ -24,7 +25,7 @@ export const useGroupStore = defineStore('groupStore', {
         const res = await fetch(
           'https://'+ window.location.hostname +':8000/host-groups',
         {
-          credentials: 'include'
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
       );
         const data = await res.json();
@@ -51,7 +52,7 @@ export const useGroupStore = defineStore('groupStore', {
             headers: {
               "Content-Type": "application/json"
             },
-            credentials: 'include'
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
 
@@ -82,7 +83,7 @@ export const useGroupStore = defineStore('groupStore', {
             headers: {
               "Content-Type":"application/json"
             },
-            credentials: 'include'
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
 	if (response.ok) {
@@ -108,7 +109,7 @@ export const useGroupStore = defineStore('groupStore', {
           'https://'+ window.location.hostname +':8000/host-groups/'+host_group.name,
           {
             method: 'DELETE',
-            credentials: 'include'
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           },
         );
       }
@@ -124,7 +125,7 @@ export const useGroupStore = defineStore('groupStore', {
           'https://'+ window.location.hostname +':8000/host-groups',
           {
             method: 'DELETE',
-            credentials: 'include'
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           },
         );
         this.host_groups = [];
@@ -147,7 +148,7 @@ export const useGroupStore = defineStore('groupStore', {
             headers: {
               "Content-Type": "application/json"
             },
-            credentials: 'include'
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
         alert("Group submitted successfully!");

@@ -7,6 +7,7 @@ services:
     volumes:
       - ./services/client/src:/usr/src/app/client/src
       - client_node_modules:/usr/src/app/client/node_modules
+      - ./shared:/usr/src/app/client/src/shared:ro
       - ./certs/pssid-web-dev.miserver.it.umich.edu.pem:/usr/src/app/certs/pssid-web-dev.miserver.it.umich.edu.pem
       - ./certs/pssid-web-dev.miserver.it.umich.edu-key.pem:/usr/src/app/certs/pssid-web-dev.miserver.it.umich.edu-key.pem
     ports:
@@ -23,6 +24,7 @@ services:
       - /usr/lib/exec/pssid:/usr/src/app/server/bin
       - /var/lib/pssid/plugins:/usr/src/app/server/plugins
       - /var/lib/pssid/output:/usr/src/app/server/output
+      - ./shared:/usr/src/app/server/src/shared:ro
       - ./certs/pssid-web-dev.miserver.it.umich.edu.pem:/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem
       - ./certs/pssid-web-dev.miserver.it.umich.edu-key.pem:/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem
     ports:

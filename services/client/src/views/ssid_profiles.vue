@@ -21,8 +21,10 @@
       <!-- Add SSID profile form -->
       <div class = 'col-md-6' v-if="showAddSSID==true">
         <h3> Add SSID Profile </h3>
+        <fieldset :disabled="isDisabled">
         <dynamicform  @formData="receiveEmit"
           :form_layout="formstuff"></dynamicform>
+        </fieldset>
       </div>
       <!-- Edit SSID Profile form -->
       <div class = 'col-md-6' v-if="showAddSSID==false">
@@ -40,8 +42,8 @@
         </div>
 
         <button class="btn btn-success" @click="editCurItem"
-          style="margin-right: 1em;"> Submit </button>
-        <button class="btn btn-danger" @click.prevent="deleteCurItem"> Delete </button>
+          style="margin-right: 1em;" :disabled="isDisabled"> Submit </button>
+        <button class="btn btn-danger" @click.prevent="deleteCurItem" :disabled="isDisabled"> Delete </button>
 
       </div>
     </div>
@@ -51,9 +53,13 @@
 
 <script>
  import { useSsidStore } from '/src/stores/ssid_profiles_stores';
+ import { useUserStore } from '/src/stores/user.store';
  import dynamicform from '../components/dynamicform.vue'
  import editDynamicForm from '../components/edit_dynamic_form.vue'
  import itemList from '../components/list_items.vue';
+ import config from "../shared/config"
+ import { isFormDisabled } from "../utils/formControl.ts"
+
  export default {
    components: { dynamicform, editDynamicForm, itemList },
    data() {
@@ -62,6 +68,7 @@
         * Method(s) to access the store
         */
        ssidStore: useSsidStore(),
+       userStore: useUserStore(),
 
        /*
         * Variables for the Edit SSID Profile form
@@ -87,15 +94,26 @@
          'name': 'Profile Name'
        }],
 
-       mount:false
+       mount:false,
+       enable_sso: config.ENABLE_SSO,
+       groups: null,
      }
    },
 
    // load ssid profiles
    async mounted() {
      await this.ssidStore.getSsidProfiles();
+     if (this.enable_sso) {
+      await this.userStore.fetchUser();
+     }
      this.mount = true;
    },
+
+   computed: {
+      isDisabled() {
+        return isFormDisabled();
+      }
+    },
 
    methods: {
      // Renders Add SSID Profile form
@@ -107,11 +125,26 @@
 
      // render edit ssid profile form
      updateActiveSSID(indexArray) {
-       this.currentItem=indexArray[0];
-       this.currentIndex=indexArray[1];
-       this.old_ssidName = this.currentItem.name;
-       this.showAddSSID=false;
-     },
+      const [newItem, newIndex] = indexArray;
+
+      // Check if user clicked the already-selected item
+      if (
+        this.currentItem &&
+        this.currentItem.name === newItem.name &&
+        this.currentIndex === newIndex
+      ) {
+        // Deselect
+        this.currentItem = {};
+        this.currentIndex = {};
+        this.showAddSSID = true; // Show the Add form again
+      } else {
+        // Select new item
+        this.currentItem = newItem;
+        this.currentIndex = newIndex;
+        this.old_ssidName = newItem.name;
+        this.showAddSSID = false; // Show the Edit form
+     }
+    },
 
      // add ssid profile - send to addSsidProfile in ssid_profile store 
      receiveEmit(form_data) {

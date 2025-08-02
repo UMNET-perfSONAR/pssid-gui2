@@ -1,5 +1,6 @@
 // allows us to make a store
 import {defineStore} from 'pinia'
+import config from '../shared/config' 
 
 export const useSsidStore = defineStore('ssidStore', {
   // create a state object -> can have different properties 
@@ -14,8 +15,9 @@ export const useSsidStore = defineStore('ssidStore', {
     async getSsidProfiles() {
       this.isLoading = true;
       const res = await fetch(
-        'https://'+ window.location.hostname +':8000/ssid-profiles', {
-          credentials: 'include'
+        'https://'+ window.location.hostname +':8000/ssid-profiles',
+        {
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
       );
       const data = await res.json()
@@ -35,7 +37,7 @@ export const useSsidStore = defineStore('ssidStore', {
           headers: {
             "Content-Type": "application/json"
           },
-          credentials: 'include'
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
       );
 
@@ -59,7 +61,7 @@ export const useSsidStore = defineStore('ssidStore', {
         'https://'+ window.location.hostname +':8000/ssid-profiles/'+ssid_profile.name,
         {
           method: 'DELETE',
-          credentials: 'include'
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         },
       );
     },
@@ -74,7 +76,7 @@ export const useSsidStore = defineStore('ssidStore', {
           headers: {
             "Content-Type":"application/json"
           },
-          credentials: 'include'
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
       );
       if (response.ok) {
@@ -91,7 +93,7 @@ export const useSsidStore = defineStore('ssidStore', {
         'https://'+ window.location.hostname +':8000/ssid-profiles',
         {
           method: 'DELETE',
-          credentials: 'include'
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
       );
       this.ssid_profiles = [];

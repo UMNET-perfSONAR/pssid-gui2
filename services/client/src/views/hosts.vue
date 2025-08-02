@@ -1,11 +1,11 @@
 <template>
   <!-- buttons -->
   <div class="buttons" style="margin-bottom:1em;">
-    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);">
+    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);" :disabled="isDisabled">
       Submit to Probes
     </button>
     <button class="btn btn-primary" @click="addHostComp" v-if="!showAddHost"
-      style="margin-left: 1em;"> Add Host
+      style="margin-left: 1em;" :disabled="isDisabled"> Add Host
     </button>
   </div>
   <div class="list row">
@@ -19,6 +19,7 @@
     <div v-if="showAddHost===true" class="col-md-6">
       <form @submit.prevent="submitHost()">
         <h3> Add Host </h3>
+        <fieldset :disabled="isDisabled">
         <div class="form-group">
           <label for="hosts"> Hosts </label>
           <input
@@ -46,7 +47,7 @@
         <p> Optional Data </p>
         <dynamic_add_data :addedData="addedOptionalData"></dynamic_add_data>
         <button class="btn btn-success"> Submit </button>
-
+      </fieldset>
       </form>
     </div>
     
@@ -54,6 +55,7 @@
     <div v-if="showAddHost===false" class="col-md-6">
       <form @submit.prevent="editHost">
         <h3> Edit Host </h3>
+        <fieldset :disabled="isDisabled">
         <div class="form-group">
           <label for="hosts"> Hosts </label>
           <input
@@ -81,6 +83,7 @@
           <button class="btn btn-success" style="margin-right: 1em;" > Update </button>
           <button class="btn btn-danger" @click.prevent="deleteHost"> Delete </button>
         </div>
+      </fieldset>
       </form>
     </div>
   </div>
@@ -91,10 +94,13 @@
  import { useHostStore } from '/src/stores/host_store';
  import { useGroupStore } from '/src/stores/groups_stores';
  import { useBatchStore } from '../stores/batches.store';
+ import { useUserStore } from '/src/stores/user.store';
  import { defineComponent } from 'vue';
  import itemList from '../components/list_items.vue';
  import dynamic_add_data from '../components/dynamic_add_data.vue';
  import VueMultiselect from 'vue-multiselect'
+ import config from '../shared/config';
+ import { isFormDisabled } from "../utils/formControl.ts"
 
  export default defineComponent({
    components: {itemList, dynamic_add_data, VueMultiselect},
@@ -129,14 +135,25 @@
        batchStore: useBatchStore(),
        hostStore: useHostStore(),
        groupStore: useGroupStore(),
+       userStore: useUserStore(),
+       enable_sso: config.ENABLE_SSO
      }        
    },
 
    async mounted() {
      await this.hostStore.getHosts();
      await this.batchStore.getBatches();
+     if (this.enable_sso) {
+      await this.userStore.fetchUser();
+     }
      this.mounted=true;
    },
+  
+   computed: {
+      isDisabled() {
+        return isFormDisabled();
+      }
+    },
 
    methods: {
      /**

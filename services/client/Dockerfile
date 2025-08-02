@@ -27,4 +27,4 @@ RUN chmod +x ./certs.sh && chmod -R g+rw /usr/src/app/client
 EXPOSE 8080
 
 # CMD ["npm", "run", "dev"]
-CMD ["./certs.sh"]
+CMD ["sh", "./certs.sh"]

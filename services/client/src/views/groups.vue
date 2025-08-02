@@ -6,9 +6,9 @@
     </div>
 
     <div style="margin-bottom:1em">
-      <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning"> Submit to probes </button>
+      <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning" :disabled="isDisabled"> Submit to probes </button>
       <button @click="addGroupForm" class="btn btn-primary" v-if="showAddGroup==false"
-        style="margin-left: 1em;"> Add Host Group
+        style="margin-left: 1em;" :disabled="isDisabled"> Add Host Group
       </button>
     </div>
     <div class="list row"> 
@@ -24,6 +24,7 @@
       <!-- Add Group Form -->
       <div class = "col-md-6" v-if="showAddGroup==true"> 
         <h3> Add Host Group </h3>
+        <fieldset :disabled="isDisabled">
         <form @submit.prevent="handleSubmit">
           <div class="submit-form">
             <div class="form-group">
@@ -38,8 +39,9 @@
               />
             </div>
             <!-- host selection -->
-            <hostSelection v-if="mounted == true" :copy_of_data="copyOfData
-                                 "></hostSelection>
+            <hostSelection v-if="mounted == true"
+             :copy_of_data="copyOfData"
+            ></hostSelection>
 
             <!-- batch selection-->
             <div class= "form-group">
@@ -67,11 +69,13 @@
           </div>
           <button class="btn btn-success" style="margin-bottom: 2em;"> Submit </button>
         </form>
+      </fieldset>
       </div>
 
       <!-- Edit Group Form -->
       <div class = "col-md-6" v-if="showAddGroup==false">
         <h3> Edit Host Group </h3>
+        <fieldset :disabled="isDisabled">
         <form @submit.prevent="handleUpdate">
           <div class="submit-form">
             <!-- host group -->
@@ -120,6 +124,7 @@
             <button class="btn btn-danger" @click="deletegroup"> Delete </button>
           </div>
         </form>
+      </fieldset>
       </div>
     </div>
   </div>
@@ -129,12 +134,16 @@
  import { useGroupStore } from '/src/stores/groups_stores';
  import { useBatchStore } from '/src/stores/batches.store';
  import { useHostStore } from '/src/stores/host_store.ts';
+ import { useUserStore } from '/src/stores/user.store';
  import { defineComponent } from 'vue';
  import hostRegex from '../components/hosts_regex.vue';
  import VueMultiselect from 'vue-multiselect'
  import itemList from '../components/list_items.vue'
  import dynamic_add_data from '../components/dynamic_add_data.vue';
  import hostSelection from '../forms/hostSelection.vue';
+ import config from '../shared/config'
+ import { isFormDisabled } from "../utils/formControl.ts"
+
  export default defineComponent({
    components: {VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection},
    data() {
@@ -173,6 +182,8 @@
        hostStore: useHostStore(),
        hostGroup: useGroupStore(),
        batchStore: useBatchStore(),
+       userStore: useUserStore(),
+       enable_sso: config.ENABLE_SSO,
      }
    },
 
@@ -180,6 +191,9 @@
      await this.hostStore.getHosts();
      await this.hostGroup.getGroups();
      await this.batchStore.getBatches();
+     if (this.enable_sso) {
+      await this.userStore.fetchUser();
+     }
      this.copyOfData = this.hostStore.hosts.map((item, index) => ({
        name: item.name,
        selected: false,
@@ -187,6 +201,12 @@
      }))
      this.mounted = true;
    },
+
+   computed: {
+      isDisabled() {
+        return isFormDisabled();
+      }
+    },
 
    methods: {
      // Renders a current active group

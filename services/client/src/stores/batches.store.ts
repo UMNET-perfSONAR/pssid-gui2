@@ -1,5 +1,6 @@
 // allows us to make a store
 import {defineStore} from 'pinia'
+import config from '../shared/config' 
 
 
 // defineStore(<unique-identifier-name>)
@@ -19,7 +20,7 @@ export const useBatchStore = defineStore('batchStore', {
         const res = await fetch(
           'https://'+ window.location.hostname +':8000/batches',
           {
-            credentials: 'include',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         )
         const data = await res.json()
@@ -45,7 +46,7 @@ export const useBatchStore = defineStore('batchStore', {
             headers: {
               "Content-Type": "application/json"
             },
-            credentials: 'include',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
 
@@ -76,7 +77,7 @@ export const useBatchStore = defineStore('batchStore', {
             headers: {
               "Content-Type": "application/json"
             },
-            credentials: 'include',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
 	if (response.ok) {
@@ -104,7 +105,7 @@ export const useBatchStore = defineStore('batchStore', {
           {
             method: 'DELETE',
             mode: 'cors',
-            credentials: 'include'
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           },
         );
       }
@@ -120,7 +121,7 @@ export const useBatchStore = defineStore('batchStore', {
           'https://'+ window.location.hostname +':8000/batches',
           {
             method: 'DELETE',
-            credentials: 'include'
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
         this.batches = [];

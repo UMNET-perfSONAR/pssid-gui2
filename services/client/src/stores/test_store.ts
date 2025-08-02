@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import config from '../shared/config' 
 
 export const useTestStore = defineStore('test', {
   state: () => ({
@@ -17,7 +18,7 @@ export const useTestStore = defineStore('test', {
       try {
         this.isLoading = true;
         const res = await fetch('https://'+ window.location.hostname +':8000/tests', {
-          credentials: 'include'
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
         const data = await res.json()
         this.tests = data;
@@ -32,9 +33,9 @@ export const useTestStore = defineStore('test', {
     // get name of all available tests
     async getTestNames() {
       this.isLoading = true;
-      const res = await fetch('https://'+ window.location.hostname +':8000/tests/test-files', {
-        credentials: 'include'
-      })
+      const res = await fetch('https://'+ window.location.hostname +':8000/tests/test-files', 
+        {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
+      )
       const data = await res.json();
       this.listOfOptions = data;
       this.isLoading = false;
@@ -42,7 +43,9 @@ export const useTestStore = defineStore('test', {
 
     async getDesiredTest(test_name: string) {
       this.isLoading = true;
-      const res = await fetch('https://'+ window.location.hostname +':8000/tests/read-test/'+test_name)
+      const res = await fetch('https://'+ window.location.hostname +':8000/tests/read-test/'+test_name,
+        {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
+      )
       const data = await res.json();
 
       // NOTE: this is the reason that global validation is not working
@@ -59,7 +62,7 @@ export const useTestStore = defineStore('test', {
           method: 'PUT',
           mode:'cors',
           body: JSON.stringify(test),
-          credentials: 'include',
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
           headers: {
             "Content-Type":"application/json"
           }
@@ -83,7 +86,7 @@ export const useTestStore = defineStore('test', {
         {
           method: 'POST',
           body: JSON.stringify(test),
-          credentials: 'include',
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
           headers: {
             "Content-Type": "application/json"
           }
@@ -106,7 +109,7 @@ export const useTestStore = defineStore('test', {
         'https://'+ window.location.hostname +':8000/tests/'+test.name,
         {
           method: 'DELETE',
-          credentials: 'include'
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
       );
     },
@@ -116,7 +119,7 @@ export const useTestStore = defineStore('test', {
         'https://'+ window.location.hostname +':8000/tests',
         {
           method: 'DELETE',
-          credentials: 'include'
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
       );
       this.tests = [];

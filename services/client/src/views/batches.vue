@@ -9,7 +9,7 @@
     <div>
       <button style="margin-bottom: 2em;" v-if="showAddBatch"></button>
       <button @click="addBatchForm" class="btn btn-primary" v-if="!showAddBatch"
-        style="margin-bottom: 1em;">
+        style="margin-bottom: 1em;" :disabled="isDisabled">
         Add Batch 
       </button>
     </div>
@@ -27,8 +27,10 @@
       <!-- Add batch form -->
       <div class="col-md-6" v-if="showAddBatch===true"> 
         <h3> Add Batch </h3>
+        <fieldset :disabled="isDisabled">
         <dynamicform @formData="addBatch" :form_layout="form_layout">
         </dynamicform>
+      </fieldset>
         <div>
         </div>
       </div>
@@ -36,6 +38,7 @@
       <div class="col-md-6" v-else> 
         <h3> Edit Batch </h3>
         <form @submit.prevent="editBatch">
+          <fieldset :disabled="isDisabled">
           <div class="form-group">
             <label> Batch Name </label>
             <input
@@ -114,7 +117,7 @@
             <button class="btn btn-success" style="margin-right:1em"> Update </button>
             <button class="btn btn-danger" @click="deleteBatch" type="button"> Delete </button>
           </div>
-
+          </fieldset>
         </form> 
       </div>
     </div>
@@ -131,6 +134,9 @@
  import { useJobStore } from '../stores/job_store';
  import { useScheduleStore } from '../stores/schedule_store';
  import { useTestStore } from '../stores/test_store';
+ import { useUserStore } from '/src/stores/user.store';
+ import config from '../shared/config';
+ import { isFormDisabled } from "../utils/formControl.ts"
  
  export default {
    components: { itemList, dynamicform, VueMultiselect },
@@ -165,9 +171,15 @@
        JobStore: useJobStore(),
        TestStore: useTestStore(),
        scheduleStore: useScheduleStore(),
+       userStore: useUserStore(),
+       enable_sso: config.ENABLE_SSO
      }
    },
    async mounted() {
+    if (this.enable_sso) {
+      await this.userStore.fetchUser();
+     }
+
      await this.batchStore.getBatches();
     //  console.log(this.batchStore.getBatches())
      await this.SsidStore.getSsidProfiles();
@@ -214,6 +226,13 @@
      ];
      this.mount = true;
    },
+
+   computed: {
+      isDisabled() {
+        return isFormDisabled();
+      }
+    },
+
    methods: {
      // render add batch form 
      addBatchForm() {

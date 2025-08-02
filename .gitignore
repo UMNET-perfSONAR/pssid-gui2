@@ -11,6 +11,11 @@ services/server/.env
 /certs/*
 **/certs/*
 services/client/certs/*
+mongo-backups/*
 *.crt
 *.key
 *.pem
+*.env
+
+test-docker-compose.yml
+services/database/init-mongo.js

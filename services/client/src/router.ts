@@ -1,17 +1,18 @@
 import { createWebHistory, createRouter } from "vue-router";
+import config from "./shared/config"
 
 const routes =  [
   // TODO: Add additional routes 
   {
     path: "/",
-    redirect: "/login"
-  },
-  {
-    path: "/login",
-    name: "Login",
+    name: "RootRedirect",
     component: {
       created() {
-        window.location.href = "https://pssid-web-dev.miserver.it.umich.edu:8000/login?returnTo=https://pssid-web-dev.miserver.it.umich.edu:8080/hosts";
+        if (config.ENABLE_SSO) {
+          window.location.href = "https://pssid-web-dev.miserver.it.umich.edu:8000/login?returnTo=https://pssid-web-dev.miserver.it.umich.edu:8080/hosts";
+        } else {
+          window.location.href = "https://pssid-web-dev.miserver.it.umich.edu:8080/hosts";
+        }
       },
       render() {
         return null;

@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import config from '../shared/config' 
 
 export const useHostStore = defineStore('hostStore', {
   state: () => ({
@@ -16,7 +17,7 @@ export const useHostStore = defineStore('hostStore', {
       try {
         this.isLoading = true;
         const res = await fetch('https://' + window.location.hostname + ':8000/hosts', {
-          credentials: 'include'
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
         const data = await res.json();
         this.hosts = data;
@@ -41,7 +42,7 @@ export const useHostStore = defineStore('hostStore', {
             method: 'POST',
             body: JSON.stringify(host),
             mode: 'cors',
-            credentials: 'include',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
             headers: {
               "Content-Type": "application/json"
             }
@@ -74,7 +75,7 @@ export const useHostStore = defineStore('hostStore', {
           'https://'+ window.location.hostname + ':8000/hosts/' +host?.name,
           {
             method: 'DELETE',
-            credentials: 'include',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         ); 
       }
@@ -95,7 +96,7 @@ export const useHostStore = defineStore('hostStore', {
           {
             method: "PUT",
             mode: "cors",
-            credentials: 'include',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
             body: JSON.stringify(updateHostObj),
             headers: {
               "Content-Type": "application/json"
@@ -154,7 +155,8 @@ export const useHostStore = defineStore('hostStore', {
             mode: 'cors',
             headers: {
               "Content-Type": "application/json"
-            }
+            },
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
         alert("Host submitted successfully!");

@@ -10,7 +10,8 @@
       <button v-if="showAddSchedule"
                     style="margin-bottom: 2em;"></button>
       <button @click="addScheduleForm" class="btn btn-primary" v-if="!showAddSchedule"
-                                              style="margin-bottom: 1em;"> Add Schedule </button>
+                                              style="margin-bottom: 1em;"
+                                              :disabled="isDisabled"> Add Schedule </button>
     </div>
     <h3> Schedule List </h3>
     <div class="list row"> 
@@ -23,6 +24,7 @@
       <div class="col-lg-6" v-if="showAddSchedule==true">
         <h3> Add Schedule </h3>
         <form @submit.prevent="submitSchedule"> 
+          <fieldset :disabled="isDisabled">
           <div class="submit-form">
             <div class="form-group">
               <label for="name"> Schedule name</label>
@@ -38,12 +40,14 @@
           </div>
           <cronstuff :init="cronExpression" @update-cron="cronExpression=$event"></cronstuff>
           <button class="btn btn-success"> Submit </button>
+         </fieldset>
         </form>
       </div>
       <!-- Edit Schedule Form -->
       <div class="col-lg-6 col-md-6" v-if="showAddSchedule==false">
         <h3> Edit Schedule </h3>
         <form @submit.prevent="editSchedule"> 
+          <fieldset :disabled="isDisabled">
           <div class="submit-form">
             <div class="form-group">
               <label for="name"> Schedule name</label>
@@ -62,6 +66,7 @@
           </div>
           <button class="btn btn-success" style="margin-right: 1em;"> Update </button>
           <button class="btn btn-danger" @click.prevent="deleteSchedule"> Delete </button>
+          </fieldset>
         </form>
 
       </div>
@@ -73,13 +78,18 @@
 <script>
  import VueMultiselect from 'vue-multiselect'
  import { useScheduleStore } from '/src/stores/schedule_store';
+ import { useUserStore } from '/src/stores/user.store';
  import cronstuff from '../components/cron.vue'
  import itemList from '../components/list_items.vue';
+ import config from "../shared/config"
+ import { isFormDisabled } from "../utils/formControl.ts"
+
  export default {
    components: { VueMultiselect, cronstuff, itemList },
    data() {
      return {
        scheduleStore: useScheduleStore(),
+       userStore: useUserStore(),
        currentIndex: {},
        currentItem: {},
        old_schedule_name: '',
@@ -89,14 +99,24 @@
        // for input binding
        cronExpression: "* * * * *",
        schedule_name: '',
+       enable_sso: config.ENABLE_SSO,
      }
    },
 
    // load schedules 
    async mounted() {
      await this.scheduleStore.getSchedules();
+     if (this.enable_sso) {
+      await this.userStore.fetchUser();
+     }
      this.mount = true;
    },
+
+   computed: {
+      isDisabled() {
+        return isFormDisabled();
+      }
+    },
 
    methods: {
      // render add schedule form 
@@ -108,10 +128,29 @@
 
      // render edit schedule form for selected schedule
      updateActiveSchedule(indexArray) {
-       this.currentItem=indexArray[0];
-       this.currentIndex=indexArray[1];
-       this.old_schedule_name = this.currentItem.name;
-       this.showAddSchedule = false;
+       const schedule=indexArray[0];
+       const index=indexArray[1];
+
+        // Check if user clicked the already-selected schedule
+        if (
+          this.currentItem &&
+          this.currentItem.name === schedule.name &&
+          this.currentIndex === index
+        ) {
+          // Deselect
+          this.currentItem = {};
+          this.currentIndex = {};
+          this.old_schedule_name = null;
+          this.viewType = null;
+          this.currOptionalData = [];
+          this.showAddSchedule = true; // Show the Add Schedule form again
+          return;
+        }
+        // if selecting a new schedule
+        this.currentItem = schedule;
+        this.currentIndex = index;
+        this.old_schedule_name = this.currentItem.name;
+        this.showAddSchedule = false;
      },
 
      // update cron expression - do this inline?

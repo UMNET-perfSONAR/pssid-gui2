@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import config from '../shared/config' 
 
 export const useJobStore = defineStore('jobStore', {
   state: () => ({
@@ -14,7 +15,11 @@ export const useJobStore = defineStore('jobStore', {
     async getJobs() {
       try {
         this.isLoading = true;
-        const res = await fetch('http://'+ window.location.hostname +':8000/jobs')
+        const res = await fetch('https://'+ window.location.hostname +':8000/jobs',
+          {
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          }
+        )
         const data = await res.json()
         this.jobs = data;
         this.isLoading = false;
@@ -36,13 +41,14 @@ export const useJobStore = defineStore('jobStore', {
         this.isLoading = true;
         console.log(job);
         const response = await fetch(
-          'http://'+ window.location.hostname +':8000/jobs/create-job',
+          'https://'+ window.location.hostname +':8000/jobs/create-job',
           {
             method: 'POST',
             body: JSON.stringify(job),
             headers: {
               "Content-Type": "application/json"
-            }
+            },
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
 
@@ -69,9 +75,10 @@ export const useJobStore = defineStore('jobStore', {
     async deleteJob(job:any) {
       try {
         await fetch(
-          'http://'+ window.location.hostname +':8000/jobs/'+job.name,
+          'https://'+ window.location.hostname +':8000/jobs/'+job.name,
           {
             method: 'DELETE',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
       }
@@ -87,9 +94,10 @@ export const useJobStore = defineStore('jobStore', {
     async deleteAll() {
       try {
         await fetch(
-          'http://'+ window.location.hostname +':8000/jobs',
+          'https://'+ window.location.hostname +':8000/jobs',
           {
             method: 'DELETE',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
         this.jobs = [];
@@ -107,15 +115,15 @@ export const useJobStore = defineStore('jobStore', {
     async updateJob(updatedJobObj) {
       try {
         const response = await fetch(
-          'http://'+ window.location.hostname +':8000/jobs/update-job',
+          'https://'+ window.location.hostname +':8000/jobs/update-job',
           {
             method: "PUT",
             mode: "cors",
             body: JSON.stringify(updatedJobObj),
             headers: {
               "Content-Type": "application/json"
-            }
-	    
+            },
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
 	if (response.ok) {

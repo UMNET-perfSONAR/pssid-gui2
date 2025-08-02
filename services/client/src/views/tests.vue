@@ -8,8 +8,13 @@
     <!-- Add Test button -->
     <div>
       <button style="margin-bottom: 2em;" v-if="showAddTest"></button>
-      <button @click="addTestForm" class="btn btn-primary" v-if="!showAddTest"
-                                          style="margin-bottom: 1em;"> Add Test </button>
+      <button
+        @click="addTestForm"
+        class="btn btn-primary"
+        v-if="!showAddTest"
+        style="margin-bottom: 1em;"
+        :disabled="isDisabled"
+        :title="!enable_sso ? 'Please sign in to add a test' : ''"> Add Test </button>
     </div>
     <h3> Test List </h3>
     <div class="list row"> 
@@ -20,6 +25,7 @@
 
       <div class="col-md-6" v-if="showAddTest==true">
         <h3> Add Test </h3>
+        <fieldset :disabled="isDisabled" :title="!enable_sso ? 'Please sign in to edit this form' : ''">
         <form>
           <!-- Non-dynamic components -->
           <div style="margin-bottom: 1em;">
@@ -56,10 +62,12 @@
             </dynamicform>
           </div>
         </form>
+        </fieldset>
       </div>
 
       <div class = 'col-md-6' v-if="showAddTest==false">
         <h3> Edit Test </h3>
+        <fieldset :disabled="isDisabled" :title="!enable_sso ? 'Please sign in to edit this form' : ''">
         <!-- Non-dynamic components -->
         <div style="margin-bottom: 1em;">
           <label> Test Name </label>
@@ -100,6 +108,7 @@
           >
           </dynamicform>
         </div>
+      </fieldset>
       </div>
     </div>
   </div>
@@ -107,10 +116,13 @@
 
 <script>
  import { useTestStore } from '/src/stores/test_store';
+ import { useUserStore } from '/src/stores/user.store';
  import dynamicform from '../components/dynamicform.vue';
  import  VueMultiselect  from 'vue-multiselect';
  import editFormComp from '../components/edit_dynamic_form.vue';
  import itemList from '../components/list_items.vue'
+ import config from "../shared/config"
+ import { isFormDisabled } from "../utils/formControl.ts"
  import { ref } from 'vue'
 
  export default {
@@ -149,14 +161,25 @@
 
        // Method(s) to access the store
        testStore: useTestStore(),
+       userStore: useUserStore(),
+       enable_sso: config.ENABLE_SSO,
      }
    },
 
    async mounted() {
      await this.testStore.getTests();
-     await this.testStore.getTestNames();     
+     await this.testStore.getTestNames();   
+     if (this.enable_sso) {
+      await this.userStore.fetchUser();
+     }  
      this.mount = true;
    },
+
+   computed: {
+      isDisabled() {
+        return isFormDisabled();
+      }
+    },
 
    methods: {
      addTestForm() {
@@ -177,40 +200,56 @@
      },
 
      async updateActiveTest(itemArray) {
-       // 1. Determine which test in Test List is selected.
-       const test = itemArray[0];
-       const index = itemArray[1];
+        const test = itemArray[0];
+        const index = itemArray[1];
 
-       const data = JSON.parse(JSON.stringify(test.spec));
-       this.viewType = test.type;
-       await this.testStore.getDesiredTest(test.type);
+        // Check if user clicked the already-selected test
+        if (
+          this.currentItem &&
+          this.currentItem.name === test.name &&
+          this.currentIndex === index
+        ) {
+          // Deselect
+          this.currentItem = {};
+          this.currentIndex = {};
+          this.old_test_name = null;
+          this.viewType = null;
+          this.currOptionalData = [];
+          this.test = null;
+          this.showAddTest = true; // Show the Add Test form again
+          return;
+        }
 
-       // 2. Display the Edit Test form correctly.
-       const myJson = '{}';
-       let json_object = JSON.parse(myJson);
-       this.currOptionalData = []
+        // Proceed as usual with selecting a test
+        const data = JSON.parse(JSON.stringify(test.spec));
+        this.viewType = test.type;
+        await this.testStore.getDesiredTest(test.type);
 
-       // First slice the required fields from the data array.
-       const spec = data.slice(0, this.testStore.test_options.length);
+        const myJson = '{}';
+        let json_object = JSON.parse(myJson);
+        this.currOptionalData = [];
 
-       // Then add optional data, if any.
-       let ind = this.testStore.test_options.length;
-       for (; ind < Object.keys(data).length; ind++) {
-         const itemKey = data[ind].key;
-         const itemValue = data[ind].value;
-         this.currOptionalData.push({'key': itemKey, 'value': itemValue});
-       }
+        // First slice the required fields from the data array.
+        const spec = data.slice(0, this.testStore.test_options.length);
 
-       // 3. Update control variables.
-       this.currentIndex=index;
-       this.currentItem= {
-         name: test.name,
-         spec: spec,
-         type: test.type
-       };
-       this.old_test_name = test.name;
-       this.test = test.type;
-       this.showAddTest = false;
+        // Then add optional data, if any.
+        let ind = this.testStore.test_options.length;
+        for (; ind < Object.keys(data).length; ind++) {
+          const itemKey = data[ind].key;
+          const itemValue = data[ind].value;
+          this.currOptionalData.push({ key: itemKey, value: itemValue });
+        }
+
+        // Update control variables.
+        this.currentIndex = index;
+        this.currentItem = {
+          name: test.name,
+          spec: spec,
+          type: test.type
+        };
+        this.old_test_name = test.name;
+        this.test = test.type;
+        this.showAddTest = false;
      },
 
      async renderForm(form_type) {
