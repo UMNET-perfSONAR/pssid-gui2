@@ -10,10 +10,8 @@ services:
       - ./shared:/usr/src/app/client/src/shared:ro
       # - ./certs/pssid-web-dev.miserver.it.umich.edu.pem:/usr/src/app/certs/pssid-web-dev.miserver.it.umich.edu.pem
       # - ./certs/pssid-web-dev.miserver.it.umich.edu-key.pem:/usr/src/app/certs/pssid-web-dev.miserver.it.umich.edu-key.pem
-    expose:
-      - "8080"
-    networks:
-      - internal
+    ports:
+      - 8080:8080
 
   server:
     image: pssid-gui2_server:latest
@@ -29,44 +27,19 @@ services:
       - ./shared:/usr/src/app/server/src/shared:ro
       # - ./certs/pssid-web-dev.miserver.it.umich.edu.pem:/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem
       # - ./certs/pssid-web-dev.miserver.it.umich.edu-key.pem:/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem
-    expose:
-      - "8000"
+    ports:
+      - 8000:8000
     depends_on:
       - mongo
-    networks:
-      - internal
   mongo:
     image: pssid-gui2_mongo:latest
     build: ./services/database
-    expose:
-      - "27017"
-    networks:
-      - internal
+    ports:
+      - 27017:27017
     volumes:
       - mongo_db:/data/db
-
-  nginx-proxy-manager:
-    image: jc21/nginx-proxy-manager:latest
-    container_name: nginx-proxy-manager
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "81:81"     # Admin panel
-      - "443:443"
-    volumes:
-      - npm_data:/data
-      - npm_letsencrypt:/etc/letsencrypt
-    networks:
-      - internal
-      - web
 
 volumes:
   client_node_modules:
   server_node_modules:
   mongo_db:
-  npm_data:
-  npm_letsencrypt:
-
-networks:
-  internal:
-  web:

@@ -1,4 +1,4 @@
-// process.env.DEBUG = 'openid-client,express-openid-connect:*';
+process.env.DEBUG = 'openid-client,express-openid-connect:*';
 
 import https from 'https';
 import fs from 'fs';
@@ -10,17 +10,16 @@ import { startup } from './setup/setupdb';
 import { create_config_file } from './services/config.service';
 import config from './shared/config';
 import dotenv from 'dotenv';
-import session from 'express-session';
 dotenv.config();
 var bodyParser = require('body-parser');
 const app: Express = express();
 const port = 8000;
 
 // NOTE: make sure to create certs on your local machine and create a certs folder (backend and frontend)
-const httpsOptions = {
-  key: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem'),
-  cert: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem'),
-};
+// const httpsOptions = {
+//   key: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem'),
+//   cert: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem'),
+// };
 
 const ENABLE_SSO = config.ENABLE_SSO;
 
@@ -28,19 +27,6 @@ const ENABLE_SSO = config.ENABLE_SSO;
 function useAuth () {
   return ENABLE_SSO ? requiresAuth() : (_req: Request, _res: Response, next: Function) => next();
 }
-
-// async function addPermissions(req: Request, session: any) {
-//   const userInfo = await req.oidc.fetchUserInfo();
-//   const groups: string[] = userInfo.edumember_is_member_of as string[] || [];
-
-//   const canRead = groups.some(g => g.includes('pssid-gui'));
-//   const canWrite = groups.some(g => g.includes('pssid-gui'));
-
-//   session.user.can_read = canRead;
-//   session.user.can_write = canWrite;
-
-//   return session;
-// }
 
 app.set('trust proxy', true);
 
@@ -50,7 +36,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // TODO - 
 const cors = require('cors');
 app.use(cors({
-  origin: 'https://pssid-web-dev.miserver.it.umich.edu:8080',
+  origin: 'https://pssid-web-dev.miserver.it.umich.edu',
   credentials: ENABLE_SSO
 }))
 
@@ -77,14 +63,22 @@ app.use(
         }),
     },
     session: {
+      rolling: true,
       cookie: {
         sameSite: 'None',
-        secure: true
+        secure: true,
+        httpOnly: true,
+        domain: 'pssid-web-dev.miserver.it.umich.edu'
       }
     },
   })
 );
 }
+
+app.use((req, res, next) => {
+  console.log("Request URL:", req.protocol, req.hostname, req.originalUrl);
+  next();
+});
 
 // call just once to initialize some data in db - will eliminate later. serves as a "reset" for now
 // startup();
@@ -112,24 +106,33 @@ app.use("/ssid-profiles", ssidprofileroute);
 app.use("/tests", testroute);
 app.use('/api/userinfo', userinforoute);
 
+app.get('/test-cookie', (req, res) => {
+  res.cookie('test', '123', { sameSite: 'None', secure: false });
+  res.send('Cookie set');
+});
+
+
 // force login on '/', to enable SSO by default, either set ENABLE_SSO to true or use the requireAuth() function in place of useAuth()
 // need to make a request to IdP, so async await is needed
 app.get('/', useAuth(), async (req: Request, res: Response) => {
   // fetches user info, specifically fetches the edumember_ismemberof
-  // const userInfo = await req.oidc.fetchUserInfo();
-  // const groups: string[] = userInfo.edumember_is_member_of as string[];
-  // console.log(groups);
-  // console.log(req.oidc.user);
+  const userInfo = await req.oidc.fetchUserInfo();
+  const groups: string[] = userInfo.edumember_is_member_of as string[];
+  console.log(groups);
+  console.log(req.oidc.user);
   
-  res.redirect('https://pssid-web-dev.miserver.it.umich.edu:8080/hosts');
+  res.redirect('https://pssid-web-dev.miserver.it.umich.edu/hosts');
 });
 
 // first connect to MongoDB(), then communicate with the web app
 connectToMongoDB()
   .then(() => {
-    https.createServer(httpsOptions, app).listen(port, () => {
-      console.log('HTTPS server running at https://pssid-web-dev.miserver.it.umich.edu:8000');
+    app.listen(port, () => {
+      console.log(`HTTP server running at http://localhost:${port}`);
     });
+    // https.createServer(httpsOptions, app).listen(port, () => {
+    //   console.log('HTTPS server running at https://pssid-web-dev.miserver.it.umich.edu:8000');
+    // });
   })
   .catch((error: Error) => {
     console.error("Database connection failed", error)
