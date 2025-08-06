@@ -1,11 +1,72 @@
 # pssid-gui2
 
 Version 2.0 of the pSSID-GUI Web Application
+* This branch has reverse proxy set up but SSO disabled.
 
 ## Installation
 ### Ansible
 Follow the steps in this
 [repository](https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy).
+
+### Setting up Nginx Proxy Manager (temporarily)
+
+1. Navigate to `http://localhost:57511/` and sign in with the following credentials:
+   - **Email:** `admin@example.com`
+   - **Password:** `changeme`
+
+2. You will then be prompted to change your email and password.
+
+3. Create a new **Proxy Host** with the following settings:
+   - **Domain Name:** `pssid-web-dev.miserver.it.umich.edu`
+   - **Scheme:** `http`
+   - **Forward Hostname / IP:** `client`
+   - **Forward Port:** `8080`
+   - Enable the following options:
+     - Block Common Exploits
+     - Websockets Support
+
+4. (Optional) Add a **Custom Location**:
+   - **Location:** `/login`
+   - **Scheme:** `http`
+   - **Forward Hostname / IP:** `server`
+   - **Forward Port:** `8000`
+
+5. In the **SSL** tab:
+   - Generate a new certificate
+   - Enable the following:
+     - Force SSL
+     - HTTP/2 Support
+
+6. In the **Advanced** tab, paste the following into the **Custom Nginx Configuration** field:
+
+   ```nginx
+   location / {
+       proxy_pass http://client:8080;
+
+       proxy_set_header Host $host;
+       proxy_set_header X-Forwarded-Host $host;
+       proxy_set_header X-Forwarded-Port $server_port;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Real-IP $remote_addr;
+
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $http_connection;
+   }
+
+   location /api/ {
+       proxy_pass http://server:8000/;
+       proxy_set_header Host $host;
+       proxy_set_header X-Forwarded-Scheme $scheme;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header X-Forwarded-For $remote_addr;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $http_connection;
+   }
+
 ### Source Code
 Clone this repository and run
 ```
