@@ -6,6 +6,20 @@ Version 2.0 of the pSSID-GUI Web Application
 ### Ansible
 Follow the steps in this
 [repository](https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy).
+
+### Setting up certificates (temporarily)
+Follow the steps in this [repository](https://github.com/FiloSottile/mkcert) to get mkcert installed on your local machine (not the VM!).
+
+In your local machine, run
+```
+mkcert pssid-web-dev.miserver.it.umich.edu
+```
+** The certs will be saved in the same directory that you ran this command in.
+
+You should have pssid-web-dev.miserver.it.umich.edu.pem and pssid-web-dev.miserver.it.umich.edu-key.pem generated.
+
+Finally, copy over the certs to the VM, placing them in /pssid-gui2/certs/ folder. If the certs/ folder does not exist, please create one.
+
 ### Source Code
 Clone this repository and run
 ```
