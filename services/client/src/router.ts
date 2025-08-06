@@ -9,9 +9,9 @@ const routes =  [
     component: {
       created() {
         if (config.ENABLE_SSO) {
-          window.location.href = "https://pssid-web-dev.miserver.it.umich.edu:8000/login?returnTo=https://pssid-web-dev.miserver.it.umich.edu:8080/hosts";
+          window.location.href = `${config.BASE_URL}:8000/login?returnTo=${config.BASE_URL}:8080/hosts`;
         } else {
-          window.location.href = "https://pssid-web-dev.miserver.it.umich.edu:8080/hosts";
+          window.location.href = `${config.BASE_URL}:8080/hosts`;
         }
       },
       render() {

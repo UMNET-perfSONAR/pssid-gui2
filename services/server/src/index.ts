@@ -50,7 +50,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // TODO - 
 const cors = require('cors');
 app.use(cors({
-  origin: 'https://pssid-web-dev.miserver.it.umich.edu:8080',
+  origin: `${config.BASE_URL}:8080`,
   credentials: ENABLE_SSO
 }))
 
@@ -121,14 +121,14 @@ app.get('/', useAuth(), async (req: Request, res: Response) => {
   // console.log(groups);
   // console.log(req.oidc.user);
   
-  res.redirect('https://pssid-web-dev.miserver.it.umich.edu:8080/hosts');
+  res.redirect(`${config.BASE_URL}:8080/hosts`);
 });
 
 // first connect to MongoDB(), then communicate with the web app
 connectToMongoDB()
   .then(() => {
     https.createServer(httpsOptions, app).listen(port, () => {
-      console.log('HTTPS server running at https://pssid-web-dev.miserver.it.umich.edu:8000');
+      console.log(`HTTPS server running at ${config.BASE_URL}:8000`);
     });
   })
   .catch((error: Error) => {
