@@ -20,8 +20,19 @@ mkcert pssid-web-dev.miserver.it.umich.edu
 ** The certs will be saved in the same directory that you ran this command in.
 
 You should have pssid-web-dev.miserver.it.umich.edu.pem and pssid-web-dev.miserver.it.umich.edu-key.pem generated.
+** For now these names are hardcoded, but they should eventually be updated to reflect the virtual machine's name.
 
 Finally, copy over the certs to the VM, placing them in /pssid-gui2/certs/ folder. If the certs/ folder does not exist, please create one.
+
+#### Configuring the OIDC client
+If the application is being ran on a virtual machine is NOT named __pssid-web-dev.miserver.it.umich.edu__, follow these steps:
+
+1. Run ```./scripts/generate-oidc-env.sh``` and it will be located in /services/server/.env
+2. Navigate to the OIDC [client page](https://admin.webservices.umich.edu/oidcprov) and set up a new OIDC client.
+3. Add this as the Redirect URI: https://<VM_name>:8000/callback and save.
+4. Copy the OIDC Client ID and OIDC Secret into the .env file that was created before.
+
+** There may be an OIDC Client already avaliable with the correct redirect URI, please contact for more information.
 
 Now, run
 ```
