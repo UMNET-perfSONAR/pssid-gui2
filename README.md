@@ -8,6 +8,15 @@ Version 2.0 of the pSSID-GUI Web Application
 Follow the steps in this
 [repository](https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy).
 
+### Source Code
+Clone this repository and run
+```
+docker-compose -f docker-compose.yml up -d
+```
+in the same directory. You may need `sudo` access to run docker compose.
+
+---
+
 ### Setting up Nginx Proxy Manager (temporarily)
 
 1. Navigate to `http://localhost:57511/` and sign in with the following credentials:
@@ -67,14 +76,6 @@ Follow the steps in this
        proxy_set_header Connection $http_connection;
    }
 
-### Source Code
-Clone this repository and run
-```
-docker-compose -f docker-compose.yml up -d
-```
-in the same directory. You may need `sudo` access to run docker compose.
-
----
 ## Important README Links in this Repository
 
 [Steps to add fields to config file](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/README.md)
