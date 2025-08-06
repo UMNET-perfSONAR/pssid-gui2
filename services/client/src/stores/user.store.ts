@@ -39,7 +39,7 @@ export const useUserStore = defineStore('user', {
     async fetchUser(this: typeof useUserStore) {
       this.isLoading = true;
         try {
-          const res = await fetch('https://'+ window.location.hostname + ':8000/api/userinfo', {
+          const res = await fetch('/api/userinfo', {
             credentials: 'include',
           });
           if (!res.ok) throw new Error('User info fetch failed');

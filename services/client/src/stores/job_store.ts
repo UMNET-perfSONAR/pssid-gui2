@@ -15,7 +15,7 @@ export const useJobStore = defineStore('jobStore', {
     async getJobs() {
       try {
         this.isLoading = true;
-        const res = await fetch('https://'+ window.location.hostname +':8000/jobs',
+        const res = await fetch('/api/jobs',
           {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
@@ -41,7 +41,7 @@ export const useJobStore = defineStore('jobStore', {
         this.isLoading = true;
         console.log(job);
         const response = await fetch(
-          'https://'+ window.location.hostname +':8000/jobs/create-job',
+          '/api/jobs/create-job',
           {
             method: 'POST',
             body: JSON.stringify(job),
@@ -75,7 +75,7 @@ export const useJobStore = defineStore('jobStore', {
     async deleteJob(job:any) {
       try {
         await fetch(
-          'https://'+ window.location.hostname +':8000/jobs/'+job.name,
+          '/api/jobs/'+job.name,
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
@@ -94,7 +94,7 @@ export const useJobStore = defineStore('jobStore', {
     async deleteAll() {
       try {
         await fetch(
-          'https://'+ window.location.hostname +':8000/jobs',
+          '/api/jobs',
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
@@ -115,7 +115,7 @@ export const useJobStore = defineStore('jobStore', {
     async updateJob(updatedJobObj) {
       try {
         const response = await fetch(
-          'https://'+ window.location.hostname +':8000/jobs/update-job',
+          '/api/jobs/update-job',
           {
             method: "PUT",
             mode: "cors",

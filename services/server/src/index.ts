@@ -9,6 +9,7 @@ import { requiresAuth } from 'express-openid-connect';
 import { startup } from './setup/setupdb';
 import { create_config_file } from './services/config.service';
 import config from './shared/config';
+import { authorize } from './shared/accessControl';
 import dotenv from 'dotenv';
 dotenv.config();
 var bodyParser = require('body-parser');
@@ -68,17 +69,11 @@ app.use(
         sameSite: 'None',
         secure: true,
         httpOnly: true,
-        domain: 'pssid-web-dev.miserver.it.umich.edu'
       }
     },
   })
 );
 }
-
-app.use((req, res, next) => {
-  console.log("Request URL:", req.protocol, req.hostname, req.originalUrl);
-  next();
-});
 
 // call just once to initialize some data in db - will eliminate later. serves as a "reset" for now
 // startup();
@@ -106,20 +101,23 @@ app.use("/ssid-profiles", ssidprofileroute);
 app.use("/tests", testroute);
 app.use('/api/userinfo', userinforoute);
 
-app.get('/test-cookie', (req, res) => {
-  res.cookie('test', '123', { sameSite: 'None', secure: false });
-  res.send('Cookie set');
-});
+// app.get('/test-cookie', (req, res) => {
+//   res.cookie('test', '123', { sameSite: 'None', secure: false });
+//   res.send('Cookie set');
+// });
 
 
 // force login on '/', to enable SSO by default, either set ENABLE_SSO to true or use the requireAuth() function in place of useAuth()
 // need to make a request to IdP, so async await is needed
 app.get('/', useAuth(), async (req: Request, res: Response) => {
   // fetches user info, specifically fetches the edumember_ismemberof
-  const userInfo = await req.oidc.fetchUserInfo();
-  const groups: string[] = userInfo.edumember_is_member_of as string[];
-  console.log(groups);
-  console.log(req.oidc.user);
+
+  if (ENABLE_SSO) {
+    const userInfo = await req.oidc.fetchUserInfo();
+    const groups: string[] = userInfo.edumember_is_member_of as string[];
+    console.log(groups);
+    console.log(req.oidc.user);
+  }
   
   res.redirect('https://pssid-web-dev.miserver.it.umich.edu/hosts');
 });
