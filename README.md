@@ -40,11 +40,11 @@ Follow the steps in this [repository](https://github.com/FiloSottile/mkcert) to 
 
 In your local machine, run
 ```
-mkcert pssid-web-dev.miserver.it.umich.edu
+mkcert <VM_name>
 ```
 ** The certs will be saved in the same directory that you ran this command in.
 
-You should have pssid-web-dev.miserver.it.umich.edu.pem and pssid-web-dev.miserver.it.umich.edu-key.pem generated.
+You should have <VM_name>.pem and <VM_name>-key.pem generated.
 ** For now these names are hardcoded, but they should eventually be updated to reflect the virtual machine's name.
 
 Finally, copy over the certs to the VM, placing them in /pssid-gui2/certs/ folder. If the certs/ folder does not exist, please create one.
