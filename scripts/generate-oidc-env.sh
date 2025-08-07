@@ -14,8 +14,8 @@ if [ -f "$ENV_OUTPUT_FILE" ]; then
   fi
 fi
 
-# Extract BASE_URL from config object (assumes format: BASE_URL: 'https://...'
-BASE_URL=$(grep "BASE_URL:" "$CONFIG_FILE" | sed -E "s/.*BASE_URL:\s*'([^']+)'.*/\1/")
+# Extract BASE_URL from config.ts (supports single or double quotes)
+BASE_URL=$(grep "BASE_URL:" "$CONFIG_FILE" | sed -E 's/.*BASE_URL:\s*["'"'"']([^"'"'"']+)["'"'"'].*/\1/')
 
 # Fallback if not found
 if [ -z "$BASE_URL" ]; then
@@ -26,14 +26,14 @@ fi
 # Generate a 32-byte base64 secret
 SECRET=$(openssl rand -base64 32)
 
-# Write the .env file
+# Write the .env file (use lowercase keys to match what express-openid-connect expects)
 cat <<EOF > "$ENV_OUTPUT_FILE"
 issuer_base_url=https://shibboleth.umich.edu
-CLIENT_ID=
-CLIENT_SECRET=
-BASE_URL=$BASE_URL
-SECRET=$SECRET
-DEBUG=openid-client,express-openid-connect:*,express-session
+client_id=
+client_secret=
+base_url=$BASE_URL
+secret=$SECRET
+debug=openid-client,express-openid-connect:*,express-session
 EOF
 
 echo "✅ .env file generated at $ENV_OUTPUT_FILE"
