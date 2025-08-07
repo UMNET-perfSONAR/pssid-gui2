@@ -29,11 +29,11 @@ SECRET=$(openssl rand -base64 32)
 # Write the .env file
 cat <<EOF > "$ENV_OUTPUT_FILE"
 issuer_base_url=https://shibboleth.umich.edu
-client_id=
-client_secret=
-base_url=$BASE_URL
-secret=$SECRET
-debug=openid-client,express-openid-connect:*,express-session
+CLIENT_ID=
+CLIENT_SECRET=
+BASE_URL=$BASE_URL
+SECRET=$SECRET
+DEBUG=openid-client,express-openid-connect:*,express-session
 EOF
 
 echo "✅ .env file generated at $ENV_OUTPUT_FILE"

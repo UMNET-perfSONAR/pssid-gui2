@@ -9,7 +9,7 @@ const routes =  [
     component: {
       created() {
         if (config.ENABLE_SSO) {
-          window.location.href = `${config.BASE_URL}:8000/login?returnTo=${config.BASE_URL}:8080/hosts`;
+          window.location.href = `${config.BASE_URL}:8000/?returnTo=${config.BASE_URL}:8080/hosts`;
         } else {
           window.location.href = `${config.BASE_URL}:8080/hosts`;
         }

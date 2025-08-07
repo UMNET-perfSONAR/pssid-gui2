@@ -16,7 +16,7 @@ var bodyParser = require('body-parser');
 const app: Express = express();
 const port = 8000;
 
-// NOTE: make sure to create certs on your local machine and create a certs folder (backend and frontend)
+// NOTE: make sure to create certs on your local machine and create a certs folder 
 const httpsOptions = {
   key: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem'),
   cert: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem'),
