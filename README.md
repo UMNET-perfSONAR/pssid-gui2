@@ -30,8 +30,6 @@ sudo apt-get update
 4. ```sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin```
 5. Verify Docker was installed successfully by running: ```sudo docker run hello-world```
 
-Now do ```cd pssid-gui2``` and continue with the rest of the instructions.
-
 ### Source Code
 Clone this repository
 
