@@ -28,7 +28,9 @@ echo \
 sudo apt-get update
 ```
 4. ```sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin```
-5. Verify Docker was installed successfully by running: ```sudo docker run hello-world```
+5. ```sudo systemctl enable --now docker```
+6. sudo usermod -aG docker ${USER} && newgrp docker
+7. Verify Docker was installed successfully by running: ```sudo docker run hello-world```
 
 ### Source Code
 Clone this repository
