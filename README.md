@@ -46,6 +46,9 @@ You should have pssid-web-dev.miserver.it.umich.edu.pem and pssid-web-dev.miserv
 ** For now these names are hardcoded, but they should eventually be updated to reflect the virtual machine's name.
 
 Finally, copy over the certs to the VM, placing them in /pssid-gui2/certs/ folder. If the certs/ folder does not exist, please create one.
+```
+scp pssid-web-dev.miserver.it.umich.edu*.pem <vm_name_here>:~/pssid-gui2/certs
+```
 
 #### Configuring the OIDC client
 If the application is being ran on a virtual machine is NOT named __pssid-web-dev.miserver.it.umich.edu__, follow these steps:
