@@ -7,10 +7,7 @@ Version 2.0 of the pSSID-GUI Web Application
 Follow the steps in this
 [repository](https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy).
 
-### Source Code
-Clone this repository
-
-#### Installing Docker
+### Installing Docker
 Following this [guide](https://docs.docker.com/engine/install/ubuntu/), run the following:
 1. cd ~
 2. ```for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done```
@@ -34,6 +31,9 @@ sudo apt-get update
 5. Verify Docker was installed successfully by running: ```sudo docker run hello-world```
 
 Now do ```cd pssid-gui2``` and continue with the rest of the instructions.
+
+### Source Code
+Clone this repository
 
 #### Setting up certificates (temporarily)
 Follow the steps in this [repository](https://github.com/FiloSottile/mkcert) to get mkcert installed on your local machine (not the VM!).
