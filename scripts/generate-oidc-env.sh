@@ -31,7 +31,7 @@ cat <<EOF > "$ENV_OUTPUT_FILE"
 ISSUER_BASE_URL=https://shibboleth.umich.edu
 CLIENT_ID=
 CLIENT_SECRET=
-BASE_URL=$BASE_URL
+BASE_URL=$BASE_URL:8000
 SECRET=$SECRET
 DEBUG=openid-client,express-openid-connect:*,express-session
 EOF

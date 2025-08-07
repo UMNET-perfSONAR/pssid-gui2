@@ -1,9 +1,6 @@
 #!/bin/sh
 
-if [ -z "$DOMAIN" ]; then
-  echo "❌ DOMAIN environment variable not set. Exiting."
-  exit 1
-fi
+DOMAIN="pssid-web-dev.miserver.it.umich.edu" 
 
 CERT_PATH="/usr/src/app/certs/${DOMAIN}.pem"
 KEY_PATH="/usr/src/app/certs/${DOMAIN}-key.pem"
