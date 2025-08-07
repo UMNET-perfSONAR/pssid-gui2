@@ -29,9 +29,8 @@ sudo apt-get update
 ```
 4. ```sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin```
 5. ```sudo systemctl enable --now docker```
-6. ```sudo apt install docker-compose```
-7. ```sudo usermod -aG docker ${USER} && newgrp docker```
-8. Verify Docker was installed successfully by running: ```sudo docker run hello-world```
+6. sudo usermod -aG docker ${USER} && newgrp docker
+7. Verify Docker was installed successfully by running: ```sudo docker run hello-world```
 
 ### Source Code
 Clone this repository
@@ -41,16 +40,16 @@ Follow the steps in this [repository](https://github.com/FiloSottile/mkcert) to 
 
 In your local machine, run
 ```
-mkcert pssid-web-dev.miserver.it.umich.edu
+mkcert <VM_name>
 ```
 ** The certs will be saved in the same directory that you ran this command in.
 
-You should have pssid-web-dev.miserver.it.umich.edu.pem and pssid-web-dev.miserver.it.umich.edu-key.pem generated.
+You should have <VM_name>.pem and <VM_name>-key.pem generated.
 ** For now these names are hardcoded, but they should eventually be updated to reflect the virtual machine's name.
 
 Finally, copy over the certs to the VM, placing them in /pssid-gui2/certs/ folder. If the certs/ folder does not exist, please create one.
 ```
-scp pssid-web-dev.miserver.it.umich.edu*.pem <vm_name_here>:~/pssid-gui2/certs
+scp <vm_name_here>*.pem <vm_name_here>:~/pssid-gui2/certs
 ```
 
 #### Configuring the OIDC client
@@ -63,9 +62,6 @@ If the application is being ran on a virtual machine is NOT named __pssid-web-de
 
 ** There may be an OIDC Client already avaliable with the correct redirect URI, please contact for more information.
 
-In the shared/config.ts file, there is a field for BASE_URL. Change that to match the VM's name that you are running this on.
-In docker-compose.yml, make sure to change any files that ends with ".pem" with your VM name (present in client and server).
-In /services/client/certs.sh, be sure to change the DOMAIN name to match your VM name.
 Now, run
 ```
 docker-compose -f docker-compose.yml up -d
