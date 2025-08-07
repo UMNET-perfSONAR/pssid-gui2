@@ -28,7 +28,7 @@ SECRET=$(openssl rand -base64 32)
 
 # Write the .env file (use lowercase keys to match what express-openid-connect expects)
 cat <<EOF > "$ENV_OUTPUT_FILE"
-BASE_URL=https://shibboleth.umich.edu
+ISSUER_BASE_URL=https://shibboleth.umich.edu
 CLIENT_ID=
 CLIENT_SECRET=
 BASE_URL=$BASE_URL
