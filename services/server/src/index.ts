@@ -4,22 +4,38 @@ import https from 'https';
 import fs from 'fs';
 import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from './services/database.service';
-import { auth } from 'express-openid-connect';
+import { auth, SessionStore } from 'express-openid-connect';
 import { requiresAuth } from 'express-openid-connect';
 import { startup } from './setup/setupdb';
 import { create_config_file } from './services/config.service';
 import config from './shared/config';
 import { authorize } from './shared/accessControl';
 import dotenv from 'dotenv';
+
+import session from 'express-session';
+import { createClient } from 'redis';
+import { RedisStore } from 'connect-redis';
+
 dotenv.config();
 var bodyParser = require('body-parser');
 const app: Express = express();
 const port = 8000;
 
+const redisClient = createClient({ url: process.env.REDIS_URL });
+// (async () => {
+//   await redisClient.connect();
+// })();
+
+const store = new RedisStore({
+  client: redisClient,
+});
+
 // NOTE: make sure to create certs on your local machine and create a certs folder (backend and frontend)
 // const httpsOptions = {
-//   key: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem'),
-//   cert: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem'),
+//   // key: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem'),
+//   // cert: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem'),
+//   key: fs.readFileSync('/etc/letsencrypt/live/pssid-web-dev.miserver.it.umich.edu/privkey.pem'),
+//   cert: fs.readFileSync('/etc/letsencrypt/live/pssid-web-dev.miserver.it.umich.edu/fullchain.pem'),
 // };
 
 const ENABLE_SSO = config.ENABLE_SSO;
@@ -29,10 +45,24 @@ function useAuth () {
   return ENABLE_SSO ? requiresAuth() : (_req: Request, _res: Response, next: Function) => next();
 }
 
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET is not set in environment variables!");
+}
+
 app.set('trust proxy', true);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// app.use(
+//   session({
+//     store: new RedisStore({ client: redisClient }),
+//     secret: process.env.SESSION_SECRET,
+//     resave: false,
+//     saveUninitialized: false,
+//     cookie: { secure: true, sameSite: 'lax' }
+//   })
+// );
 
 // TODO - 
 const cors = require('cors');
@@ -42,37 +72,39 @@ app.use(cors({
 }))
 
 if (ENABLE_SSO) {
-app.use(
-  auth({
-    issuerBaseURL: process.env.ISSUER_BASE_URL,
-    baseURL: process.env.BASE_URL,
-    clientID: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    secret: process.env.SECRET,
-    clientAuthMethod:'client_secret_post',
-    idpLogout: true,
-    authRequired: true,
-    auth0Logout: true,
-    authorizationParams: {
-      response_type: 'code',
-        scope: 'openid profile email edumember',
-        claims: JSON.stringify({
-          id_token: {
-            // force identity provider to include this claim in the ID token or reject auth if not present
-            edumember_is_member_of: { essential: true },
-          },
-        }),
-    },
-    session: {
-      rolling: true,
-      cookie: {
-        sameSite: 'None',
-        secure: true,
-        httpOnly: true,
-      }
-    },
-  })
-);
+  app.use(
+    auth({
+      issuerBaseURL: process.env.ISSUER_BASE_URL,
+      baseURL: process.env.BASE_URL,
+      clientID: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      secret: process.env.SECRET,
+      clientAuthMethod:'client_secret_post',
+      idpLogout: true,
+      authRequired: true,
+      auth0Logout: true,
+      authorizationParams: {
+        response_type: 'code',
+          scope: 'openid profile email edumember',
+          claims: JSON.stringify({
+            id_token: {
+              // force identity provider to include this claim in the ID token or reject auth if not present
+              edumember_is_member_of: { essential: true },
+            },
+          }),
+      },
+      session: {
+        store: store as any,
+        rolling: true,
+        cookie: {
+          sameSite: 'Lax',
+          secure: true,
+          httpOnly: true,
+          domain: 'pssid-web-dev.miserver.it.umich.edu'
+        },
+      },
+    })
+  );
 }
 
 // call just once to initialize some data in db - will eliminate later. serves as a "reset" for now
@@ -91,21 +123,15 @@ const userinforoute=require("./routes/userinfo.routes");
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use("/hosts", hostroute);
-app.use("/jobs", jobroute);
-app.use("/schedules", scheduleroute);
-app.use("/host-groups", hostgrouproute);
-app.use("/archivers", archiverroute);
-app.use("/batches", batchroute); 
-app.use("/ssid-profiles", ssidprofileroute);
-app.use("/tests", testroute);
+app.use("/api/hosts", hostroute);
+app.use("/api/jobs", jobroute);
+app.use("/api/schedules", scheduleroute);
+app.use("/api/host-groups", hostgrouproute);
+app.use("/api/archivers", archiverroute);
+app.use("/api/batches", batchroute); 
+app.use("/api/ssid-profiles", ssidprofileroute);
+app.use("/api/tests", testroute);
 app.use('/api/userinfo', userinforoute);
-
-// app.get('/test-cookie', (req, res) => {
-//   res.cookie('test', '123', { sameSite: 'None', secure: false });
-//   res.send('Cookie set');
-// });
-
 
 // force login on '/', to enable SSO by default, either set ENABLE_SSO to true or use the requireAuth() function in place of useAuth()
 // need to make a request to IdP, so async await is needed
@@ -124,6 +150,11 @@ app.get('/', useAuth(), async (req: Request, res: Response) => {
 
 // first connect to MongoDB(), then communicate with the web app
 connectToMongoDB()
+  .then(() => {
+    // Chain the Redis connection *after* Mongo
+    console.log("MongoDB connected. Connecting to Redis...");
+    return redisClient.connect();
+  })
   .then(() => {
     app.listen(port, () => {
       console.log(`HTTP server running at http://localhost:${port}`);

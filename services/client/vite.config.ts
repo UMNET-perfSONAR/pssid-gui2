@@ -19,6 +19,12 @@ export default defineConfig({
     //   cert: fs.readFileSync('/usr/src/app/certs/pssid-web-dev.miserver.it.umich.edu.pem'),
     // },      
     host: true,
-    port: 8080
+    port: 8080,
+    hmr: {
+      protocol: 'wss',
+      host: 'pssid-web-dev.miserver.it.umich.edu',
+      clientPort: 443,
+      path: '/hmr'
+    }
   }
 })
