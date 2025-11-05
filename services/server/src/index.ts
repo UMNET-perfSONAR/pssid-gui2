@@ -17,7 +17,6 @@ var bodyParser = require('body-parser');
 const app: Express = express();
 const port = 8000;
 
-
 const ENABLE_SSO = config.ENABLE_SSO;
 
 // create a redis database to store user sessions (prevents sessions from being deleted after redirect)

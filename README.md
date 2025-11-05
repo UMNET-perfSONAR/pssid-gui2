@@ -8,8 +8,62 @@ Version 2.0 of the pSSID-GUI Web Application
 Follow the steps in this
 [repository](https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy).
 
+### Installing Docker
+Following this [guide](https://docs.docker.com/engine/install/ubuntu/), run the following:
+1. cd ~
+2. ```for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done```
+3. 
+```
+# Add Docker's official GPG key:
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+```
+4. ```sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin```
+5. ```sudo systemctl enable --now docker```
+6. sudo usermod -aG docker ${USER} && newgrp docker
+7. Verify Docker was installed successfully by running: ```sudo docker run hello-world```
+
 ### Source Code
-Clone this repository and run
+Clone this repository
+
+#### Setting up certificates (temporarily)
+Follow the steps in this [repository](https://github.com/FiloSottile/mkcert) to get mkcert installed on your local machine (not the VM!).
+
+In your local machine, run
+```
+mkcert <VM_name>
+```
+** The certs will be saved in the same directory that you ran this command in.
+
+You should have <VM_name>.pem and <VM_name>-key.pem generated.
+** For now these names are hardcoded, but they should eventually be updated to reflect the virtual machine's name.
+
+Finally, copy over the certs to the VM, placing them in /pssid-gui2/certs/ folder. If the certs/ folder does not exist, please create one.
+```
+scp <vm_name_here>*.pem <vm_name_here>:~/pssid-gui2/certs
+```
+
+#### Configuring the OIDC client
+If the application is being ran on a virtual machine is NOT named __pssid-web-dev.miserver.it.umich.edu__, follow these steps:
+
+1. Run ```./scripts/generate-oidc-env.sh``` and it will be located in /services/server/.env
+2. Navigate to the OIDC [client page](https://admin.webservices.umich.edu/oidcprov) and set up a new OIDC client.
+3. Add this as the Redirect URI: https://<VM_name>:8000/callback and save.
+4. Copy the OIDC Client ID and OIDC Secret into the .env file that was created before.
+
+** There may be an OIDC Client already avaliable with the correct redirect URI, please contact for more information.
+
+Now, run
 ```
 docker-compose -f docker-compose.yml up -d
 ```
