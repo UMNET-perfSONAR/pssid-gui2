@@ -18,7 +18,7 @@ export const useBatchStore = defineStore('batchStore', {
       try {
         this.isLoading = true;
         const res = await fetch(
-          'https://'+ window.location.hostname +':8000/batches',
+          '/api/batches',
           {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
@@ -39,7 +39,7 @@ export const useBatchStore = defineStore('batchStore', {
       try {
         this.isLoading = true;
         const response = await fetch(
-          'https://'+ window.location.hostname +':8000/batches/create-batch',
+          '/api/batches/create-batch',
           {
             method: 'POST',
             body: JSON.stringify(batch),
@@ -69,7 +69,7 @@ export const useBatchStore = defineStore('batchStore', {
     async editBatch(updated_batch_obj: JSON) {
       try {
         const response = await fetch(
-          'https://'+ window.location.hostname +':8000/batches/update-batch',
+          '/api/batches/update-batch',
           {
             method: "PUT",
             mode: "cors",
@@ -101,7 +101,7 @@ export const useBatchStore = defineStore('batchStore', {
     async deleteBatch(batch:any) {
       try {
         await fetch(
-          'https://'+ window.location.hostname +':8000/batches/'+batch.name,
+          '/api/batches/'+batch.name,
           {
             method: 'DELETE',
             mode: 'cors',
@@ -118,7 +118,7 @@ export const useBatchStore = defineStore('batchStore', {
     async deleteAll() {
       try {
         await fetch(
-          'https://'+ window.location.hostname +':8000/batches',
+          '/api/batches',
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})

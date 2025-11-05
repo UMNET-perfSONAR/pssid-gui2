@@ -23,7 +23,7 @@ export const useGroupStore = defineStore('groupStore', {
       try {
         this.isLoading = true;
         const res = await fetch(
-          'https://'+ window.location.hostname +':8000/host-groups',
+          '/api/host-groups',
         {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
@@ -44,7 +44,7 @@ export const useGroupStore = defineStore('groupStore', {
         this.isLoading = true;
         
         const response = await fetch(
-          'https://'+ window.location.hostname +':8000/host-groups/create-hostgroup',
+          '/api/host-groups/create-hostgroup',
           {
             method: 'POST',
             body: JSON.stringify(host_group),
@@ -75,7 +75,7 @@ export const useGroupStore = defineStore('groupStore', {
     async editGroup(host_group: any) {
       try {
         const response = await fetch(
-          'https://'+ window.location.hostname +':8000/host-groups/update-hostgroup',
+          '/api/host-groups/update-hostgroup',
           {
             method: 'PUT',
             mode:'cors',
@@ -106,7 +106,7 @@ export const useGroupStore = defineStore('groupStore', {
     async deleteGroup(host_group:any) {
       try {
         await fetch(
-          'https://'+ window.location.hostname +':8000/host-groups/'+host_group.name,
+          '/api/host-groups/'+host_group.name,
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
@@ -122,7 +122,7 @@ export const useGroupStore = defineStore('groupStore', {
     async deleteAll() {
       try {
         await fetch(
-          'https://'+ window.location.hostname +':8000/host-groups',
+          '/api/host-groups',
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
@@ -140,7 +140,7 @@ export const useGroupStore = defineStore('groupStore', {
     async createConfig(currentGroup: any) {
       try {
         await fetch(
-          'https://'+ window.location.hostname + ':8000/host-groups/config',
+          '/api/host-groups/config',
           {
             method: 'POST',
             body: JSON.stringify(currentGroup),

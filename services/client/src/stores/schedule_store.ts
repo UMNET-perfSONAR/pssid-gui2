@@ -12,7 +12,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
     async getSchedules() {
       this.isLoading = true;
       const res = await fetch(
-        'https://'+ window.location.hostname +':8000/schedules',
+        '/api/schedules',
         {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
@@ -25,7 +25,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
     async addSchedule(schedule:JSON) {
       this.isLoading = true;
       const response = await fetch(
-        'https://'+ window.location.hostname +':8000/schedules/create-schedule',
+        '/api/schedules/create-schedule',
         {
           method: 'POST',
           body: JSON.stringify(schedule),
@@ -50,7 +50,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
 
     async deleteSchedule(schedule:any) {
       await fetch(
-        'https://'+ window.location.hostname +':8000/schedules/'+schedule.name,
+        '/api/schedules/'+schedule.name,
         {
           method: 'DELETE',
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
@@ -59,7 +59,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
     },
     async updateSchedule(updateScheduleObj:any) {
       const response = await fetch(
-        'https://'+ window.location.hostname +':8000/schedules/update-schedule',
+        '/api/schedules/update-schedule',
         {
           method: "PUT",
           mode: "cors",

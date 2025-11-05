@@ -1,24 +1,6 @@
 import { createWebHistory, createRouter } from "vue-router";
-import config from "./shared/config"
 
 const routes =  [
-  // TODO: Add additional routes 
-  {
-    path: "/",
-    name: "RootRedirect",
-    component: {
-      created() {
-        if (config.ENABLE_SSO) {
-          window.location.href = `${config.BASE_URL}:8000/?returnTo=${config.BASE_URL}:8080/hosts`;
-        } else {
-          window.location.href = `${config.BASE_URL}:8080/hosts`;
-        }
-      },
-      render() {
-        return null;
-      }
-    }
-  },
   {
     path: "/hosts",
     name: "host_page",

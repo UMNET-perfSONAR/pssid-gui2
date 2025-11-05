@@ -1,89 +1,75 @@
 // process.env.DEBUG = 'openid-client,express-openid-connect:*';
 
-import https from 'https';
-import fs from 'fs';
 import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from './services/database.service';
+import cors from 'cors';
+
 import { auth } from 'express-openid-connect';
 import { requiresAuth } from 'express-openid-connect';
-import { startup } from './setup/setupdb';
-import { create_config_file } from './services/config.service';
-import config from './shared/config';
+import { createClient } from 'redis';
+import { RedisStore } from 'connect-redis';
+
+import config from './shared/config'; // shared/config will appear in docker container
 import dotenv from 'dotenv';
-import session from 'express-session';
+
 dotenv.config();
 var bodyParser = require('body-parser');
 const app: Express = express();
 const port = 8000;
 
-// NOTE: make sure to create certs on your local machine and create a certs folder 
-const httpsOptions = {
-  key: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem'),
-  cert: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem'),
-};
-
 const ENABLE_SSO = config.ENABLE_SSO;
 
-// either use authentication or do nothing (so SSO is disabled)
+// create a redis database to store user sessions (prevents sessions from being deleted after redirect)
+const redisClient = createClient({ url: process.env.REDIS_URL });
+const store = new RedisStore({client: redisClient,});
+
+// either use authentication or proceed with application
 function useAuth () {
   return ENABLE_SSO ? requiresAuth() : (_req: Request, _res: Response, next: Function) => next();
 }
 
-// async function addPermissions(req: Request, session: any) {
-//   const userInfo = await req.oidc.fetchUserInfo();
-//   const groups: string[] = userInfo.edumember_is_member_of as string[] || [];
-
-//   const canRead = groups.some(g => g.includes('pssid-gui'));
-//   const canWrite = groups.some(g => g.includes('pssid-gui'));
-
-//   session.user.can_read = canRead;
-//   session.user.can_write = canWrite;
-
-//   return session;
-// }
-
 app.set('trust proxy', true);
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// TODO - 
-const cors = require('cors');
 app.use(cors({
-  origin: `${config.BASE_URL}:8080`,
+  origin: 'https://pssid-web-dev.miserver.it.umich.edu',
   credentials: ENABLE_SSO
 }))
 
 if (ENABLE_SSO) {
-app.use(
-  auth({
-    issuerBaseURL: process.env.ISSUER_BASE_URL,
-    baseURL: process.env.BASE_URL,
-    clientID: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    secret: process.env.SECRET,
-    clientAuthMethod:'client_secret_post',
-    idpLogout: true,
-    authRequired: true,
-    auth0Logout: true,
-    authorizationParams: {
-      response_type: 'code',
-        scope: 'openid profile email edumember',
-        claims: JSON.stringify({
-          id_token: {
-            // force identity provider to include this claim in the ID token or reject auth if not present
-            edumember_is_member_of: { essential: true },
-          },
-        }),
-    },
-    session: {
-      cookie: {
-        sameSite: 'None',
-        secure: true
-      }
-    },
-  })
-);
+  app.use(
+    auth({
+      issuerBaseURL: process.env.ISSUER_BASE_URL,
+      baseURL: process.env.BASE_URL,
+      clientID: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      secret: process.env.SECRET,
+      clientAuthMethod:'client_secret_post',
+      idpLogout: true,
+      authRequired: true,
+      auth0Logout: true,
+      authorizationParams: {
+        response_type: 'code',
+          scope: 'openid profile email edumember',
+          claims: JSON.stringify({
+            id_token: {
+              // force identity provider to include this claim in the ID token or reject auth if not present
+              edumember_is_member_of: { essential: true },
+            },
+          }),
+      },
+      // OIDC flow will create a session for the user
+      session: {
+        store: store as any,
+        cookie: {
+          sameSite: 'Lax',
+          secure: true,
+          httpOnly: true,
+          domain: 'pssid-web-dev.miserver.it.umich.edu'
+        },
+      },
+    })
+  );
 }
 
 // call just once to initialize some data in db - will eliminate later. serves as a "reset" for now
@@ -99,36 +85,41 @@ const ssidprofileroute=require("./routes/ssid_profiles.routers");
 const testroute=require("./routes/tests.routes");
 const userinforoute=require("./routes/userinfo.routes");
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-app.use("/hosts", hostroute);
-app.use("/jobs", jobroute);
-app.use("/schedules", scheduleroute);
-app.use("/host-groups", hostgrouproute);
-app.use("/archivers", archiverroute);
-app.use("/batches", batchroute); 
-app.use("/ssid-profiles", ssidprofileroute);
-app.use("/tests", testroute);
+app.use("/api/hosts", hostroute);
+app.use("/api/jobs", jobroute);
+app.use("/api/schedules", scheduleroute);
+app.use("/api/host-groups", hostgrouproute);
+app.use("/api/archivers", archiverroute);
+app.use("/api/batches", batchroute); 
+app.use("/api/ssid-profiles", ssidprofileroute);
+app.use("/api/tests", testroute);
 app.use('/api/userinfo', userinforoute);
 
 // force login on '/', to enable SSO by default, either set ENABLE_SSO to true or use the requireAuth() function in place of useAuth()
 // need to make a request to IdP, so async await is needed
 app.get('/', useAuth(), async (req: Request, res: Response) => {
   // fetches user info, specifically fetches the edumember_ismemberof
-  // const userInfo = await req.oidc.fetchUserInfo();
-  // const groups: string[] = userInfo.edumember_is_member_of as string[];
-  // console.log(groups);
-  // console.log(req.oidc.user);
+
+  if (ENABLE_SSO) {
+    const userInfo = await req.oidc.fetchUserInfo();
+    // const groups: string[] = userInfo.edumember_is_member_of as string[];
+    // console.log(groups);
+    // console.log(req.oidc.user);
+  }
   
-  res.redirect(`${config.BASE_URL}:8080/hosts`);
+  res.redirect('https://pssid-web-dev.miserver.it.umich.edu/hosts');
 });
 
 // first connect to MongoDB(), then communicate with the web app
 connectToMongoDB()
   .then(() => {
-    https.createServer(httpsOptions, app).listen(port, () => {
-      console.log(`HTTPS server running at ${config.BASE_URL}:8000`);
+    // Chain the Redis connection *after* Mongo
+    console.log("MongoDB connected. Connecting to Redis...");
+    return redisClient.connect();
+  })
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`HTTP server running at http://localhost:${port}`);
     });
   })
   .catch((error: Error) => {

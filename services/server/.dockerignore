@@ -10,3 +10,4 @@ build
 *.crt
 *.key
 *.pem
+package-lock.json
