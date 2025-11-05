@@ -31,7 +31,7 @@ export const useArchiverStore = defineStore('archiver', {
     async getArchiverNames() {
       try {
         this.isLoading = true;
-        const res = await fetch('/archivers/archiver-files')
+        const res = await fetch('http://'+ window.location.hostname +':8000/archivers/archiver-files')
         const data = await res.json();
         this.listOfOptions = data;
         this.isLoading = false;
@@ -45,7 +45,7 @@ export const useArchiverStore = defineStore('archiver', {
     async getDesiredArchiver(archiver_name: string) {
       try {
         this.isLoading = true;
-        const res = await fetch('/api/archivers/read-archiver/'+archiver_name)
+        const res = await fetch('http://'+ window.location.hostname +':8000/archivers/read-archiver/'+archiver_name)
         const data = await res.json();
         
         this.archiver_options = data; 
@@ -63,7 +63,7 @@ export const useArchiverStore = defineStore('archiver', {
       try {
         this.isLoading = true;
         const response = await fetch(
-          '/api/create-archiver",
+          'http://'+ window.location.hostname +":8000/archivers/create-archiver",
           {
             method: 'POST',
             body: JSON.stringify(archiver),
@@ -93,7 +93,7 @@ export const useArchiverStore = defineStore('archiver', {
     async editArchiver(archiver: any) {
       try {
         const response = await fetch(
-          '/api/archivers/update-archiver',
+          'http://'+ window.location.hostname +':8000/archivers/update-archiver',
           {
             method: 'PUT',
             mode:'cors',
@@ -124,7 +124,7 @@ export const useArchiverStore = defineStore('archiver', {
     async deleteArchiver(archiver:any) {
       try {
         await fetch(
-          '/api/archivers/'+archiver.name,
+          'http://'+ window.location.hostname +':8000/archivers/'+archiver.name,
           {
             method: 'DELETE',
           }
@@ -139,7 +139,7 @@ export const useArchiverStore = defineStore('archiver', {
     async deleteAll() {
       try {
         await fetch(
-          '/api/archivers',
+          'http://'+ window.location.hostname +':8000/archivers',
           {
             method: 'DELETE',
           }

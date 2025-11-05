@@ -96,6 +96,7 @@
 
        mount:false,
        enable_sso: config.ENABLE_SSO,
+       groups: null,
      }
    },
 

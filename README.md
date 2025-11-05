@@ -1,7 +1,6 @@
 # pssid-gui2
 
 Version 2.0 of the pSSID-GUI Web Application
-* This branch has reverse proxy set up but SSO disabled.
 
 ## Installation
 ### Ansible
@@ -69,18 +68,7 @@ docker-compose -f docker-compose.yml up -d
 ```
 in the same directory. You may need `sudo` access to run docker compose.
 
-### Configuring Single-Sign On and user permissions
-In ~/pssid-gui2/shared, there are two files to configure authentication settings.
-
-#### config.ts
-- ENABLE_SSO: `true` to require users to login via Identity Provider, `false` to proceed with application without logging in
-- OPEN_WRITE: if ENABLE_SSO is `false`, then setting OPEN_WRITE to `true` will allow any users to have write access, `false` will only give users read access
-
-#### auth-groups.config.json
-- the `permissions` field contains list of groups that have certain permissions to the application (read or write). Add more or delete groups inside `permissions` to configure who has what permissions
-
 ---
-
 ## Important README Links in this Repository
 
 [Steps to add fields to config file](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/README.md)

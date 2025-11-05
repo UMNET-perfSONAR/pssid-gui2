@@ -16,7 +16,7 @@ export const useHostStore = defineStore('hostStore', {
     async getHosts() {
       try {
         this.isLoading = true;
-        const res = await fetch('/api/hosts', {
+        const res = await fetch('https://' + window.location.hostname + ':8000/hosts', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
         const data = await res.json();
@@ -37,7 +37,7 @@ export const useHostStore = defineStore('hostStore', {
       try {
         this.isLoading = true;
         const response = await fetch(
-          '/api/hosts/create-host',
+          'https://'+ window.location.hostname + ':8000/hosts/create-host',
           {
             method: 'POST',
             body: JSON.stringify(host),
@@ -72,7 +72,7 @@ export const useHostStore = defineStore('hostStore', {
     async deleteHost(host:any) {
       try {
         await fetch(
-          '/api/hosts/' +host?.name,
+          'https://'+ window.location.hostname + ':8000/hosts/' +host?.name,
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
@@ -92,7 +92,7 @@ export const useHostStore = defineStore('hostStore', {
     async editHost(updateHostObj:any) {
       try {
         const response = await fetch(
-          '/api/hosts/update-host',
+          'https://'+ window.location.hostname + ':8000/hosts/update-host',
           {
             method: "PUT",
             mode: "cors",
@@ -124,7 +124,7 @@ export const useHostStore = defineStore('hostStore', {
     async deleteAll() {
       try {
         await fetch(
-          '/api/hosts',
+          'https://'+ window.location.hostname + ':8000/hosts',
           {
             method: 'DELETE',
           }
@@ -148,7 +148,7 @@ export const useHostStore = defineStore('hostStore', {
       }
       try {
         await fetch(
-          '/api/hosts/config',
+          'https://'+ window.location.hostname + ':8000/hosts/config',
           {
             method: 'POST',
             body: JSON.stringify(currentHost),

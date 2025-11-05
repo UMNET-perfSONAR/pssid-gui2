@@ -15,7 +15,7 @@ export const useSsidStore = defineStore('ssidStore', {
     async getSsidProfiles() {
       this.isLoading = true;
       const res = await fetch(
-        '/api/ssid-profiles',
+        'https://'+ window.location.hostname +':8000/ssid-profiles',
         {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         }
@@ -30,7 +30,7 @@ export const useSsidStore = defineStore('ssidStore', {
       this.isLoading = true;
       
       const response = await fetch(
-        '/api/ssid-profiles/create-ssidProfile',
+        'https://'+ window.location.hostname +':8000/ssid-profiles/create-ssidProfile',
         {
           method: 'POST',
           body: JSON.stringify(ssid_profile),
@@ -58,7 +58,7 @@ export const useSsidStore = defineStore('ssidStore', {
      */
     async deleteSsidProfile(ssid_profile:any) {
       await fetch(
-        '/api/ssid-profiles/'+ssid_profile.name,
+        'https://'+ window.location.hostname +':8000/ssid-profiles/'+ssid_profile.name,
         {
           method: 'DELETE',
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
@@ -68,7 +68,7 @@ export const useSsidStore = defineStore('ssidStore', {
 
     async editSsidProfile(ssid_profile:any) {
       const response = await fetch(
-        '/api/ssid-profiles/update-ssidProfile',
+        'https://'+ window.location.hostname +':8000/ssid-profiles/update-ssidProfile',
         {
           method: "PUT",
           mode: "cors",
@@ -90,7 +90,7 @@ export const useSsidStore = defineStore('ssidStore', {
 
     async deleteAll() {
       await fetch(
-        '/api/ssid-profiles',
+        'https://'+ window.location.hostname +':8000/ssid-profiles',
         {
           method: 'DELETE',
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})

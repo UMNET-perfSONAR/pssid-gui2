@@ -1,16 +1,6 @@
 version: '3.8'
 
 services:
-  redis:
-    image: redis:7
-    container_name: redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    networks:
-      - internal
   client:
     image: pssid-gui2_client:latest
     build: ./services/client
@@ -18,12 +8,10 @@ services:
       - ./services/client/src:/usr/src/app/client/src
       - client_node_modules:/usr/src/app/client/node_modules
       - ./shared:/usr/src/app/client/src/shared:ro
-    expose:
-      - "8080"
-    networks:
-      internal:
-        aliases:
-          - client
+      - ./certs/pssid-web-dev.miserver.it.umich.edu.pem:/usr/src/app/certs/pssid-web-dev.miserver.it.umich.edu.pem
+      - ./certs/pssid-web-dev.miserver.it.umich.edu-key.pem:/usr/src/app/certs/pssid-web-dev.miserver.it.umich.edu-key.pem
+    ports:
+      - 8080:8080
 
   server:
     image: pssid-gui2_server:latest
@@ -37,65 +25,21 @@ services:
       - /var/lib/pssid/plugins:/usr/src/app/server/plugins
       - /var/lib/pssid/output:/usr/src/app/server/output
       - ./shared:/usr/src/app/server/src/shared:ro
-      - ./certs:/etc/letsencrypt:ro
-    expose:
-      - "8000"
+      - ./certs/pssid-web-dev.miserver.it.umich.edu.pem:/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem
+      - ./certs/pssid-web-dev.miserver.it.umich.edu-key.pem:/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem
+    ports:
+      - 8000:8000
     depends_on:
       - mongo
-      - redis
-    networks:
-      internal:
-        aliases:
-          - server
   mongo:
     image: pssid-gui2_mongo:latest
     build: ./services/database
-    expose:
-      - "27017"
-    networks:
-      - internal
+    ports:
+      - 27017:27017
     volumes:
       - mongo_db:/data/db
-
-  nginx:
-    image: nginx:stable-alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/nginx/certs:ro
-      - ./www/certbot:/var/www/certbot
-    depends_on:
-      - client
-      - server
-      # - oauth2-proxy
-    networks:
-      - internal
-      - web
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./certs/:/etc/letsencrypt
-      - ./www/certbot:/var/www/certbot
-    # entrypoint: /bin/sh -c
-    # command: >
-    #   "trap exit TERM;
-    #   while :; do
-    #     certbot rewnew --webroot -w /var/www/certbot;
-    #     sleep 12h;
-    #   done"
 
 volumes:
   client_node_modules:
   server_node_modules:
   mongo_db:
-  npm_data:
-  npm_letsencrypt:
-  redis_data:
-
-networks:
-  internal:
-    driver: bridge
-  web:

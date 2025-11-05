@@ -17,7 +17,7 @@ export const useTestStore = defineStore('test', {
     async getTests() {
       try {
         this.isLoading = true;
-        const res = await fetch('/api/tests', {
+        const res = await fetch('https://'+ window.location.hostname +':8000/tests', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
         const data = await res.json()
@@ -33,7 +33,7 @@ export const useTestStore = defineStore('test', {
     // get name of all available tests
     async getTestNames() {
       this.isLoading = true;
-      const res = await fetch('/api/tests/test-files', 
+      const res = await fetch('https://'+ window.location.hostname +':8000/tests/test-files', 
         {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
       )
       const data = await res.json();
@@ -43,7 +43,7 @@ export const useTestStore = defineStore('test', {
 
     async getDesiredTest(test_name: string) {
       this.isLoading = true;
-      const res = await fetch('/api/tests/read-test/'+test_name,
+      const res = await fetch('https://'+ window.location.hostname +':8000/tests/read-test/'+test_name,
         {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
       )
       const data = await res.json();
@@ -57,7 +57,7 @@ export const useTestStore = defineStore('test', {
     // edit test through put request
     async editTest(test: any) {
       const response = await fetch(
-        '/api/tests/update-test',
+        'https://'+ window.location.hostname +':8000/tests/update-test',
         {
           method: 'PUT',
           mode:'cors',
@@ -82,7 +82,7 @@ export const useTestStore = defineStore('test', {
       this.isLoading = true;
       
       const response = await fetch(
-        '/api/tests/create-test',
+        'https://'+ window.location.hostname +':8000/tests/create-test',
         {
           method: 'POST',
           body: JSON.stringify(test),
@@ -106,7 +106,7 @@ export const useTestStore = defineStore('test', {
 
     async deleteTest(test:any) {
       await fetch(
-        '/api/tests/'+test.name,
+        'https://'+ window.location.hostname +':8000/tests/'+test.name,
         {
           method: 'DELETE',
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
@@ -116,7 +116,7 @@ export const useTestStore = defineStore('test', {
 
     async deleteAll() {
       await fetch(
-        '/api/tests',
+        'https://'+ window.location.hostname +':8000/tests',
         {
           method: 'DELETE',
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
