@@ -1,71 +1,37 @@
-process.env.DEBUG = 'openid-client,express-openid-connect:*';
+// process.env.DEBUG = 'openid-client,express-openid-connect:*';
 
-import https from 'https';
-import fs from 'fs';
 import express, { Express, Request, Response } from 'express';
 import { connectToMongoDB } from './services/database.service';
-import { auth, SessionStore } from 'express-openid-connect';
-import { requiresAuth } from 'express-openid-connect';
-import { startup } from './setup/setupdb';
-import { create_config_file } from './services/config.service';
-import config from './shared/config';
-import { authorize } from './shared/accessControl';
-import dotenv from 'dotenv';
+import cors from 'cors';
 
-import session from 'express-session';
+import { auth } from 'express-openid-connect';
+import { requiresAuth } from 'express-openid-connect';
 import { createClient } from 'redis';
 import { RedisStore } from 'connect-redis';
+
+import config from './shared/config'; // shared/config will appear in docker container
+import dotenv from 'dotenv';
 
 dotenv.config();
 var bodyParser = require('body-parser');
 const app: Express = express();
 const port = 8000;
 
-const redisClient = createClient({ url: process.env.REDIS_URL });
-// (async () => {
-//   await redisClient.connect();
-// })();
-
-const store = new RedisStore({
-  client: redisClient,
-});
-
-// NOTE: make sure to create certs on your local machine and create a certs folder (backend and frontend)
-// const httpsOptions = {
-//   // key: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu-key.pem'),
-//   // cert: fs.readFileSync('/usr/src/app/server/pssid-web-dev.miserver.it.umich.edu.pem'),
-//   key: fs.readFileSync('/etc/letsencrypt/live/pssid-web-dev.miserver.it.umich.edu/privkey.pem'),
-//   cert: fs.readFileSync('/etc/letsencrypt/live/pssid-web-dev.miserver.it.umich.edu/fullchain.pem'),
-// };
 
 const ENABLE_SSO = config.ENABLE_SSO;
 
-// either use authentication or do nothing (so SSO is disabled)
+// create a redis database to store user sessions (prevents sessions from being deleted after redirect)
+const redisClient = createClient({ url: process.env.REDIS_URL });
+const store = new RedisStore({client: redisClient,});
+
+// either use authentication or proceed with application
 function useAuth () {
   return ENABLE_SSO ? requiresAuth() : (_req: Request, _res: Response, next: Function) => next();
 }
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error("SESSION_SECRET is not set in environment variables!");
-}
-
 app.set('trust proxy', true);
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// app.use(
-//   session({
-//     store: new RedisStore({ client: redisClient }),
-//     secret: process.env.SESSION_SECRET,
-//     resave: false,
-//     saveUninitialized: false,
-//     cookie: { secure: true, sameSite: 'lax' }
-//   })
-// );
-
-// TODO - 
-const cors = require('cors');
 app.use(cors({
   origin: 'https://pssid-web-dev.miserver.it.umich.edu',
   credentials: ENABLE_SSO
@@ -93,9 +59,9 @@ if (ENABLE_SSO) {
             },
           }),
       },
+      // OIDC flow will create a session for the user
       session: {
         store: store as any,
-        rolling: true,
         cookie: {
           sameSite: 'Lax',
           secure: true,
@@ -120,9 +86,6 @@ const ssidprofileroute=require("./routes/ssid_profiles.routers");
 const testroute=require("./routes/tests.routes");
 const userinforoute=require("./routes/userinfo.routes");
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
 app.use("/api/hosts", hostroute);
 app.use("/api/jobs", jobroute);
 app.use("/api/schedules", scheduleroute);
@@ -140,9 +103,9 @@ app.get('/', useAuth(), async (req: Request, res: Response) => {
 
   if (ENABLE_SSO) {
     const userInfo = await req.oidc.fetchUserInfo();
-    const groups: string[] = userInfo.edumember_is_member_of as string[];
-    console.log(groups);
-    console.log(req.oidc.user);
+    // const groups: string[] = userInfo.edumember_is_member_of as string[];
+    // console.log(groups);
+    // console.log(req.oidc.user);
   }
   
   res.redirect('https://pssid-web-dev.miserver.it.umich.edu/hosts');
@@ -159,9 +122,6 @@ connectToMongoDB()
     app.listen(port, () => {
       console.log(`HTTP server running at http://localhost:${port}`);
     });
-    // https.createServer(httpsOptions, app).listen(port, () => {
-    //   console.log('HTTPS server running at https://pssid-web-dev.miserver.it.umich.edu:8000');
-    // });
   })
   .catch((error: Error) => {
     console.error("Database connection failed", error)
