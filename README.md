@@ -1,6 +1,7 @@
 # pssid-gui2
 
 Version 2.0 of the pSSID-GUI Web Application
+* This branch has reverse proxy set up but SSO disabled.
 
 ## Installation
 ### Ansible
@@ -35,40 +36,24 @@ sudo apt-get update
 ### Source Code
 Clone this repository
 
-#### Setting up certificates (temporarily)
-Follow the steps in this [repository](https://github.com/FiloSottile/mkcert) to get mkcert installed on your local machine (not the VM!).
-
-In your local machine, run
-```
-mkcert <VM_name>
-```
-** The certs will be saved in the same directory that you ran this command in.
-
-You should have <VM_name>.pem and <VM_name>-key.pem generated.
-** For now these names are hardcoded, but they should eventually be updated to reflect the virtual machine's name.
-
-Finally, copy over the certs to the VM, placing them in /pssid-gui2/certs/ folder. If the certs/ folder does not exist, please create one.
-```
-scp <vm_name_here>*.pem <vm_name_here>:~/pssid-gui2/certs
-```
-
-#### Configuring the OIDC client
-If the application is being ran on a virtual machine is NOT named __pssid-web-dev.miserver.it.umich.edu__, follow these steps:
-
-1. Run ```./scripts/generate-oidc-env.sh``` and it will be located in /services/server/.env
-2. Navigate to the OIDC [client page](https://admin.webservices.umich.edu/oidcprov) and set up a new OIDC client.
-3. Add this as the Redirect URI: https://<VM_name>:8000/callback and save.
-4. Copy the OIDC Client ID and OIDC Secret into the .env file that was created before.
-
-** There may be an OIDC Client already avaliable with the correct redirect URI, please contact for more information.
-
 Now, run
 ```
 docker-compose -f docker-compose.yml up -d
 ```
 in the same directory. You may need `sudo` access to run docker compose.
 
+### Configuring Single-Sign On and user permissions
+In ~/pssid-gui2/shared, there are two files to configure authentication settings.
+
+#### config.ts
+- ENABLE_SSO: `true` to require users to login via Identity Provider, `false` to proceed with application without logging in
+- OPEN_WRITE: if ENABLE_SSO is `false`, then setting OPEN_WRITE to `true` will allow any users to have write access, `false` will only give users read access
+
+#### auth-groups.config.json
+- the `permissions` field contains list of groups that have certain permissions to the application (read or write). Add more or delete groups inside `permissions` to configure who has what permissions
+
 ---
+
 ## Important README Links in this Repository
 
 [Steps to add fields to config file](https://github.com/UMNET-perfSONAR/pssid-gui2/blob/main/services/README.md)
@@ -152,6 +137,7 @@ When the service runs correctly, there should be three containers associated wit
 pssid-gui2_server_1
 pssid-gui2_mongo_1
 pssid-gui2_client_1
+
 ```
 
 If the service is down, some of them might be missing from the list and some of them

@@ -10,7 +10,6 @@ const {getSSIDProfiles,
        postSSIDProfile, 
        updateSSIDProfile} = require('../controllers/ssid_profiles.controllers');
 
-
 ssidProfiles.get('/', authorize('read'), getSSIDProfiles);
 ssidProfiles.get('/:ssidProfile', authorize('read'), getOneSSIDProfile);
 ssidProfiles.delete('/:ssidProfile_name', authorize('write'), deleteSSIDProfile);
