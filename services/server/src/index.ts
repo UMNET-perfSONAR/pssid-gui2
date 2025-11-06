@@ -61,6 +61,7 @@ if (ENABLE_SSO) {
       },
       // OIDC flow will create a session for the user
       session: {
+        absoluteDuration: 3600,
         store: store as any,
         cookie: {
           sameSite: 'Lax',
