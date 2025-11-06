@@ -8,8 +8,35 @@ Version 2.0 of the pSSID-GUI Web Application
 Follow the steps in this
 [repository](https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy).
 
+### Installing Docker
+Following this [guide](https://docs.docker.com/engine/install/ubuntu/), run the following:
+1. cd ~
+2. ```for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done```
+3. 
+```
+# Add Docker's official GPG key:
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+```
+4. ```sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin```
+5. ```sudo systemctl enable --now docker```
+6. sudo usermod -aG docker ${USER} && newgrp docker
+7. Verify Docker was installed successfully by running: ```sudo docker run hello-world```
+
 ### Source Code
-Clone this repository and run
+Clone this repository
+
+Now, run
 ```
 docker-compose -f docker-compose.yml up -d
 ```
@@ -110,6 +137,7 @@ When the service runs correctly, there should be three containers associated wit
 pssid-gui2_server_1
 pssid-gui2_mongo_1
 pssid-gui2_client_1
+
 ```
 
 If the service is down, some of them might be missing from the list and some of them
