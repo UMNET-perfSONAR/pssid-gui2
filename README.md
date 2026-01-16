@@ -1,7 +1,6 @@
 # pssid-gui2
 
 Version 2.0 of the pSSID-GUI Web Application
-* This branch has reverse proxy set up but SSO disabled.
 
 ## Installation
 ### Ansible
