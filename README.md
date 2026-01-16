@@ -35,7 +35,7 @@ sudo apt-get update
 ### Source Code
 Clone this repository
 
-There are two ways to run:
+There are two ways to run:  
 With Single-Sign On (MAKE SURE TO READ [Configuring Single-Sign On and user permissions](#configuring-single-sign-on-and-user-permissions))
 ```
 docker-compose --profile sso -f docker-compose.yml up -d
