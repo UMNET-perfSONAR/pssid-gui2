@@ -56,7 +56,9 @@ export const useJobStore = defineStore('jobStore', {
           this.jobs.push(job);
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
 
@@ -130,7 +132,9 @@ export const useJobStore = defineStore('jobStore', {
 	  alert("Job updated successfully!");
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
       }

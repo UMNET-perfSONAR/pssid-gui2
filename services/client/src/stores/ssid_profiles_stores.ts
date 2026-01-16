@@ -45,7 +45,9 @@ export const useSsidStore = defineStore('ssidStore', {
 	this.ssid_profiles.push(ssid_profile);
       }
       else {
-	const errorData = await response.json();
+	// const errorData = await response.json();
+  const text = await response.text();
+  const errorData = text ? JSON.parse(text) : [];
 	alert(errorData.message);
       }
 
@@ -83,7 +85,9 @@ export const useSsidStore = defineStore('ssidStore', {
 	alert("SsidProfile updated successfully");
       }
       else {
-	const errorData = await response.json();
+	// const errorData = await response.json();
+  const text = await response.text();
+  const errorData = text ? JSON.parse(text) : [];
 	alert(errorData.message);
       }
     },

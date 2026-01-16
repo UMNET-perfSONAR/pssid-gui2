@@ -54,7 +54,9 @@ export const useBatchStore = defineStore('batchStore', {
 	  this.batches.push(batch);
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
 
@@ -84,7 +86,9 @@ export const useBatchStore = defineStore('batchStore', {
 	  alert("Batch updated successfully");
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
       }

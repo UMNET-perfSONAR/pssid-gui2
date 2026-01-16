@@ -36,17 +36,27 @@ sudo apt-get update
 ### Source Code
 Clone this repository
 
-Now, run
+There are two ways to run:
+With Single-Sign On (MAKE SURE TO READ [Configuring Single-Sign On and user permissions](#configuring-single-sign-on-and-user-permissions))
+```
+docker-compose --profile sso -f docker-compose.yml up -d
+```
+This will run a Redis container in addition to the rest of the application.
+* Make sure that ENABLE_SSO is set to true *
+
+
 ```
 docker-compose -f docker-compose.yml up -d
 ```
+This will run the application without a Redis container.
+
 in the same directory. You may need `sudo` access to run docker compose.
 
 ### Configuring Single-Sign On and user permissions
 In ~/pssid-gui2/shared, there are two files to configure authentication settings.
 
 #### config.ts
-- ENABLE_SSO: `true` to require users to login via Identity Provider, `false` to proceed with application without logging in
+- ENABLE_SSO: `true` to require users to login via an Identity Provider, `false` to proceed with application without logging in
 - OPEN_WRITE: if ENABLE_SSO is `false`, then setting OPEN_WRITE to `true` will allow any users to have write access, `false` will only give users read access
 
 #### auth-groups.config.json

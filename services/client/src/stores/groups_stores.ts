@@ -60,7 +60,9 @@ export const useGroupStore = defineStore('groupStore', {
 	  this.host_groups.push(host_group);
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
 
@@ -90,7 +92,9 @@ export const useGroupStore = defineStore('groupStore', {
 	  alert("Group updated successfully!");
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
       }

@@ -72,7 +72,9 @@ export const useTestStore = defineStore('test', {
 	alert("Test updated successfully");
       }
       else {
-	const errorData = await response.json();
+	// const errorData = await response.json();
+  const text = await response.text();
+  const errorData = text ? JSON.parse(text) : [];
 	alert(errorData.message);
       }
     },
@@ -97,7 +99,9 @@ export const useTestStore = defineStore('test', {
 	this.tests.push(test);
       }
       else {
-	const errorData = await response.json();
+	// const errorData = await response.json();
+  const text = await response.text();
+  const errorData = text ? JSON.parse(text) : [];
 	alert(errorData.message);
       }
 

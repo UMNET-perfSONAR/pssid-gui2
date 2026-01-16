@@ -20,10 +20,6 @@ const port = 8000;
 
 const ENABLE_SSO = config.ENABLE_SSO;
 
-// create a redis database to store user sessions (prevents sessions from being deleted after redirect)
-const redisClient = createClient({ url: process.env.REDIS_URL });
-const store = new RedisStore({client: redisClient,});
-
 // either use authentication or proceed with application
 function useAuth () {
   return ENABLE_SSO ? requiresAuth() : (_req: Request, _res: Response, next: Function) => next();
@@ -36,6 +32,13 @@ app.use(cors({
   origin: 'https://pssid-web-dev.miserver.it.umich.edu',
   credentials: ENABLE_SSO
 }))
+
+// create a redis database to store user sessions (prevents sessions from being deleted after redirect)
+const redisClient = createClient({ url: process.env.REDIS_URL });
+const store = new RedisStore({
+  client: redisClient,
+  ttl: 3600
+});
 
 if (ENABLE_SSO) {
   app.use(
@@ -61,7 +64,7 @@ if (ENABLE_SSO) {
       },
       // OIDC flow will create a session for the user
       session: {
-        absoluteDuration: 3600,
+        absoluteDuration: 7200,
         store: store as any,
         cookie: {
           sameSite: 'Lax',
@@ -115,9 +118,12 @@ app.get('/', useAuth(), async (req: Request, res: Response) => {
 // first connect to MongoDB(), then communicate with the web app
 connectToMongoDB()
   .then(() => {
-    // Chain the Redis connection *after* Mongo
-    console.log("MongoDB connected. Connecting to Redis...");
-    return redisClient.connect();
+    // Chain the Redis connection after Mongo
+    console.log("MongoDB connected.");
+    if (ENABLE_SSO) {
+      console.log("Connecting to Redis...");
+      return redisClient.connect();
+    }
   })
   .then(() => {
     app.listen(port, () => {

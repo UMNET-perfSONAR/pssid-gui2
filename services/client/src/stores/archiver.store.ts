@@ -77,7 +77,9 @@ export const useArchiverStore = defineStore('archiver', {
 	  this.archivers.push(archiver);
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
 
@@ -107,7 +109,9 @@ export const useArchiverStore = defineStore('archiver', {
 	  alert("Archiver updated successfully");
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
       }

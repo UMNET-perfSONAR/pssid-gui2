@@ -53,7 +53,9 @@ export const useHostStore = defineStore('hostStore', {
 	  this.hosts.push(host);
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
 
@@ -108,7 +110,9 @@ export const useHostStore = defineStore('hostStore', {
 	  alert("Host updated successfully!");
 	}
 	else {
-	  const errorData = await response.json();
+	  // const errorData = await response.json();
+    const text = await response.text();
+    const errorData = text ? JSON.parse(text) : [];
 	  alert(errorData.message);
 	}
       }
