@@ -36,14 +36,15 @@ sudo apt-get update
 Clone this repository in the same directory. You may need `sudo` access to run docker compose.
 
 There are two ways to run:  
-With Single-Sign On (MAKE SURE TO READ [Configuring Single-Sign On and user permissions](#configuring-single-sign-on-and-user-permissions))
+  
+**With Single-Sign On** (MAKE SURE TO READ [Configuring Single-Sign On and user permissions](#configuring-single-sign-on-and-user-permissions))
 ```
 docker-compose --profile sso -f docker-compose.yml up -d
 ```
 This will run a Redis container in addition to the rest of the application.
-* Make sure that ENABLE_SSO is set to true *
+* Make sure that ENABLE_SSO is set to true *  
 
-Without Single-Sign ON
+**Without Single-Sign On**
 ```
 docker-compose -f docker-compose.yml up -d
 ```
@@ -83,15 +84,17 @@ In ~/pssid-gui2/shared, there are two files to configure authentication settings
 ----
 ## pSSID GUI Web Application
 ### System Overview
-The core application consists of three Docker containers, client, server, and MongoDB.
+The core application consists of six Docker containers, client, server, MongoDB, Redis, nginx, and certbot.
 Users directly interact with the client container, which will in turn communicate with
 the backend server and database containers. Test templates are files on disk that
 define the rules for each test, i.e., what configuration fields should be provided
 for each test type. Dynamics forms are then geneated on the frontend based on the
 rules defined in the templates.
 
+Nginx routes user (HTTPS) traffic into internal (HTTP) traffic, which only allows users to interact with the client container and some parts of the server container. Redis stores user sessions and their tokens after the user has logged in through an identity provider (shibboleth) and manages the time-to-live of cookies. Certbot renews the certificate of the pSSID app to ensure HTTPS can be used.
+
 <p align="center">
-<img width="80%" alt="config-file-anatomy" src="assets/gui-controller.png">
+<img width="80%" alt="config-file-anatomy" src="assets/gui-controller-v2.png">
 </p>
 
 The web application outputs two files, `hosts.ini` and `pssid_conf.json`. The latter
@@ -140,13 +143,16 @@ First check if there are any lingering Docker containers still up and running
 docker ps
 ```
 
-When the service runs correctly, there should be three containers associated with it.
+When the service runs correctly, there should be five to six containers associated with it.
 ```
 pssid-gui2_server_1
 pssid-gui2_mongo_1
 pssid-gui2_client_1
-
+pssid-gui2_nginx_1
+pssid-gui2_certbot_1
+redis*
 ```
+* Redis is an optional container
 
 If the service is down, some of them might be missing from the list and some of them
 might still be running. Stop all lingering containers.
@@ -159,7 +165,7 @@ Then free up used resources to prepare for a restart
 sudo docker system prune -af
 ```
 
-Finally run the script to start the service
+Finally run the script to start the service (might be deprecated)
 ```
 sh ~/up.sh
 ```
