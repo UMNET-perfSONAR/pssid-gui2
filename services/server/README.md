@@ -45,3 +45,63 @@ Note that `validator` can be any string representing a piece of validation code,
 it will be converted into actual JavaScript code and will be run against user input.
 After initialization, Docker mounts the template files to
 `/var/lib/pssid/plugins/tests/` on the hosting machine.
+
+# Layer 2 / Layer 3 Constructor & Destructor Scripts
+
+A batch can optionally name a layer 2 and a layer 3 constructor/destructor script.
+These follow the same directory-driven paradigm as test templates:
+
+- The available scripts live in `starters/layer2/` and `starters/layer3/`. At
+  startup `entrypoint.sh` copies them to `plugins/layer2/` and `plugins/layer3/`
+  (mounted at `/var/lib/pssid/plugins/` on the host). The directories are read in
+  via `layer2_path` / `layer3_path` in `paths_config.json`.
+- The backend lists the available script names at
+  `GET /api/layer-scripts/layer2-files` and `GET /api/layer-scripts/layer3-files`.
+  The batch page renders each list as a dropdown. When a directory holds exactly
+  one script it is auto-selected; multiple scripts produce a real choice.
+
+## Batch config fields
+
+| Field           | Type   | Default | Notes                                                        |
+| --------------- | ------ | ------- | ------------------------------------------------------------ |
+| `layer2_script` | string | `""`    | Name (no extension) of a file in `plugins/layer2/`. `""` = none. |
+| `layer3_script` | string | `""`    | Name (no extension) of a file in `plugins/layer3/`. `""` = none. |
+
+Both fields are written into the batch document and are emitted unchanged into
+the generated `pssid_config.json` (the whole `batches` collection is serialized).
+Batches created before this feature simply have no value and render as `""`,
+so they remain backward compatible.
+
+## Security model for selectable scripts
+
+Because a selected script name is written into the config that is deployed to and
+acted on by the probes, the value is constrained at every step:
+
+1. **Write-time validation** (`batches.controllers.ts`): on create/update, a
+   non-empty `layer2_script` / `layer3_script` must match an actual file in the
+   corresponding directory, otherwise the request is rejected (`400`). If the
+   directory is unreadable, a conservative character allow-list
+   (`^[A-Za-z0-9._-]+$`) is enforced instead, which blocks path separators and
+   traversal sequences.
+2. **Render-time re-validation** (`config.service.ts`): immediately before the
+   config file is generated, each batch's stored value is checked again against
+   the scripts currently on disk. A stale value (script later deleted) or a value
+   injected directly into MongoDB is reset to `""` rather than emitted.
+3. **Authorization** (`*.routes.ts` + `shared/accessControl.ts`): listing scripts
+   requires `read`; changing a batch (and therefore its script selection)
+   requires `write`. These are enforced server-side, not just hidden in the UI.
+
+### Deployment responsibilities (outside this repo)
+
+These cannot be enforced by the web app alone and must be handled by operators
+and the daemon:
+
+- The `plugins/layer2/` and `plugins/layer3/` directories on the host must be
+  writable only by trusted administrators. Any file placed there becomes a
+  selectable, deployable script, so directory provenance is part of the trust
+  boundary.
+- The pSSID daemon that consumes `pssid_config.json` must invoke the named
+  constructor/destructor scripts using an argument vector (no shell string
+  interpolation) and should apply its own allow-list. The GUI guarantees the
+  name corresponds to a real file at config-generation time, but execution
+  safety is the daemon's responsibility.

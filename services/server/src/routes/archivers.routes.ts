@@ -1,19 +1,20 @@
 import express, { Express, Request, Response } from 'express';
+import { authorize } from '../shared/accessControl';
 var archivers = express.Router();
 
 const {getArchivers,
-       readFileNames, 
+       readFileNames,
        readArchiverFile,
-       deleteArchiver, 
-       postArchiver, 
+       deleteArchiver,
+       postArchiver,
        updateArchiver} = require('../controllers/archivers.controllers');
 
 
-archivers.get('/', getArchivers);
-archivers.get('/archiver-files',readFileNames);
-archivers.get('/read-archiver/:name', readArchiverFile);
-archivers.delete('/:archiver_name', deleteArchiver);
-archivers.post('/create-archiver', postArchiver);
-archivers.put('/update-archiver', updateArchiver);
+archivers.get('/', authorize('read'), getArchivers);
+archivers.get('/archiver-files', authorize('read'), readFileNames);
+archivers.get('/read-archiver/:name', authorize('read'), readArchiverFile);
+archivers.delete('/:archiver_name', authorize('write'), deleteArchiver);
+archivers.post('/create-archiver', authorize('write'), postArchiver);
+archivers.put('/update-archiver', authorize('write'), updateArchiver);
 
 module.exports=archivers;

@@ -1,4 +1,5 @@
 import express, { Express, Request, Response } from 'express';
+import { authorize } from '../shared/accessControl';
 var schedules = express.Router();
 
 const {getSchedules,
@@ -7,9 +8,9 @@ const {getSchedules,
        deleteSchedule}
   = require('../controllers/schedules.controllers');
 
-schedules.get('/', getSchedules);
-schedules.post('/create-schedule', postSchedule);
-schedules.put('/update-schedule', updateSchedule);
-schedules.delete('/:schedulename', deleteSchedule);
+schedules.get('/', authorize('read'), getSchedules);
+schedules.post('/create-schedule', authorize('write'), postSchedule);
+schedules.put('/update-schedule', authorize('write'), updateSchedule);
+schedules.delete('/:schedulename', authorize('write'), deleteSchedule);
 
 module.exports=schedules;

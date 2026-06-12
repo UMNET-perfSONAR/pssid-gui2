@@ -154,7 +154,14 @@ const readFileNames = ((req:Request, res:Response) => {
  */
 const readTestFile = ((req:Request, res:Response) => {
   try {
-    const filePath = getTestsPath() + req.params.name + ".json";
+    const directoryPath = getTestsPath();
+    // Strip any directory components so the request cannot escape the tests
+    // directory via path traversal (e.g. "../../etc/passwd").
+    const safeName = path.basename(String(req.params.name));
+    const filePath = path.resolve(directoryPath, safeName + ".json");
+    if (!filePath.startsWith(path.resolve(directoryPath) + path.sep)) {
+      return res.status(400).json({message:"Invalid file name"});
+    }
 
     var object = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     res.json(object);

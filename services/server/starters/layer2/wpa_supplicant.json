@@ -1,0 +1,4 @@
+{
+  "name": "wpa_supplicant",
+  "description": "WPA Supplicant layer 2 constructor/destructor"
+}

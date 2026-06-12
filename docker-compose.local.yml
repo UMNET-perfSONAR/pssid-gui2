@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  client:
+    image: pssid-gui2_client:latest
+    build: ./services/client
+    volumes:
+      - ./services/client/src:/usr/src/app/client/src
+      - client_node_modules:/usr/src/app/client/node_modules
+      - ./shared:/usr/src/app/client/src/shared:ro
+    expose:
+      - "8080"
+    networks:
+      internal:
+        aliases:
+          - client
+
+  server:
+    image: pssid-gui2_server:latest
+    restart: on-failure
+    build: ./services/server
+    volumes:
+      - ./services/server/src:/usr/src/app/server/src
+      - ./services/server/.env:/usr/src/app/server/.env
+      - server_node_modules:/usr/src/app/server/node_modules
+      - ./shared:/usr/src/app/server/src/shared:ro
+    expose:
+      - "8000"
+    depends_on:
+      mongo:
+        condition: service_started
+    networks:
+      internal:
+        aliases:
+          - server
+
+  mongo:
+    image: pssid-gui2_mongo:latest
+    build: ./services/database
+    expose:
+      - "27017"
+    networks:
+      - internal
+    volumes:
+      - mongo_db:/data/db
+
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - "8888:80"
+    volumes:
+      - ./nginx.local.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - client
+      - server
+    networks:
+      - internal
+
+volumes:
+  client_node_modules:
+  server_node_modules:
+  mongo_db:
+
+networks:
+  internal:
+    driver: bridge

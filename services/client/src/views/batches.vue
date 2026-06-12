@@ -25,9 +25,23 @@
           @updateActive="updateActiveBatch"></itemList>
       </div>
       <!-- Add batch form -->
-      <div class="col-md-6" v-if="showAddBatch===true"> 
+      <div class="col-md-6" v-if="showAddBatch===true">
         <h3> Add Batch </h3>
         <fieldset :disabled="isDisabled">
+        <div class="form-group">
+          <label> Layer 2 Script </label>
+          <select v-model="add_layer2_script" class="form-control">
+            <option value="">-- Select Layer 2 Script --</option>
+            <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label> Layer 3 Script </label>
+          <select v-model="add_layer3_script" class="form-control">
+            <option value="">-- Select Layer 3 Script --</option>
+            <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
+          </select>
+        </div>
         <dynamicform @formData="addBatch" :form_layout="form_layout">
         </dynamicform>
       </fieldset>
@@ -101,6 +115,22 @@
             >
             </VueMultiselect>
           </div>
+          <!-- layer 2 script selection -->
+          <div class="form-group">
+            <label> Layer 2 Script </label>
+            <select v-model="currentItem.layer2_script" class="form-control">
+              <option value="">-- Select Layer 2 Script --</option>
+              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
+          </div>
+          <!-- layer 3 script selection -->
+          <div class="form-group">
+            <label> Layer 3 Script </label>
+            <select v-model="currentItem.layer3_script" class="form-control">
+              <option value="">-- Select Layer 3 Script --</option>
+              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
+          </div>
           <!-- priority-->
           <div class="form-group">
             <label> Priority </label>
@@ -134,6 +164,7 @@
  import { useJobStore } from '../stores/job_store';
  import { useScheduleStore } from '../stores/schedule_store';
  import { useTestStore } from '../stores/test_store';
+ import { useLayerScriptsStore } from '../stores/layer_scripts_store';
  import { useUserStore } from '/src/stores/user.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
@@ -165,12 +196,17 @@
        mount: false,
        form_layout: [],
 
+       // Selections for the Add Batch form (tracked separately from dynamicform)
+       add_layer2_script: '',
+       add_layer3_script: '',
+
        // Methods to access the store
        batchStore: useBatchStore(),
        SsidStore: useSsidStore(),
        JobStore: useJobStore(),
        TestStore: useTestStore(),
        scheduleStore: useScheduleStore(),
+       layerScriptsStore: useLayerScriptsStore(),
        userStore: useUserStore(),
        enable_sso: config.ENABLE_SSO
      }
@@ -189,6 +225,14 @@
      await this.TestStore.getTests(); // this is how you retrieve tests that were made
     //  console.log(this.TestStore.getTests())
      await this.scheduleStore.getSchedules();
+     await this.layerScriptsStore.getLayer2Scripts();
+     await this.layerScriptsStore.getLayer3Scripts();
+     if (this.layerScriptsStore.layer2_scripts.length === 1) {
+       this.add_layer2_script = this.layerScriptsStore.layer2_scripts[0];
+     }
+     if (this.layerScriptsStore.layer3_scripts.length === 1) {
+       this.add_layer3_script = this.layerScriptsStore.layer3_scripts[0];
+     }
      // hardcode layout of batches form - edit this to add more fields
      this.form_layout = [
        {
@@ -276,8 +320,12 @@
          schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
          jobs: [job.name],
          tests: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
+         layer2_script: this.add_layer2_script,
+         layer3_script: this.add_layer3_script,
        });
       //  console.log((form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name));
+       this.add_layer2_script = '';
+       this.add_layer3_script = '';
        this.addBatchForm();
      },
 
@@ -315,7 +363,9 @@
          "schedules": this.currentItem.schedules,
          "jobs": [newJobName],
          "tests": this.currentItem.tests,
-         "test_interface": this.currentItem.test_interface
+         "test_interface": this.currentItem.test_interface,
+         "layer2_script": this.currentItem.layer2_script || '',
+         "layer3_script": this.currentItem.layer3_script || ''
        };
        await this.batchStore.editBatch(updated_batch);
        // also refresh JobStore to display updated tests in that job (part of hidden jobs)

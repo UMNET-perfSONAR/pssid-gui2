@@ -4,5 +4,7 @@
     "config_path": "./output/pssid_config.json",
     "shellscript_path": "./bin/provision",
     "tests_path": "./plugins/tests/",
-    "archivers_path": "./plugins/archivers/"
+    "archivers_path": "./plugins/archivers/",
+    "layer2_path": "./plugins/layer2/",
+    "layer3_path": "./plugins/layer3/"
 }

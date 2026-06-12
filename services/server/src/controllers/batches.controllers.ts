@@ -1,4 +1,6 @@
 import express, { Express, Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { connectToMongoDB } from '../services/database.service';
 import { get_ssid_profile_ids, get_schedule_ids, get_job_ids } from '../services/utility.services'
 import { updateCollection } from '../services/update.service';
@@ -7,6 +9,36 @@ import { isNameInDB } from './helpers';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
+
+const getPathsConfig = (): any => {
+  const configFilePath = path.join(__dirname, '../../paths_config.json');
+  return JSON.parse(fs.readFileSync(configFilePath, 'utf-8'));
+};
+
+/**
+ * Validates a chosen layer 2 / layer 3 script name before it is persisted and
+ * later written into pssid_config.json (which is deployed to probes). An empty
+ * string means "none". A non-empty value must correspond to an actual script
+ * file in the configured directory, preventing arbitrary strings from being
+ * injected into the generated config. If the directory cannot be read, fall
+ * back to a conservative character allow-list so traversal/injection characters
+ * are still rejected.
+ *
+ * @param value - the submitted script name
+ * @param dirKey - which configured directory to validate against
+ */
+const isValidLayerScript = (value: string, dirKey: 'layer2_path' | 'layer3_path'): boolean => {
+  if (!value) return true;
+  let names: Set<string> | null = null;
+  try {
+    const dirPath = getPathsConfig()[dirKey];
+    names = new Set(fs.readdirSync(dirPath).map((f: string) => path.parse(f).name));
+  } catch {
+    names = null;
+  }
+  if (names === null) return /^[A-Za-z0-9._-]+$/.test(value);
+  return names.has(value);
+};
 
 /**
  * Return all batch information from mongodb 
@@ -92,11 +124,17 @@ const postBatch = (async (req:Request, res:Response) => {
     }
 
     var data = req.body;
-    const ssid_profile_ids = await get_ssid_profile_ids(client, data); 
-    const schedule_ids = await get_schedule_ids(client, data); 
+    const layer2_script = data.layer2_script || '';
+    const layer3_script = data.layer3_script || '';
+    if (!isValidLayerScript(layer2_script, 'layer2_path') ||
+        !isValidLayerScript(layer3_script, 'layer3_path')) {
+      return res.status(400).json({message: "Invalid layer script selection"});
+    }
+    const ssid_profile_ids = await get_ssid_profile_ids(client, data);
+    const schedule_ids = await get_schedule_ids(client, data);
     const job_ids = await get_job_ids(client, data);
 
-    collection.insertOne({                                  // include names and _ids of objects 
+    collection.insertOne({                                  // include names and _ids of objects
       "name": data.name,
       "priority": data.priority,
       "test_interface": data.test_interface,
@@ -105,7 +143,9 @@ const postBatch = (async (req:Request, res:Response) => {
       "schedules": data.schedules,
       "schedule_ids": schedule_ids,
       "jobs": data.jobs,
-      "job_ids": job_ids
+      "job_ids": job_ids,
+      "layer2_script": layer2_script,
+      "layer3_script": layer3_script
     });
     res.json(data);
   }
@@ -132,21 +172,29 @@ const updateBatch = (async (req:Request, res:Response) => {
       return res.status(400).json({message:"Batch already exists!"});
     }
     let data = req.body;
+    const layer2_script = data.layer2_script || '';
+    const layer3_script = data.layer3_script || '';
+    if (!isValidLayerScript(layer2_script, 'layer2_path') ||
+        !isValidLayerScript(layer3_script, 'layer3_path')) {
+      return res.status(400).json({message: "Invalid layer script selection"});
+    }
     let doc = await collection.findOne({name: data.old_batchname});
-    
+
     await collection.updateOne({
       "name": data.old_batchname
     }, {$set:{"name": data.new_batchname, "priority": data.priority,
               "test_interface":data.test_interface, "ttl": data.ttl,
               "ssid_profiles":data.ssid_profiles, "schedules":data.schedules,
               "jobs": data.jobs,
-              "ssid_profile_ids": (JSON.stringify(data.ssid_profiles) === JSON.stringify(doc?.ssid_profiles)) ?     // update reference _ids if changes made 
+              "layer2_script": layer2_script,
+              "layer3_script": layer3_script,
+              "ssid_profile_ids": (JSON.stringify(data.ssid_profiles) === JSON.stringify(doc?.ssid_profiles)) ?     // update reference _ids if changes made
       doc?.ssid_profile_ids: await get_ssid_profile_ids(client, data),
 
-              "schedule_ids": (JSON.stringify(data.schedules) === JSON.stringify(doc?.schedules)) ? 
+              "schedule_ids": (JSON.stringify(data.schedules) === JSON.stringify(doc?.schedules)) ?
       doc?.schedules: await get_schedule_ids(client, data),
 
-              "job_ids": (JSON.stringify(data.jobs) === JSON.stringify(doc?.jobs)) ? 
+              "job_ids": (JSON.stringify(data.jobs) === JSON.stringify(doc?.jobs)) ?
       doc?.job_ids: await get_job_ids(client, data),
              }
        });

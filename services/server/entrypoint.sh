@@ -7,6 +7,8 @@ mkdir bin plugins
 cp starters/provision bin/
 cp -r starters/archivers/ plugins/
 cp -r starters/tests/ plugins/
+cp -r starters/layer2/ plugins/
+cp -r starters/layer3/ plugins/
 
 # Start the application
 npm run dev

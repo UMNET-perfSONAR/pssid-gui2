@@ -1,7 +1,7 @@
 // generate a config file from current state of DBs
 import { MongoClient } from 'mongodb';
 import { connectToMongoDB } from './database.service';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 
 import path from 'path';
 import fs from 'fs';
@@ -163,7 +163,65 @@ export async function formatTestData(test_data: Array<any>) {
 }
 
 /**
- * creates config file, ansible inventory, and executes shellscript 
+ * Returns the set of valid script names (without extension) in a directory, or
+ * null if the directory cannot be read.
+ */
+function listScriptNames(dirPath: string): Set<string> | null {
+  try {
+    return new Set(fs.readdirSync(dirPath).map((f) => path.parse(f).name));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Re-validates the layer 2 / layer 3 script selection on every batch against the
+ * scripts currently present on disk, right before the config file is generated.
+ *
+ * The selection is already validated when a batch is written (see
+ * batches.controllers.ts), but this is a second, independent check at render
+ * time: it prevents a stale value (a script deleted from disk after it was
+ * selected) or a value injected directly into MongoDB from being emitted into
+ * pssid_config.json, which is deployed to and acted on by the probes. Any value
+ * that does not correspond to a real script file is reset to '' (none) and a
+ * warning is logged. If a directory cannot be read, the value is kept only if it
+ * passes a conservative character check so traversal/injection characters are
+ * still stripped.
+ *
+ * @param batch_data - the { batches: [...] } object returned by get_collection
+ */
+function sanitizeBatchLayerScripts(batch_data: any) {
+  const paths = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../../paths_config.json'), 'utf-8')
+  );
+  const layer2Names = listScriptNames(paths.layer2_path);
+  const layer3Names = listScriptNames(paths.layer3_path);
+  const safePattern = /^[A-Za-z0-9._-]+$/;
+
+  const isValid = (value: string, names: Set<string> | null): boolean => {
+    if (!value) return true;
+    if (names === null) return safePattern.test(value);
+    return names.has(value);
+  };
+
+  for (const batch of batch_data.batches ?? []) {
+    if (!isValid(batch.layer2_script ?? '', layer2Names)) {
+      console.warn(
+        `Dropping invalid layer2_script "${batch.layer2_script}" on batch "${batch.name}"`
+      );
+      batch.layer2_script = '';
+    }
+    if (!isValid(batch.layer3_script ?? '', layer3Names)) {
+      console.warn(
+        `Dropping invalid layer3_script "${batch.layer3_script}" on batch "${batch.name}"`
+      );
+      batch.layer3_script = '';
+    }
+  }
+}
+
+/**
+ * creates config file, ansible inventory, and executes shellscript
  * @param name - name of host or host_group where "submit to probes" was clicked. defaults to '*'
  * @param click_context - context of which "submit to probes" was clicked - either hosts or host_groups
  */
@@ -176,6 +234,7 @@ export async function create_config_file(name: string, click_context:string) {
     let host_group_data = await get_collection(client, "host_groups");
     let job_data = await get_collection(client, "jobs");
     let batch_data = await get_collection(client, "batches");
+    sanitizeBatchLayerScripts(batch_data);
     let ssid_data = await get_collection(client, "ssid_profiles");
     let test_data = await get_collection(client, "tests");
     let formatted_test_data = await formatTestData(test_data.tests);
@@ -191,7 +250,11 @@ export async function create_config_file(name: string, click_context:string) {
     console.log("Writing config file...");
     writeFileSync(config_path, config_content, 'utf8');
     
-    exec(`'${shellscript_path}' '${click_context}' '${name}'`, (err) => {console.error(err)})
+    // Pass arguments as a vector (no shell) so a host/group name can never be
+    // interpreted as shell syntax (command injection).
+    execFile(shellscript_path as string, [click_context, name], (err) => {
+      if (err) { console.error(err); }
+    });
     
     console.log('Data successfully saved to disk');
   } catch (error) {
