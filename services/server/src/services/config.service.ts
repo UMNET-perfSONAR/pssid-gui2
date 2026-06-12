@@ -175,8 +175,9 @@ function listScriptNames(dirPath: string): Set<string> | null {
 }
 
 /**
- * Re-validates the layer 2 / layer 3 script selection on every batch against the
- * scripts currently present on disk, right before the config file is generated.
+ * Re-validates the layer 2 / layer 3 / general script selection on every batch
+ * against the scripts currently present on disk, right before the config file is
+ * generated.
  *
  * The selection is already validated when a batch is written (see
  * batches.controllers.ts), but this is a second, independent check at render
@@ -190,12 +191,13 @@ function listScriptNames(dirPath: string): Set<string> | null {
  *
  * @param batch_data - the { batches: [...] } object returned by get_collection
  */
-function sanitizeBatchLayerScripts(batch_data: any) {
+function sanitizeBatchScripts(batch_data: any) {
   const paths = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../../paths_config.json'), 'utf-8')
   );
   const layer2Names = listScriptNames(paths.layer2_path);
   const layer3Names = listScriptNames(paths.layer3_path);
+  const scriptNames = listScriptNames(paths.scripts_path);
   const safePattern = /^[A-Za-z0-9._-]+$/;
 
   const isValid = (value: string, names: Set<string> | null): boolean => {
@@ -205,17 +207,17 @@ function sanitizeBatchLayerScripts(batch_data: any) {
   };
 
   for (const batch of batch_data.batches ?? []) {
-    if (!isValid(batch.layer2_script ?? '', layer2Names)) {
-      console.warn(
-        `Dropping invalid layer2_script "${batch.layer2_script}" on batch "${batch.name}"`
-      );
-      batch.layer2_script = '';
-    }
-    if (!isValid(batch.layer3_script ?? '', layer3Names)) {
-      console.warn(
-        `Dropping invalid layer3_script "${batch.layer3_script}" on batch "${batch.name}"`
-      );
-      batch.layer3_script = '';
+    for (const [field, names] of [
+      ['layer2_script', layer2Names],
+      ['layer3_script', layer3Names],
+      ['script', scriptNames],
+    ] as [string, Set<string> | null][]) {
+      if (!isValid(batch[field] ?? '', names)) {
+        console.warn(
+          `Dropping invalid ${field} "${batch[field]}" on batch "${batch.name}"`
+        );
+        batch[field] = '';
+      }
     }
   }
 }
@@ -234,7 +236,7 @@ export async function create_config_file(name: string, click_context:string) {
     let host_group_data = await get_collection(client, "host_groups");
     let job_data = await get_collection(client, "jobs");
     let batch_data = await get_collection(client, "batches");
-    sanitizeBatchLayerScripts(batch_data);
+    sanitizeBatchScripts(batch_data);
     let ssid_data = await get_collection(client, "ssid_profiles");
     let test_data = await get_collection(client, "tests");
     let formatted_test_data = await formatTestData(test_data.tests);

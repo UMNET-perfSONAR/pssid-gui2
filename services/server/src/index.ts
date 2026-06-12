@@ -90,6 +90,7 @@ const ssidprofileroute=require("./routes/ssid_profiles.routers");
 const testroute=require("./routes/tests.routes");
 const userinforoute=require("./routes/userinfo.routes");
 const layerscriptroute=require("./routes/layer_scripts.routes");
+const scriptroute=require("./routes/scripts.routes");
 
 app.use("/api/hosts", hostroute);
 app.use("/api/jobs", jobroute);
@@ -101,6 +102,7 @@ app.use("/api/ssid-profiles", ssidprofileroute);
 app.use("/api/tests", testroute);
 app.use('/api/userinfo', userinforoute);
 app.use('/api/layer-scripts', layerscriptroute);
+app.use('/api/scripts', scriptroute);
 
 // force login on '/', to enable SSO by default, either set ENABLE_SSO to true or use the requireAuth() function in place of useAuth()
 // need to make a request to IdP, so async await is needed

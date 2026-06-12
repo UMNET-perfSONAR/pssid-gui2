@@ -9,6 +9,7 @@ cp -r starters/archivers/ plugins/
 cp -r starters/tests/ plugins/
 cp -r starters/layer2/ plugins/
 cp -r starters/layer3/ plugins/
+cp -r starters/scripts/ plugins/
 
 # Start the application
 npm run dev

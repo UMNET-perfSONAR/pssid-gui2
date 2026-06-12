@@ -16,18 +16,18 @@ const getPathsConfig = (): any => {
 };
 
 /**
- * Validates a chosen layer 2 / layer 3 script name before it is persisted and
- * later written into pssid_config.json (which is deployed to probes). An empty
- * string means "none". A non-empty value must correspond to an actual script
- * file in the configured directory, preventing arbitrary strings from being
- * injected into the generated config. If the directory cannot be read, fall
- * back to a conservative character allow-list so traversal/injection characters
- * are still rejected.
+ * Validates a chosen script name (layer 2, layer 3, or general script) before it
+ * is persisted and later written into pssid_config.json (which is deployed to
+ * probes). An empty string means "none". A non-empty value must correspond to an
+ * actual file in the configured directory, preventing arbitrary strings from
+ * being injected into the generated config. If the directory cannot be read,
+ * fall back to a conservative character allow-list so traversal/injection
+ * characters are still rejected.
  *
  * @param value - the submitted script name
  * @param dirKey - which configured directory to validate against
  */
-const isValidLayerScript = (value: string, dirKey: 'layer2_path' | 'layer3_path'): boolean => {
+const isValidScript = (value: string, dirKey: 'layer2_path' | 'layer3_path' | 'scripts_path'): boolean => {
   if (!value) return true;
   let names: Set<string> | null = null;
   try {
@@ -126,9 +126,11 @@ const postBatch = (async (req:Request, res:Response) => {
     var data = req.body;
     const layer2_script = data.layer2_script || '';
     const layer3_script = data.layer3_script || '';
-    if (!isValidLayerScript(layer2_script, 'layer2_path') ||
-        !isValidLayerScript(layer3_script, 'layer3_path')) {
-      return res.status(400).json({message: "Invalid layer script selection"});
+    const script = data.script || '';
+    if (!isValidScript(layer2_script, 'layer2_path') ||
+        !isValidScript(layer3_script, 'layer3_path') ||
+        !isValidScript(script, 'scripts_path')) {
+      return res.status(400).json({message: "Invalid script selection"});
     }
     const ssid_profile_ids = await get_ssid_profile_ids(client, data);
     const schedule_ids = await get_schedule_ids(client, data);
@@ -145,7 +147,8 @@ const postBatch = (async (req:Request, res:Response) => {
       "jobs": data.jobs,
       "job_ids": job_ids,
       "layer2_script": layer2_script,
-      "layer3_script": layer3_script
+      "layer3_script": layer3_script,
+      "script": script
     });
     res.json(data);
   }
@@ -174,9 +177,11 @@ const updateBatch = (async (req:Request, res:Response) => {
     let data = req.body;
     const layer2_script = data.layer2_script || '';
     const layer3_script = data.layer3_script || '';
-    if (!isValidLayerScript(layer2_script, 'layer2_path') ||
-        !isValidLayerScript(layer3_script, 'layer3_path')) {
-      return res.status(400).json({message: "Invalid layer script selection"});
+    const script = data.script || '';
+    if (!isValidScript(layer2_script, 'layer2_path') ||
+        !isValidScript(layer3_script, 'layer3_path') ||
+        !isValidScript(script, 'scripts_path')) {
+      return res.status(400).json({message: "Invalid script selection"});
     }
     let doc = await collection.findOne({name: data.old_batchname});
 
@@ -188,6 +193,7 @@ const updateBatch = (async (req:Request, res:Response) => {
               "jobs": data.jobs,
               "layer2_script": layer2_script,
               "layer3_script": layer3_script,
+              "script": script,
               "ssid_profile_ids": (JSON.stringify(data.ssid_profiles) === JSON.stringify(doc?.ssid_profiles)) ?     // update reference _ids if changes made
       doc?.ssid_profile_ids: await get_ssid_profile_ids(client, data),
 
