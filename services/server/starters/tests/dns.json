@@ -26,5 +26,6 @@
             "description": "record should be one of the enum values"
         }
     ],
-    "validator": "console.log('Global validator'); return true;"
+    "validator": "console.log('Global validator'); return true;",
+    "category": "perfsonar"
 }

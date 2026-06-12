@@ -5,6 +5,7 @@ export const useLayerScriptsStore = defineStore('layerScripts', {
   state: () => ({
     layer2_scripts: [] as string[],
     layer3_scripts: [] as string[],
+    defaults: { default_layer2: '', default_layer3: '' } as Record<string, string>,
     isError: false
   }),
   actions: {
@@ -29,6 +30,25 @@ export const useLayerScriptsStore = defineStore('layerScripts', {
         console.error(error);
         this.isError = true;
       }
+    },
+    async getDefaults() {
+      try {
+        const res = await fetch('/api/layer-scripts/defaults', {
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+        });
+        this.defaults = await res.json();
+      } catch(error) {
+        console.error(error);
+        this.isError = true;
+      }
+    },
+    // Returns the script to pre-select given the available options.
+    // Rule: 1 option → implicit default; multiple + configured default exists → use it; else → blank.
+    resolveDefault(scripts: string[], defaultKey: 'default_layer2' | 'default_layer3'): string {
+      if (scripts.length === 1) return scripts[0];
+      const configured = this.defaults[defaultKey];
+      if (configured && scripts.includes(configured)) return configured;
+      return '';
     }
   }
 });

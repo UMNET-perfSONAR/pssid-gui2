@@ -27,5 +27,6 @@
             "description": "protocol should be either TCP or UDP"
         }
     ],
-    "validator": "console.log('Global validator'); return true;"
+    "validator": "console.log('Global validator'); return true;",
+    "category": "perfsonar"
 }

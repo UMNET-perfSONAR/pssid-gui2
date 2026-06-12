@@ -42,13 +42,6 @@
             <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
           </select>
         </div>
-        <div class="form-group">
-          <label> Script </label>
-          <select v-model="add_script" class="form-control">
-            <option value="">-- Select Script --</option>
-            <option v-for="script in scriptsStore.scripts" :key="script" :value="script">{{ script }}</option>
-          </select>
-        </div>
         <dynamicform @formData="addBatch" :form_layout="form_layout">
         </dynamicform>
       </fieldset>
@@ -88,26 +81,14 @@
             >
             </VueMultiselect>
           </div>
-          <!-- job selection (INACTIVE) -->
-          <!-- <div class="form-group"> 
+          <!-- job selection -->
+          <div class="form-group">
             <label> Job Selection </label>
             <VueMultiselect
               v-model="currentItem.jobs"
               :multiple="true"
               :close-on-select="false"
               :options="JobStore.jobs.map(item=>item.name)"
-            >
-            </VueMultiselect>
-          </div> -->
-
-          <!-- test selection-->
-          <div class="form-group"> 
-            <label> Test Selection </label>
-            <VueMultiselect
-              v-model="currentItem.tests"
-              :multiple="true"
-              :close-on-select="false"
-              :options="TestStore.tests.map(item=> item.name)"
             >
             </VueMultiselect>
           </div>
@@ -136,14 +117,6 @@
             <select v-model="currentItem.layer3_script" class="form-control">
               <option value="">-- Select Layer 3 Script --</option>
               <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <!-- general script selection -->
-          <div class="form-group">
-            <label> Script </label>
-            <select v-model="currentItem.script" class="form-control">
-              <option value="">-- Select Script --</option>
-              <option v-for="script in scriptsStore.scripts" :key="script" :value="script">{{ script }}</option>
             </select>
           </div>
           <!-- priority-->
@@ -178,9 +151,7 @@
  import { useSsidStore } from '../stores/ssid_profiles_stores';
  import { useJobStore } from '../stores/job_store';
  import { useScheduleStore } from '../stores/schedule_store';
- import { useTestStore } from '../stores/test_store';
  import { useLayerScriptsStore } from '../stores/layer_scripts_store';
- import { useScriptsStore } from '../stores/scripts_store';
  import { useUserStore } from '/src/stores/user.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
@@ -215,16 +186,13 @@
        // Selections for the Add Batch form (tracked separately from dynamicform)
        add_layer2_script: '',
        add_layer3_script: '',
-       add_script: '',
 
        // Methods to access the store
        batchStore: useBatchStore(),
        SsidStore: useSsidStore(),
        JobStore: useJobStore(),
-       TestStore: useTestStore(),
        scheduleStore: useScheduleStore(),
        layerScriptsStore: useLayerScriptsStore(),
-       scriptsStore: useScriptsStore(),
        userStore: useUserStore(),
        enable_sso: config.ENABLE_SSO
      }
@@ -240,21 +208,12 @@
     //  console.log(this.SsidStore.getSsidProfiles());
      await this.JobStore.getJobs();
     //  console.log(this.JobStore.getJobs());
-     await this.TestStore.getTests(); // this is how you retrieve tests that were made
-    //  console.log(this.TestStore.getTests())
      await this.scheduleStore.getSchedules();
      await this.layerScriptsStore.getLayer2Scripts();
      await this.layerScriptsStore.getLayer3Scripts();
-     await this.scriptsStore.getScripts();
-     if (this.layerScriptsStore.layer2_scripts.length === 1) {
-       this.add_layer2_script = this.layerScriptsStore.layer2_scripts[0];
-     }
-     if (this.layerScriptsStore.layer3_scripts.length === 1) {
-       this.add_layer3_script = this.layerScriptsStore.layer3_scripts[0];
-     }
-     if (this.scriptsStore.scripts.length === 1) {
-       this.add_script = this.scriptsStore.scripts[0];
-     }
+     await this.layerScriptsStore.getDefaults();
+     this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
+     this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
      // hardcode layout of batches form - edit this to add more fields
      this.form_layout = [
        {
@@ -270,15 +229,10 @@
          'name': 'SSID Profile',
          'options': this.SsidStore.ssid_profiles
        },
-      //  {
-      //    'type': 'multiselect',
-      //    'name': 'Job Selection',
-      //    'options': this.JobStore.jobs
-      //  },
        {
          'type': 'multiselect',
-         'name': 'Test Selection',
-         'options': this.TestStore.tests
+         'name': 'Job Selection',
+         'options': this.JobStore.jobs
        },
        {
          'type': 'multiselect',
@@ -315,8 +269,6 @@
        this.currentIndex=indexArray[1];
        this.showAddBatch = false;
        this.old_batchname=this.currentItem.name;
-       // currentItem.jobs stores jobs as an array, even though there is only one job per batch. This could be turned into a string
-       this.currentItem.tests = this.JobStore.jobs.filter((job) => job.name == this.currentItem.jobs[0])[0].tests;
      },
      
      /**
@@ -324,81 +276,36 @@
       * @param {name, ssid_profiles, jobs, schedules, priority, TTL} form_data // replaced jobs with tests
       */
      async addBatch(form_data) {
-       // create a hidden job to be added to the batch, job name is based off of current batch
-       const job = {
-        name: `job_${form_data[0].value}`,
-        tests: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name), // use selected tests from the form
-        "continue-if": "true",  // default continue-if value
-        backoff: "PT1S",  // default backoff value
-       };
-
-       await this.JobStore.addJob(job);
-      
        await this.batchStore.addBatch({
          name: form_data[0].value,
          test_interface: form_data[1].value,
          priority: form_data[5].value,
          ssid_profiles: (form_data[2].selected.length == 0)? [] : form_data[2].selected.map(obj => obj.name),
+         jobs: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
          schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
-         jobs: [job.name],
-         tests: (form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name),
          layer2_script: this.add_layer2_script,
          layer3_script: this.add_layer3_script,
-         script: this.add_script,
        });
-      //  console.log((form_data[3].selected.length == 0)? [] : form_data[3].selected.map(obj => obj.name));
        this.add_layer2_script = '';
        this.add_layer3_script = '';
-       this.add_script = '';
        this.addBatchForm();
      },
 
      // Edits a selected batch
      async editBatch() {
-        // deletes old job and adds a new one
-        const oldJobName = `job_${this.old_batchname}`;
-        const newJobName = `job_${this.currentItem.name}`;
-
-        try {
-          await this.JobStore.deleteJob({name: oldJobName});
-        } catch (error) {
-          console.error('Error deleting old job:', error);
-        }
-        
-        const updatedJob = {
-          name: newJobName,
-          // if there exists currentItem.tests and length is greater than 0, use it, otherwise empty array
-          tests: (this.currentItem.tests && this.currentItem.tests.length > 0) ? this.currentItem.tests : [],
-          "continue-if": "true",
-          backoff: "PT1S"
-        }
-
-        try {
-          await this.JobStore.addJob(updatedJob);
-        } catch (error) {
-          console.error('Error adding (edited) job:', error)
-        }
-
        const updated_batch = {
-         "old_batchname":this.old_batchname,
-         "new_batchname":this.currentItem.name,
+         "old_batchname": this.old_batchname,
+         "new_batchname": this.currentItem.name,
          "priority": this.currentItem.priority,
          "ssid_profiles": this.currentItem.ssid_profiles,
          "schedules": this.currentItem.schedules,
-         "jobs": [newJobName],
-         "tests": this.currentItem.tests,
+         "jobs": this.currentItem.jobs || [],
          "test_interface": this.currentItem.test_interface,
          "layer2_script": this.currentItem.layer2_script || '',
-         "layer3_script": this.currentItem.layer3_script || '',
-         "script": this.currentItem.script || ''
+         "layer3_script": this.currentItem.layer3_script || ''
        };
        await this.batchStore.editBatch(updated_batch);
-       // also refresh JobStore to display updated tests in that job (part of hidden jobs)
-       await this.JobStore.getJobs();
        await this.batchStore.getBatches();
-
-       // TODO: find a better way to make tests for a batch persist after updating a batch
-       const newTests = this.currentItem.tests
        this.currentItem = this.batchStore.batches[this.currentIndex];
        this.updateActiveBatch([this.currentItem, this.currentIndex]);
      },
@@ -406,14 +313,6 @@
      // Deletes a batch
      async deleteBatch() {
        const deleteIndex = this.currentIndex;
-       if (this.currentItem.jobs) {
-         try {
-          await this.JobStore.deleteJob({ name: this.currentItem.jobs });
-          await this.JobStore.getJobs(); // get refreshed job (part of hidden jobs)
-         } catch (error) {
-          console.error('Error deleting job:', error);
-         }
-       } // delete associated jobs
        this.batchStore.batches.splice(deleteIndex, 1);
        await this.batchStore.deleteBatch(this.currentItem);
        if (this.batchStore.batches.length <= deleteIndex) {

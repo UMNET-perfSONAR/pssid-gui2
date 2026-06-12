@@ -6,6 +6,5 @@
     "tests_path": "./plugins/tests/",
     "archivers_path": "./plugins/archivers/",
     "layer2_path": "./plugins/layer2/",
-    "layer3_path": "./plugins/layer3/",
-    "scripts_path": "./plugins/scripts/"
+    "layer3_path": "./plugins/layer3/"
 }

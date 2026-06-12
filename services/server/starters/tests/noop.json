@@ -9,5 +9,6 @@
             "description": "fail should be a number between 0 and 1"
         }
     ],
-    "validator": "console.log('Global validator'); return true;"
+    "validator": "console.log('Global validator'); return true;",
+    "category": "perfsonar"
 }

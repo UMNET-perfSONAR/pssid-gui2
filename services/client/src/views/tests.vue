@@ -50,6 +50,9 @@
               @select="renderForm(selected_test)"
             >
             </VueMultiselect>
+            <small v-if="testStore.test_category" class="text-muted" style="text-transform: capitalize;">
+              Category: {{ testStore.test_category }}
+            </small>
           </div>
           <!-- dynamic componnent-->
           <div v-if="showForm===true">
@@ -91,6 +94,9 @@
             @select="renderForm(currentItem.type)"
           >
           </VueMultiselect>
+          <small v-if="testStore.test_category" class="text-muted" style="text-transform: capitalize;">
+            Category: {{ testStore.test_category }}
+          </small>
         </div>
         <!-- dynamic components -->
         <div v-if="viewType===test">

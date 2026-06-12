@@ -9,5 +9,6 @@
             "description": "duration should be nonempty and free of whitespace"
         }
     ],
-    "validator": "console.log('Global validator'); return true;"
+    "validator": "console.log('Global validator'); return true;",
+    "category": "perfsonar"
 }

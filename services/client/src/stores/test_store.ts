@@ -9,6 +9,7 @@ export const useTestStore = defineStore('test', {
     listOfOptions: [],
     selectedTest:[],
     test_options:[],
+    test_category: '',
     curr_data:[]
   }),
 
@@ -50,6 +51,7 @@ export const useTestStore = defineStore('test', {
 
       // NOTE: this is the reason that global validation is not working
       this.test_options = data.parameters;
+      this.test_category = data.category || '';
       
       this.isLoading = false;
     },
