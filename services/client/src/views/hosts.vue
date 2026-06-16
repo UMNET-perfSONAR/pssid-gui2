@@ -1,8 +1,8 @@
 <template>
   <!-- buttons -->
   <div class="buttons" style="margin-bottom:1em;">
-    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);" :disabled="isDisabled">
-      Submit to Probes
+    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);" :disabled="isDisabled || showAddHost">
+      Configure selected host
     </button>
     <button class="btn btn-primary" @click="addHostComp" v-if="!showAddHost"
       style="margin-left: 1em;" :disabled="isDisabled"> Add Host

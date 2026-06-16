@@ -6,7 +6,7 @@
     </div>
 
     <div style="margin-bottom:1em">
-      <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning" :disabled="isDisabled"> Submit to probes </button>
+      <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning" :disabled="isDisabled || showAddGroup"> Configure selected group </button>
       <button @click="addGroupForm" class="btn btn-primary" v-if="showAddGroup==false"
         style="margin-left: 1em;" :disabled="isDisabled"> Add Host Group
       </button>

@@ -45,3 +45,10 @@
  }
 
 </script>
+
+<style>
+.navbar a.router-link-exact-active {
+  text-decoration: underline;
+  font-weight: bold;
+}
+</style>

@@ -254,8 +254,10 @@ export async function create_config_file(name: string, click_context:string) {
     
     // Pass arguments as a vector (no shell) so a host/group name can never be
     // interpreted as shell syntax (command injection).
+    console.log(`Executing provision script: ${shellscript_path} ${click_context} ${name}`);
     execFile(shellscript_path as string, [click_context, name], (err) => {
       if (err) { console.error(err); }
+      else { console.log(`Provision script completed: context=${click_context} name=${name}`); }
     });
     
     console.log('Data successfully saved to disk');

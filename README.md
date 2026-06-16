@@ -9,6 +9,8 @@ The pSSID GUI is a web application for generating and managing pSSID configurati
 ## Table of Contents
 
 * [System Overview](#system-overview)
+* [Output pSSID Daemon Config File](#output-pssid-daemon-config-file)
+* [Provisioning Probes](#provisioning-probes)
 * [Prerequisites](#prerequisites)
 * [Installing Docker on Ubuntu](#installing-docker-on-ubuntu)
 * [Fresh VM Deployment Guide](#fresh-vm-deployment-guide)
@@ -70,6 +72,36 @@ Each component corresponds to a page in the GUI dashboard.
 </p>
 
 At a high level, template files on disk define what fields are required for each test type. These tests are then used to define jobs. Finally, SSID profiles, schedules, and jobs are combined into batches. Batches are what actually run on the probes.
+
+---
+
+## Provisioning Probes
+
+The Hosts and Groups pages each include a **Configure selected host** / **Configure selected group** button. The button is only active when a host or group is selected in the list. Clicking it triggers the following sequence on the server:
+
+1. **Generate inventory file** (`hosts.ini`) — all hosts and host groups currently in MongoDB are written to `hosts.ini` in Ansible INI format. Groups include their member hostnames and any regex patterns.
+
+2. **Generate daemon config file** (`pssid_config.json`) — all collections (hosts, host groups, schedules, SSID profiles, tests, jobs, batches) are read from MongoDB and merged into a single JSON document. Test spec fields are normalized before writing. Before writing, any layer 2, layer 3, or general script selections on batches are re-validated against the scripts currently on disk; stale or invalid values are cleared and a warning is logged.
+
+3. **Call the provision script** — the server calls `bin/provision` as a subprocess with two positional arguments:
+
+   ```
+   bin/provision <context> <name>
+   ```
+
+   * `<context>` is either `host` or `host_groups`, depending on which page the button was clicked from.
+   * `<name>` is the name of the selected host or group. If no specific item was selected (fallback), `*` is used.
+
+   The script call and its arguments are logged to the server console before execution. On completion or error, the result is also logged.
+
+The output files are written to the directory configured in `services/server/paths_config.json` under `output_directory`. By default this is `./output/` inside the server container, which is bind-mounted to `/var/lib/pssid/output/` on the host in the production Docker Compose setup.
+
+The provision script (`bin/provision`) is responsible for using these files to push configuration to the probes via Ansible. Rayan's workflow is:
+
+1. Use the GUI to define hosts, groups, schedules, tests, jobs, and batches.
+2. Select a host or group and click **Configure selected host** / **Configure selected group**.
+3. The GUI generates `hosts.ini` and `pssid_config.json` and calls `bin/provision`.
+4. `bin/provision` uses Ansible to copy the config to the probe(s) and restart the pSSID daemon.
 
 ---
 
