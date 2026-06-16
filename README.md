@@ -13,6 +13,7 @@ The pSSID GUI is a web application for generating and managing pSSID configurati
 * [Provisioning Probes](#provisioning-probes)
 * [Prerequisites](#prerequisites)
 * [Installing Docker on Ubuntu](#installing-docker-on-ubuntu)
+* [Published Docker Images](#published-docker-images)
 * [Fresh VM Deployment Guide](#fresh-vm-deployment-guide)
 * [Running from Source](#running-from-source)
 * [Configuring Single Sign-On and User Permissions](#configuring-single-sign-on-and-user-permissions)
@@ -209,6 +210,29 @@ Verify Docker works:
 ```bash
 sudo docker run hello-world
 ```
+
+---
+
+## Published Docker Images
+
+The official Docker Hub images are published under the `umnetworking` organization.
+Use the release tag instead of `latest` for repeatable deployments.
+
+```
+umnetworking/pssid-gui2_client:v3.2.0
+umnetworking/pssid-gui2_server:v3.2.0
+umnetworking/pssid-gui2_mongo:v3.2.0
+```
+
+For an image-based deployment, copy `shared/` to the deployment host and mount it
+into both the client and server containers. Do not mount `node_modules` volumes when
+using the published images, because those volumes can hide the dependencies already
+installed in the image.
+
+If the Docker Hub repositories are private, run `docker login` on the deployment
+host before pulling the images. For SSO deployments, `/usr/lib/pssid/server.env`
+must provide the OIDC values used by the server, including `ISSUER_BASE_URL`,
+`BASE_URL`, `CLIENT_ID`, `CLIENT_SECRET`, and `SECRET`.
 
 ---
 
@@ -482,31 +506,42 @@ Replace the entire contents with:
 ```yaml
 services:
   client:
-    image: wmarcoyu/pssid-gui2_client:latest
+    image: umnetworking/pssid-gui2_client:v3.2.0
     volumes:
-      - client_node_modules:/usr/src/app/client/node_modules
+      - /usr/lib/pssid/shared:/usr/src/app/client/src/shared:ro
     ports:
       - 8080:8080
 
   server:
-    image: wmarcoyu/pssid-gui2_server:latest
+    image: umnetworking/pssid-gui2_server:v3.2.0
     restart: on-failure
+    env_file:
+      - /usr/lib/pssid/server.env
+    environment:
+      - REDIS_URL=redis://redis:6379
     volumes:
-      - server_node_modules:/usr/src/app/server/node_modules
       - /usr/lib/exec/pssid/bin:/usr/src/app/server/bin
       - /var/lib/pssid/plugins:/usr/src/app/server/plugins
       - /var/lib/pssid/output:/usr/src/app/server/output
+      - /usr/lib/pssid/shared:/usr/src/app/server/src/shared:ro
     ports:
       - 8000:8000
     depends_on:
       - mongo
+      - redis
 
   mongo:
-    image: wmarcoyu/pssid-gui2_mongo:latest
+    image: umnetworking/pssid-gui2_mongo:v3.2.0
     ports:
       - 27017:27017
     volumes:
       - mongo_db:/data/db
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
 
   nginx:
     image: nginx:alpine
@@ -520,9 +555,8 @@ services:
       - server
 
 volumes:
-  client_node_modules:
-  server_node_modules:
   mongo_db:
+  redis_data:
 ```
 
 Save and exit:

@@ -31,6 +31,8 @@ services:
     image: pssid-gui2_server:latest
     restart: on-failure
     build: ./services/server
+    environment:
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./services/server/src:/usr/src/app/server/src
       - ./services/server/.env:/usr/src/app/server/.env
