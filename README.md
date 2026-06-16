@@ -17,6 +17,7 @@ The pSSID GUI is a web application for generating and managing pSSID configurati
 * [Fresh VM Deployment Guide](#fresh-vm-deployment-guide)
 * [Running from Source](#running-from-source)
 * [Configuring Single Sign-On and User Permissions](#configuring-single-sign-on-and-user-permissions)
+  * [Setting up SSO with Okta (UMich-specific)](#setting-up-sso-with-okta-umich-specific)
 * [Important README Links in this Repository](#important-readme-links-in-this-repository)
 * [Troubleshooting](#troubleshooting)
 
@@ -696,71 +697,158 @@ Make sure `ENABLE_SSO` is set to `false`.
 
 # Configuring Single Sign-On and User Permissions
 
-In:
-
-```text
-~/pssid-gui2/shared
-```
-
-there are two files used to configure authentication settings:
-
-* `config.ts`
-* `auth-groups.config.json`
+The application supports two modes: SSO-enabled (users must authenticate through an identity provider) and SSO-disabled (open access, with optional read-only enforcement).
 
 ---
 
-## `config.ts`
+## Quick reference — configuration files
 
-Relevant fields:
+| File | Purpose |
+|------|---------|
+| `shared/config.ts` | Toggle SSO on/off and set open-write mode |
+| `shared/auth-groups.config.json` | Map identity-provider group names to `read`/`write` permissions |
+| `services/server/.env` | Runtime secrets and URLs (never commit this file) |
 
-```text
-ENABLE_SSO
-OPEN_WRITE
-```
-
-`ENABLE_SSO` controls whether users must log in through an identity provider.
-
-Set:
-
-```text
-ENABLE_SSO=true
-```
-
-to require users to log in through an identity provider.
-
-Set:
-
-```text
-ENABLE_SSO=false
-```
-
-to allow the application to run without login.
-
-`OPEN_WRITE` is used when `ENABLE_SSO` is set to `false`.
-
-Set:
-
-```text
-OPEN_WRITE=true
-```
-
-to allow any user to have write access.
-
-Set:
-
-```text
-OPEN_WRITE=false
-```
-
-to give unauthenticated users read-only access.
+See `services/server/.env.example` for a documented template of all required environment variables.
 
 ---
 
-## `auth-groups.config.json`
+## `shared/config.ts`
 
-The `permissions` field contains the list of groups that have read or write permissions in the application.
+```text
+ENABLE_SSO   — true to require login, false to skip authentication
+OPEN_WRITE   — (only used when ENABLE_SSO=false) true gives all users write access,
+               false gives unauthenticated users read-only access
+```
 
-Update this file to add, remove, or modify which groups have access to which permission level.
+---
+
+## `shared/auth-groups.config.json`
+
+Maps identity-provider group names to permission levels:
+
+```json
+{
+  "permissions": {
+    "your-write-group": "write",
+    "your-read-group":  "read"
+  }
+}
+```
+
+Add or remove entries to control which groups can read or write through the GUI.
+
+---
+
+## Environment variables (`services/server/.env`)
+
+When `ENABLE_SSO=true`, the following variables must be set on the server. Copy `services/server/.env.example` to `services/server/.env` and fill in the values.
+
+| Variable | Description |
+|----------|-------------|
+| `MONGODB_URI` | MongoDB connection string |
+| `REDIS_URL` | Redis connection string (session store) |
+| `ISSUER_BASE_URL` | OIDC issuer URL from your identity provider |
+| `BASE_URL` | Public URL of this GUI deployment (no trailing slash) |
+| `COOKIE_DOMAIN` | Hostname only for the session cookie domain |
+| `CLIENT_ID` | OIDC client ID from your identity provider |
+| `CLIENT_SECRET` | OIDC client secret from your identity provider |
+| `SECRET` | Random string (32+ chars) to sign session cookies |
+
+Generate a secure `SECRET` with:
+
+```bash
+openssl rand -hex 32
+```
+
+---
+
+## Setting up SSO with Okta (UMich-specific)
+
+The application uses generic OIDC (`express-openid-connect`), so any OIDC-compliant provider works. The steps below are specific to UMich's Okta instance.
+
+### Step 1 — Register an OIDC application in Okta
+
+1. Sign in to [https://umich.okta.com](https://umich.okta.com) with an admin account.
+2. Go to **Applications → Applications → Create App Integration**.
+3. Select **OIDC – OpenID Connect** as the sign-in method and **Web Application** as the application type.
+4. Set the **Sign-in redirect URI** to:
+   ```
+   https://your-hostname.example.edu/callback
+   ```
+   Replace `your-hostname.example.edu` with your deployment's actual hostname.
+5. Set the **Sign-out redirect URI** to:
+   ```
+   https://your-hostname.example.edu
+   ```
+6. Save the application. Note the **Client ID** and **Client Secret** — you will need them for `.env`.
+
+### Step 2 — Configure the groups claim
+
+The application uses group membership to assign read/write permissions. Okta must include the groups claim in the ID token:
+
+1. In your Okta application, go to **Sign On → OpenID Connect ID Token**.
+2. Set **Groups claim type** to **Filter**.
+3. Set **Groups claim filter** to match the groups you want to expose (e.g., `Starts with` → `pssid`).
+4. Save.
+
+UMich's Okta may instead propagate the `edumember_is_member_of` attribute from the campus directory. If your Okta admin has configured this, the claim arrives automatically and no extra filter is needed.
+
+### Step 3 — Find the issuer URL
+
+UMich uses the Okta **Org Authorization Server**. The issuer URL is:
+
+```
+https://umich.okta.com
+```
+
+The OIDC discovery document is at:
+
+```
+https://umich.okta.com/.well-known/openid-configuration
+```
+
+Do not append `/oauth2/default` — that path applies to Okta custom authorization servers and is not used by UMich.
+
+### Step 4 — Set environment variables
+
+Edit `services/server/.env`:
+
+```env
+ISSUER_BASE_URL=https://umich.okta.com
+BASE_URL=https://your-hostname.example.edu
+COOKIE_DOMAIN=your-hostname.example.edu
+CLIENT_ID=<client ID from Step 1>
+CLIENT_SECRET=<client secret from Step 1>
+SECRET=<output of: openssl rand -hex 32>
+```
+
+### Step 5 — Update group permissions
+
+Edit `shared/auth-groups.config.json` to match the actual Okta group names your admin assigned:
+
+```json
+{
+  "permissions": {
+    "pssid-gui": "write",
+    "pssid-gui-users": "read"
+  }
+}
+```
+
+### Step 6 — Enable SSO and restart
+
+In `shared/config.ts`:
+
+```text
+ENABLE_SSO: true
+```
+
+Then restart with the SSO profile:
+
+```bash
+docker-compose --profile sso -f docker-compose.yml up -d
+```
 
 ---
 
