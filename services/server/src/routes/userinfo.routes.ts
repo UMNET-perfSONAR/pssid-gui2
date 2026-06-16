@@ -11,11 +11,11 @@ router.get('/', requiresAuth(), async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    // Send back basic info and groups
+    // Support both UMich Okta edumember claim and standard Okta groups claim.
     res.json({
       name: user.name,
       sub: user.sub,
-      groups: user.edumember_is_member_of,
+      groups: user.edumember_is_member_of || user.groups || [],
     });
   } catch (err) {
     console.error('Error in /api/userinfo:', err);

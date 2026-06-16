@@ -224,10 +224,12 @@ function sanitizeBatchScripts(batch_data: any) {
 
 /**
  * creates config file, ansible inventory, and executes shellscript
- * @param name - name of host or host_group where "submit to probes" was clicked. defaults to '*'
- * @param click_context - context of which "submit to probes" was clicked - either hosts or host_groups
+ * @param name - name of host or host_group where button was clicked. defaults to '*'
+ * @param click_context - 'host' or 'host_group'
+ * @param caller - username of the authenticated user, or 'unauthenticated'
+ * @param caller_role - 'authenticated' or 'unauthenticated'
  */
-export async function create_config_file(name: string, click_context:string) {
+export async function create_config_file(name: string, click_context: string, caller: string = 'unauthenticated', caller_role: string = 'unauthenticated') {
   try {
     get_paths();
     const client = await connectToMongoDB();
@@ -254,10 +256,10 @@ export async function create_config_file(name: string, click_context:string) {
     
     // Pass arguments as a vector (no shell) so a host/group name can never be
     // interpreted as shell syntax (command injection).
-    console.log(`Executing provision script: ${shellscript_path} ${click_context} ${name}`);
-    execFile(shellscript_path as string, [click_context, name], (err) => {
+    console.log(`Executing provision script: ${shellscript_path} ${click_context} ${name} ${caller} ${caller_role}`);
+    execFile(shellscript_path as string, [click_context, name, caller, caller_role], (err) => {
       if (err) { console.error(err); }
-      else { console.log(`Provision script completed: context=${click_context} name=${name}`); }
+      else { console.log(`Provision script completed: context=${click_context} name=${name} caller=${caller} role=${caller_role}`); }
     });
     
     console.log('Data successfully saved to disk');

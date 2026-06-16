@@ -34,7 +34,8 @@ export function authorize(requiredLevel: 'read' | 'write') {
       return next();
     }
 
-    const userGroups = req.oidc.user?.edumember_is_member_of || [];
+    // Support both UMich Weblogin/Okta edumember claim and standard Okta groups claim.
+    const userGroups: string[] = req.oidc.user?.edumember_is_member_of || req.oidc.user?.groups || [];
     const userLevel = getUserAccessLevel(userGroups);
 
     if (accessPriority[userLevel] >= accessPriority[requiredLevel]) {

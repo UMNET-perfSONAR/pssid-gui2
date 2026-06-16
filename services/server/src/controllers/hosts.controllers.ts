@@ -159,9 +159,12 @@ const updateHost = (async (req:Request, res:Response) => {
 } )
 
 const createConfig = (async (req: Request, res: Response) =>{
-  try {  
+  try {
     let name = (req.body.length==0)? '*' : req.body.name;
-    await create_config_file(name, 'host');
+    const oidcUser = (req as any).oidc?.user;
+    const caller: string = oidcUser?.sub || oidcUser?.email || 'unauthenticated';
+    const caller_role: string = oidcUser ? 'authenticated' : 'unauthenticated';
+    await create_config_file(name, 'host', caller, caller_role);
     res.send('Config file created');
   }
   catch(error) {

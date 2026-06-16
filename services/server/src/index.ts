@@ -29,7 +29,7 @@ app.set('trust proxy', true);
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors({
-  origin: 'https://pssid-web-dev.miserver.it.umich.edu',
+  origin: process.env.BASE_URL,
   credentials: ENABLE_SSO
 }))
 
@@ -51,16 +51,13 @@ if (ENABLE_SSO) {
       clientAuthMethod:'client_secret_post',
       idpLogout: true,
       authRequired: true,
-      auth0Logout: true,
       authorizationParams: {
         response_type: 'code',
-          scope: 'openid profile email edumember',
-          claims: JSON.stringify({
-            id_token: {
-              // force identity provider to include this claim in the ID token or reject auth if not present
-              edumember_is_member_of: { essential: true },
-            },
-          }),
+        // 'edumember' was required by UMich Weblogin; 'groups' is standard Okta.
+        // Requesting both ensures group membership arrives regardless of which
+        // claim UMich Okta returns (edumember_is_member_of or groups).
+        // accessControl.ts and userinfo.routes.ts handle both transparently.
+        scope: 'openid profile email edumember groups',
       },
       // OIDC flow will create a session for the user
       session: {
@@ -70,7 +67,7 @@ if (ENABLE_SSO) {
           sameSite: 'Lax',
           secure: true,
           httpOnly: true,
-          domain: 'pssid-web-dev.miserver.it.umich.edu'
+          domain: process.env.COOKIE_DOMAIN,
         },
       },
     })
@@ -116,7 +113,7 @@ app.get('/', useAuth(), async (req: Request, res: Response) => {
     // console.log(req.oidc.user);
   }
   
-  res.redirect('https://pssid-web-dev.miserver.it.umich.edu/hosts');
+  res.redirect((process.env.BASE_URL || '') + '/hosts');
 });
 
 // first connect to MongoDB(), then communicate with the web app
