@@ -16,12 +16,11 @@
       <li
         class="list-group-item"
         :class="{active: index == currentIndex}"
+        style="cursor: pointer;"
         v-for="(item, index) in filteredArray"
         :key="index"
         @click="setActiveItem(item, index)"
-      >
-        <p> {{ item.name }}</p>
-      </li>
+      >{{ item.name }}</li>
     </ul>
 
   </div>
@@ -57,12 +56,10 @@
      }
    },
    mounted(){
-     console.log('mount')
      this.filteredArray=this.itemArray;
    },
    watch: {
      display() {
-       // when showAddBatch === true - don't need to highlight specific item
        if (this.display===true) {
          this.currentIndex={};
          this.currentItem={};
@@ -70,7 +67,6 @@
      },
      searchKey() {
        try {
-         console.log('searchkey changed')
          const regex = new RegExp(this.searchKey, 'uim');
          this.filteredArray = this.itemArray.filter(item => regex.test(item.name))
        }

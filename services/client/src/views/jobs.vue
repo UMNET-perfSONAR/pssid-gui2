@@ -19,7 +19,8 @@
       <!-- Add Form -->
       <div class="col-md-6" v-if="showAddJob==true">
         <h3> Add Job </h3>
-        <form @submit.prevent="submitJob"> 
+        <form @submit.prevent="submitJob">
+          <fieldset :disabled="isDisabled">
           <div class="submit-form">
             <!-- Job name text box -->
             <div class="form-group">
@@ -74,16 +75,17 @@
               />
             </div>
 
-            <button class="btn btn-success"
-              style="margin-right: 1em;"> Submit </button>
+            <button class="btn btn-success" style="margin-right: 1em;"> Submit </button>
           </div>
+          </fieldset>
         </form>
       </div>
 
       <!-- Edit Job Form -->
       <div class="col-md-6" v-if="showAddJob==false">
         <h3> Edit Job </h3>
-        <form @submit.prevent="editJob"> 
+        <form @submit.prevent="editJob">
+          <fieldset :disabled="isDisabled">
           <div class="submit-form">
             <!-- Job name text box -->
             <div class="form-group">
@@ -136,13 +138,13 @@
               />
             </div>
 
-            <div>
-              <button class="btn btn-success" style="margin-right: 1em;"> Update </button>
-              <button class="btn btn-danger" @click.prevent="deleteJob"> Delete </button>
+            <div class="d-flex flex-wrap" style="gap: 0.5rem;">
+              <button class="btn btn-success"> Update </button>
+              <button class="btn btn-danger" type="button" @click="deleteJob"> Delete </button>
             </div>
           </div>
+          </fieldset>
         </form>
-
       </div>
     </div>
   </div>
@@ -151,47 +153,49 @@
 <script>
  import { useJobStore } from '../stores/job_store.ts'
  import { useTestStore } from '../stores/test_store.ts';
+ import { useUserStore } from '/src/stores/user.store';
  import VueMultiselect from 'vue-multiselect';
  import itemList from '../components/list_items.vue'
+ import config from '../shared/config';
+ import { isFormDisabled } from "../utils/formControl.ts"
 
  export default {
    components: { VueMultiselect, itemList },
    data() {
      return {
-       /*
-        * Variables for the Add Job page
-        */
        jobName: '',
        selected_tests: [],
        continue_if: 'true',
        backoff: "PT1S",
 
-       /*
-        * Variables that control which form is displayed,
-        * Add Job or Edit Job.
-        */
        showAddJob: true,
 
-       /*
-        * Variables for the Edit Job page
-        */
        currentItem: {},
        currentIndex: {},
        old_job_name: '',
 
        mount: false,
 
-       // Methods to access the store
        jobStore: useJobStore(),
        testStore: useTestStore(),
+       userStore: useUserStore(),
+       enable_sso: config.ENABLE_SSO
      }
    },
 
-   // Loads jobs and tests ahead of time
    async mounted() {
+     if (this.enable_sso) {
+       await this.userStore.fetchUser();
+     }
      await this.jobStore.getJobs();
      await this.testStore.getTests();
      this.mount = true;
+   },
+
+   computed: {
+     isDisabled() {
+       return isFormDisabled();
+     }
    },
 
    methods: {

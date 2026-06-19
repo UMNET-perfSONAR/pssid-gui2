@@ -74,7 +74,7 @@
       <div class = "col-md-6" v-if="showAddGroup==false">
         <h3> Edit Host Group </h3>
         <fieldset :disabled="isDisabled">
-        <form @submit.prevent="handleUpdate">
+        <form @submit.prevent="editGroup">
           <div class="submit-form">
             <!-- host group -->
             <div class="form-group">
@@ -116,10 +116,9 @@
           <dynamic_add_data :addedData="editOptionalData"></dynamic_add_data>
 
           <!-- update and delete buttons-->
-          <div>
-            <button class="btn btn-success" @click="editGroup"
-              style="margin-right: 1em;"> Update </button>
-            <button class="btn btn-danger" @click="deletegroup"> Delete </button>
+          <div class="d-flex flex-wrap" style="gap: 0.5rem;">
+            <button class="btn btn-success"> Update </button>
+            <button class="btn btn-danger" type="button" @click="deletegroup"> Delete </button>
           </div>
         </form>
       </fieldset>

@@ -40,6 +40,13 @@
             <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
           </select>
         </div>
+        <div class="form-group">
+          <label> Script </label>
+          <select v-model="add_script" class="form-control">
+            <option value="">-- Select Script --</option>
+            <option v-for="script in scriptsStore.scripts" :key="script" :value="script">{{ script }}</option>
+          </select>
+        </div>
         <dynamicform @formData="addBatch" :form_layout="form_layout">
         </dynamicform>
       </fieldset>
@@ -150,6 +157,7 @@
  import { useJobStore } from '../stores/job_store';
  import { useScheduleStore } from '../stores/schedule_store';
  import { useLayerScriptsStore } from '../stores/layer_scripts_store';
+ import { useScriptsStore } from '../stores/scripts_store';
  import { useUserStore } from '/src/stores/user.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
@@ -184,6 +192,7 @@
        // Selections for the Add Batch form (tracked separately from dynamicform)
        add_layer2_script: '',
        add_layer3_script: '',
+       add_script: '',
 
        // Methods to access the store
        batchStore: useBatchStore(),
@@ -191,6 +200,7 @@
        JobStore: useJobStore(),
        scheduleStore: useScheduleStore(),
        layerScriptsStore: useLayerScriptsStore(),
+       scriptsStore: useScriptsStore(),
        userStore: useUserStore(),
        enable_sso: config.ENABLE_SSO
      }
@@ -210,8 +220,10 @@
      await this.layerScriptsStore.getLayer2Scripts();
      await this.layerScriptsStore.getLayer3Scripts();
      await this.layerScriptsStore.getDefaults();
+     await this.scriptsStore.getScripts();
      this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
      this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
+     this.add_script = this.scriptsStore.scripts.length === 1 ? this.scriptsStore.scripts[0] : '';
      // hardcode layout of batches form - edit this to add more fields
      this.form_layout = [
        {
@@ -283,9 +295,11 @@
          schedules: (form_data[4].selected.length == 0)? [] : form_data[4].selected.map(obj => obj.name),
          layer2_script: this.add_layer2_script,
          layer3_script: this.add_layer3_script,
+         script: this.add_script,
        });
        this.add_layer2_script = '';
        this.add_layer3_script = '';
+       this.add_script = '';
        this.addBatchForm();
      },
 
@@ -300,7 +314,8 @@
          "jobs": this.currentItem.jobs || [],
          "test_interface": this.currentItem.test_interface,
          "layer2_script": this.currentItem.layer2_script || '',
-         "layer3_script": this.currentItem.layer3_script || ''
+         "layer3_script": this.currentItem.layer3_script || '',
+         "script": this.currentItem.script || ''
        };
        await this.batchStore.editBatch(updated_batch);
        await this.batchStore.getBatches();
