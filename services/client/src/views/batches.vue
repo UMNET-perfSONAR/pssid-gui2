@@ -6,11 +6,9 @@
     </div>
 
     <!-- Add batch button -->
-    <div>
-      <button style="margin-bottom: 2em;" v-if="showAddBatch"></button>
-      <button @click="addBatchForm" class="btn btn-primary" v-if="!showAddBatch"
-        style="margin-bottom: 1em;" :disabled="isDisabled">
-        Add Batch 
+    <div class="mb-3">
+      <button @click="addBatchForm" class="btn btn-primary" v-if="!showAddBatch" :disabled="isDisabled">
+        Add Batch
       </button>
     </div>
     <div class="list row">

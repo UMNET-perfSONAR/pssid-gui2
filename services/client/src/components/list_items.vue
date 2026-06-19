@@ -12,7 +12,7 @@
       class="form-control"
     />
     <p> Click on an item to edit </p>
-    <ul class="list-group" style="overflow: auto; height: 450px;">
+    <ul class="list-group" style="overflow-y: auto; max-height: min(450px, 55vh);">
       <li
         class="list-group-item"
         :class="{active: index == currentIndex}"

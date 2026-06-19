@@ -6,10 +6,8 @@
     </div>
 
     <!-- Add job button -->
-    <div>
-      <button style="margin-bottom: 2em;" v-if="showAddJob"></button>
-      <button @click="addJobForm" class="btn btn-primary" v-if="!showAddJob"
-        style="margin-bottom: 1em;"> Add Job </button>
+    <div class="mb-3">
+      <button @click="addJobForm" class="btn btn-primary" v-if="!showAddJob"> Add Job </button>
     </div>
     <h3> Job List </h3>
     <div class="list row"> 

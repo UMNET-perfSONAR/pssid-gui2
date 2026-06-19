@@ -5,11 +5,9 @@
       <p> Loading Host Group Page... </p>
     </div>
 
-    <div style="margin-bottom:1em">
-      <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning" :disabled="isDisabled || showAddGroup"> Configure selected group </button>
-      <button @click="addGroupForm" class="btn btn-primary" v-if="showAddGroup==false"
-        style="margin-left: 1em;" :disabled="isDisabled"> Add Host Group
-      </button>
+    <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
+      <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning" :disabled="isDisabled || showAddGroup">Configure selected group</button>
+      <button @click="addGroupForm" class="btn btn-primary" v-if="showAddGroup==false" :disabled="isDisabled">Add Host Group</button>
     </div>
     <div class="list row"> 
       <!-- Host Group List -->
