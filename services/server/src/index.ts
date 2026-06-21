@@ -1,8 +1,9 @@
 // process.env.DEBUG = 'openid-client,express-openid-connect:*';
 
 import express, { Express, Request, Response } from 'express';
-import { connectToMongoDB } from './services/database.service';
+import { connectToMongoDB, ensureIndexes } from './services/database.service';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 
 import { auth } from 'express-openid-connect';
 import { requiresAuth } from 'express-openid-connect';
@@ -31,7 +32,17 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors({
   origin: process.env.BASE_URL,
   credentials: ENABLE_SSO
-}))
+}));
+
+// Rate limiting: 200 requests per minute per IP across all /api routes
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' }
+});
+app.use('/api/', apiLimiter);
 
 // create a redis database to store user sessions (prevents sessions from being deleted after redirect)
 const redisClient = createClient({ url: process.env.REDIS_URL });
@@ -74,9 +85,6 @@ if (ENABLE_SSO) {
   );
 }
 
-// call just once to initialize some data in db - will eliminate later. serves as a "reset" for now
-// startup();
-
 const hostroute=require("./routes/hosts.routes");
 const jobroute=require("./routes/jobs.routes");
 const scheduleroute=require("./routes/schedules.routes");
@@ -88,6 +96,7 @@ const testroute=require("./routes/tests.routes");
 const userinforoute=require("./routes/userinfo.routes");
 const layerscriptroute=require("./routes/layer_scripts.routes");
 const scriptroute=require("./routes/scripts.routes");
+const provisionhistoryroute=require("./routes/provision_history.routes");
 
 app.use("/api/hosts", hostroute);
 app.use("/api/jobs", jobroute);
@@ -100,27 +109,33 @@ app.use("/api/tests", testroute);
 app.use('/api/userinfo', userinforoute);
 app.use('/api/layer-scripts', layerscriptroute);
 app.use('/api/scripts', scriptroute);
+app.use('/api/provision-history', provisionhistoryroute);
+
+// Health check — used by Docker and monitoring to verify the server + DB are reachable
+app.get('/api/health', async (_req: Request, res: Response) => {
+  try {
+    const client = await connectToMongoDB();
+    await client.db('admin').command({ ping: 1 });
+    res.json({ status: 'ok', mongo: 'connected', time: new Date().toISOString() });
+  } catch {
+    res.status(503).json({ status: 'error', mongo: 'disconnected' });
+  }
+});
 
 // force login on '/', to enable SSO by default, either set ENABLE_SSO to true or use the requireAuth() function in place of useAuth()
 // need to make a request to IdP, so async await is needed
 app.get('/', useAuth(), async (req: Request, res: Response) => {
-  // fetches user info, specifically fetches the edumember_ismemberof
-
   if (ENABLE_SSO) {
     const userInfo = await req.oidc.fetchUserInfo();
-    // const groups: string[] = userInfo.edumember_is_member_of as string[];
-    // console.log(groups);
-    // console.log(req.oidc.user);
   }
-  
   res.redirect((process.env.BASE_URL || '') + '/hosts');
 });
 
 // first connect to MongoDB(), then communicate with the web app
 connectToMongoDB()
-  .then(() => {
-    // Chain the Redis connection after Mongo
+  .then(async () => {
     console.log("MongoDB connected.");
+    await ensureIndexes();
     if (ENABLE_SSO) {
       console.log("Connecting to Redis...");
       return redisClient.connect();

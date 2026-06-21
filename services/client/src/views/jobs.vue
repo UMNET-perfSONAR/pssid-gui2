@@ -1,8 +1,21 @@
 <template>
   <div>
-    <!-- Loading page feedback -->
-    <div v-if="jobStore.isLoading===true">
-      <p> Loading Job page </p>
+    <ConfirmModal
+      :visible="showConfirm"
+      :message="confirmMessage"
+      @confirm="executeDeleteJob"
+      @cancel="showConfirm = false"
+    />
+
+    <PageHeader
+      title="Jobs"
+      subtitle="Combine tests and schedules into reusable job configurations"
+      icon="work_history"
+    />
+
+    <div v-if="jobStore.isLoading===true" class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading jobs…</span>
     </div>
 
     <!-- Add job button -->
@@ -10,9 +23,9 @@
       <button @click="addJobForm" class="btn btn-primary" v-if="!showAddJob"> Add Job </button>
     </div>
     <h3> Job List </h3>
-    <div class="list row"> 
+    <div class="list row">
       <!-- job list and regex search bar-->
-      <itemList v-if="mount ==true" :itemArray="jobStore.jobs" :display="showAddJob" 
+      <itemList v-if="mount ==true" :itemArray="jobStore.jobs" :display="showAddJob"
         @updateActive="setActiveJob" style="cursor:pointer;"
         class="col-md-6"></itemList>
 
@@ -22,7 +35,6 @@
         <form @submit.prevent="submitJob">
           <fieldset :disabled="isDisabled">
           <div class="submit-form">
-            <!-- Job name text box -->
             <div class="form-group">
               <label> Job Name </label>
               <input
@@ -35,8 +47,7 @@
               />
             </div>
 
-            <!-- Test selection dropdown menu -->
-            <div class="form-group"> 
+            <div class="form-group">
               <label> Test Selection </label>
               <VueMultiselect
                 v-model="selected_tests"
@@ -49,27 +60,23 @@
               </VueMultiselect>
             </div>
 
-            <!-- Continue -If radio buttons -->
             <div class="form-group">
               <label style="margin-right:1em"> Continue-If:</label>
               <input
                 type="text"
                 placeholder="Enter here"
                 required
-                id="name"
                 class="form-control"
                 v-model="continue_if"
               />
             </div>
 
-            <!-- Backoff input field -->
             <div class="form-group">
               <label style="margin-right:1em"> Backoff:</label>
               <input
                 type="text"
                 placeholder="Enter here"
                 required
-                id="name"
                 class="form-control"
                 v-model="backoff"
               />
@@ -87,21 +94,18 @@
         <form @submit.prevent="editJob">
           <fieldset :disabled="isDisabled">
           <div class="submit-form">
-            <!-- Job name text box -->
             <div class="form-group">
               <label> Job Name </label>
               <input
                 type="text"
                 placeholder="Enter job name"
                 required
-                id="name"
                 class="form-control"
                 v-model="currentItem.name"
               />
             </div>
 
-            <!-- Test selection dropdown menu -->
-            <div class="form-group"> 
+            <div class="form-group">
               <label> Test Selection </label>
               <VueMultiselect
                 v-model="currentItem.tests"
@@ -112,27 +116,23 @@
               </VueMultiselect>
             </div>
 
-            <!-- Continue -If radio buttons -->
             <div class="form-group">
               <label style="margin-right:1em"> Continue-If:</label>
               <input
                 type="text"
                 placeholder="Enter here"
                 required
-                id="name"
                 class="form-control"
                 v-model="currentItem['continue-if']"
               />
             </div>
 
-            <!-- Backoff input field -->
             <div class="form-group">
               <label style="margin-right:1em"> Backoff:</label>
               <input
                 type="text"
                 placeholder="Enter here"
                 required
-                id="name"
                 class="form-control"
                 v-model="currentItem.backoff"
               />
@@ -140,7 +140,7 @@
 
             <div class="d-flex flex-wrap" style="gap: 0.5rem;">
               <button class="btn btn-success"> Update </button>
-              <button class="btn btn-danger" type="button" @click="deleteJob"> Delete </button>
+              <button class="btn btn-danger" type="button" @click="requestDeleteJob"> Delete </button>
             </div>
           </div>
           </fieldset>
@@ -155,12 +155,14 @@
  import { useTestStore } from '../stores/test_store.ts';
  import { useUserStore } from '/src/stores/user.store';
  import VueMultiselect from 'vue-multiselect';
- import itemList from '../components/list_items.vue'
+ import itemList from '../components/list_items.vue';
+ import ConfirmModal from '../components/ConfirmModal.vue';
+ import PageHeader from '../components/PageHeader.vue';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
 
  export default {
-   components: { VueMultiselect, itemList },
+   components: { VueMultiselect, itemList, ConfirmModal, PageHeader },
    data() {
      return {
        jobName: '',
@@ -175,6 +177,9 @@
        old_job_name: '',
 
        mount: false,
+
+       showConfirm: false,
+       confirmMessage: '',
 
        jobStore: useJobStore(),
        testStore: useTestStore(),
@@ -199,17 +204,14 @@
    },
 
    methods: {
-     // Renders the Add Job form
      addJobForm() {
        this.showAddJob = true;
-
        this.jobName = '';
        this.selected_tests = [];
        this.continue_if = 'true';
        this.backoff = "PT1S";
      },
 
-     // Renders the Edit Job form for a selected job
      setActiveJob(indexArray) {
        this.currentItem = indexArray[0];
        this.currentIndex = indexArray[1];
@@ -217,43 +219,43 @@
        this.old_job_name = this.currentItem.name;
      },
 
-     // Creates a new job
      submitJob() {
        if (!this.validateNoWhitespace(this.backoff)) {
          alert("Backoff cannot contain whitespace");
          return;
        }
-       if(this.jobName.length > 0) {
+       if (this.jobName.length > 0) {
          this.jobStore.addJob({
            name: this.jobName,
-           tests: (this.selected_tests.length == 0)? [] : this.selected_tests.map(obj => obj.name),
+           tests: (this.selected_tests.length == 0) ? [] : this.selected_tests.map(obj => obj.name),
            "continue-if": this.continue_if,
            backoff: this.backoff
-         })
-         // Clear the form to allow users to add a new job.
+         });
          this.addJobForm();
-       }
-       else {
+       } else {
          alert("Please enter a job name");
        }
      },
 
-     // Deletes a job
-     async deleteJob() {
+     requestDeleteJob() {
+       this.confirmMessage = `Delete job "${this.currentItem.name}"? This cannot be undone.`;
+       this.showConfirm = true;
+     },
+
+     async executeDeleteJob() {
+       this.showConfirm = false;
        const deleteIndex = this.currentIndex;
        this.jobStore.jobs.splice(deleteIndex, 1);
        await this.jobStore.deleteJob(this.currentItem);
        if (this.jobStore.jobs.length <= deleteIndex) {
          this.addJobForm();
-       }
-       else {
+       } else {
          this.currentIndex = deleteIndex;
          this.currentItem = this.jobStore.jobs[deleteIndex];
          this.setActiveJob([this.currentItem, this.currentIndex]);
        }
      },
 
-     // Edits a selected job
      async editJob() {
        if (!this.validateNoWhitespace(this.currentItem.backoff)) {
          alert("Backoff cannot contain whitespace");
@@ -269,7 +271,6 @@
          backoff: this.currentItem.backoff
        });
        await this.jobStore.getJobs();
-
        this.currentItem = this.jobStore.jobs[this.currentIndex];
        this.setActiveJob([this.currentItem, this.currentIndex]);
      },
@@ -278,7 +279,7 @@
        const whitespace = /\s/;
        return !whitespace.test(input);
      }
-   } 
+   }
  }
 </script>
 

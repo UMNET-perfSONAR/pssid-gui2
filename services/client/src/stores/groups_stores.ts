@@ -1,9 +1,9 @@
 import {defineStore} from 'pinia'
 import { useHostStore } from './host_store';
-import config from '../shared/config' 
+import config from '../shared/config'
+import { useToastStore } from './toast.store'
 
 export const useGroupStore = defineStore('groupStore', {
-  // create a state object -> can have different properties 
   state: () => ({
     host_groups: [{
       name:'',
@@ -22,55 +22,50 @@ export const useGroupStore = defineStore('groupStore', {
     async getGroups() {
       try {
         this.isLoading = true;
-        const res = await fetch(
-          '/api/host-groups',
-        {
+        const res = await fetch('/api/host-groups', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-        }
-      );
+        });
         const data = await res.json();
         this.host_groups = data;
-        this.filteredData = data; 
+        this.filteredData = data;
         this.isLoading = false;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
+        useToastStore().show('Failed to load host groups', 'error');
       }
     },
-    // add host_groups to an array. take a host_groups object and add to array
+
     async addGroup(host_group:any) {
       try {
         this.isLoading = true;
-        
         const response = await fetch(
           '/api/host-groups/create-hostgroup',
           {
             method: 'POST',
             body: JSON.stringify(host_group),
             mode: 'cors',
-            headers: {
-              "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
 
-	if (response.ok) {
-	  this.host_groups.push(host_group);
-	}
-	else {
-	  // const errorData = await response.json();
-    const text = await response.text();
-    const errorData = text ? JSON.parse(text) : [];
-	  alert(errorData.message);
-	}
+        if (response.ok) {
+          this.host_groups.push(host_group);
+          useToastStore().show('Host group added successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to add host group', 'error');
+        }
 
-        this.isLoading=false;
+        this.isLoading = false;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
+        useToastStore().show('Failed to add host group', 'error');
       }
     },
 
@@ -80,58 +75,55 @@ export const useGroupStore = defineStore('groupStore', {
           '/api/host-groups/update-hostgroup',
           {
             method: 'PUT',
-            mode:'cors',
+            mode: 'cors',
             body: JSON.stringify(host_group),
-            headers: {
-              "Content-Type":"application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-	if (response.ok) {
-	  alert("Group updated successfully!");
-	}
-	else {
-	  // const errorData = await response.json();
-    const text = await response.text();
-    const errorData = text ? JSON.parse(text) : [];
-	  alert(errorData.message);
-	}
+        if (response.ok) {
+          useToastStore().show('Host group updated successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to update host group', 'error');
+        }
       }
       catch(error) {
         console.error(error);
         this.isError = true;
+        useToastStore().show('Failed to update host group', 'error');
       }
     },
-    /**
-     * Delete host_groups from database and remove component from front end
-     * @param host_groups - Host we want to delete 
-     */
+
     async deleteGroup(host_group:any) {
       try {
-        await fetch(
-          '/api/host-groups/'+host_group.name,
+        const response = await fetch(
+          '/api/host-groups/' + host_group.name,
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-          },
+          }
         );
+        if (response.ok) {
+          useToastStore().show(`Group "${host_group.name}" deleted`, 'success');
+        } else {
+          useToastStore().show('Failed to delete host group', 'error');
+        }
       }
       catch(error) {
         console.error(error);
         this.isError = true;
+        useToastStore().show('Failed to delete host group', 'error');
       }
     },
 
     async deleteAll() {
       try {
-        await fetch(
-          '/api/host-groups',
-          {
-            method: 'DELETE',
-            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-          },
-        );
+        await fetch('/api/host-groups', {
+          method: 'DELETE',
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+        });
         this.host_groups = [];
         this.filteredData = [];
       }
@@ -142,24 +134,32 @@ export const useGroupStore = defineStore('groupStore', {
     },
 
     async createConfig(currentGroup: any) {
+      if (!currentGroup || !currentGroup.name) {
+        useToastStore().show('Select a host group to configure.', 'info');
+        return;
+      }
       try {
-        await fetch(
+        useToastStore().show('Provisioning…', 'info');
+        const response = await fetch(
           '/api/host-groups/config',
           {
             method: 'POST',
             body: JSON.stringify(currentGroup),
             mode: 'cors',
-            headers: {
-              "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        alert("Group submitted successfully!");
+        if (response.ok) {
+          useToastStore().show('Group submitted for provisioning', 'success');
+        } else {
+          useToastStore().show('Provision request failed', 'error');
+        }
       }
       catch(error) {
-        console.log(error);
-        this.isError=true;
+        console.error(error);
+        this.isError = true;
+        useToastStore().show('Provision request failed', 'error');
       }
     },
   }

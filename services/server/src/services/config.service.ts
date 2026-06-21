@@ -257,9 +257,27 @@ export async function create_config_file(name: string, click_context: string, ca
     // Pass arguments as a vector (no shell) so a host/group name can never be
     // interpreted as shell syntax (command injection).
     console.log(`Executing provision script: ${shellscript_path} ${click_context} ${name} ${caller} ${caller_role}`);
-    execFile(shellscript_path as string, [click_context, name, caller, caller_role], (err) => {
-      if (err) { console.error(err); }
-      else { console.log(`Provision script completed: context=${click_context} name=${name} caller=${caller} role=${caller_role}`); }
+    execFile(shellscript_path as string, [click_context, name, caller, caller_role], async (err) => {
+      const record = {
+        timestamp: new Date(),
+        caller,
+        caller_role,
+        target_name: name,
+        click_context,
+        success: !err,
+        ...(err ? { error: err.message } : {})
+      };
+      try {
+        const histClient = await connectToMongoDB();
+        await histClient.db('gui').collection('provision_history').insertOne(record);
+      } catch (dbErr) {
+        console.error('Failed to save provision history:', dbErr);
+      }
+      if (err) {
+        console.error(`Provision script failed: context=${click_context} name=${name}`, err);
+      } else {
+        console.log(`Provision script completed: context=${click_context} name=${name} caller=${caller} role=${caller_role}`);
+      }
     });
     
     console.log('Data successfully saved to disk');

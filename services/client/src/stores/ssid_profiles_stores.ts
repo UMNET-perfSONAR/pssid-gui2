@@ -1,106 +1,118 @@
-// allows us to make a store
 import {defineStore} from 'pinia'
-import config from '../shared/config' 
+import config from '../shared/config'
+import { useToastStore } from './toast.store'
 
 export const useSsidStore = defineStore('ssidStore', {
-  // create a state object -> can have different properties 
   state: () => ({
-    // TODO: SET TASKS => HOSTS AND MAKE A GET REQUEST HERE TO SET = TO
     ssid_profiles: [{}],
     isLoading: false
   }),
 
   actions: {
-    // TODO: Use Axios?? 
     async getSsidProfiles() {
-      this.isLoading = true;
-      const res = await fetch(
-        '/api/ssid-profiles',
-        {
+      try {
+        this.isLoading = true;
+        const res = await fetch('/api/ssid-profiles', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-        }
-      );
-      const data = await res.json()
-      this.ssid_profiles = data;
-      this.isLoading = false;
+        });
+        const data = await res.json();
+        this.ssid_profiles = data;
+        this.isLoading = false;
+      }
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to load SSID profiles', 'error');
+      }
     },
 
-    // add ssid_profile to an array. take a ssid_profile object and add to array
     async addSsidProfile(ssid_profile:any) {
-      this.isLoading = true;
-      
-      const response = await fetch(
-        '/api/ssid-profiles/create-ssidProfile',
-        {
-          method: 'POST',
-          body: JSON.stringify(ssid_profile),
-          headers: {
-            "Content-Type": "application/json"
-          },
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+      try {
+        this.isLoading = true;
+        const response = await fetch(
+          '/api/ssid-profiles/create-ssidProfile',
+          {
+            method: 'POST',
+            body: JSON.stringify(ssid_profile),
+            headers: { "Content-Type": "application/json" },
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          }
+        );
+
+        if (response.ok) {
+          this.ssid_profiles.push(ssid_profile);
+          useToastStore().show('SSID profile added successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to add SSID profile', 'error');
         }
-      );
 
-      if (response.ok) {
-	this.ssid_profiles.push(ssid_profile);
+        this.isLoading = false;
       }
-      else {
-	// const errorData = await response.json();
-  const text = await response.text();
-  const errorData = text ? JSON.parse(text) : [];
-	alert(errorData.message);
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to add SSID profile', 'error');
       }
-
-      this.isLoading=false;
     },
 
-    /**
-     * Delete ssid_profile from database and remove component from front end
-     * @param ssid_profile - SsidProfile we want to delete 
-     */
     async deleteSsidProfile(ssid_profile:any) {
-      await fetch(
-        '/api/ssid-profiles/'+ssid_profile.name,
-        {
-          method: 'DELETE',
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-        },
-      );
+      try {
+        const response = await fetch(
+          '/api/ssid-profiles/' + ssid_profile.name,
+          {
+            method: 'DELETE',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          }
+        );
+        if (response.ok) {
+          useToastStore().show(`SSID profile "${ssid_profile.name}" deleted`, 'success');
+        } else {
+          useToastStore().show('Failed to delete SSID profile', 'error');
+        }
+      }
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to delete SSID profile', 'error');
+      }
     },
 
     async editSsidProfile(ssid_profile:any) {
-      const response = await fetch(
-        '/api/ssid-profiles/update-ssidProfile',
-        {
-          method: "PUT",
-          mode: "cors",
-          body: JSON.stringify(ssid_profile),
-          headers: {
-            "Content-Type":"application/json"
-          },
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+      try {
+        const response = await fetch(
+          '/api/ssid-profiles/update-ssidProfile',
+          {
+            method: "PUT",
+            mode: "cors",
+            body: JSON.stringify(ssid_profile),
+            headers: { "Content-Type": "application/json" },
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          }
+        );
+        if (response.ok) {
+          useToastStore().show('SSID profile updated successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to update SSID profile', 'error');
         }
-      );
-      if (response.ok) {
-	alert("SsidProfile updated successfully");
       }
-      else {
-	// const errorData = await response.json();
-  const text = await response.text();
-  const errorData = text ? JSON.parse(text) : [];
-	alert(errorData.message);
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to update SSID profile', 'error');
       }
     },
 
     async deleteAll() {
-      await fetch(
-        '/api/ssid-profiles',
-        {
+      try {
+        await fetch('/api/ssid-profiles', {
           method: 'DELETE',
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-        }
-      );
-      this.ssid_profiles = [];
+        });
+        this.ssid_profiles = [];
+      }
+      catch(error) {
+        console.error(error);
+      }
     }
   }
 })

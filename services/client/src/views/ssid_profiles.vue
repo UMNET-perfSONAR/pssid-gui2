@@ -1,8 +1,14 @@
 <template>
   <div>
-    <!-- Loading page feedback -->
-    <div v-if="ssidStore.isLoading===true"> 
-      <p> Loading SSID Profiles page... </p>
+    <PageHeader
+      title="SSID Profiles"
+      subtitle="Configure wireless network profiles for testing"
+      icon="wifi"
+    />
+
+    <div v-if="ssidStore.isLoading===true" class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading SSID profiles…</span>
     </div>
 
     <!-- Add ssid_profile button -->
@@ -57,11 +63,12 @@
  import dynamicform from '../components/dynamicform.vue'
  import editDynamicForm from '../components/edit_dynamic_form.vue'
  import itemList from '../components/list_items.vue';
+ import PageHeader from '../components/PageHeader.vue';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
 
  export default {
-   components: { dynamicform, editDynamicForm, itemList },
+   components: { dynamicform, editDynamicForm, itemList, PageHeader },
    data() {
      return {
        /*

@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia'
-import config from '../shared/config' 
+import config from '../shared/config'
+import { useToastStore } from './toast.store'
 
 export const useHostStore = defineStore('hostStore', {
   state: () => ({
@@ -10,9 +11,6 @@ export const useHostStore = defineStore('hostStore', {
 
   actions: {
 
-    /**
-     * retrieve all host information from database
-     */
     async getHosts() {
       try {
         this.isLoading = true;
@@ -26,13 +24,10 @@ export const useHostStore = defineStore('hostStore', {
       catch(error) {
         console.error(error);
         this.isError = true;
+        useToastStore().show('Failed to load hosts', 'error');
       }
     },
 
-    /**
-     * Call on server to add to mongodb. Append host object to host array.
-     * @param host - host info from user input
-     */
     async addHost(host:any) {
       try {
         this.isLoading = true;
@@ -43,54 +38,50 @@ export const useHostStore = defineStore('hostStore', {
             body: JSON.stringify(host),
             mode: 'cors',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
-            headers: {
-              "Content-Type": "application/json"
-            }
+            headers: { "Content-Type": "application/json" }
           }
         );
 
-	if (response.ok) {
-	  this.hosts.push(host);
-	}
-	else {
-	  // const errorData = await response.json();
-    const text = await response.text();
-    const errorData = text ? JSON.parse(text) : [];
-	  alert(errorData.message);
-	}
+        if (response.ok) {
+          this.hosts.push(host);
+          useToastStore().show('Host added successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to add host', 'error');
+        }
 
-        this.isLoading=false;
+        this.isLoading = false;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
+        useToastStore().show('Failed to add host', 'error');
       }
     },
 
-    /**
-     * Delete host from database and remove component from front end
-     * @param host - Host we want to delete 
-     */
     async deleteHost(host:any) {
       try {
-        await fetch(
-          '/api/hosts/' +host?.name,
+        const response = await fetch(
+          '/api/hosts/' + host?.name,
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
-        ); 
+        );
+        if (response.ok) {
+          useToastStore().show(`Host "${host?.name}" deleted`, 'success');
+        } else {
+          useToastStore().show('Failed to delete host', 'error');
+        }
       }
       catch(error) {
         console.error(error);
         this.isError = true;
+        useToastStore().show('Failed to delete host', 'error');
       }
     },
-    
-    /**
-     * Call on server to update current host object
-     * @param updateHostObj - includes all necessary information to update host 
-     */
+
     async editHost(updateHostObj:any) {
       try {
         const response = await fetch(
@@ -100,39 +91,29 @@ export const useHostStore = defineStore('hostStore', {
             mode: "cors",
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
             body: JSON.stringify(updateHostObj),
-            headers: {
-              "Content-Type": "application/json"
-            }
-	    
+            headers: { "Content-Type": "application/json" }
           }
         );
-	if (response.ok) {
-	  alert("Host updated successfully!");
-	}
-	else {
-	  // const errorData = await response.json();
-    const text = await response.text();
-    const errorData = text ? JSON.parse(text) : [];
-	  alert(errorData.message);
-	}
+        if (response.ok) {
+          useToastStore().show('Host updated successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to update host', 'error');
+        }
       }
       catch(error) {
         console.error(error);
         this.isError = true;
+        useToastStore().show('Failed to update host', 'error');
       }
     },
 
-    /**
-     * Call on server to  all hosts 
-     */
     async deleteAll() {
       try {
-        await fetch(
-          '/api/hosts',
-          {
-            method: 'DELETE',
-          }
-        );
+        await fetch('/api/hosts', {
+          method: 'DELETE',
+        });
         this.hosts = [];
       }
       catch(error) {
@@ -141,33 +122,33 @@ export const useHostStore = defineStore('hostStore', {
       }
     },
 
-    /**
-     * Call on server to create config file and push probes to remote computers
-     * @param currentHost - host, if any, that submit to probes button was pushed. provides context
-     */
     async createConfig(currentHost: any) {
       if (currentHost.length === 0) {
-	alert("Select a host probe to submit to.");
-	return;
+        useToastStore().show('Select a host probe to configure.', 'info');
+        return;
       }
       try {
-        await fetch(
+        useToastStore().show('Provisioning…', 'info');
+        const response = await fetch(
           '/api/hosts/config',
           {
             method: 'POST',
             body: JSON.stringify(currentHost),
             mode: 'cors',
-            headers: {
-              "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        alert("Host submitted successfully!");
+        if (response.ok) {
+          useToastStore().show('Host submitted for provisioning', 'success');
+        } else {
+          useToastStore().show('Provision request failed', 'error');
+        }
       }
       catch(error) {
         console.error(error);
         this.isError = true;
+        useToastStore().show('Provision request failed', 'error');
       }
     },
   }

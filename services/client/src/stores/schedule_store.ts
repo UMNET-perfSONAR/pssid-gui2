@@ -1,8 +1,8 @@
 import {defineStore} from 'pinia'
-import config from '../shared/config' 
+import config from '../shared/config'
+import { useToastStore } from './toast.store'
 
 export const useScheduleStore = defineStore('scheduleStore', {
-  // create a state object -> can have different properties 
   state: () => ({
     schedules: [{}],
     isLoading: false
@@ -10,78 +10,97 @@ export const useScheduleStore = defineStore('scheduleStore', {
 
   actions: {
     async getSchedules() {
-      this.isLoading = true;
-      const res = await fetch(
-        '/api/schedules',
-        {
+      try {
+        this.isLoading = true;
+        const res = await fetch('/api/schedules', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-        }
-      );
-      const data = await res.json();
-      this.schedules = data;
-      this.isLoading = false;
+        });
+        const data = await res.json();
+        this.schedules = data;
+        this.isLoading = false;
+      }
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to load schedules', 'error');
+      }
     },
 
     async addSchedule(schedule:JSON) {
-      this.isLoading = true;
-      const response = await fetch(
-        '/api/schedules/create-schedule',
-        {
-          method: 'POST',
-          body: JSON.stringify(schedule),
-          mode: 'cors',
-          headers: {
-            "Content-Type": "application/json"
-          },
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+      try {
+        this.isLoading = true;
+        const response = await fetch(
+          '/api/schedules/create-schedule',
+          {
+            method: 'POST',
+            body: JSON.stringify(schedule),
+            mode: 'cors',
+            headers: { "Content-Type": "application/json" },
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          }
+        );
+
+        if (response.ok) {
+          this.schedules.push(schedule);
+          useToastStore().show('Schedule added successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to add schedule', 'error');
         }
-      );
 
-      if (response.ok) {
-	this.schedules.push(schedule);
+        this.isLoading = false;
       }
-      else {
-	// const errorData = await response.json();
-  const text = await response.text();
-  const errorData = text ? JSON.parse(text) : [];
-	alert(errorData.message);
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to add schedule', 'error');
       }
-
-      this.isLoading=false;
     },
 
     async deleteSchedule(schedule:any) {
-      await fetch(
-        '/api/schedules/'+schedule.name,
-        {
-          method: 'DELETE',
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+      try {
+        const response = await fetch(
+          '/api/schedules/' + schedule.name,
+          {
+            method: 'DELETE',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          }
+        );
+        if (response.ok) {
+          useToastStore().show(`Schedule "${schedule.name}" deleted`, 'success');
+        } else {
+          useToastStore().show('Failed to delete schedule', 'error');
         }
-      );
-    },
-    async updateSchedule(updateScheduleObj:any) {
-      const response = await fetch(
-        '/api/schedules/update-schedule',
-        {
-          method: "PUT",
-          mode: "cors",
-          body: JSON.stringify(updateScheduleObj),
-          headers: {
-            "Content-Type": "application/json"
-          },
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-        }
-      );
-      if (response.ok) {
-	alert("Schedule updated successfully");
       }
-      else {
-	// const errorData = await response.json();
-  const text = await response.text();
-  const errorData = text ? JSON.parse(text) : [];
-	alert(errorData.message);
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to delete schedule', 'error');
+      }
+    },
+
+    async updateSchedule(updateScheduleObj:any) {
+      try {
+        const response = await fetch(
+          '/api/schedules/update-schedule',
+          {
+            method: "PUT",
+            mode: "cors",
+            body: JSON.stringify(updateScheduleObj),
+            headers: { "Content-Type": "application/json" },
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          }
+        );
+        if (response.ok) {
+          useToastStore().show('Schedule updated successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to update schedule', 'error');
+        }
+      }
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to update schedule', 'error');
       }
     }
-
   }
 })

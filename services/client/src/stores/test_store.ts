@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia'
-import config from '../shared/config' 
+import config from '../shared/config'
+import { useToastStore } from './toast.store'
 
 export const useTestStore = defineStore('test', {
   state: () => ({
@@ -21,22 +22,22 @@ export const useTestStore = defineStore('test', {
         const res = await fetch('/api/tests', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
-        const data = await res.json()
+        const data = await res.json();
         this.tests = data;
         this.isLoading = false;
       }
       catch(error) {
         console.error(error);
-        this.isError=true;
+        this.isError = true;
+        useToastStore().show('Failed to load tests', 'error');
       }
     },
 
-    // get name of all available tests
     async getTestNames() {
       this.isLoading = true;
-      const res = await fetch('/api/tests/test-files', 
+      const res = await fetch('/api/tests/test-files',
         {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
-      )
+      );
       const data = await res.json();
       this.listOfOptions = data;
       this.isLoading = false;
@@ -44,91 +45,103 @@ export const useTestStore = defineStore('test', {
 
     async getDesiredTest(test_name: string) {
       this.isLoading = true;
-      const res = await fetch('/api/tests/read-test/'+test_name,
+      const res = await fetch('/api/tests/read-test/' + test_name,
         {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
-      )
+      );
       const data = await res.json();
-
-      // NOTE: this is the reason that global validation is not working
       this.test_options = data.parameters;
       this.test_category = data.category || '';
-      
       this.isLoading = false;
     },
 
-    // edit test through put request
     async editTest(test: any) {
-      const response = await fetch(
-        '/api/tests/update-test',
-        {
-          method: 'PUT',
-          mode:'cors',
-          body: JSON.stringify(test),
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
-          headers: {
-            "Content-Type":"application/json"
+      try {
+        const response = await fetch(
+          '/api/tests/update-test',
+          {
+            method: 'PUT',
+            mode: 'cors',
+            body: JSON.stringify(test),
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
+            headers: { "Content-Type": "application/json" }
           }
+        );
+        if (response.ok) {
+          useToastStore().show('Test updated successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to update test', 'error');
         }
-      );
-      if (response.ok) {
-	alert("Test updated successfully");
       }
-      else {
-	// const errorData = await response.json();
-  const text = await response.text();
-  const errorData = text ? JSON.parse(text) : [];
-	alert(errorData.message);
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to update test', 'error');
       }
     },
 
-    // add test to an array. take a test object and add to array
     async addTest(test:any) {
-      this.isLoading = true;
-      
-      const response = await fetch(
-        '/api/tests/create-test',
-        {
-          method: 'POST',
-          body: JSON.stringify(test),
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
-          headers: {
-            "Content-Type": "application/json"
+      try {
+        this.isLoading = true;
+        const response = await fetch(
+          '/api/tests/create-test',
+          {
+            method: 'POST',
+            body: JSON.stringify(test),
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {}),
+            headers: { "Content-Type": "application/json" }
           }
+        );
+
+        if (response.ok) {
+          this.tests.push(test);
+          useToastStore().show('Test added successfully', 'success');
+        } else {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          useToastStore().show(errorData.message || 'Failed to add test', 'error');
         }
-      );
 
-      if (response.ok) {
-	this.tests.push(test);
+        this.isLoading = false;
       }
-      else {
-	// const errorData = await response.json();
-  const text = await response.text();
-  const errorData = text ? JSON.parse(text) : [];
-	alert(errorData.message);
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to add test', 'error');
       }
-
-      this.isLoading=false;
     },
 
     async deleteTest(test:any) {
-      await fetch(
-        '/api/tests/'+test.name,
-        {
-          method: 'DELETE',
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+      try {
+        const response = await fetch(
+          '/api/tests/' + test.name,
+          {
+            method: 'DELETE',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          }
+        );
+        if (response.ok) {
+          useToastStore().show(`Test "${test.name}" deleted`, 'success');
+        } else {
+          useToastStore().show('Failed to delete test', 'error');
         }
-      );
+      }
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to delete test', 'error');
+      }
     },
 
     async deleteAll() {
-      await fetch(
-        '/api/tests',
-        {
+      try {
+        await fetch('/api/tests', {
           method: 'DELETE',
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-        }
-      );
-      this.tests = [];
+        });
+        this.tests = [];
+      }
+      catch(error) {
+        console.error(error);
+      }
     },
 
     formatPostData(form_data: Array<any>, optional_data: Array<any>) {

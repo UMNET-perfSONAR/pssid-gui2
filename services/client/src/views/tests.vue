@@ -1,8 +1,14 @@
 <template>
   <div>
-    <!-- Loading page feedback -->
-    <div v-if="testStore.isLoading===true"> 
-      <p> Loading tests page... </p>
+    <PageHeader
+      title="Tests"
+      subtitle="Define the performance tests run by each job"
+      icon="science"
+    />
+
+    <div v-if="testStore.isLoading===true" class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading tests…</span>
     </div>
 
     <!-- Add Test button -->
@@ -127,12 +133,13 @@
  import  VueMultiselect  from 'vue-multiselect';
  import editFormComp from '../components/edit_dynamic_form.vue';
  import itemList from '../components/list_items.vue'
+ import PageHeader from '../components/PageHeader.vue'
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { ref } from 'vue'
 
  export default {
-   components: { dynamicform , VueMultiselect, editFormComp, itemList },
+   components: { dynamicform, VueMultiselect, editFormComp, itemList, PageHeader },
    data() {
      return {
        mount: false,

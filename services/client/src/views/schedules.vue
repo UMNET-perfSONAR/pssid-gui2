@@ -1,8 +1,14 @@
 <template>
   <div>
-    <!-- Loading page feedback -->
-    <div v-if="scheduleStore.isLoading===true"> 
-      <p> Loading schedules page... </p>
+    <PageHeader
+      title="Schedules"
+      subtitle="Define when and how often batches run on your probes"
+      icon="schedule"
+    />
+
+    <div v-if="scheduleStore.isLoading===true" class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading schedules…</span>
     </div>
 
     <!-- Add schedule button -->
@@ -81,11 +87,12 @@
  import { useUserStore } from '/src/stores/user.store';
  import cronstuff from '../components/cron.vue'
  import itemList from '../components/list_items.vue';
+ import PageHeader from '../components/PageHeader.vue';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
 
  export default {
-   components: { VueMultiselect, cronstuff, itemList },
+   components: { VueMultiselect, cronstuff, itemList, PageHeader },
    data() {
      return {
        scheduleStore: useScheduleStore(),

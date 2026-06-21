@@ -1,33 +1,45 @@
 <template>
   <div>
+    <ConfirmModal
+      :visible="showConfirm"
+      :message="confirmMessage"
+      @confirm="executeDeleteGroup"
+      @cancel="showConfirm = false"
+    />
 
-    <div v-if="hostGroup.isLoading===true">
-      <p> Loading Host Group Page... </p>
+    <PageHeader
+      title="Host Groups"
+      subtitle="Organize hosts into groups for bulk provisioning"
+      icon="workspaces"
+    />
+
+    <div v-if="hostGroup.isLoading===true" class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading host groups…</span>
     </div>
 
     <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
       <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning" :disabled="isDisabled || showAddGroup">Configure selected group</button>
       <button @click="addGroupForm" class="btn btn-primary" v-if="showAddGroup==false" :disabled="isDisabled">Add Host Group</button>
     </div>
-    <div class="list row"> 
+    <div class="list row">
       <!-- Host Group List -->
       <div class="col-md-6">
         <h3> Host Group List </h3>
-        <!-- regex search bar and list of groups -->
         <item-list v-if="mounted==true" :itemArray="hostGroup.host_groups" :display="showAddGroup"
           @updateActive="updateActiveGroup" style="cursor: pointer;"
         ></item-list>
       </div>
 
       <!-- Add Group Form -->
-      <div class = "col-md-6" v-if="showAddGroup==true"> 
+      <div class="col-md-6" v-if="showAddGroup==true">
         <h3> Add Host Group </h3>
         <fieldset :disabled="isDisabled">
         <form @submit.prevent="handleSubmit">
           <div class="submit-form">
             <div class="form-group">
               <label for="groups"> Host Group </label>
-              <input 
+              <input
                 type="text"
                 placeholder="Enter host group name"
                 v-model="newGroup"
@@ -36,13 +48,10 @@
                 class="form-control"
               />
             </div>
-            <!-- host selection -->
             <hostSelection v-if="mounted == true"
              :copy_of_data="copyOfData"
             ></hostSelection>
-
-            <!-- batch selection-->
-            <div class= "form-group">
+            <div class="form-group">
               <label for="batch-select"> Batch Selection </label>
               <VueMultiselect
                 v-model="selectedBatches"
@@ -54,16 +63,12 @@
               >
               </VueMultiselect>
             </div>
-            <!-- Host Regex input -->
             <div class="form-group">
               <label> Host Regex Input </label>
               <hostRegex :regex_array="regex"></hostRegex>
             </div>
-
-            <!-- dynamic data section -->
             <label for="params"> Optional Data </label>
             <dynamic_add_data :addedData="addedData"></dynamic_add_data>
-
           </div>
           <button class="btn btn-success" style="margin-bottom: 2em;"> Submit </button>
         </form>
@@ -71,15 +76,14 @@
       </div>
 
       <!-- Edit Group Form -->
-      <div class = "col-md-6" v-if="showAddGroup==false">
+      <div class="col-md-6" v-if="showAddGroup==false">
         <h3> Edit Host Group </h3>
         <fieldset :disabled="isDisabled">
         <form @submit.prevent="editGroup">
           <div class="submit-form">
-            <!-- host group -->
             <div class="form-group">
               <label for="groups"> Host Group </label>
-              <input 
+              <input
                 type="text"
                 placeholder="Enter host group name"
                 v-model="currentGroup.name"
@@ -88,13 +92,10 @@
                 class="form-control"
               />
             </div>
-
-            <!-- host selection -->
-            <div class= "form-group">
+            <div class="form-group">
               <hostSelection :copy_of_data="hostsToEdit"></hostSelection>
             </div>
-            <!-- batch selection -->
-            <div class= "form-group">
+            <div class="form-group">
               <label for="batch-select"> Batch Selection </label>
               <VueMultiselect
                 v-model="currentGroup.batches"
@@ -105,20 +106,15 @@
               </VueMultiselect>
             </div>
           </div>
-          <!-- hosts regex -->
           <div class="form-group">
             <label> Host Regex Input </label>
             <hostRegex :regex_array="editRegex"></hostRegex>
           </div>
-
-          <!-- dynamic data section -->
           <label for="params"> Optional Data </label>
           <dynamic_add_data :addedData="editOptionalData"></dynamic_add_data>
-
-          <!-- update and delete buttons-->
-          <div class="d-flex flex-wrap" style="gap: 0.5rem;">
+          <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
             <button class="btn btn-success"> Update </button>
-            <button class="btn btn-danger" type="button" @click="deletegroup"> Delete </button>
+            <button class="btn btn-danger" type="button" @click="requestDeleteGroup"> Delete </button>
           </div>
         </form>
       </fieldset>
@@ -134,35 +130,27 @@
  import { useUserStore } from '/src/stores/user.store';
  import { defineComponent } from 'vue';
  import hostRegex from '../components/hosts_regex.vue';
- import VueMultiselect from 'vue-multiselect'
- import itemList from '../components/list_items.vue'
+ import VueMultiselect from 'vue-multiselect';
+ import itemList from '../components/list_items.vue';
  import dynamic_add_data from '../components/dynamic_add_data.vue';
  import hostSelection from '../forms/hostSelection.vue';
- import config from '../shared/config'
+ import ConfirmModal from '../components/ConfirmModal.vue';
+ import PageHeader from '../components/PageHeader.vue';
+ import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
 
  export default defineComponent({
-   components: {VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection},
+   components: { VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection, ConfirmModal, PageHeader },
    data() {
      return {
-       /*
-        * Variables for the Add Host form
-        */
        selectedGroup: '',
        selectedHosts: [],
        selectedBatches: [],
        regex: [],
        addedData: [],
 
-       /*
-        * Variable that controls which form is displayed,
-        * Add Group or Edit Group.
-        */
        showAddGroup: true,
 
-       /*
-        * Variables for the Edit Host form
-        */
        currentGroup: [],
        currentIndex: {},
        newGroup: '',
@@ -173,9 +161,9 @@
 
        mounted: false,
 
-       /*
-        * Method(s) to access the store
-        */
+       showConfirm: false,
+       confirmMessage: '',
+
        hostStore: useHostStore(),
        hostGroup: useGroupStore(),
        batchStore: useBatchStore(),
@@ -189,30 +177,29 @@
      await this.hostGroup.getGroups();
      await this.batchStore.getBatches();
      if (this.enable_sso) {
-      await this.userStore.fetchUser();
+       await this.userStore.fetchUser();
      }
      this.copyOfData = this.hostStore.hosts.map((item, index) => ({
        name: item.name,
        selected: false,
        index: index
-     }))
+     }));
      this.mounted = true;
    },
 
    computed: {
-      isDisabled() {
-        return isFormDisabled();
-      }
-    },
+     isDisabled() {
+       return isFormDisabled();
+     }
+   },
 
    methods: {
-     // Renders a current active group
-     updateActiveGroup(indexArray){
+     updateActiveGroup(indexArray) {
        this.currentGroup = indexArray[0];
        this.currentIndex = indexArray[1];
        this.selectedGroup = this.currentGroup.name;
        this.showAddGroup = false;
-       this.editOptionalData = Object.entries(this.currentGroup.data).map(([key,value]) => ({
+       this.editOptionalData = Object.entries(this.currentGroup.data).map(([key, value]) => ({
          key,
          value
        }));
@@ -221,30 +208,26 @@
          selected: false,
          index: index
        }));
-       
        this.currentGroup.hosts.forEach(element => {
-         const ind = this.hostsToEdit.findIndex((host) => element==host.name);
+         const ind = this.hostsToEdit.findIndex((host) => element == host.name);
          this.hostsToEdit[ind].selected = true;
        });
-       this.editRegex = this.currentGroup.hosts_regex.map(item => ({regex:item}));
+       this.editRegex = this.currentGroup.hosts_regex.map(item => ({ regex: item }));
      },
 
-     // Submits a newly added group
      async handleSubmit() {
-       this.selectedHosts = this.copyOfData.filter(h => {
-         return h.selected == true
-       })
+       this.selectedHosts = this.copyOfData.filter(h => h.selected == true);
        if (this.newGroup.length > 0) {
-         const spec_object = this.addedData.reduce((result, item)=> {
-           result[item.key] = item.value
-           return result
+         const spec_object = this.addedData.reduce((result, item) => {
+           result[item.key] = item.value;
+           return result;
          }, {});
          this.hostGroup.addGroup({
            name: this.newGroup,
-           batches: (this.selectedBatches.length == 0) ? [] : this.selectedBatches.map(obj=>obj.name),
-           hosts: (this.selectedHosts.length == 0)? [] : this.selectedHosts.map(obj => obj.name),
+           batches: (this.selectedBatches.length == 0) ? [] : this.selectedBatches.map(obj => obj.name),
+           hosts: (this.selectedHosts.length == 0) ? [] : this.selectedHosts.map(obj => obj.name),
            data: spec_object,
-           hosts_regex: (this.regex.length == 0)? [] : this.regex.map(obj => obj.regex)
+           hosts_regex: (this.regex.length == 0) ? [] : this.regex.map(obj => obj.regex)
          });
          this.selectedBatches = [];
          this.selectedHosts = [];
@@ -252,46 +235,38 @@
          this.regex = [];
          this.copyOfData = this.copyOfData.map(item => ({
            name: item.name,
-           selected: false, 
+           selected: false,
            index: item.index,
-         }))
+         }));
        }
-
-       // Clear the form and show Add Group form again.
        this.addGroupForm();
      },
 
-     // Edits a currently selected group
      async editGroup() {
-       const new_selected_hosts = this.hostsToEdit.filter(h => {
-         return h.selected == true
-       })
+       const new_selected_hosts = this.hostsToEdit.filter(h => h.selected == true);
        let object = {
          new_hostgroup: this.currentGroup.name,
          old_hostgroup: this.selectedGroup,
          hosts: (new_selected_hosts.length == 0) ?
            [] : new_selected_hosts.map(obj => obj.name),
          batches: this.currentGroup.batches,
-         data: this.editOptionalData.reduce((result, item)=> {
-           result[item.key] = item.value
-           return result
+         data: this.editOptionalData.reduce((result, item) => {
+           result[item.key] = item.value;
+           return result;
          }, {}),
          hosts_regex: (this.editRegex.length == 0) ?
            [] : this.editRegex.map(obj => obj.regex)
-       }
+       };
        await this.hostGroup.editGroup(object);
        await this.hostGroup.getGroups();
-
        this.currentGroup = this.hostGroup.host_groups[this.currentIndex];
        this.updateActiveGroup([this.currentGroup, this.currentIndex]);
      },
 
-     // Renders Add Group form
      addGroupForm() {
        this.showAddGroup = true;
        this.currentIndex = {};
        this.currentGroup = [];
-
        this.selectedGroup = '';
        this.selectedHosts = [];
        this.selectedBatches = [];
@@ -299,27 +274,26 @@
        this.addedData = [];
      },
 
-     // Deletes a selected group
-     async deletegroup() {
+     requestDeleteGroup() {
+       this.confirmMessage = `Delete group "${this.currentGroup.name}"? This cannot be undone.`;
+       this.showConfirm = true;
+     },
+
+     async executeDeleteGroup() {
+       this.showConfirm = false;
        const deleteIndex = this.currentIndex;
        this.hostGroup.host_groups.splice(deleteIndex, 1);
        await this.hostGroup.deleteGroup(this.currentGroup);
-       // If the deleted group is the last one, clear the selection and show
-       // the add group page.
        if (this.hostGroup.host_groups.length <= deleteIndex) {
          this.editRegex = [];
          this.addGroupForm();
-       }
-       // Otherwise, update the selection to the next group in the list,
-       // allowing users to potentially keep deleting without reselection.
-       else {
+       } else {
          this.currentIndex = deleteIndex;
          this.currentGroup = this.hostGroup.host_groups[deleteIndex];
          this.updateActiveGroup([this.currentGroup, deleteIndex]);
        }
      },
    }
-   
  })
 </script>
 

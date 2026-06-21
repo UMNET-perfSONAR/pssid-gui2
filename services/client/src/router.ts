@@ -30,12 +30,12 @@ const routes =  [
     name: "test_page",
     component: () => import("./views/tests.vue")
   },
-  // {
-  //   path: "/jobs",
-  //   alias: "/job",
-  //   name: "job_page",
-  //   component: () => import("./views/jobs.vue")
-  // },
+  {
+    path: "/jobs",
+    alias: "/job",
+    name: "job_page",
+    component: () => import("./views/jobs.vue")
+  },
   {
     path: "/schedules",
     alias: "/schedule",
@@ -49,12 +49,16 @@ const routes =  [
     component: () => import("./views/ssid_profiles.vue")
   },
   {
+    path: "/history",
+    name: "history_page",
+    component: () => import("./views/provision_history.vue")
+  },
+  {
     path: "/newform",
     alias: "/newform",
     name: "json_page",
     component: () => import("./forms/addForm.vue")
   },
-
 ];
 
 const router = createRouter({
