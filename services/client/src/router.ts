@@ -54,6 +54,11 @@ const routes =  [
     component: () => import("./views/provision_history.vue")
   },
   {
+    path: "/settings",
+    name: "settings_page",
+    component: () => import("./views/settings.vue")
+  },
+  {
     path: "/newform",
     alias: "/newform",
     name: "json_page",

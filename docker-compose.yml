@@ -16,6 +16,10 @@ services:
   client:
     image: pssid-gui2_client:latest
     build: ./services/client
+    environment:
+      # Selects the white-label brand profile (see services/client/src/brand).
+      # Set BRAND in the root .env (the installer/Makefile manage this).
+      - VITE_BRAND=${BRAND:-default}
     volumes:
       - ./services/client/src:/usr/src/app/client/src
       - client_node_modules:/usr/src/app/client/node_modules

@@ -225,11 +225,12 @@ function sanitizeBatchScripts(batch_data: any) {
 /**
  * creates config file, ansible inventory, and executes shellscript
  * @param name - name of host or host_group where button was clicked. defaults to '*'
- * @param click_context - 'host' or 'host_group'
+ * @param click_context - 'host', 'host_group', or 'auto'
  * @param caller - username of the authenticated user, or 'unauthenticated'
  * @param caller_role - 'authenticated' or 'unauthenticated'
+ * @param trigger - 'manual' (user clicked Configure) or 'auto' (auto-provision)
  */
-export async function create_config_file(name: string, click_context: string, caller: string = 'unauthenticated', caller_role: string = 'unauthenticated') {
+export async function create_config_file(name: string, click_context: string, caller: string = 'unauthenticated', caller_role: string = 'unauthenticated', trigger: 'manual' | 'auto' = 'manual') {
   try {
     get_paths();
     const client = await connectToMongoDB();
@@ -264,6 +265,7 @@ export async function create_config_file(name: string, click_context: string, ca
         caller_role,
         target_name: name,
         click_context,
+        trigger,
         success: !err,
         ...(err ? { error: err.message } : {})
       };

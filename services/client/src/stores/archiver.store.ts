@@ -63,7 +63,7 @@ export const useArchiverStore = defineStore('archiver', {
       try {
         this.isLoading = true;
         const response = await fetch(
-          '/api/create-archiver",
+          '/api/create-archiver',
           {
             method: 'POST',
             body: JSON.stringify(archiver),

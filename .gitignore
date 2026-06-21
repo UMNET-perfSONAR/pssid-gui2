@@ -19,3 +19,9 @@ mongo-backups/*
 
 test-docker-compose.yml
 services/database/init-mongo.js
+
+# Installer-generated artifacts (host-specific, not for version control)
+.env
+.env.bak
+nginx.conf.bak
+www/

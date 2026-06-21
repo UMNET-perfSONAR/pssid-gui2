@@ -11,6 +11,11 @@ import router from './router'
 
 import cronCore from '@vue-js-cron/core'
 import './assets/main.css'
+import { applyBrand } from './brand'
+
+// Paint the active brand (palette, title, favicon) before mounting so there is
+// no flash of the default identity. Controlled by the VITE_BRAND env variable.
+applyBrand()
 import '@jsonforms/vue-vanilla/vanilla.css';
 
 

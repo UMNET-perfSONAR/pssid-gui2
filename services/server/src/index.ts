@@ -97,19 +97,25 @@ const userinforoute=require("./routes/userinfo.routes");
 const layerscriptroute=require("./routes/layer_scripts.routes");
 const scriptroute=require("./routes/scripts.routes");
 const provisionhistoryroute=require("./routes/provision_history.routes");
+const settingsroute=require("./routes/settings.routes");
 
-app.use("/api/hosts", hostroute);
-app.use("/api/jobs", jobroute);
-app.use("/api/schedules", scheduleroute);
-app.use("/api/host-groups", hostgrouproute);
+// Auto-provision: successful writes to daemon-affecting routers (below) request
+// a debounced provision when the operator has enabled it in Settings.
+const { autoProvisionOnWrite } = require('./services/autoProvision.service');
+
+app.use("/api/hosts", autoProvisionOnWrite, hostroute);
+app.use("/api/jobs", autoProvisionOnWrite, jobroute);
+app.use("/api/schedules", autoProvisionOnWrite, scheduleroute);
+app.use("/api/host-groups", autoProvisionOnWrite, hostgrouproute);
 app.use("/api/archivers", archiverroute);
-app.use("/api/batches", batchroute);
-app.use("/api/ssid-profiles", ssidprofileroute);
-app.use("/api/tests", testroute);
+app.use("/api/batches", autoProvisionOnWrite, batchroute);
+app.use("/api/ssid-profiles", autoProvisionOnWrite, ssidprofileroute);
+app.use("/api/tests", autoProvisionOnWrite, testroute);
 app.use('/api/userinfo', userinforoute);
 app.use('/api/layer-scripts', layerscriptroute);
 app.use('/api/scripts', scriptroute);
 app.use('/api/provision-history', provisionhistoryroute);
+app.use('/api/settings', settingsroute);
 
 // Health check — used by Docker and monitoring to verify the server + DB are reachable
 app.get('/api/health', async (_req: Request, res: Response) => {

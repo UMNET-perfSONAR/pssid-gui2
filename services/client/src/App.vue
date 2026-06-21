@@ -3,8 +3,8 @@
     <ToastNotification />
     <nav class="navbar navbar-expand-md navbar-dark">
       <a class="navbar-brand" href="#" @click.prevent>
-        <span class="material-icons nav-brand-icon">wifi</span>
-        <span class="nav-brand-text">pSSID <strong>GUI</strong></span>
+        <span class="material-icons nav-brand-icon">{{ brand.glyph }}</span>
+        <span class="nav-brand-text">{{ brand.shortName }} <strong>{{ brand.emphasis }}</strong></span>
       </a>
       <button class="navbar-toggler" type="button" @click="navOpen = !navOpen" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
@@ -15,7 +15,7 @@
             <router-link :to="link.to" class="nav-link" @click="navOpen = false">{{ link.label }}</router-link>
           </li>
         </ul>
-        <span class="nav-version">v2.0</span>
+        <span class="nav-version">{{ brand.version }}</span>
       </div>
     </nav>
     <div class="container mt-4">
@@ -26,6 +26,7 @@
 
 <script>
 import ToastNotification from './components/ToastNotification.vue'
+import { activeBrand } from './brand'
 
 export default {
   name: 'app',
@@ -33,6 +34,7 @@ export default {
   data() {
     return {
       navOpen: false,
+      brand: activeBrand,
       navLinks: [
         { to: '/hosts',         label: 'Hosts' },
         { to: '/host_groups',   label: 'Groups' },
@@ -42,6 +44,7 @@ export default {
         { to: '/jobs',          label: 'Jobs' },
         { to: '/batches',       label: 'Batches' },
         { to: '/history',       label: 'History' },
+        { to: '/settings',      label: 'Settings' },
       ]
     }
   }
@@ -51,7 +54,7 @@ export default {
 <style>
 /* ─── Navbar ──────────────────────────────────────────────────── */
 .navbar {
-  background-color: #00274C !important;
+  background-color: var(--primary) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
   padding: 0 1.25rem;
   min-height: 60px;
@@ -70,10 +73,10 @@ export default {
 .navbar-brand:hover { opacity: 0.9; }
 .nav-brand-icon {
   font-size: 1.4rem;
-  color: #FFCB05;
+  color: var(--accent);
 }
 .nav-brand-text strong {
-  color: #FFCB05;
+  color: var(--accent);
 }
 .navbar .nav-link {
   font-size: 0.875rem !important;
@@ -98,27 +101,27 @@ export default {
   left: 8px;
   right: 8px;
   height: 3px;
-  background: #FFCB05;
+  background: var(--accent);
   border-radius: 2px 2px 0 0;
 }
 .navbar-toggler {
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
 .nav-version {
-  background: rgba(255, 203, 5, 0.15);
-  color: #FFCB05;
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent);
   font-size: 0.7rem;
   font-weight: 700;
   padding: 0.2rem 0.65rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 203, 5, 0.3);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
   white-space: nowrap;
   margin-left: 0.5rem;
 }
 
 @media (max-width: 767px) {
   .navbar-collapse {
-    background: #001e3d;
+    background: var(--primary-dark);
     padding: 0.5rem 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     margin: 0 -1.25rem;
@@ -131,8 +134,8 @@ export default {
     display: none;
   }
   .navbar .nav-link.router-link-exact-active {
-    background: rgba(255, 203, 5, 0.12);
-    border-left: 3px solid #FFCB05;
+    background: rgba(var(--accent-rgb), 0.12);
+    border-left: 3px solid var(--accent);
   }
   .nav-version {
     margin: 0.5rem 0;

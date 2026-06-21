@@ -82,7 +82,7 @@
  import { onMounted } from 'vue';
  import { ref } from 'vue';
  import VueMultiselect from 'vue-multiselect';
- import dynamic_add_data from '/usr/src/app/client/src/components/dynamic_add_data.vue';
+ import dynamic_add_data from './dynamic_add_data.vue';
 
  export default {
    emits: ['deleteItem', 'editItem'],

@@ -26,6 +26,7 @@
             <th>Time</th>
             <th>Target</th>
             <th>Context</th>
+            <th>Trigger</th>
             <th>Caller</th>
             <th>Status</th>
           </tr>
@@ -35,6 +36,7 @@
             <td style="white-space: nowrap; font-size: 0.82rem;">{{ formatTime(row.timestamp) }}</td>
             <td><code style="font-size: 0.82rem; background: none; color: inherit;">{{ row.target_name }}</code></td>
             <td style="font-size: 0.82rem;">{{ row.click_context }}</td>
+            <td style="font-size: 0.82rem;">{{ triggerLabel(row) }}</td>
             <td style="font-size: 0.82rem;">{{ row.caller }}</td>
             <td>
               <span v-if="row.success" class="badge badge-success">Success</span>
@@ -66,6 +68,11 @@ export default {
     formatTime(ts) {
       if (!ts) return '—'
       return new Date(ts).toLocaleString()
+    },
+    triggerLabel(row) {
+      // Older records predate the trigger field; infer from context.
+      const t = row.trigger || (row.click_context === 'auto' ? 'auto' : 'manual')
+      return t === 'auto' ? 'Auto' : 'Manual'
     }
   }
 }

@@ -1,9 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 /* ─── Design Tokens ─────────────────────────────────────────── */
+/* Brand colours (--primary*, --accent*) are overridden at runtime by the
+   active brand profile — see src/brand/. The values here are the neutral
+   default and act as a fallback if the brand layer has not run yet. */
 :root {
-  --primary:   #00274C;   /* UMich navy  */
-  --accent:    #FFCB05;   /* UMich maize */
+  --primary:      #0b2545;   /* default deep navy */
+  --primary-dark: #081a33;
+  --primary-rgb:  11,37,69;
+  --accent:       #06b6d4;   /* default cyan */
+  --accent-rgb:   6,182,212;
+  --accent-text:  #04222b;
   --bg:        #f0f2f5;
   --surface:   #ffffff;
   --border:    #dde1e7;
@@ -45,7 +52,7 @@ body * {
   width: 46px;
   height: 46px;
   border-radius: 10px;
-  background: rgba(0, 39, 76, .07);
+  background: rgba(var(--primary-rgb), .07);
   color: var(--primary);
   display: flex;
   align-items: center;
@@ -120,7 +127,7 @@ body * {
 }
 .form-control:focus {
   border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(0,39,76,.1) !important;
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb),.1) !important;
   outline: none !important;
 }
 .form-group {
@@ -158,19 +165,20 @@ fieldset[disabled] .form-control {
   color: #fff !important;
 }
 .btn.btn-primary:hover:not(:disabled) {
-  background-color: #001e3d !important;
-  border-color: #001e3d !important;
+  background-color: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
 }
 .btn.btn-warning {
   background-color: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: var(--primary) !important;
+  color: var(--accent-text) !important;
   font-weight: 600 !important;
 }
 .btn.btn-warning:hover:not(:disabled) {
-  background-color: #e6b700 !important;
-  border-color: #e6b700 !important;
-  color: var(--primary) !important;
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent-text) !important;
+  filter: brightness(0.92);
 }
 .btn.btn-success {
   background-color: #16a34a !important;
@@ -260,13 +268,13 @@ fieldset[disabled] .form-control {
   border-radius: 6px !important;
 }
 .item-list .list-group-item:hover:not(.active) {
-  background: rgba(0,39,76,.04) !important;
-  border-left-color: rgba(0,39,76,.25) !important;
+  background: rgba(var(--primary-rgb),.04) !important;
+  border-left-color: rgba(var(--primary-rgb),.25) !important;
 }
 .item-list .list-group-item.active,
 .item-list .list-group-item.active:focus,
 .item-list .list-group-item.active:hover {
-  background: rgba(0,39,76,.08) !important;
+  background: rgba(var(--primary-rgb),.08) !important;
   border-left-color: var(--primary) !important;
   color: var(--primary) !important;
   font-weight: 600;
@@ -324,7 +332,7 @@ fieldset[disabled] .form-control {
   border-color: var(--border) !important;
 }
 .table-hover tbody tr:hover {
-  background: rgba(0,39,76,.025) !important;
+  background: rgba(var(--primary-rgb),.025) !important;
 }
 .table-danger {
   background: #fef2f2 !important;
