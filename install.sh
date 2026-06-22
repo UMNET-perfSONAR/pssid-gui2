@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# pSSID GUI — turnkey installer
+# pSSID GUI installer
 #
 # Collapses the manual deployment steps into a single command. It generates
 # secrets and certificates, renders the nginx config for your hostname, selects
-# the brand edition, and brings the Docker stack up — without weakening the
+# the edition, and brings the Docker stack up, without weakening the
 # existing security model (HTTPS, optional SSO, isolated Docker network).
 #
 # Usage:
 #   ./install.sh                         # interactive
-#   ./install.sh --brand=umich --hostname=pssid.example.edu --sso=true \
+#   ./install.sh --edition=umich --hostname=pssid.example.edu --sso=true \
 #       --issuer=https://umich.okta.com --client-id=... --client-secret=... -y
 #
 # Run ./install.sh --help for all options.
@@ -33,7 +33,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
-BRAND="default"
+EDITION="default"
 HOSTNAME_INPUT=""
 SSO=""
 TLS="self-signed"
@@ -49,7 +49,7 @@ usage() {
 ${C_BOLD}pSSID GUI installer${C_RESET}
 
 Options:
-  --brand=NAME           Brand edition: default | umich            (default: default)
+  --edition=NAME         Edition: default | umich                  (default: default)
   --hostname=HOST        Public hostname for this deployment
   --sso=true|false       Enable Single Sign-On (OIDC)
   --issuer=URL           OIDC issuer base URL          (SSO only)
@@ -62,14 +62,14 @@ Options:
   -h, --help             Show this help
 
 Environment variables (non-interactive): same names uppercased, e.g.
-  BRAND, HOSTNAME, SSO, ISSUER, CLIENT_ID, CLIENT_SECRET, TLS, LE_EMAIL
+  EDITION, HOSTNAME, SSO, ISSUER, CLIENT_ID, CLIENT_SECRET, TLS, LE_EMAIL
 EOF
 }
 
 # ─── Parse args ──────────────────────────────────────────────────────────────
 for arg in "$@"; do
   case "$arg" in
-    --brand=*)         BRAND="${arg#*=}" ;;
+    --edition=*)       EDITION="${arg#*=}" ;;
     --hostname=*)      HOSTNAME_INPUT="${arg#*=}" ;;
     --sso=*)           SSO="${arg#*=}" ;;
     --issuer=*)        ISSUER="${arg#*=}" ;;
@@ -85,7 +85,7 @@ for arg in "$@"; do
 done
 
 # Allow env-var fallbacks (handy for CI / non-interactive installs).
-BRAND="${BRAND:-${PSSID_BRAND:-default}}"
+EDITION="${EDITION:-${PSSID_EDITION:-default}}"
 HOSTNAME_INPUT="${HOSTNAME_INPUT:-${HOSTNAME_OVERRIDE:-}}"
 ISSUER="${ISSUER:-${PSSID_ISSUER:-}}"
 
@@ -103,7 +103,7 @@ prompt() { # prompt VAR "Question" "default"
   printf -v "$__var" '%s' "$__ans"
 }
 
-prompt_secret() { # prompt_secret VAR "Question" — masked input, never echoed
+prompt_secret() { # prompt_secret VAR "Question". Masked input, never echoed.
   local __var="$1" __q="$2" __ans
   if [ "$NON_INTERACTIVE" = "true" ]; then
     printf -v "$__var" '%s' ""; return
@@ -122,7 +122,7 @@ banner() {
   |  __/ ___) |__) | || |_| | | |_| | |_| || |
   |_|   |____/____/___|____/   \____|\___/|___|
 EOF
-  printf "${C_RESET}${C_DIM}  Turnkey installer${C_RESET}\n"
+  printf "${C_RESET}${C_DIM}  Installer${C_RESET}\n"
 }
 
 # ─── 1. Preflight ────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ step "Checking prerequisites"
 if command -v docker >/dev/null 2>&1; then
   ok "docker found ($(docker --version | cut -d',' -f1))"
 else
-  die "Docker is not installed. See docs/generic/README.md → Installing Docker."
+  die "Docker is not installed. See the Prerequisites section in docs/deployment.md."
 fi
 
 if docker compose version >/dev/null 2>&1; then
@@ -151,7 +151,7 @@ ok "openssl found"
 check_port() {
   local p="$1"
   if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$p "; then
-    warn "Port $p already in use — the stack may fail to bind it."
+    warn "Port $p already in use; the stack may fail to bind it."
   fi
 }
 for p in 80 443 8000 8080 27017; do check_port "$p"; done
@@ -159,11 +159,11 @@ for p in 80 443 8000 8080 27017; do check_port "$p"; done
 # ─── 2. Gather configuration ─────────────────────────────────────────────────
 step "Configuration"
 
-if [ "$BRAND" != "default" ] && [ "$BRAND" != "umich" ]; then
-  prompt BRAND "Brand edition (default/umich)" "default"
+if [ "$EDITION" != "default" ] && [ "$EDITION" != "umich" ]; then
+  prompt EDITION "Edition (default/umich)" "default"
 fi
-[ "$BRAND" = "default" ] || [ "$BRAND" = "umich" ] || die "Invalid brand: $BRAND"
-ok "Brand: $BRAND"
+[ "$EDITION" = "default" ] || [ "$EDITION" = "umich" ] || die "Invalid edition: $EDITION"
+ok "Edition: $EDITION"
 
 [ -n "$HOSTNAME_INPUT" ] || prompt HOSTNAME_INPUT "Public hostname (e.g. pssid.example.edu)" "localhost"
 ok "Hostname: $HOSTNAME_INPUT"
@@ -195,10 +195,32 @@ BASE_URL="${SCHEME}://${HOSTNAME_INPUT}"
 # ─── 3. Server environment (.env) ────────────────────────────────────────────
 step "Writing server environment"
 SECRET="$(openssl rand -hex 32)"
+
+# MongoDB credentials. Reuse the ones already in .env if present, so re-running
+# the installer does not lock out an existing database volume (the root user is
+# only created when the data volume is first initialized).
+if [ -f .env ] && grep -q '^MONGO_PASSWORD=' .env; then
+  MONGO_USERNAME="$(sed -n 's/^MONGO_USERNAME=//p' .env)"
+  MONGO_PASSWORD="$(sed -n 's/^MONGO_PASSWORD=//p' .env)"
+  info "Reusing existing MongoDB credentials from .env"
+else
+  MONGO_USERNAME="pssid"
+  MONGO_PASSWORD="$(openssl rand -hex 24)"
+  # If a database volume already exists but no credentials were stored, enabling
+  # auth now would lock the server out of that existing data.
+  if docker volume ls --format '{{.Name}}' 2>/dev/null | grep -q 'mongo_db$'; then
+    warn "An existing MongoDB volume was found but no credentials are stored."
+    warn "Authentication applies only to a freshly initialized database. If the"
+    warn "server cannot connect, remove the old volume (make clean) and re-run,"
+    warn "or restore from a backup after the new database is up."
+  fi
+fi
+MONGODB_URI="mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/pssid?authSource=admin"
+
 SERVER_ENV="services/server/.env"
 {
   echo "# Generated by install.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ). Do not commit."
-  echo "MONGODB_URI=mongodb://mongo:27017/pssid"
+  echo "MONGODB_URI=${MONGODB_URI}"
   echo "REDIS_URL=redis://redis:6379"
   echo "BASE_URL=${BASE_URL}"
   echo "COOKIE_DOMAIN=${HOSTNAME_INPUT}"
@@ -214,10 +236,12 @@ ok "Wrote $SERVER_ENV (gitignored)"
 # ─── 4. Root environment for compose interpolation ───────────────────────────
 step "Writing deployment environment"
 {
-  echo "# Generated by install.sh. Selects the brand edition for the client."
-  echo "BRAND=${BRAND}"
+  echo "# Generated by install.sh. Read by Docker Compose. Do not commit."
+  echo "EDITION=${EDITION}"
+  echo "MONGO_USERNAME=${MONGO_USERNAME}"
+  echo "MONGO_PASSWORD=${MONGO_PASSWORD}"
 } > .env
-ok "Wrote .env (BRAND=${BRAND})"
+ok "Wrote .env (edition + MongoDB credentials)"
 
 # ─── 5. Toggle SSO flag (shared/config.ts) ───────────────────────────────────
 # ENABLE_SSO lives in shared/config.ts and is read by both client and server.
@@ -229,7 +253,7 @@ if [ -f "$CONFIG_TS" ]; then
   sed -i -E "s#(BASE_URL:\s*\")[^\"]*(\")#\1${BASE_URL}\2#" "$CONFIG_TS"
   ok "Set ENABLE_SSO=${SSO}, BASE_URL=${BASE_URL}"
 else
-  warn "shared/config.ts not found — skipping SSO toggle"
+  warn "shared/config.ts not found; skipping SSO toggle"
 fi
 
 # ─── 6. TLS material + nginx config ──────────────────────────────────────────
@@ -343,11 +367,11 @@ case "$TLS" in
       "/etc/nginx/certs/live/${HOSTNAME_INPUT}/fullchain.pem" \
       "/etc/nginx/certs/live/${HOSTNAME_INPUT}/privkey.pem"
     warn "Let's Encrypt selected: ensure ports 80/443 are publicly reachable."
-    info "After the stack is up, issue a cert with the certbot service (see docs/generic/README.md)."
+    info "After the stack is up, issue a cert with the certbot service (see docs/deployment.md)."
     ;;
   none)
     gen_nginx_http
-    warn "TLS disabled — use only for local testing, never production."
+    warn "TLS disabled; use only for local testing, never production."
     ;;
 esac
 ok "Rendered nginx.conf for ${HOSTNAME_INPUT}"
@@ -364,10 +388,10 @@ if [ "$(uname -s)" = "Linux" ]; then
   if [ ! -x /usr/lib/exec/pssid/provision ]; then
     warn "No provision binary at /usr/lib/exec/pssid/provision."
     info "The GUI runs fine without it, but provisioning to probes needs your"
-    info "Ansible-based provision script there (see docs/AUTOMATION.md)."
+    info "Ansible-based provision script there (see docs/deployment.md)."
   fi
 else
-  info "Non-Linux host detected — skipping /var/lib/pssid setup (dev mode)."
+  info "Non-Linux host detected; skipping /var/lib/pssid setup (dev mode)."
 fi
 
 # ─── 8. Bring the stack up ───────────────────────────────────────────────────
@@ -376,7 +400,7 @@ COMPOSE_ARGS=""
 [ "$SSO" = "true" ] && COMPOSE_ARGS="--profile sso"
 BUILD_FLAG=""; [ "$DO_BUILD" = "true" ] && BUILD_FLAG="--build"
 # shellcheck disable=SC2086
-BRAND="$BRAND" $COMPOSE -f docker-compose.yml $COMPOSE_ARGS up -d $BUILD_FLAG
+EDITION="$EDITION" $COMPOSE -f docker-compose.yml $COMPOSE_ARGS up -d $BUILD_FLAG
 ok "Containers started"
 
 # ─── 9. Health check ─────────────────────────────────────────────────────────
@@ -399,7 +423,7 @@ fi
 # ─── Done ────────────────────────────────────────────────────────────────────
 printf "\n${C_GREEN}${C_BOLD}Deployment complete.${C_RESET}\n"
 printf "  ${C_BOLD}URL:${C_RESET}   %s\n" "$BASE_URL"
-printf "  ${C_BOLD}Brand:${C_RESET} %s\n" "$BRAND"
+printf "  ${C_BOLD}Edition:${C_RESET} %s\n" "$EDITION"
 printf "  ${C_BOLD}SSO:${C_RESET}   %s\n" "$SSO"
-[ "$TLS" = "self-signed" ] && printf "  ${C_DIM}(self-signed cert — your browser will warn; Advanced → Proceed)${C_RESET}\n"
+[ "$TLS" = "self-signed" ] && printf "  ${C_DIM}(self-signed cert; your browser will warn. Choose Advanced, then Proceed.)${C_RESET}\n"
 printf "\n  Manage with: ${C_CYAN}make up${C_RESET} | ${C_CYAN}make down${C_RESET} | ${C_CYAN}make logs${C_RESET} | ${C_CYAN}make doctor${C_RESET}\n\n"

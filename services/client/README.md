@@ -1,9 +1,9 @@
 # Ideas for Future Improvement
 
 ### General
-Revamp the look and feel of this! Add some UMich branding? Talk to a UX expert? 
-
-I think a facelift on this would make things look more professional and feel more intuitive for users.
+The interface has had a visual refresh, and its colors and product name are now
+set per organization through the edition system (see ../../docs/deployment.md).
+A formal UX review would still be worthwhile to refine the experience further.
 
 ### dynamicform.vue
 Currently we are using the dynamic form component implemented by ourselves.

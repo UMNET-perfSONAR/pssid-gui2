@@ -1,19 +1,30 @@
-version: '3.8'
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   client:
     image: pssid-gui2_client:latest
     build: ./services/client
+    logging: *default-logging
     environment:
-      # White-label brand profile (see services/client/src/brand). Override with
-      # BRAND=umich in the root .env, or `make brand-umich`.
-      - VITE_BRAND=${BRAND:-default}
+      # Selects the edition (see services/client/src/edition). Override with
+      # EDITION=umich in the root .env, or `make edition-umich`.
+      - VITE_EDITION=${EDITION:-default}
     volumes:
       - ./services/client/src:/usr/src/app/client/src
       - client_node_modules:/usr/src/app/client/node_modules
       - ./shared:/usr/src/app/client/src/shared:ro
     expose:
       - "8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     networks:
       internal:
         aliases:
@@ -22,6 +33,7 @@ services:
   server:
     image: pssid-gui2_server:latest
     restart: on-failure
+    logging: *default-logging
     build: ./services/server
     volumes:
       - ./services/server/src:/usr/src/app/server/src
@@ -32,7 +44,13 @@ services:
       - "8000"
     depends_on:
       mongo:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     networks:
       internal:
         aliases:
@@ -41,8 +59,15 @@ services:
   mongo:
     image: pssid-gui2_mongo:latest
     build: ./services/database
+    logging: *default-logging
     expose:
       - "27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - internal
     volumes:
@@ -50,13 +75,16 @@ services:
 
   nginx:
     image: nginx:stable-alpine
+    logging: *default-logging
     ports:
       - "8888:80"
     volumes:
       - ./nginx.local.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - client
-      - server
+      client:
+        condition: service_healthy
+      server:
+        condition: service_healthy
     networks:
       - internal
 

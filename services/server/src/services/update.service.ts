@@ -9,7 +9,6 @@ import { Collection, FindCursor, MongoClient, WithId } from 'mongodb';
  * @param client - MongoClient instance connected to localhost://21707 
  * 
  */
-// constructed/modified core logic based off of https://chat.openai.com/chat - citation needed?
 export async function updateCollection(outdated_col: string, truth_col_name:string, client:Promise<MongoClient>) {
   const  outdated_collection = (await client).db('gui').collection(outdated_col);
   const truth_collection = (await client).db('gui').collection(truth_col_name);

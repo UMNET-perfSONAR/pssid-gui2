@@ -1,5 +1,6 @@
 // allows us to make a store
 import {defineStore} from 'pinia'
+import { useToastStore } from './toast.store'
 
 export const useArchiverStore = defineStore('archiver', {
   // create a state object -> can have different properties 
@@ -80,7 +81,7 @@ export const useArchiverStore = defineStore('archiver', {
 	  // const errorData = await response.json();
     const text = await response.text();
     const errorData = text ? JSON.parse(text) : [];
-	  alert(errorData.message);
+	  useToastStore().show(errorData.message || 'Request failed', 'error');
 	}
 
         this.isLoading=false;
@@ -106,13 +107,13 @@ export const useArchiverStore = defineStore('archiver', {
           }
         );
 	if (response.ok) {
-	  alert("Archiver updated successfully");
+	  useToastStore().show("Archiver updated successfully", 'success');
 	}
 	else {
 	  // const errorData = await response.json();
     const text = await response.text();
     const errorData = text ? JSON.parse(text) : [];
-	  alert(errorData.message);
+	  useToastStore().show(errorData.message || 'Request failed', 'error');
 	}
       }
       catch(error) {

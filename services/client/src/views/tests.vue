@@ -134,6 +134,7 @@
  import editFormComp from '../components/edit_dynamic_form.vue';
  import itemList from '../components/list_items.vue'
  import PageHeader from '../components/PageHeader.vue'
+ import { useToastStore } from '../stores/toast.store'
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { ref } from 'vue'
@@ -286,7 +287,7 @@
          this.addTestForm();
        }
        else {
-         alert('Please add a test name!');
+         useToastStore().show('Please add a test name!', 'error');
        }
      },
 
@@ -319,7 +320,7 @@
      async editTest(editFormInputs) {
        // Validate that the name is not empty.
        if (this.currentItem.name.length === 0) {
-         alert('Please enter a test name!');
+         useToastStore().show('Please enter a test name!', 'error');
          return;
        }
 
@@ -332,7 +333,7 @@
        let errorMessage = await this.validateTest(dataToValidate);
        if (errorMessage.length > 0) {
          errorMessage = 'Please fix the following errors:\n' + errorMessage;
-         alert(errorMessage);
+         useToastStore().show(errorMessage, 'error');
 
          // Reselect the same item to allow users to edit it again.
          await this.testStore.getTests();

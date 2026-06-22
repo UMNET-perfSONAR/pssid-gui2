@@ -87,6 +87,47 @@
         </div>
       </section>
 
+      <!-- Dry run / preview -->
+      <section class="settings-card">
+        <div class="settings-card-head">
+          <span class="material-icons settings-card-icon">preview</span>
+          <div>
+            <h3 class="settings-card-title">Dry run &amp; preview</h3>
+            <p class="settings-card-desc">
+              See exactly what would be pushed to the probes — before pushing it.
+            </p>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-text">
+            <div class="setting-name">Preview configuration</div>
+            <div class="setting-sub">
+              Builds the config from the current state without writing or deploying anything,
+              and shows whether it differs from what is currently deployed.
+            </div>
+          </div>
+          <button class="btn btn-secondary" @click="settingsStore.previewConfig()" :disabled="settingsStore.previewLoading">
+            <span class="material-icons" style="font-size:1rem; vertical-align:-3px; margin-right:.35rem;">visibility</span>
+            {{ settingsStore.previewLoading ? 'Building…' : 'Preview' }}
+          </button>
+        </div>
+
+        <div v-if="settingsStore.preview" class="preview-result">
+          <div class="preview-status" :class="settingsStore.preview.changed ? 'changed' : 'unchanged'">
+            <span class="material-icons">{{ settingsStore.preview.changed ? 'sync_problem' : 'check_circle' }}</span>
+            <span v-if="settingsStore.preview.changed">Proposed config <strong>differs</strong> from what is currently deployed.</span>
+            <span v-else>Proposed config <strong>matches</strong> what is currently deployed — nothing to push.</span>
+          </div>
+
+          <div class="preview-tabs">
+            <button :class="{ active: previewTab === 'config' }" @click="previewTab = 'config'">pssid_config.json</button>
+            <button :class="{ active: previewTab === 'inventory' }" @click="previewTab = 'inventory'">hosts.ini</button>
+          </div>
+          <pre class="preview-pre">{{ previewTab === 'config' ? settingsStore.preview.proposed.config : settingsStore.preview.proposed.inventory }}</pre>
+        </div>
+      </section>
+
       <p v-if="isDisabled" class="settings-readonly-note">
         <span class="material-icons" style="font-size:1rem; vertical-align:-3px;">lock</span>
         You have read-only access. Sign in with a write-enabled account to change these settings.
@@ -110,6 +151,7 @@ export default {
       settingsStore: useSettingsStore(),
       userStore: useUserStore(),
       enable_sso: config.ENABLE_SSO,
+      previewTab: 'config',
     }
   },
   computed: {
@@ -264,6 +306,50 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+/* Dry-run preview */
+.preview-result { margin-top: 1rem; }
+.preview-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+.preview-status .material-icons { font-size: 1.15rem; }
+.preview-status.changed { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+.preview-status.unchanged { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.preview-tabs { display: flex; gap: 0.25rem; margin-bottom: -1px; }
+.preview-tabs button {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.preview-tabs button.active {
+  color: var(--primary);
+  background: var(--surface);
+  border-color: var(--border);
+}
+.preview-pre {
+  margin: 0;
+  max-height: 360px;
+  overflow: auto;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 0 6px 6px 6px;
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
 @media (max-width: 600px) {

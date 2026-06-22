@@ -96,6 +96,7 @@
  import { ref } from 'vue'
  import VueMultiselect from 'vue-multiselect';
  import dynamic_add_data from './dynamic_add_data.vue';
+ import { useToastStore } from '../stores/toast.store';
  export default {
    components: { VueMultiselect, dynamic_add_data },
    props: {
@@ -133,7 +134,7 @@
          for (const [key, value] of Object.entries(this.errors)) {
            errorMessage += `${key}: ${value}\n`;
          }
-         alert(errorMessage);
+         useToastStore().show(errorMessage, 'error');
          this.errors = {};
          return;
        }

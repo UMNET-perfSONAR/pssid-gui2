@@ -111,6 +111,7 @@
  import VueMultiselect from 'vue-multiselect';
  import dynamic_add_data from '../components/dynamic_add_data.vue';
  import itemList from '../components/list_items.vue'
+ import { useToastStore } from '../stores/toast.store';
  export default {
    components: { dynamicForm, VueMultiselect, editFormComp, dynamic_add_data, itemList },
    data() {
@@ -221,7 +222,7 @@
      // edit current item
      async editArchiver(editFormInputs) {
        if (this.currentItem.name.length === 0) {
-         alert('Please enter an archiver name!');
+         useToastStore().show('Please enter an archiver name!', 'error');
          return;
        }
        const data = editFormInputs.reduce((result, item)=> {
@@ -283,7 +284,7 @@
      // submit archiver to database
      async handleSubmit(form_data) {
        if (this.archiverName.length==0) {
-         alert('Please enter an archiver name!');
+         useToastStore().show('Please enter an archiver name!', 'error');
          return;
        }
        const spec_object = form_data.reduce((result, item)=> {

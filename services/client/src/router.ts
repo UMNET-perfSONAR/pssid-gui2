@@ -2,6 +2,12 @@ import { createWebHistory, createRouter } from "vue-router";
 
 const routes =  [
   {
+    path: "/",
+    alias: "/dashboard",
+    name: "dashboard",
+    component: () => import("./views/dashboard.vue")
+  },
+  {
     path: "/hosts",
     name: "host_page",
     component: () => import("./views/hosts.vue")

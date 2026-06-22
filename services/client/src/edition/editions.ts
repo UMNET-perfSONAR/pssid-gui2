@@ -1,24 +1,25 @@
 /**
- * Brand registry — white-label support.
+ * Edition registry.
  *
- * The pSSID GUI ships as a single codebase that can present different brand
- * identities (product name, palette, logo glyph) without forking. The active
- * brand is selected at deploy time via the `VITE_BRAND` environment variable
- * (see ./index.ts). Add a new entry here to onboard another organisation.
+ * The pSSID GUI is a single codebase that can present a different appearance
+ * (product name, palette, logo glyph) for each organization, without forking.
+ * The active edition is selected at deploy time via the `VITE_EDITION`
+ * environment variable (see ./index.ts). Add a new entry here for another
+ * organization.
  *
  * `*Rgb` values are the comma-separated channels of the matching hex colour so
  * that translucent tints can be expressed as `rgba(var(--primary-rgb), .08)`
- * in CSS and still track the active brand.
+ * in CSS and still follow the active edition.
  */
 
-export interface BrandColors {
-  /** Primary surface colour — navbar, primary buttons, accents on light bg. */
+export interface EditionColors {
+  /** Primary surface colour: navbar, primary buttons, accents on light bg. */
   primary: string;
   /** Darker shade of primary, used for hover/pressed states. */
   primaryDark: string;
   /** RGB channels of `primary`, e.g. "0,39,76". */
   primaryRgb: string;
-  /** Accent colour — active indicators, highlights, warning buttons. */
+  /** Accent colour: active indicators, highlights, warning buttons. */
   accent: string;
   /** RGB channels of `accent`. */
   accentRgb: string;
@@ -26,10 +27,10 @@ export interface BrandColors {
   accentText: string;
 }
 
-export interface Brand {
-  /** Stable identifier; matches the VITE_BRAND value. */
+export interface Edition {
+  /** Stable identifier; matches the VITE_EDITION value. */
   id: string;
-  /** Full product name — used for document.title. */
+  /** Full product name, used for document.title. */
   productName: string;
   /** Leading navbar word, e.g. "pSSID". */
   shortName: string;
@@ -39,16 +40,16 @@ export interface Brand {
   org: string;
   /** Short marketing line for docs/landing surfaces. */
   tagline: string;
-  /** Material Icons glyph for the navbar brand mark. */
+  /** Material Icons glyph for the navbar logo mark. */
   glyph: string;
   /** Version pill text shown in the navbar. */
   version: string;
-  colors: BrandColors;
+  colors: EditionColors;
 }
 
-export const brands: Record<string, Brand> = {
+export const editions: Record<string, Edition> = {
   /**
-   * University of Michigan edition — preserves the existing navy/maize identity
+   * University of Michigan edition. Preserves the existing navy/maize identity
    * exactly so current UMich users see no visual change.
    */
   umich: {
@@ -94,4 +95,4 @@ export const brands: Record<string, Brand> = {
   },
 };
 
-export const DEFAULT_BRAND_ID = 'default';
+export const DEFAULT_EDITION_ID = 'default';

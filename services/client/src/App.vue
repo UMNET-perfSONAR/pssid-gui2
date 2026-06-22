@@ -2,10 +2,10 @@
   <div id="app">
     <ToastNotification />
     <nav class="navbar navbar-expand-md navbar-dark">
-      <a class="navbar-brand" href="#" @click.prevent>
-        <span class="material-icons nav-brand-icon">{{ brand.glyph }}</span>
-        <span class="nav-brand-text">{{ brand.shortName }} <strong>{{ brand.emphasis }}</strong></span>
-      </a>
+      <router-link class="navbar-brand" to="/" @click="navOpen = false">
+        <span class="material-icons nav-brand-icon">{{ edition.glyph }}</span>
+        <span class="nav-brand-text">{{ edition.shortName }} <strong>{{ edition.emphasis }}</strong></span>
+      </router-link>
       <button class="navbar-toggler" type="button" @click="navOpen = !navOpen" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -15,7 +15,10 @@
             <router-link :to="link.to" class="nav-link" @click="navOpen = false">{{ link.label }}</router-link>
           </li>
         </ul>
-        <span class="nav-version">{{ brand.version }}</span>
+        <button class="theme-toggle" @click="toggleThemeBtn" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" aria-label="Toggle theme">
+          <span class="material-icons">{{ theme === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
+        </button>
+        <span class="nav-version">{{ edition.version }}</span>
       </div>
     </nav>
     <div class="container mt-4">
@@ -26,7 +29,8 @@
 
 <script>
 import ToastNotification from './components/ToastNotification.vue'
-import { activeBrand } from './brand'
+import { activeEdition } from './edition'
+import { getTheme, toggleTheme } from './theme'
 
 export default {
   name: 'app',
@@ -34,8 +38,10 @@ export default {
   data() {
     return {
       navOpen: false,
-      brand: activeBrand,
+      edition: activeEdition,
+      theme: getTheme(),
       navLinks: [
+        { to: '/',              label: 'Dashboard' },
         { to: '/hosts',         label: 'Hosts' },
         { to: '/host_groups',   label: 'Groups' },
         { to: '/schedules',     label: 'Schedules' },
@@ -46,6 +52,11 @@ export default {
         { to: '/history',       label: 'History' },
         { to: '/settings',      label: 'Settings' },
       ]
+    }
+  },
+  methods: {
+    toggleThemeBtn() {
+      this.theme = toggleTheme();
     }
   }
 }
@@ -107,6 +118,22 @@ export default {
 .navbar-toggler {
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
+.theme-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: background .15s;
+}
+.theme-toggle:hover { background: rgba(255, 255, 255, 0.16); }
+.theme-toggle .material-icons { font-size: 1.15rem; }
 .nav-version {
   background: rgba(var(--accent-rgb), 0.15);
   color: var(--accent);

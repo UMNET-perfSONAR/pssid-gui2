@@ -45,10 +45,11 @@ function removeIdsProperties(obj:any) {
 }
 
 /**
- * write ansible inventory file for ansible 
- * @param obj config file contents 
+ * Build the ansible inventory (hosts.ini) content from the config object.
+ * Pure function — returns the string so it can be written or previewed.
+ * @param obj config file contents
  */
-function writeIniFile(obj:&any) {
+function buildIniContent(obj:&any): string {
   let iniContent = ''
   // print all hosts first
   for (const host of obj.hosts.map((item:{name:string})=> item.name)) {
@@ -66,7 +67,7 @@ function writeIniFile(obj:&any) {
     }
     iniContent += '\n';
   }
-  writeFileSync(ini_path, iniContent);
+  return iniContent;
 }
 
 /**
@@ -223,6 +224,48 @@ function sanitizeBatchScripts(batch_data: any) {
 }
 
 /**
+ * Builds the daemon config (pssid_config.json) and ansible inventory (hosts.ini)
+ * from the current database state, WITHOUT writing them or running provision.
+ * Shared by create_config_file (the real provision) and the dry-run preview.
+ * @returns the proposed config + inventory as strings
+ */
+export async function build_config_payload(): Promise<{ config: string; inventory: string }> {
+  get_paths();
+  const client = await connectToMongoDB();
+  const host_data = await get_collection(client, "hosts");
+  const schedule_data = await get_collection(client, "schedules");
+  const host_group_data = await get_collection(client, "host_groups");
+  const job_data = await get_collection(client, "jobs");
+  const batch_data = await get_collection(client, "batches");
+  sanitizeBatchScripts(batch_data);
+  const ssid_data = await get_collection(client, "ssid_profiles");
+  const test_data = await get_collection(client, "tests");
+  const formatted_test_data = await formatTestData(test_data.tests);
+  const obj = Object.assign(host_data,
+                            host_group_data,
+                            schedule_data,
+                            ssid_data, formatted_test_data,
+                            job_data, batch_data);
+
+  const inventory = buildIniContent(obj);
+  const clean_object = removeIdsProperties(obj);
+  const config = JSON.stringify(clean_object, null, 2) + '\n';
+  return { config, inventory };
+}
+
+/**
+ * Reads the currently-deployed config + inventory from disk (what was last
+ * written by a provision run), or null if not yet written. Used to diff against
+ * the proposed payload in the dry-run preview.
+ */
+export function get_current_config(): { config: string | null; inventory: string | null } {
+  get_paths();
+  const readIf = (p: string | null) =>
+    p && fs.existsSync(p) ? fs.readFileSync(p, 'utf-8') : null;
+  return { config: readIf(config_path), inventory: readIf(ini_path) };
+}
+
+/**
  * creates config file, ansible inventory, and executes shellscript
  * @param name - name of host or host_group where button was clicked. defaults to '*'
  * @param click_context - 'host', 'host_group', or 'auto'
@@ -232,29 +275,12 @@ function sanitizeBatchScripts(batch_data: any) {
  */
 export async function create_config_file(name: string, click_context: string, caller: string = 'unauthenticated', caller_role: string = 'unauthenticated', trigger: 'manual' | 'auto' = 'manual') {
   try {
-    get_paths();
-    const client = await connectToMongoDB();
-    let host_data = await get_collection(client, "hosts");
-    let schedule_data = await get_collection(client, "schedules");
-    let host_group_data = await get_collection(client, "host_groups");
-    let job_data = await get_collection(client, "jobs");
-    let batch_data = await get_collection(client, "batches");
-    sanitizeBatchScripts(batch_data);
-    let ssid_data = await get_collection(client, "ssid_profiles");
-    let test_data = await get_collection(client, "tests");
-    let formatted_test_data = await formatTestData(test_data.tests);
-    let obj = Object.assign(host_data,  
-                            host_group_data, 
-                            schedule_data,
-                            ssid_data, formatted_test_data,
-                            job_data, batch_data);
+    const { config: config_content, inventory } = await build_config_payload();
 
-    writeIniFile(obj);    
-    const clean_object = removeIdsProperties(obj);
-    const config_content = JSON.stringify(clean_object, null, 2) + '\n';
+    writeFileSync(ini_path, inventory);
     console.log("Writing config file...");
     writeFileSync(config_path, config_content, 'utf8');
-    
+
     // Pass arguments as a vector (no shell) so a host/group name can never be
     // interpreted as shell syntax (command injection).
     console.log(`Executing provision script: ${shellscript_path} ${click_context} ${name} ${caller} ${caller_role}`);

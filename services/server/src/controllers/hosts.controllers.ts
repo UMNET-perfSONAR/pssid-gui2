@@ -82,9 +82,11 @@ const deleteAll = (async (req:Request, res:Response) => {
   try {
     (await client).connect();
     var hosts_col = (await client).db('gui').collection('hosts');
+    var host_groups_col = (await client).db('gui').collection('host_groups');
 
-    // TODO: UPDATE HOST_GROUPS
-    hosts_col.deleteMany({});
+    await hosts_col.deleteMany({});
+    // Clear now-dangling host references so host groups don't point at deleted hosts.
+    await host_groups_col.updateMany({}, { $set: { hosts: [], host_ids: [] } });
 
     res.send('all hosts were deleted')
   }

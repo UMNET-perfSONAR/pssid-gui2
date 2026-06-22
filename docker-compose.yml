@@ -1,4 +1,10 @@
-version: '3.8'
+# Cap container logs so they can never fill the disk (a common unattended-host
+# failure). Applied to every service via the *default-logging anchor.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
 
 services:
   redis:
@@ -11,21 +17,36 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - internal
   client:
     image: pssid-gui2_client:latest
     build: ./services/client
+    restart: unless-stopped
+    logging: *default-logging
     environment:
-      # Selects the white-label brand profile (see services/client/src/brand).
-      # Set BRAND in the root .env (the installer/Makefile manage this).
-      - VITE_BRAND=${BRAND:-default}
+      # Selects the edition (see services/client/src/edition). Set EDITION in the
+      # root .env; the installer and Makefile manage this.
+      - VITE_EDITION=${EDITION:-default}
     volumes:
       - ./services/client/src:/usr/src/app/client/src
       - client_node_modules:/usr/src/app/client/node_modules
       - ./shared:/usr/src/app/client/src/shared:ro
     expose:
       - "8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     networks:
       internal:
         aliases:
@@ -33,7 +54,8 @@ services:
 
   server:
     image: pssid-gui2_server:latest
-    restart: on-failure
+    restart: unless-stopped
+    logging: *default-logging
     build: ./services/server
     environment:
       - REDIS_URL=redis://redis:6379
@@ -50,7 +72,13 @@ services:
       - "8000"
     depends_on:
       mongo:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     networks:
       internal:
         aliases:
@@ -58,8 +86,24 @@ services:
   mongo:
     image: pssid-gui2_mongo:latest
     build: ./services/database
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      # When MONGO_USERNAME/MONGO_PASSWORD are set (the installer generates them),
+      # the official image creates this root user on first initialization and
+      # enables authentication. Left empty, the database runs without auth, which
+      # preserves the previous behaviour for a plain `docker compose up`.
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-}
     expose:
       - "27017"
+    healthcheck:
+      # ping is allowed without authentication, so this works either way.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - internal
     volumes:
@@ -67,6 +111,8 @@ services:
 
   nginx:
     image: nginx:stable-alpine
+    restart: unless-stopped
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"
@@ -75,14 +121,18 @@ services:
       - ./certs:/etc/nginx/certs:ro
       - ./www/certbot:/var/www/certbot
     depends_on:
-      - client
-      - server
+      client:
+        condition: service_healthy
+      server:
+        condition: service_healthy
     networks:
       - internal
       - web
 
   certbot:
     image: certbot/certbot
+    restart: unless-stopped
+    logging: *default-logging
     volumes:
       - ./certs/:/etc/letsencrypt
       - ./www/certbot:/var/www/certbot
@@ -93,6 +143,39 @@ services:
         certbot renew --webroot -w /var/www/certbot;
         sleep 12h;
       done"
+
+  # Opt-in automated backups. Enable with:  docker compose --profile backup up -d
+  # Dumps the gui database to ./mongo-backups on a schedule and prunes old files.
+  # Set-and-forget: no host cron, no operator action after enabling.
+  backup:
+    image: pssid-gui2_mongo:latest
+    profiles:
+      - backup
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      - BACKUP_INTERVAL_HOURS=${BACKUP_INTERVAL_HOURS:-24}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
+      - MONGO_USERNAME=${MONGO_USERNAME:-}
+      - MONGO_PASSWORD=${MONGO_PASSWORD:-}
+    volumes:
+      - ./mongo-backups:/backups
+    entrypoint: /bin/sh -c
+    command: >
+      "trap exit TERM;
+      while :; do
+        ts=$$(date +%F-%H-%M);
+        if [ -n \"$$MONGO_PASSWORD\" ]; then URI=\"mongodb://$$MONGO_USERNAME:$$MONGO_PASSWORD@mongo:27017/gui?authSource=admin\"; else URI=\"mongodb://mongo:27017/gui\"; fi;
+        echo \"[backup] dumping gui -> /backups/backup-$$ts.gz\";
+        mongodump --uri=\"$$URI\" --archive=/backups/backup-$$ts.gz --gzip || echo '[backup] dump failed';
+        find /backups -name 'backup-*.gz' -mtime +$${BACKUP_RETENTION_DAYS} -delete 2>/dev/null || true;
+        sleep $${BACKUP_INTERVAL_HOURS}h;
+      done"
+    networks:
+      - internal
 
 volumes:
   client_node_modules:

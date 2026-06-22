@@ -2,7 +2,7 @@
 // pushed to the probes automatically instead of requiring a manual
 // "Configure selected host/group" click.
 //
-// Safety model (see docs/AUTOMATION.md):
+// Safety model (see docs/deployment.md):
 //   * OFF by default — only runs when the operator turns it on in Settings.
 //   * Debounced — a burst of edits collapses into a single Ansible run.
 //   * Audited — every run is recorded in provision_history with trigger:'auto'.

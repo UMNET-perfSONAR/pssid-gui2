@@ -1,8 +1,9 @@
 // process.env.DEBUG = 'openid-client,express-openid-connect:*';
 
-import express, { Express, Request, Response } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import { connectToMongoDB, ensureIndexes } from './services/database.service';
 import cors from 'cors';
+import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
 import { auth } from 'express-openid-connect';
@@ -18,6 +19,15 @@ var bodyParser = require('body-parser');
 const app: Express = express();
 const port = 8000;
 
+// Process-level safety nets: keep a long-running unattended server alive instead
+// of letting a single stray async error tear down all in-flight connections. The
+// container healthcheck + restart policy remain the backstop for a wedged process.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+});
 
 const ENABLE_SSO = config.ENABLE_SSO;
 
@@ -27,6 +37,13 @@ function useAuth () {
 }
 
 app.set('trust proxy', true);
+// Security headers (HSTS, X-Content-Type-Options, frameguard, etc.). CSP is left
+// to nginx and disabled here so the SPA's assets aren't blocked; CORP is disabled
+// so it doesn't interfere with the existing CORS/SSO configuration below.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: false,
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors({
@@ -97,6 +114,7 @@ const userinforoute=require("./routes/userinfo.routes");
 const layerscriptroute=require("./routes/layer_scripts.routes");
 const scriptroute=require("./routes/scripts.routes");
 const provisionhistoryroute=require("./routes/provision_history.routes");
+const provisionroute=require("./routes/provision.routes");
 const settingsroute=require("./routes/settings.routes");
 
 // Auto-provision: successful writes to daemon-affecting routers (below) request
@@ -115,6 +133,7 @@ app.use('/api/userinfo', userinforoute);
 app.use('/api/layer-scripts', layerscriptroute);
 app.use('/api/scripts', scriptroute);
 app.use('/api/provision-history', provisionhistoryroute);
+app.use('/api/provision', provisionroute);
 app.use('/api/settings', settingsroute);
 
 // Health check — used by Docker and monitoring to verify the server + DB are reachable
@@ -134,7 +153,23 @@ app.get('/', useAuth(), async (req: Request, res: Response) => {
   if (ENABLE_SSO) {
     const userInfo = await req.oidc.fetchUserInfo();
   }
-  res.redirect((process.env.BASE_URL || '') + '/hosts');
+  res.redirect((process.env.BASE_URL || '') + '/dashboard');
+});
+
+// Unknown API routes return a clean JSON 404 (never an HTML/stack response).
+app.use('/api', (_req: Request, res: Response) => {
+  res.status(404).json({ message: 'Not found' });
+});
+
+// Central error handler — must be last. Turns malformed JSON bodies into a 400
+// and any other unexpected error into a generic 500, never leaking internals
+// (stack traces) to the client.
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
+    return res.status(400).json({ message: 'Invalid request body' });
+  }
+  console.error('Unhandled request error:', err);
+  res.status(500).json({ message: 'Server error' });
 });
 
 // first connect to MongoDB(), then communicate with the web app

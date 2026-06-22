@@ -7,6 +7,12 @@ export const useSettingsStore = defineStore('settings', {
     autoProvision: false,
     isLoading: false,
     isSaving: false,
+    preview: null as null | {
+      proposed: { config: string; inventory: string };
+      current: { config: string | null; inventory: string | null };
+      changed: boolean;
+    },
+    previewLoading: false,
   }),
 
   actions: {
@@ -56,6 +62,26 @@ export const useSettingsStore = defineStore('settings', {
         useToastStore().show('Failed to update settings', 'error');
       } finally {
         this.isSaving = false;
+      }
+    },
+
+    /** Dry run: fetch the config that WOULD be deployed, without provisioning. */
+    async previewConfig() {
+      try {
+        this.previewLoading = true;
+        const res = await fetch('/api/provision/preview', {
+          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+        });
+        if (!res.ok) {
+          useToastStore().show('Failed to build preview', 'error');
+          return;
+        }
+        this.preview = await res.json();
+      } catch (err) {
+        console.error(err);
+        useToastStore().show('Failed to build preview', 'error');
+      } finally {
+        this.previewLoading = false;
       }
     },
 

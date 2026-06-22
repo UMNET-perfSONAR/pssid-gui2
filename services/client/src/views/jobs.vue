@@ -158,6 +158,7 @@
  import itemList from '../components/list_items.vue';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
+ import { useToastStore } from '../stores/toast.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
 
@@ -221,7 +222,7 @@
 
      submitJob() {
        if (!this.validateNoWhitespace(this.backoff)) {
-         alert("Backoff cannot contain whitespace");
+         useToastStore().show("Backoff cannot contain whitespace", 'error');
          return;
        }
        if (this.jobName.length > 0) {
@@ -233,7 +234,7 @@
          });
          this.addJobForm();
        } else {
-         alert("Please enter a job name");
+         useToastStore().show("Please enter a job name", 'error');
        }
      },
 
@@ -258,7 +259,7 @@
 
      async editJob() {
        if (!this.validateNoWhitespace(this.currentItem.backoff)) {
-         alert("Backoff cannot contain whitespace");
+         useToastStore().show("Backoff cannot contain whitespace", 'error');
          this.currentItem = this.jobStore.jobs[this.currentIndex];
          this.setActiveJob([this.currentItem, this.currentIndex]);
          return;
