@@ -17,5 +17,9 @@ RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
 
-# Build and run the application with entrypoint.sh
-CMD ["./entrypoint.sh"]
+# entrypoint.sh copies the starter files and reconciles dependencies, then runs
+# the command. It is the ENTRYPOINT (not CMD) so that step still runs even when a
+# deployment overrides the container command, e.g. the production Ansible compose.
+# CMD is the default command the entrypoint hands off to.
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["npm", "run", "dev"]
