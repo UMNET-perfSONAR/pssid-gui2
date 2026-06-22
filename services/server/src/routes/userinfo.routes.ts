@@ -1,10 +1,25 @@
 import express, { Request, Response } from 'express';
 import { requiresAuth } from 'express-openid-connect';
+import config from '../shared/config';
 
 const router = express.Router();
 
-router.get('/', requiresAuth(), async (req: Request, res: Response) => {
+// With SSO disabled there is no authenticated identity (write access is governed
+// by OPEN_WRITE instead), so skip the OIDC guard. Applying requiresAuth() here
+// would throw "req.oidc is not found" because the auth middleware is only mounted
+// when SSO is on.
+const guard = config.ENABLE_SSO
+  ? requiresAuth()
+  : (_req: Request, _res: Response, next: Function) => next();
+
+router.get('/', guard, async (req: Request, res: Response) => {
   try {
+    // No SSO: return an empty identity rather than erroring; the client treats
+    // this as "no signed-in user" and falls back to the OPEN_WRITE policy.
+    if (!config.ENABLE_SSO) {
+      return res.json({ name: null, sub: null, groups: [] });
+    }
+
     const user = req.oidc.user;
 
     if (!user) {

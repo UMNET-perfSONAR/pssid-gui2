@@ -36,7 +36,12 @@ function useAuth () {
   return ENABLE_SSO ? requiresAuth() : (_req: Request, _res: Response, next: Function) => next();
 }
 
-app.set('trust proxy', true);
+// The stack runs behind a single nginx reverse proxy, so trust exactly one hop.
+// This lets Express read the real client protocol/IP from X-Forwarded-* (needed
+// for secure cookies and correct rate-limit keys) without the blanket `true`,
+// which would let clients spoof X-Forwarded-For to bypass IP rate limiting
+// (express-rate-limit ERR_ERL_PERMISSIVE_TRUST_PROXY).
+app.set('trust proxy', 1);
 // Security headers (HSTS, X-Content-Type-Options, frameguard, etc.). CSP is left
 // to nginx and disabled here so the SPA's assets aren't blocked; CORP is disabled
 // so it doesn't interfere with the existing CORS/SSO configuration below.
