@@ -176,7 +176,7 @@ function listScriptNames(dirPath: string): Set<string> | null {
 }
 
 /**
- * Re-validates the layer 2 / layer 3 / general script selection on every batch
+ * Re-validates the layer 2 / layer 3 method selection on every batch
  * against the scripts currently present on disk, right before the config file is
  * generated.
  *
@@ -198,7 +198,6 @@ function sanitizeBatchScripts(batch_data: any) {
   );
   const layer2Names = listScriptNames(paths.layer2_path);
   const layer3Names = listScriptNames(paths.layer3_path);
-  const scriptNames = listScriptNames(paths.scripts_path);
   const safePattern = /^[A-Za-z0-9._-]+$/;
 
   const isValid = (value: string, names: Set<string> | null): boolean => {
@@ -211,7 +210,6 @@ function sanitizeBatchScripts(batch_data: any) {
     for (const [field, names] of [
       ['layer2_script', layer2Names],
       ['layer3_script', layer3Names],
-      ['script', scriptNames],
     ] as [string, Set<string> | null][]) {
       if (!isValid(batch[field] ?? '', names)) {
         console.warn(

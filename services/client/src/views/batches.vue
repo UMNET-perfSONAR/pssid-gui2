@@ -38,31 +38,84 @@
       <!-- Add batch form -->
       <div class="col-md-6" v-if="showAddBatch===true">
         <h3> Add Batch </h3>
-        <fieldset :disabled="isDisabled">
-        <div class="form-group">
-          <label> Layer 2 Script </label>
-          <select v-model="add_layer2_script" class="form-control">
-            <option value="">-- Select Layer 2 Script --</option>
-            <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label> Layer 3 Script </label>
-          <select v-model="add_layer3_script" class="form-control">
-            <option value="">-- Select Layer 3 Script --</option>
-            <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label> Script </label>
-          <select v-model="add_script" class="form-control">
-            <option value="">-- Select Script --</option>
-            <option v-for="script in scriptsStore.scripts" :key="script" :value="script">{{ script }}</option>
-          </select>
-        </div>
-        <dynamicform @formData="addBatch" :form_layout="form_layout">
-        </dynamicform>
-      </fieldset>
+        <form @submit.prevent="addBatch">
+          <fieldset :disabled="isDisabled">
+          <div class="form-group">
+            <label> Batch Name </label>
+            <input
+              type="text"
+              placeholder="Enter batch name here"
+              v-model="add_name"
+              class="form-control"
+            />
+          </div>
+          <div class="form-group">
+            <label> Test Interface </label>
+            <input
+              type="text"
+              placeholder="Enter here"
+              v-model="add_test_interface"
+              class="form-control"
+            />
+          </div>
+          <div class="form-group">
+            <label> Layer 2 Method </label>
+            <select v-model="add_layer2_script" class="form-control">
+              <option value="">-- Select Layer 2 Method --</option>
+              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label> Layer 3 Method </label>
+            <select v-model="add_layer3_script" class="form-control">
+              <option value="">-- Select Layer 3 Method --</option>
+              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label> SSID Profile Selection </label>
+            <VueMultiselect
+              v-model="add_ssid_profiles"
+              :multiple="true"
+              :close-on-select="false"
+              :options="SsidStore.ssid_profiles.map(item=> item.name)"
+            >
+            </VueMultiselect>
+          </div>
+          <div class="form-group">
+            <label> Job Selection </label>
+            <VueMultiselect
+              v-model="add_jobs"
+              :multiple="true"
+              :close-on-select="false"
+              :options="JobStore.jobs.map(item=>item.name)"
+            >
+            </VueMultiselect>
+          </div>
+          <div class="form-group">
+            <label> Schedule Selection </label>
+            <VueMultiselect
+              v-model="add_schedules"
+              :multiple="true"
+              :close-on-select="false"
+              :options="scheduleStore.schedules.map(item=>item.name)"
+            >
+            </VueMultiselect>
+          </div>
+          <div class="form-group">
+            <label> Priority </label>
+            <input
+              type="number"
+              placeholder="0"
+              class="form-control"
+              v-model="add_priority"
+            />
+          </div>
+          <div class="mb-3">
+            <button class="btn btn-success"> Submit </button>
+          </div>
+          </fieldset>
+        </form>
       </div>
       <!-- Edit batch form -->
       <div class="col-md-6" v-else>
@@ -86,6 +139,20 @@
               v-model="currentItem.test_interface"
               class="form-control"
             />
+          </div>
+          <div class="form-group">
+            <label> Layer 2 Method </label>
+            <select v-model="currentItem.layer2_script" class="form-control">
+              <option value="">-- Select Layer 2 Method --</option>
+              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label> Layer 3 Method </label>
+            <select v-model="currentItem.layer3_script" class="form-control">
+              <option value="">-- Select Layer 3 Method --</option>
+              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
           </div>
           <div class="form-group">
             <label> SSID Profile Selection </label>
@@ -118,20 +185,6 @@
             </VueMultiselect>
           </div>
           <div class="form-group">
-            <label> Layer 2 Script </label>
-            <select v-model="currentItem.layer2_script" class="form-control">
-              <option value="">-- Select Layer 2 Script --</option>
-              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label> Layer 3 Script </label>
-            <select v-model="currentItem.layer3_script" class="form-control">
-              <option value="">-- Select Layer 3 Script --</option>
-              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <div class="form-group">
             <label> Priority </label>
             <input
               type="number"
@@ -155,7 +208,6 @@
 <script>
  import { useBatchStore } from '../stores/batches.store';
  import itemList from '../components/list_items.vue';
- import dynamicform from '../components/dynamicform.vue';
  import VueMultiselect from 'vue-multiselect';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
@@ -164,18 +216,14 @@
  import { useJobStore } from '../stores/job_store';
  import { useScheduleStore } from '../stores/schedule_store';
  import { useLayerScriptsStore } from '../stores/layer_scripts_store';
- import { useScriptsStore } from '../stores/scripts_store';
  import { useUserStore } from '/src/stores/user.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
 
  export default {
-   components: { itemList, dynamicform, VueMultiselect, ConfirmModal, PageHeader },
+   components: { itemList, VueMultiselect, ConfirmModal, PageHeader },
    data() {
      return {
-       batch_name: '',
-       ssid_selection: [],
-
        showAddBatch: true,
 
        currentItem: {},
@@ -183,11 +231,16 @@
        old_batchname: '',
 
        mount: false,
-       form_layout: [],
 
+       // Add-batch form fields.
+       add_name: '',
+       add_test_interface: '',
+       add_ssid_profiles: [],
+       add_jobs: [],
+       add_schedules: [],
+       add_priority: 0,
        add_layer2_script: '',
        add_layer3_script: '',
-       add_script: '',
 
        showConfirm: false,
        confirmMessage: '',
@@ -197,7 +250,6 @@
        JobStore: useJobStore(),
        scheduleStore: useScheduleStore(),
        layerScriptsStore: useLayerScriptsStore(),
-       scriptsStore: useScriptsStore(),
        userStore: useUserStore(),
        enable_sso: config.ENABLE_SSO
      }
@@ -214,18 +266,8 @@
      await this.layerScriptsStore.getLayer2Scripts();
      await this.layerScriptsStore.getLayer3Scripts();
      await this.layerScriptsStore.getDefaults();
-     await this.scriptsStore.getScripts();
      this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
      this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
-     this.add_script = this.scriptsStore.scripts.length === 1 ? this.scriptsStore.scripts[0] : '';
-     this.form_layout = [
-       { 'type': 'text',        'name': 'Batch Name' },
-       { 'type': 'text',        'name': 'Test Interface' },
-       { 'type': 'multiselect', 'name': 'SSID Profile',       'options': this.SsidStore.ssid_profiles },
-       { 'type': 'multiselect', 'name': 'Job Selection',      'options': this.JobStore.jobs },
-       { 'type': 'multiselect', 'name': 'Schedule Selection', 'options': this.scheduleStore.schedules },
-       { 'type': 'number',      'name': 'Priority' },
-     ];
      this.mount = true;
    },
 
@@ -249,21 +291,25 @@
        this.old_batchname = this.currentItem.name;
      },
 
-     async addBatch(form_data) {
+     async addBatch() {
        await this.batchStore.addBatch({
-         name: form_data[0].value,
-         test_interface: form_data[1].value,
-         priority: form_data[5].value,
-         ssid_profiles: (form_data[2].selected.length == 0) ? [] : form_data[2].selected.map(obj => obj.name),
-         jobs: (form_data[3].selected.length == 0) ? [] : form_data[3].selected.map(obj => obj.name),
-         schedules: (form_data[4].selected.length == 0) ? [] : form_data[4].selected.map(obj => obj.name),
+         name: this.add_name,
+         test_interface: this.add_test_interface,
+         priority: this.add_priority,
+         ssid_profiles: this.add_ssid_profiles,
+         jobs: this.add_jobs,
+         schedules: this.add_schedules,
          layer2_script: this.add_layer2_script,
          layer3_script: this.add_layer3_script,
-         script: this.add_script,
        });
-       this.add_layer2_script = '';
-       this.add_layer3_script = '';
-       this.add_script = '';
+       this.add_name = '';
+       this.add_test_interface = '';
+       this.add_ssid_profiles = [];
+       this.add_jobs = [];
+       this.add_schedules = [];
+       this.add_priority = 0;
+       this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
+       this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
        this.addBatchForm();
      },
 
@@ -277,8 +323,7 @@
          "jobs": this.currentItem.jobs || [],
          "test_interface": this.currentItem.test_interface,
          "layer2_script": this.currentItem.layer2_script || '',
-         "layer3_script": this.currentItem.layer3_script || '',
-         "script": this.currentItem.script || ''
+         "layer3_script": this.currentItem.layer3_script || ''
        };
        await this.batchStore.editBatch(updated_batch);
        await this.batchStore.getBatches();
