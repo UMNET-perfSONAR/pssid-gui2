@@ -3,8 +3,8 @@
 #
 # Inserts a coherent set of sample objects (schedules, SSID profiles, tests,
 # archivers, jobs, batches, hosts, host groups) with the relations wired up, plus
-# a realistic ~3-week provisioning-history log so every page — including the
-# dashboard, Fleet Health, and Fleet Intelligence — shows meaningful data.
+# a realistic ~3-week provisioning-history log so every page, including the
+# dashboard, Fleet Health, and Fleet Intelligence, shows meaningful data.
 #
 # This is DEMO data, not production config. Safe to re-run: it removes the docs it
 # owns (by name, and history by caller "demo@seed") before re-inserting. It never

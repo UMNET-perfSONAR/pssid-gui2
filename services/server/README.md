@@ -68,7 +68,7 @@ pre-existing `archivers/`).
   directory yields no options (the field stays `""`).
 
 To add a new option, drop a JSON file into the matching `starters/<category>/`
-directory — no code change is required.
+directory, no code change is required.
 
 ## Batch config fields
 

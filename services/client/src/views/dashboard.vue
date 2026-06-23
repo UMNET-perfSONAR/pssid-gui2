@@ -45,7 +45,7 @@
       <span class="material-icons">monitor_heart</span>
       <div class="teaser-text">
         <div class="teaser-title">Fleet Health</div>
-        <div class="teaser-sub">Every probe ranked worst-first — see at a glance which hosts need attention.</div>
+        <div class="teaser-sub">Every probe ranked worst-first, see at a glance which hosts need attention.</div>
       </div>
       <span class="material-icons teaser-arrow">arrow_forward</span>
     </router-link>
@@ -130,7 +130,7 @@ export default {
     },
     lastProvisionLabel() {
       const last = this.recent[0];
-      return last ? this.formatTime(last.timestamp) : '—';
+      return last ? this.formatTime(last.timestamp) : '-';
     }
   },
   async mounted() {
@@ -161,7 +161,7 @@ export default {
       }
     },
     formatTime(ts) {
-      if (!ts) return '—';
+      if (!ts) return '-';
       return new Date(ts).toLocaleString();
     },
     triggerLabel(row) {

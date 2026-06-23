@@ -40,7 +40,7 @@ export async function updateSettings(patch: Partial<AppSettings>): Promise<AppSe
     update.autoProvision = patch.autoProvision;
   }
 
-  // Nothing valid to change — avoid an empty $set (which Mongo rejects) and
+  // Nothing valid to change, avoid an empty $set (which Mongo rejects) and
   // just return the current settings.
   if (Object.keys(update).length === 0) {
     return getSettings();

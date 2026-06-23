@@ -141,7 +141,7 @@ app.use('/api/provision-history', provisionhistoryroute);
 app.use('/api/provision', provisionroute);
 app.use('/api/settings', settingsroute);
 
-// Health check — used by Docker and monitoring to verify the server + DB are reachable
+// Health check, used by Docker and monitoring to verify the server + DB are reachable
 app.get('/api/health', async (_req: Request, res: Response) => {
   try {
     const client = await connectToMongoDB();
@@ -166,7 +166,7 @@ app.use('/api', (_req: Request, res: Response) => {
   res.status(404).json({ message: 'Not found' });
 });
 
-// Central error handler — must be last. Turns malformed JSON bodies into a 400
+// Central error handler, must be last. Turns malformed JSON bodies into a 400
 // and any other unexpected error into a generic 500, never leaking internals
 // (stack traces) to the client.
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

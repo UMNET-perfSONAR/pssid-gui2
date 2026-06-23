@@ -3,9 +3,9 @@
 // "Configure selected host/group" click.
 //
 // Safety model (see docs/deployment.md):
-//   * OFF by default — only runs when the operator turns it on in Settings.
-//   * Debounced — a burst of edits collapses into a single Ansible run.
-//   * Audited — every run is recorded in provision_history with trigger:'auto'.
+//   * OFF by default, only runs when the operator turns it on in Settings.
+//   * Debounced, a burst of edits collapses into a single Ansible run.
+//   * Audited, every run is recorded in provision_history with trigger:'auto'.
 //   * Reuses create_config_file, so the same script re-validation/sanitisation
 //     that protects manual provisioning also protects auto runs.
 
@@ -72,7 +72,7 @@ async function runAutoProvision(): Promise<void> {
 export function autoProvisionOnWrite(req: Request, res: Response, next: NextFunction): void {
   const method = req.method.toUpperCase();
   const isWrite = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
-  // Skip the explicit provisioning endpoints (e.g. /config) — they already
+  // Skip the explicit provisioning endpoints (e.g. /config), they already
   // provision, so auto-firing would be redundant.
   const isProvisionEndpoint = /config|provision/i.test(req.path);
 

@@ -46,7 +46,7 @@ function removeIdsProperties(obj:any) {
 
 /**
  * Build the ansible inventory (hosts.ini) content from the config object.
- * Pure function — returns the string so it can be written or previewed.
+ * Pure function, returns the string so it can be written or previewed.
  * @param obj config file contents
  */
 function buildIniContent(obj:&any): string {

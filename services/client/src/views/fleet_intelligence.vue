@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="Fleet Intelligence"
-      subtitle="Predictive failure-risk, anomaly detection, and trend forecasting — computed locally from provisioning history"
+      subtitle="Predictive failure-risk, anomaly detection, and trend forecasting, computed locally from provisioning history"
       icon="insights"
     />
 
@@ -14,7 +14,7 @@
       <span class="material-icons list-empty-icon">insights</span>
       <p style="font-weight:600; margin-bottom:.35rem;">Not enough data to analyze yet</p>
       <p style="font-size:.8rem; color:var(--muted); max-width:380px; margin:0 auto;">
-        Run provisioning a few times — once events accumulate, this page predicts
+        Run provisioning a few times, once events accumulate, this page predicts
         which probes are likely to fail and flags anomalies automatically.
       </p>
     </div>
@@ -119,14 +119,14 @@
                   <span v-if="h.isAnomalous && h.anomalyZ > 0" class="fi-tag warn" title="Deviating from baseline">
                     {{ h.anomalyZ.toFixed(1) }}σ drift
                   </span>
-                  <span v-if="h.currentStreak < 2 && !(h.isAnomalous && h.anomalyZ > 0)" class="fi-sub">—</span>
+                  <span v-if="h.currentStreak < 2 && !(h.isAnomalous && h.anomalyZ > 0)" class="fi-sub">-</span>
                 </td>
                 <td class="fi-sub" style="white-space:nowrap;">
                   {{ h.failures }}/{{ h.total }} failed
                 </td>
                 <td>
                   <code v-if="h.topError" class="fi-err" :title="h.topError">{{ h.topError }}</code>
-                  <span v-else class="fi-sub">—</span>
+                  <span v-else class="fi-sub">-</span>
                 </td>
               </tr>
             </tbody>
@@ -139,7 +139,7 @@
         Risk blends an <strong>EWMA</strong> of recent failures, current failure streak,
         a <strong>rolling z-score</strong> against each probe's own baseline (anomaly drift),
         and recency. Trend is a least-squares fit over daily success rate with a one-period
-        linear forecast. All computed in your browser from provisioning history — no external
+        linear forecast. All computed in your browser from provisioning history, no external
         calls, no data leaves the GUI.
       </p>
     </template>
@@ -189,7 +189,7 @@ export default {
       const d = this.report.trend.direction
       return d === 'declining' ? 'rgba(220,38,38,.10)' : d === 'improving' ? 'rgba(22,163,74,.10)' : 'rgba(14,165,233,.10)'
     },
-    // sparkline geometry — map series rate [0,1] into a 320×90 box
+    // sparkline geometry, map series rate [0,1] into a 320×90 box
     sparkPts() {
       const s = this.report.trend.series
       if (s.length < 2) return []

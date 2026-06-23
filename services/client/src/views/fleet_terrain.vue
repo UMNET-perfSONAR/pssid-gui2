@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="Fleet Health"
-      subtitle="Every probe ranked worst-first — what needs attention, from real provisioning data"
+      subtitle="Every probe ranked worst-first, what needs attention, from real provisioning data"
       icon="monitor_heart"
     />
 
@@ -46,7 +46,7 @@
       <span class="material-icons list-empty-icon">monitor_heart</span>
       <p style="font-weight:600; margin-bottom:.35rem;">No probes to rank yet</p>
       <p style="font-size:.8rem; color:var(--muted); max-width:360px; margin:0 auto;">
-        Add hosts and run provisioning — each probe will appear here, ranked by health.
+        Add hosts and run provisioning, each probe will appear here, ranked by health.
       </p>
     </div>
 
@@ -116,7 +116,7 @@
                 <span v-if="p.lastStatus === 'success'" class="badge badge-success">Success</span>
                 <span v-else-if="p.lastStatus === 'failed'" class="badge badge-danger"
                   :title="p.lastError">Failed</span>
-                <span v-else class="fh-sub">—</span>
+                <span v-else class="fh-sub">-</span>
               </td>
               <td :class="{ 'fh-stale': p.stale }" style="white-space:nowrap;">
                 {{ p.lastSeen }}

@@ -66,7 +66,7 @@ export default {
   },
   methods: {
     formatTime(ts) {
-      if (!ts) return '—'
+      if (!ts) return '-'
       return new Date(ts).toLocaleString()
     },
     triggerLabel(row) {

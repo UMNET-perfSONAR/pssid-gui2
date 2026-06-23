@@ -95,7 +95,7 @@ export const useSettingsStore = defineStore('settings', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
         if (res.ok) {
-          useToastStore().show('Provisioning started — check History for the result', 'success');
+          useToastStore().show('Provisioning started, check History for the result', 'success');
         } else {
           useToastStore().show('Failed to start provisioning', 'error');
         }

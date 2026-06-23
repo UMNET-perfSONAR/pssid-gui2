@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { getSettings, updateSettings } from '../services/settings.service';
 
-/** GET /api/settings — current application settings. */
+/** GET /api/settings, current application settings. */
 const getAppSettings = async (_req: Request, res: Response) => {
   try {
     const settings = await getSettings();
@@ -12,7 +12,7 @@ const getAppSettings = async (_req: Request, res: Response) => {
   }
 };
 
-/** PUT /api/settings — update settings (write-guarded by the router). */
+/** PUT /api/settings, update settings (write-guarded by the router). */
 const putAppSettings = async (req: Request, res: Response) => {
   try {
     if (typeof req.body?.autoProvision !== 'undefined' &&

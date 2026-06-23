@@ -17,7 +17,7 @@ export async function connectToMongoDB() {
 
 /**
  * Creates indexes on frequently queried fields to keep queries fast as data grows.
- * Safe to call on every startup — createIndex is idempotent.
+ * Safe to call on every startup, createIndex is idempotent.
  */
 export async function ensureIndexes() {
   try {

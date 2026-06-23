@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { build_config_payload, get_current_config } from '../services/config.service';
 
 /**
- * GET /api/provision/preview — dry run.
+ * GET /api/provision/preview, dry run.
  * Returns the config + inventory that WOULD be deployed from the current DB
  * state, the currently-deployed versions, and whether they differ. Does not
  * write anything or run the provision script.

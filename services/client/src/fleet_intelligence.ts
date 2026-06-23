@@ -1,5 +1,5 @@
 /**
- * Fleet Intelligence — client-side analytics over pSSID provisioning history.
+ * Fleet Intelligence, client-side analytics over pSSID provisioning history.
  *
  * Pure functions, no framework and no network. Everything here is computed from
  * the provision_history records the GUI already loads, so it runs entirely
@@ -253,7 +253,7 @@ export function fleetTrend(events: ProvisionEvent[], bucketMs = 86400000): Fleet
   return { series, slopePerDay: slope, forecast, direction };
 }
 
-/** Auto-generated, plain-language insights — the narrative layer, zero tokens. */
+/** Auto-generated, plain-language insights, the narrative layer, zero tokens. */
 export function buildInsights(hosts: HostRisk[], trend: FleetTrend): Insight[] {
   const out: Insight[] = [];
   const critical = hosts.filter(h => h.band === 'critical');
@@ -265,7 +265,7 @@ export function buildInsights(hosts: HostRisk[], trend: FleetTrend): Insight[] {
       severity: 'critical',
       icon: 'priority_high',
       title: `${critical.length} probe${critical.length > 1 ? 's' : ''} at high failure risk`,
-      detail: `${names}${critical.length > 3 ? ` +${critical.length - 3} more` : ''} — predicted to fail the next provision. Investigate before the next run.`,
+      detail: `${names}${critical.length > 3 ? ` +${critical.length - 3} more` : ''}, predicted to fail the next provision. Investigate before the next run.`,
     });
   }
 

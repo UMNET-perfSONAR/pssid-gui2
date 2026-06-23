@@ -30,7 +30,7 @@
             <div class="setting-sub">
               When enabled, saving a change to hosts, groups, schedules, SSID profiles,
               tests, jobs, or batches automatically regenerates the daemon config and
-              pushes it to the probes — no manual “Configure” click required.
+              pushes it to the probes, no manual “Configure” click required.
             </div>
           </div>
           <label class="switch" :class="{ disabled: isDisabled || settingsStore.isSaving }">
@@ -94,7 +94,7 @@
           <div>
             <h3 class="settings-card-title">Dry run &amp; preview</h3>
             <p class="settings-card-desc">
-              See exactly what would be pushed to the probes — before pushing it.
+              See exactly what would be pushed to the probes, before pushing it.
             </p>
           </div>
         </div>
@@ -117,7 +117,7 @@
           <div class="preview-status" :class="settingsStore.preview.changed ? 'changed' : 'unchanged'">
             <span class="material-icons">{{ settingsStore.preview.changed ? 'sync_problem' : 'check_circle' }}</span>
             <span v-if="settingsStore.preview.changed">Proposed config <strong>differs</strong> from what is currently deployed.</span>
-            <span v-else>Proposed config <strong>matches</strong> what is currently deployed — nothing to push.</span>
+            <span v-else>Proposed config <strong>matches</strong> what is currently deployed, nothing to push.</span>
           </div>
 
           <div class="preview-tabs">
