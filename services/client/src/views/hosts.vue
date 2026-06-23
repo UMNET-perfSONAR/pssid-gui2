@@ -10,7 +10,7 @@
     <PageHeader
       title="Hosts"
       subtitle="Manage network probe hosts and their batch assignments"
-      icon="dns"
+      icon="computer"
     />
 
     <!-- buttons -->

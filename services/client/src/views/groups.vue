@@ -10,7 +10,7 @@
     <PageHeader
       title="Host Groups"
       subtitle="Organize hosts into groups for bulk provisioning"
-      icon="workspaces"
+      icon="lan"
     />
 
     <div v-if="hostGroup.isLoading===true" class="loading-state">

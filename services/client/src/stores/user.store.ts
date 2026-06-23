@@ -20,9 +20,10 @@ export const useUserStore = defineStore('user', {
   getters: {
     isInGroup: (state) => {
       return (groups: string | string[]) => {
-        if (!state.user?.groups) return false;
+        const userGroups = state.user?.groups;
+        if (!userGroups) return false;
         const groupList = Array.isArray(groups) ? groups : [groups];
-        return groupList.some(group => state.user.groups.includes(group));
+        return groupList.some(group => userGroups.includes(group));
       };
     },
     canWrite: (state) => {

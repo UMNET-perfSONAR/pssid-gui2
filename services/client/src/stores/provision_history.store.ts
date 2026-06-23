@@ -14,7 +14,7 @@ export const useProvisionHistoryStore = defineStore('provisionHistory', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
         const data = await res.json();
-        this.history = data;
+        this.history = Array.isArray(data) ? data : [];
       } catch (err) {
         console.error(err);
       } finally {

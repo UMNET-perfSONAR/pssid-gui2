@@ -106,8 +106,8 @@ export default {
     stats() {
       const len = (a) => (Array.isArray(a) ? a.length : 0);
       return [
-        { label: 'Hosts',         icon: 'dns',          to: '/hosts',         count: len(this.hostStore.hosts) },
-        { label: 'Groups',        icon: 'workspaces',   to: '/host_groups',   count: len(this.groupStore.host_groups) },
+        { label: 'Hosts',         icon: 'computer',     to: '/hosts',         count: len(this.hostStore.hosts) },
+        { label: 'Groups',        icon: 'lan',          to: '/host_groups',   count: len(this.groupStore.host_groups) },
         { label: 'Schedules',     icon: 'schedule',     to: '/schedules',     count: len(this.scheduleStore.schedules) },
         { label: 'SSID Profiles', icon: 'wifi',         to: '/ssid_profiles', count: len(this.ssidStore.ssid_profiles) },
         { label: 'Tests',         icon: 'science',      to: '/tests',         count: len(this.testStore.tests) },

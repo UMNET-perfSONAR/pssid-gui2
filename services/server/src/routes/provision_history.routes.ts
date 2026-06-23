@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { connectToMongoDB } from '../services/database.service';
+import { authorize } from '../shared/accessControl';
 
 const router = Router();
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', authorize('read'), async (_req: Request, res: Response) => {
   try {
     const client = await connectToMongoDB();
     const db = client.db('gui');
