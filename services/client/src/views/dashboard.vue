@@ -40,6 +40,16 @@
       </router-link>
     </div>
 
+    <!-- Fleet health teaser -->
+    <router-link to="/fleet-health" class="terrain-teaser">
+      <span class="material-icons">monitor_heart</span>
+      <div class="teaser-text">
+        <div class="teaser-title">Fleet Health</div>
+        <div class="teaser-sub">Every probe ranked worst-first — see at a glance which hosts need attention.</div>
+      </div>
+      <span class="material-icons teaser-arrow">arrow_forward</span>
+    </router-link>
+
     <!-- Recent activity -->
     <section class="recent">
       <div class="recent-head">
@@ -213,6 +223,30 @@ export default {
 .stat-icon { font-size: 1.5rem; color: var(--primary); }
 .stat-count { font-size: 1.9rem; font-weight: 700; color: var(--text); line-height: 1.1; margin-top: 0.35rem; }
 .stat-label { font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+
+.terrain-teaser {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), .10), rgba(var(--accent-rgb), .08));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  text-decoration: none;
+  transition: transform .12s, box-shadow .12s, border-color .12s;
+}
+.terrain-teaser:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+  border-color: rgba(var(--primary-rgb), .4);
+}
+.terrain-teaser > .material-icons { font-size: 2rem; color: var(--primary); }
+.teaser-text { flex: 1; }
+.teaser-title { font-weight: 700; color: var(--text); font-size: 1rem; }
+.teaser-sub { font-size: .82rem; color: var(--muted); }
+.teaser-arrow { color: var(--primary); }
 
 .recent {
   background: var(--surface);
