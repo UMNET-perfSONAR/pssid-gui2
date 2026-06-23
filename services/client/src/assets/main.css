@@ -40,6 +40,22 @@
 :root[data-theme="dark"] fieldset[disabled] .form-control { background: #0e1626 !important; }
 :root[data-theme="dark"] .form-control { background-color: #0e1626 !important; color: var(--text) !important; }
 
+/* In dark mode the deep-navy --primary used for icon glyphs is nearly invisible
+   on the dark surfaces, so render those icons in the bright accent instead. This
+   covers both class-styled icons and the few that set the colour inline. */
+:root[data-theme="dark"] .page-header-icon,
+:root[data-theme="dark"] .settings-card-icon,
+:root[data-theme="dark"] .stat-icon,
+:root[data-theme="dark"] .status-pill.neutral .material-icons,
+:root[data-theme="dark"] .setting-callout:not(.muted) .material-icons,
+:root[data-theme="dark"] .material-icons[style*="var(--primary)"] {
+  color: var(--accent) !important;
+}
+:root[data-theme="dark"] .page-header-icon,
+:root[data-theme="dark"] .settings-card-icon {
+  background: rgba(var(--accent-rgb), .15);
+}
+
 /* ─── Base ───────────────────────────────────────────────────── */
 body {
   background: var(--bg) !important;
