@@ -55,18 +55,6 @@ const routes =  [
     component: () => import("./views/ssid_profiles.vue")
   },
   {
-    path: "/fleet-health",
-    alias: "/terrain",
-    name: "fleet_health_page",
-    component: () => import("./views/fleet_terrain.vue")
-  },
-  {
-    path: "/fleet-intelligence",
-    alias: "/intelligence",
-    name: "fleet_intelligence_page",
-    component: () => import("./views/fleet_intelligence.vue")
-  },
-  {
     path: "/history",
     name: "history_page",
     component: () => import("./views/provision_history.vue")

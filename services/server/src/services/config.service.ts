@@ -222,6 +222,26 @@ function sanitizeBatchScripts(batch_data: any) {
 }
 
 /**
+ * Guarantees every batch carries an `archivers` array in the generated config.
+ *
+ * The pSSID daemon reads `batch["archivers"]` by direct key access while
+ * building each batch; a batch without the field raises a KeyError and crashes
+ * the daemon. The GUI does not currently let users assign archivers (the daemon
+ * hardcodes the syslog archiver in its template, so the top-level array is
+ * inert), but the per-batch key must still be present. Default any missing or
+ * non-array value to [] right before serialization.
+ *
+ * @param batch_data - the { batches: [...] } object returned by get_collection
+ */
+function ensureBatchArchivers(batch_data: any) {
+  for (const batch of batch_data.batches ?? []) {
+    if (!Array.isArray(batch.archivers)) {
+      batch.archivers = [];
+    }
+  }
+}
+
+/**
  * Builds the daemon config (pssid_config.json) and ansible inventory (hosts.ini)
  * from the current database state, WITHOUT writing them or running provision.
  * Shared by create_config_file (the real provision) and the dry-run preview.
@@ -236,6 +256,7 @@ export async function build_config_payload(): Promise<{ config: string; inventor
   const job_data = await get_collection(client, "jobs");
   const batch_data = await get_collection(client, "batches");
   sanitizeBatchScripts(batch_data);
+  ensureBatchArchivers(batch_data);
   const ssid_data = await get_collection(client, "ssid_profiles");
   const test_data = await get_collection(client, "tests");
   const formatted_test_data = await formatTestData(test_data.tests);
