@@ -224,12 +224,13 @@ function sanitizeBatchScripts(batch_data: any) {
 /**
  * Guarantees every batch carries an `archivers` array in the generated config.
  *
- * The pSSID daemon reads `batch["archivers"]` by direct key access while
- * building each batch; a batch without the field raises a KeyError and crashes
- * the daemon. The GUI does not currently let users assign archivers (the daemon
- * hardcodes the syslog archiver in its template, so the top-level array is
- * inert), but the per-batch key must still be present. Default any missing or
- * non-array value to [] right before serialization.
+ * Defensive only. The current pSSID daemon (verified from source) does NOT read
+ * `batch["archivers"]` — it hardcodes the syslog archiver in its own template —
+ * so emitting this field changes nothing on the daemon side today and its
+ * absence does not crash anything. We still normalize it to [] so the field is
+ * always present and well-typed: it keeps the generated config shape stable and
+ * future-proofs it if a later daemon version starts honoring per-batch
+ * archivers. Do not describe this as crash-prevention; it isn't.
  *
  * @param batch_data - the { batches: [...] } object returned by get_collection
  */
@@ -238,6 +239,117 @@ function ensureBatchArchivers(batch_data: any) {
     if (!Array.isArray(batch.archivers)) {
       batch.archivers = [];
     }
+  }
+}
+
+/**
+ * Read-only pre-flight check on the assembled config object, run right before it
+ * is serialized. It does NOT modify the config in any way: on valid data it is a
+ * no-op and the emitted bytes are identical to what they would be without it. On
+ * INVALID data (data that would crash or be silently rejected by the pSSID
+ * daemon) it throws a single Error listing every problem, so the preview /
+ * provision fails loudly in the GUI instead of shipping a broken config to a
+ * probe.
+ *
+ * Scope is deliberately limited to SHAPE rules we have verified the daemon cares
+ * about (type/presence/cross-reference). It intentionally does NOT try to predict
+ * daemon BEHAVIOR (whether an SSID connects, whether a tool runs on a probe) —
+ * that is the probe's job and only `--validate` on a real probe certifies it.
+ *
+ * Verified daemon-critical rules (see daemon contract):
+ *  - job.parallel must be the STRING "True"/"False" (daemon string-compares it)
+ *  - job['continue-if'] must be a STRING (daemon calls .lower() on it)
+ *  - every batch must have a non-empty ssid_profiles array
+ *  - every batch must declare a layer2_script and layer3_script (required;
+ *    never blank) so the config always states which methods the batch uses
+ *  - every name referenced by a batch (jobs, ssid_profiles, schedules) must
+ *    resolve to an actually-defined object
+ *  - every host's batches and every host_group's hosts/batches must resolve
+ *
+ * @param obj - the fully-assembled config object (hosts, host_groups, schedules,
+ *   ssid_profiles, tests, jobs, batches) prior to serialization
+ */
+function assertDaemonValid(obj: any): void {
+  const errors: string[] = [];
+
+  const names = (arr: any): Set<string> =>
+    new Set((Array.isArray(arr) ? arr : []).map((x: any) => x?.name));
+
+  const definedJobs = names(obj.jobs);
+  const definedSsids = names(obj.ssid_profiles);
+  const definedSchedules = names(obj.schedules);
+  const definedHosts = names(obj.hosts);
+  const definedBatches = names(obj.batches);
+
+  // ---- jobs: parallel / continue-if must be strings ------------------------
+  for (const job of Array.isArray(obj.jobs) ? obj.jobs : []) {
+    if (job.parallel !== 'True' && job.parallel !== 'False') {
+      errors.push(
+        `job "${job.name}": parallel must be the string "True" or "False", got ${JSON.stringify(job.parallel)}`
+      );
+    }
+    if (typeof job['continue-if'] !== 'string') {
+      errors.push(
+        `job "${job.name}": continue-if must be a string ("true"/"false"), got ${JSON.stringify(job['continue-if'])}`
+      );
+    }
+  }
+
+  // ---- batches: non-empty ssid_profiles + all references resolve -----------
+  for (const batch of Array.isArray(obj.batches) ? obj.batches : []) {
+    if (!Array.isArray(batch.ssid_profiles) || batch.ssid_profiles.length === 0) {
+      errors.push(`batch "${batch.name}": ssid_profiles must be a non-empty list`);
+    }
+    // layer2/layer3 method are required: a batch must declare both, never blank.
+    if (!batch.layer2_script) {
+      errors.push(`batch "${batch.name}": layer2_script (layer 2 method) is required`);
+    }
+    if (!batch.layer3_script) {
+      errors.push(`batch "${batch.name}": layer3_script (layer 3 method) is required`);
+    }
+    for (const s of batch.ssid_profiles ?? []) {
+      if (!definedSsids.has(s)) {
+        errors.push(`batch "${batch.name}": references unknown ssid_profile "${s}"`);
+      }
+    }
+    for (const j of batch.jobs ?? []) {
+      if (!definedJobs.has(j)) {
+        errors.push(`batch "${batch.name}": references unknown job "${j}"`);
+      }
+    }
+    for (const sch of batch.schedules ?? []) {
+      if (!definedSchedules.has(sch)) {
+        errors.push(`batch "${batch.name}": references unknown schedule "${sch}"`);
+      }
+    }
+  }
+
+  // ---- hosts / host_groups: references resolve -----------------------------
+  for (const host of Array.isArray(obj.hosts) ? obj.hosts : []) {
+    for (const b of host.batches ?? []) {
+      if (!definedBatches.has(b)) {
+        errors.push(`host "${host.name}": references unknown batch "${b}"`);
+      }
+    }
+  }
+  for (const group of Array.isArray(obj.host_groups) ? obj.host_groups : []) {
+    for (const b of group.batches ?? []) {
+      if (!definedBatches.has(b)) {
+        errors.push(`host_group "${group.name}": references unknown batch "${b}"`);
+      }
+    }
+    for (const h of group.hosts ?? []) {
+      if (!definedHosts.has(h)) {
+        errors.push(`host_group "${group.name}": references unknown host "${h}"`);
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(
+      'Config validation failed; not generating pssid_config.json:\n  - ' +
+        errors.join('\n  - ')
+    );
   }
 }
 
@@ -265,6 +377,10 @@ export async function build_config_payload(): Promise<{ config: string; inventor
                             schedule_data,
                             ssid_data, formatted_test_data,
                             job_data, batch_data);
+
+  // Read-only pre-flight: throws on data that would crash/reject at the daemon.
+  // No-op (and config bytes unchanged) when the data is valid.
+  assertDaemonValid(obj);
 
   const inventory = buildIniContent(obj);
   const clean_object = removeIdsProperties(obj);

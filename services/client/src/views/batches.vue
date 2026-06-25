@@ -13,6 +13,12 @@
       icon="layers"
     />
 
+    <div v-if="mount && noLayerScripts" class="alert alert-warning" role="alert">
+      No layer 2 / layer 3 methods are available to select. A method is required
+      on every batch, so batches cannot be saved until scripts are present in the
+      configured layer 2 and layer 3 directories on the server.
+    </div>
+
     <div v-if="batchStore.isLoading===true" class="loading-state">
       <div class="spinner"></div>
       <span>Loading batches…</span>
@@ -60,15 +66,15 @@
           </div>
           <div class="form-group">
             <label> Layer 2 Method </label>
-            <select v-model="add_layer2_script" class="form-control">
-              <option value="">-- Select Layer 2 Method --</option>
+            <select v-model="add_layer2_script" class="form-control" required>
+              <option value="" disabled>-- Select Layer 2 Method --</option>
               <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
             </select>
           </div>
           <div class="form-group">
             <label> Layer 3 Method </label>
-            <select v-model="add_layer3_script" class="form-control">
-              <option value="">-- Select Layer 3 Method --</option>
+            <select v-model="add_layer3_script" class="form-control" required>
+              <option value="" disabled>-- Select Layer 3 Method --</option>
               <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
             </select>
           </div>
@@ -142,15 +148,15 @@
           </div>
           <div class="form-group">
             <label> Layer 2 Method </label>
-            <select v-model="currentItem.layer2_script" class="form-control">
-              <option value="">-- Select Layer 2 Method --</option>
+            <select v-model="currentItem.layer2_script" class="form-control" required>
+              <option value="" disabled>-- Select Layer 2 Method --</option>
               <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
             </select>
           </div>
           <div class="form-group">
             <label> Layer 3 Method </label>
-            <select v-model="currentItem.layer3_script" class="form-control">
-              <option value="">-- Select Layer 3 Method --</option>
+            <select v-model="currentItem.layer3_script" class="form-control" required>
+              <option value="" disabled>-- Select Layer 3 Method --</option>
               <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
             </select>
           </div>
@@ -274,6 +280,12 @@
    computed: {
      isDisabled() {
        return isFormDisabled();
+     },
+     // True when no layer2 or no layer3 methods are available to choose from.
+     // A method is required on every batch, so saving is impossible in this state.
+     noLayerScripts() {
+       return this.layerScriptsStore.layer2_scripts.length === 0 ||
+              this.layerScriptsStore.layer3_scripts.length === 0;
      }
    },
 
@@ -289,6 +301,18 @@
        this.currentIndex = indexArray[1];
        this.showAddBatch = false;
        this.old_batchname = this.currentItem.name;
+       // A layer2/layer3 method is required. Batches created before this field
+       // existed (or imported data) may have none; pre-fill the resolved default
+       // so the operator sees a real selection instead of a silent blank that
+       // would be rejected on save.
+       if (!this.currentItem.layer2_script) {
+         this.currentItem.layer2_script =
+           this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
+       }
+       if (!this.currentItem.layer3_script) {
+         this.currentItem.layer3_script =
+           this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
+       }
      },
 
      async addBatch() {

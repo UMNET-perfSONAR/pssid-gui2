@@ -86,17 +86,18 @@ db.jobs.insertMany([
 ]);
 
 // ---- batches: priority, test_interface, ssid_profiles, schedules, jobs -------
-//   (layer2/layer3_script are inert for the daemon; archivers added by the
-//    generator. Two SSIDs on edge-batch satisfies "more than one SSID".)
+//   (layer2/layer3_script are REQUIRED; set to the starter method names that
+//    ship in services/server/starters/. archivers added by the generator.
+//    Two SSIDs on edge-batch satisfies "more than one SSID".)
 db.batches.insertMany([
   { name: 'edge-batch', priority: 10, test_interface: 'wlan0',
     ssid_profiles: ['MWireless', 'eduroam'], schedules: ['every-5-min', 'hourly'],
     jobs: ['connectivity-suite'],
-    layer2_script: '', layer3_script: '', script: '' },
+    layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
   { name: 'core-batch', priority: 20, test_interface: 'wlan0',
     ssid_profiles: ['MWireless', 'MGuest'], schedules: ['nightly'],
     jobs: ['throughput-suite', 'connectivity-suite'],
-    layer2_script: '', layer3_script: '', script: '' },
+    layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
 ]);
 
 // ---- hosts: name, batches, data (object) ------------------------------------

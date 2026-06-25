@@ -42,13 +42,19 @@ export const useLayerScriptsStore = defineStore('layerScripts', {
         this.isError = true;
       }
     },
-    // Returns the script to pre-select given the available options.
-    // Rule: 1 option → implicit default; multiple + configured default exists → use it; else → blank.
+    // Returns the script to pre-select given the available options. A method is
+    // required on every batch, so this always pre-fills a real method whenever any
+    // exist — the operator can still change it when there's more than one.
+    // Rule: no options → blank (nothing to pick; UI shows a warning);
+    //       1 option → that option (no real choice);
+    //       multiple + a configured default that exists → the configured default;
+    //       multiple, no valid configured default → the first option (sensible pre-fill).
     resolveDefault(scripts: string[], defaultKey: 'default_layer2' | 'default_layer3'): string {
+      if (scripts.length === 0) return '';
       if (scripts.length === 1) return scripts[0];
       const configured = this.defaults[defaultKey];
       if (configured && scripts.includes(configured)) return configured;
-      return '';
+      return scripts[0];
     }
   }
 });
