@@ -40,11 +40,6 @@ services:
       - ./services/server/.env:/usr/src/app/server/.env
       - server_node_modules:/usr/src/app/server/node_modules
       - ./shared:/usr/src/app/server/src/shared:ro
-      # Dev has no /var/lib/pssid host dir, so provide the starter layer2/layer3
-      # methods directly. A layer2/layer3 method is required on every batch, so
-      # without these the dropdowns would be empty and no batch could be saved.
-      - ./services/server/starters/layer2:/usr/src/app/server/plugins/layer2:ro
-      - ./services/server/starters/layer3:/usr/src/app/server/plugins/layer3:ro
     expose:
       - "8000"
     depends_on:

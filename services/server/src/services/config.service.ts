@@ -13,6 +13,10 @@ let config_path: string | null = null;
 let ini_path: string | null = null;
 let shellscript_path: string | null = null;
 
+// Schema version of the generated pssid_config.json. Bump this when the SHAPE of
+// the generated config changes in a way a consumer (daemon/tooling) should notice.
+const CONFIG_VERSION = '1.0';
+
 /**
  * Get specified collection data - flexible for all collections
  * @param client - MongoClient instance
@@ -354,12 +358,54 @@ function assertDaemonValid(obj: any): void {
 }
 
 /**
+ * Builds the top-level `pssid_metadata` block: provenance about THIS config file
+ * (as opposed to the array collections, which describe what the probes do). It is
+ * a single object of individual scalar fields (not an array) so consumers can read
+ * e.g. config_version directly.
+ *
+ * @param meta - who/what triggered the generation. caller/caller_role come from
+ *   the authenticated request when available, else default to 'unauthenticated'.
+ */
+function buildMetadata(meta: { caller?: string; caller_role?: string }) {
+  return {
+    pssid_metadata: {
+      config_version: CONFIG_VERSION,
+      generator: 'pssid-gui',
+      generated_at: new Date().toISOString(),
+      generated_by: meta.caller || 'unauthenticated',
+      generated_by_role: meta.caller_role || 'unauthenticated',
+    },
+  };
+}
+
+/**
+ * Returns a config JSON string with the volatile `pssid_metadata` block removed,
+ * for equality comparisons. `generated_at` (and possibly generated_by) changes on
+ * every build, so a raw string compare of two configs would ALWAYS differ; the
+ * dry-run preview uses this so a pure provenance change is not reported as a real
+ * config change. Falls back to the raw string if it cannot be parsed.
+ */
+export function stripConfigMetadata(configStr: string | null): string {
+  if (!configStr) return '';
+  try {
+    const parsed = JSON.parse(configStr);
+    delete parsed.pssid_metadata;
+    return JSON.stringify(parsed);
+  } catch {
+    return configStr;
+  }
+}
+
+/**
  * Builds the daemon config (pssid_config.json) and ansible inventory (hosts.ini)
  * from the current database state, WITHOUT writing them or running provision.
  * Shared by create_config_file (the real provision) and the dry-run preview.
+ * @param meta - caller/caller_role recorded in the config's pssid_metadata block.
  * @returns the proposed config + inventory as strings
  */
-export async function build_config_payload(): Promise<{ config: string; inventory: string }> {
+export async function build_config_payload(
+  meta: { caller?: string; caller_role?: string } = {}
+): Promise<{ config: string; inventory: string }> {
   get_paths();
   const client = await connectToMongoDB();
   const host_data = await get_collection(client, "hosts");
@@ -372,7 +418,11 @@ export async function build_config_payload(): Promise<{ config: string; inventor
   const ssid_data = await get_collection(client, "ssid_profiles");
   const test_data = await get_collection(client, "tests");
   const formatted_test_data = await formatTestData(test_data.tests);
-  const obj = Object.assign(host_data,
+  // pssid_metadata first so it heads the generated file as a provenance header,
+  // sitting at the same level as the array collections below it.
+  const obj = Object.assign({},
+                            buildMetadata(meta),
+                            host_data,
                             host_group_data,
                             schedule_data,
                             ssid_data, formatted_test_data,
@@ -410,7 +460,7 @@ export function get_current_config(): { config: string | null; inventory: string
  */
 export async function create_config_file(name: string, click_context: string, caller: string = 'unauthenticated', caller_role: string = 'unauthenticated', trigger: 'manual' | 'auto' = 'manual') {
   try {
-    const { config: config_content, inventory } = await build_config_payload();
+    const { config: config_content, inventory } = await build_config_payload({ caller, caller_role });
 
     writeFileSync(ini_path, inventory);
     console.log("Writing config file...");

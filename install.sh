@@ -386,17 +386,10 @@ if [ "$(uname -s)" = "Linux" ]; then
     /var/lib/pssid/output 2>/dev/null || warn "Could not create /var/lib/pssid (insufficient permissions)"
   ok "Runtime directories ready"
 
-  # Seed the layer 2 / layer 3 plugin directories with the starter methods if
-  # they are not already present. A layer2/layer3 method is required on every
-  # batch, so the GUI cannot create a batch until at least one method exists to
-  # select. -n never overwrites, so operator-added methods are preserved.
-  STARTERS="$SCRIPT_DIR/services/server/starters"
-  for L in layer2 layer3; do
-    if [ -d "$STARTERS/$L" ]; then
-      $SUDO sh -c "cp -n '$STARTERS/$L'/* '/var/lib/pssid/plugins/$L/' 2>/dev/null" || true
-    fi
-  done
-  ok "Layer 2 / layer 3 starter methods seeded"
+  # Note: the layer 2 / layer 3 (and tests/archivers) starter methods are seeded
+  # into these directories by the server container's entrypoint.sh on every start
+  # (it copies services/server/starters/* into plugins/), so no host-side copy is
+  # needed here. We only ensure the directories exist as bind-mount sources.
   if [ ! -x /usr/lib/exec/pssid/provision ]; then
     warn "No provision binary at /usr/lib/exec/pssid/provision."
     info "The GUI runs fine without it, but provisioning to probes needs your"
