@@ -6,6 +6,13 @@
       icon="history"
     />
 
+    <div class="mb-3">
+      <button class="btn btn-secondary btn-sm" @click="store.getHistory()" :disabled="store.isLoading">
+        <span class="material-icons" style="font-size:1rem; vertical-align:-3px; margin-right:.25rem;">refresh</span>
+        {{ store.isLoading ? 'Refreshing…' : 'Refresh' }}
+      </button>
+    </div>
+
     <div v-if="store.isLoading" class="loading-state">
       <div class="spinner"></div>
       <span>Loading history…</span>

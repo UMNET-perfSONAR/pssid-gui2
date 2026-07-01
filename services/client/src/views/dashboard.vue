@@ -111,7 +111,7 @@ export default {
         { label: 'Schedules',     icon: 'schedule',     to: '/schedules',     count: len(this.scheduleStore.schedules) },
         { label: 'SSID Profiles', icon: 'wifi',         to: '/ssid_profiles', count: len(this.ssidStore.ssid_profiles) },
         { label: 'Tests',         icon: 'science',      to: '/tests',         count: len(this.testStore.tests) },
-        { label: 'Jobs',          icon: 'work_history', to: '/jobs',          count: len(this.jobStore.jobs) },
+        { label: 'Jobs',          icon: 'work',         to: '/jobs',          count: len(this.jobStore.jobs) },
         { label: 'Batches',       icon: 'layers',       to: '/batches',       count: len(this.batchStore.batches) },
       ];
     },

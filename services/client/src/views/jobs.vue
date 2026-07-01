@@ -9,8 +9,8 @@
 
     <PageHeader
       title="Jobs"
-      subtitle="Combine tests and schedules into reusable job configurations"
-      icon="work_history"
+      subtitle="Combine tests into reusable job configurations"
+      icon="work"
     />
 
     <div v-if="jobStore.isLoading===true" class="loading-state">
