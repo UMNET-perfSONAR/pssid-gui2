@@ -2,115 +2,150 @@
   <div>
     <PageHeader
       title="SSID Profiles"
-      subtitle="Configure wireless network profiles for testing"
+      subtitle="A wireless network plus the layer 2 and layer 3 methods used to connect to it"
       icon="wifi"
+      :can-add="!isDisabled"
+      add-label="Add SSID Profile"
+      @add="addSsidForm"
     />
+
+    <div v-if="mount && noLayerScripts" class="alert alert-warning" role="alert">
+      No layer 2 / layer 3 methods are available to select. A method is required on
+      every SSID profile, so profiles cannot be saved until scripts are present in
+      the configured layer 2 and layer 3 directories on the server.
+    </div>
 
     <div v-if="ssidStore.isLoading===true" class="loading-state">
       <div class="spinner"></div>
       <span>Loading SSID profiles…</span>
     </div>
 
-    <!-- Add ssid_profile button -->
-    <div>
-      <button style="margin-bottom: 2em;" v-if="showAddSSID"></button>
-      <button @click="addSsidForm" class="btn btn-primary" v-if="!showAddSSID"
-        style="margin-bottom: 1em;"> Add SSID Profile </button>
-    </div>
-    <h3> SSID Profile List </h3>
-    <div class="list row"> 
-      <!-- schedule list and regex searchbar -->
-      <itemList v-if="mount == true" :item-array="ssidStore.ssid_profiles" :display="showAddSSID"
-        @updateActive="updateActiveSSID" style="cursor:pointer;" class="col-md-6"
-      ></itemList>
+    <div class="list row">
+      <div class="col-md-6" v-if="ssidStore.ssid_profiles.length === 0">
+        <h3> SSID Profile List </h3>
+        <p> SSID profile list is empty </p>
+      </div>
+      <div class="col-md-6" v-else>
+        <h3> SSID Profile List </h3>
+        <itemList v-if="mount == true" :item-array="ssidStore.ssid_profiles" :display="showAddSSID"
+          @updateActive="updateActiveSSID" style="cursor:pointer;"></itemList>
+      </div>
 
       <!-- Add SSID profile form -->
-      <div class = 'col-md-6' v-if="showAddSSID==true">
+      <div class="col-md-6" v-if="showAddSSID==true">
         <h3> Add SSID Profile </h3>
-        <fieldset :disabled="isDisabled">
-        <dynamicform  @formData="receiveEmit"
-          :form_layout="formstuff"></dynamicform>
-        </fieldset>
+        <form @submit.prevent="addSsid">
+          <fieldset :disabled="isDisabled">
+          <div class="form-group">
+            <label> Profile Name </label>
+            <input type="text" placeholder="Enter profile name here" v-model="add_name" class="form-control" required />
+          </div>
+          <div class="form-group">
+            <label> SSID </label>
+            <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="add_SSID" class="form-control" required />
+          </div>
+          <div class="form-group">
+            <label> Layer 2 Method </label>
+            <select v-model="add_layer2_script" class="form-control" required>
+              <option value="" disabled>-- Select Layer 2 Method --</option>
+              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label> Layer 3 Method </label>
+            <select v-model="add_layer3_script" class="form-control" required>
+              <option value="" disabled>-- Select Layer 3 Method --</option>
+              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <button class="btn btn-success"> Submit </button>
+          </div>
+          </fieldset>
+        </form>
       </div>
-      <!-- Edit SSID Profile form -->
-      <div class = 'col-md-6' v-if="showAddSSID==false">
+
+      <!-- Edit SSID profile form -->
+      <div class="col-md-6" v-if="showAddSSID==false">
         <h3> Edit SSID Profile </h3>
-        <div style="margin-bottom:1em">
-          <label> SSID Profile Name </label>
-          <input
-            type="text"
-            placeholder="Enter ssid profile name here"
-            required
-            id="name"
-            class="form-control"
-            v-model="currentItem.name"
-          />
-        </div>
-
-        <button class="btn btn-success" @click="editCurItem"
-          style="margin-right: 1em;" :disabled="isDisabled"> Submit </button>
-        <button class="btn btn-danger" @click.prevent="deleteCurItem" :disabled="isDisabled"> Delete </button>
-
+        <form @submit.prevent="editCurItem">
+          <fieldset :disabled="isDisabled">
+          <div class="form-group">
+            <label> Profile Name </label>
+            <input type="text" placeholder="Enter profile name here" v-model="currentItem.name" class="form-control" required />
+          </div>
+          <div class="form-group">
+            <label> SSID </label>
+            <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="currentItem.SSID" class="form-control" required />
+          </div>
+          <div class="form-group">
+            <label> Layer 2 Method </label>
+            <select v-model="currentItem.layer2_script" class="form-control" required>
+              <option value="" disabled>-- Select Layer 2 Method --</option>
+              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label> Layer 3 Method </label>
+            <select v-model="currentItem.layer3_script" class="form-control" required>
+              <option value="" disabled>-- Select Layer 3 Method --</option>
+              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
+            </select>
+          </div>
+          <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
+            <button class="btn btn-success"> Submit </button>
+            <button class="btn btn-danger" type="button" @click="deleteCurItem"> Delete </button>
+          </div>
+          </fieldset>
+        </form>
       </div>
     </div>
-
   </div>
 </template>
 
 <script>
  import { useSsidStore } from '/src/stores/ssid_profiles_stores';
  import { useUserStore } from '/src/stores/user.store';
- import dynamicform from '../components/dynamicform.vue'
- import editDynamicForm from '../components/edit_dynamic_form.vue'
+ import { useLayerScriptsStore } from '../stores/layer_scripts_store';
  import itemList from '../components/list_items.vue';
  import PageHeader from '../components/PageHeader.vue';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
 
  export default {
-   components: { dynamicform, editDynamicForm, itemList, PageHeader },
+   components: { itemList, PageHeader },
    data() {
      return {
-       /*
-        * Method(s) to access the store
-        */
        ssidStore: useSsidStore(),
        userStore: useUserStore(),
+       layerScriptsStore: useLayerScriptsStore(),
 
-       /*
-        * Variables for the Edit SSID Profile form
-        */
        currentIndex: {},
        currentItem: {},
-       old_ssidName: {},
-       value: {},
+       old_ssidName: '',
 
-       /*
-        * Variables that control which form is displayed,
-        * Add SSID Profile or Edit SSID Profile.
-        */
-       display: 'add',
        showAddSSID: true,
 
-       /*
-        * Layout for the Add SSID Profile form.
-        * NOTE: if more fields are needed, add them here.
-        */
-       formstuff: [{
-         'type': 'text',
-         'name': 'Profile Name'
-       }],
+       // Add SSID profile form fields.
+       add_name: '',
+       add_SSID: '',
+       add_layer2_script: '',
+       add_layer3_script: '',
 
-       mount:false,
+       mount: false,
        enable_sso: config.ENABLE_SSO,
      }
    },
 
-   // load ssid profiles
    async mounted() {
      await this.ssidStore.getSsidProfiles();
+     await this.layerScriptsStore.getLayer2Scripts();
+     await this.layerScriptsStore.getLayer3Scripts();
+     await this.layerScriptsStore.getDefaults();
+     this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
+     this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
      if (this.enable_sso) {
-      await this.userStore.fetchUser();
+       await this.userStore.fetchUser();
      }
      this.mount = true;
    },
@@ -118,76 +153,81 @@
    computed: {
       isDisabled() {
         return isFormDisabled();
+      },
+      // A layer2/layer3 method is required on every SSID profile; saving is
+      // impossible when either directory has no scripts to choose from.
+      noLayerScripts() {
+        return this.layerScriptsStore.layer2_scripts.length === 0 ||
+               this.layerScriptsStore.layer3_scripts.length === 0;
       }
     },
 
    methods: {
-     // Renders Add SSID Profile form
      addSsidForm() {
-       this.showAddSSID=true;
+       this.showAddSSID = true;
        this.currentIndex = {};
        this.currentItem = {};
      },
 
-     // render edit ssid profile form
      updateActiveSSID(indexArray) {
       const [newItem, newIndex] = indexArray;
-
-      // Check if user clicked the already-selected item
       if (
         this.currentItem &&
         this.currentItem.name === newItem.name &&
         this.currentIndex === newIndex
       ) {
-        // Deselect
         this.currentItem = {};
         this.currentIndex = {};
-        this.showAddSSID = true; // Show the Add form again
+        this.showAddSSID = true;
       } else {
-        // Select new item
         this.currentItem = newItem;
         this.currentIndex = newIndex;
         this.old_ssidName = newItem.name;
-        this.showAddSSID = false; // Show the Edit form
+        // Pre-fill a method default for profiles created before these fields existed.
+        if (!this.currentItem.layer2_script) {
+          this.currentItem.layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
+        }
+        if (!this.currentItem.layer3_script) {
+          this.currentItem.layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
+        }
+        this.showAddSSID = false;
      }
     },
 
-     // add ssid profile - send to addSsidProfile in ssid_profile store 
-     receiveEmit(form_data) {
-       if(form_data.length > 0) {
-         const object = {
-           name: form_data[0].value
-         }
-
-         this.ssidStore.addSsidProfile(object);
-       }
-       // Show add SSID form after adding.
+     async addSsid() {
+       await this.ssidStore.addSsidProfile({
+         name: this.add_name,
+         SSID: this.add_SSID,
+         layer2_script: this.add_layer2_script,
+         layer3_script: this.add_layer3_script,
+       });
+       this.add_name = '';
+       this.add_SSID = '';
+       this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
+       this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
        this.addSsidForm();
      },
 
-     // Edits ssid profile - sends to addSsidProfile in ssid_profile store
      async editCurItem() {
-       const object = {   
+       await this.ssidStore.editSsidProfile({
          old_ssid_name: this.old_ssidName,
          new_ssid_name: this.currentItem.name,
-       }
-
-       await this.ssidStore.editSsidProfile(object);
+         SSID: this.currentItem.SSID || '',
+         layer2_script: this.currentItem.layer2_script || '',
+         layer3_script: this.currentItem.layer3_script || '',
+       });
        await this.ssidStore.getSsidProfiles();
-
        this.currentItem = this.ssidStore.ssid_profiles[this.currentIndex];
        this.updateActiveSSID([this.currentItem, this.currentIndex]);
      },
 
-     // Deletes ssid_profile
      async deleteCurItem() {
        const deleteIndex = this.currentIndex;
        this.ssidStore.ssid_profiles.splice(deleteIndex, 1);
        await this.ssidStore.deleteSsidProfile(this.currentItem);
-       if (this.ssidStore.ssid_profiles.length  <= deleteIndex) {
+       if (this.ssidStore.ssid_profiles.length <= deleteIndex) {
          this.addSsidForm();
-       }
-       else {
+       } else {
          this.currentIndex = deleteIndex;
          this.currentItem = this.ssidStore.ssid_profiles[deleteIndex];
          this.updateActiveSSID([this.currentItem, this.currentIndex]);

@@ -203,6 +203,43 @@ on top of it; keep each `*Rgb` value in step with its hex color. Status colors
 (success green, danger red) are deliberately fixed so they always read the same
 way.
 
+## Host groups, regex, and metadata
+
+### Host regex uses a custom library, not standard regex
+
+A host group can select its members by name with a regex, but it is **not**
+standard regex. It uses the pSSID matching library, where:
+
+- `.` matches any single character
+- `*` means zero or more occurrences of the preceding character
+
+So the pattern that matches every host is `.*` (not `*`). For example, `rp.*`
+matches every host whose name starts with `rp`. If you type `*` expecting "match
+everything" you will get the wrong result; use `.*`. The shipped `all` group uses
+`.*` for exactly this reason.
+
+### Metadata
+
+Metadata is key/value data attached to **hosts** and **host groups** (the
+"Metadata" section of each form). It lets you describe a class of hardware or a
+site once and reference it from tests, instead of duplicating a test per machine
+type. Typical uses: the network interface name (which can differ across hardware
+even on the same OS) or a per-group test destination.
+
+- **Where it is defined:** on hosts and on host groups.
+- **Preference and override:** a host's effective metadata is its group metadata
+  with the host's own metadata layered on top, so **host keys win** on collision.
+  Collisions between two groups a host belongs to are order-dependent and
+  therefore **indeterminate** by contract; avoid defining the same key on
+  overlapping groups.
+- **Where it is used:** the generated `pssid_config.json` carries each host's
+  effective metadata under a `metadata` key, so the daemon can resolve references
+  per host. The shipped `throughput-by-metadata` test shows the pattern: its
+  destination is `{{throughput_dest}}`, resolved from the host's metadata.
+
+Metadata is an early feature and the reference syntax is still being finalized,
+so treat the placeholder convention above as provisional.
+
 ## Provisioning and automation
 
 Everything you create in the GUI (hosts, host groups, schedules, SSID profiles,

@@ -48,9 +48,9 @@ const sIds = db.schedules.insertMany([
 ]).insertedIds;
 
 const pIds = db.ssid_profiles.insertMany([
-  { name: 'MWireless', SSID: 'MWireless', min_signal: -73 },
-  { name: 'eduroam',   SSID: 'eduroam',   min_signal: -75 },
-  { name: 'MGuest',    SSID: 'MGuest',    min_signal: -78 },
+  { name: 'MWireless', SSID: 'MWireless', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'eduroam',   SSID: 'eduroam',   layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'MGuest',    SSID: 'MGuest',    layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
 ]).insertedIds;
 
 const tIds = db.tests.insertMany([
@@ -74,18 +74,16 @@ const jIds = db.jobs.insertMany([
     tests: ['throughput-iperf'], test_ids: [tIds[3]] },
 ]).insertedIds;
 
-// ---- batches (wire jobs, schedules, SSID profiles, connection methods) ------
+// ---- batches (wire jobs, schedules, SSID profiles) --------------------------
 const bIds = db.batches.insertMany([
   { name: 'edge-batch', priority: 10, test_interface: 'wlan0',
     ssid_profiles: ['MWireless', 'eduroam'], ssid_profile_ids: [pIds[0], pIds[1]],
     schedules: ['every-5-min', 'hourly'],    schedule_ids: [sIds[0], sIds[1]],
-    jobs: ['connectivity-suite'],            job_ids: [jIds[0]],
-    layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client', script: '' },
+    jobs: ['connectivity-suite'],            job_ids: [jIds[0]] },
   { name: 'core-batch', priority: 20, test_interface: 'eth0',
     ssid_profiles: ['MWireless'], ssid_profile_ids: [pIds[0]],
     schedules: ['nightly'],       schedule_ids: [sIds[2]],
-    jobs: ['throughput-suite', 'connectivity-suite'], job_ids: [jIds[1], jIds[0]],
-    layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client', script: '' },
+    jobs: ['throughput-suite', 'connectivity-suite'], job_ids: [jIds[1], jIds[0]] },
 ]).insertedIds;
 
 // ---- hosts (one left unconfigured for contrast) -----------------------------

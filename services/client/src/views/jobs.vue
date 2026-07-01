@@ -11,6 +11,9 @@
       title="Jobs"
       subtitle="Combine tests into reusable job configurations"
       icon="work"
+      :can-add="!isDisabled"
+      add-label="Add Job"
+      @add="addJobForm"
     />
 
     <div v-if="jobStore.isLoading===true" class="loading-state">
@@ -18,10 +21,6 @@
       <span>Loading jobs…</span>
     </div>
 
-    <!-- Add job button -->
-    <div class="mb-3">
-      <button @click="addJobForm" class="btn btn-primary" v-if="!showAddJob"> Add Job </button>
-    </div>
     <h3> Job List </h3>
     <div class="list row">
       <!-- job list and regex search bar-->

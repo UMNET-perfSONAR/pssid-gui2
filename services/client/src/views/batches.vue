@@ -11,25 +11,16 @@
       title="Batches"
       subtitle="Group jobs, schedules, and SSID profiles into deployable probe configurations"
       icon="layers"
+      :can-add="!isDisabled"
+      add-label="Add Batch"
+      @add="addBatchForm"
     />
-
-    <div v-if="mount && noLayerScripts" class="alert alert-warning" role="alert">
-      No layer 2 / layer 3 methods are available to select. A method is required
-      on every batch, so batches cannot be saved until scripts are present in the
-      configured layer 2 and layer 3 directories on the server.
-    </div>
 
     <div v-if="batchStore.isLoading===true" class="loading-state">
       <div class="spinner"></div>
       <span>Loading batches…</span>
     </div>
 
-    <!-- Add batch button -->
-    <div class="mb-3">
-      <button @click="addBatchForm" class="btn btn-primary" v-if="!showAddBatch" :disabled="isDisabled">
-        Add Batch
-      </button>
-    </div>
     <div class="list row">
       <div class="col-md-6" v-if="batchStore.batches.length === 0">
         <h3> Batch List </h3>
@@ -63,20 +54,6 @@
               v-model="add_test_interface"
               class="form-control"
             />
-          </div>
-          <div class="form-group">
-            <label> Layer 2 Method </label>
-            <select v-model="add_layer2_script" class="form-control" required>
-              <option value="" disabled>-- Select Layer 2 Method --</option>
-              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label> Layer 3 Method </label>
-            <select v-model="add_layer3_script" class="form-control" required>
-              <option value="" disabled>-- Select Layer 3 Method --</option>
-              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
           </div>
           <div class="form-group">
             <label> SSID Profile Selection </label>
@@ -147,20 +124,6 @@
             />
           </div>
           <div class="form-group">
-            <label> Layer 2 Method </label>
-            <select v-model="currentItem.layer2_script" class="form-control" required>
-              <option value="" disabled>-- Select Layer 2 Method --</option>
-              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label> Layer 3 Method </label>
-            <select v-model="currentItem.layer3_script" class="form-control" required>
-              <option value="" disabled>-- Select Layer 3 Method --</option>
-              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <div class="form-group">
             <label> SSID Profile Selection </label>
             <VueMultiselect
               v-model="currentItem.ssid_profiles"
@@ -221,7 +184,6 @@
  import { useSsidStore } from '../stores/ssid_profiles_stores';
  import { useJobStore } from '../stores/job_store';
  import { useScheduleStore } from '../stores/schedule_store';
- import { useLayerScriptsStore } from '../stores/layer_scripts_store';
  import { useUserStore } from '/src/stores/user.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
@@ -245,8 +207,6 @@
        add_jobs: [],
        add_schedules: [],
        add_priority: 0,
-       add_layer2_script: '',
-       add_layer3_script: '',
 
        showConfirm: false,
        confirmMessage: '',
@@ -255,7 +215,6 @@
        SsidStore: useSsidStore(),
        JobStore: useJobStore(),
        scheduleStore: useScheduleStore(),
-       layerScriptsStore: useLayerScriptsStore(),
        userStore: useUserStore(),
        enable_sso: config.ENABLE_SSO
      }
@@ -269,23 +228,12 @@
      await this.SsidStore.getSsidProfiles();
      await this.JobStore.getJobs();
      await this.scheduleStore.getSchedules();
-     await this.layerScriptsStore.getLayer2Scripts();
-     await this.layerScriptsStore.getLayer3Scripts();
-     await this.layerScriptsStore.getDefaults();
-     this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
-     this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
      this.mount = true;
    },
 
    computed: {
      isDisabled() {
        return isFormDisabled();
-     },
-     // True when no layer2 or no layer3 methods are available to choose from.
-     // A method is required on every batch, so saving is impossible in this state.
-     noLayerScripts() {
-       return this.layerScriptsStore.layer2_scripts.length === 0 ||
-              this.layerScriptsStore.layer3_scripts.length === 0;
      }
    },
 
@@ -301,18 +249,6 @@
        this.currentIndex = indexArray[1];
        this.showAddBatch = false;
        this.old_batchname = this.currentItem.name;
-       // A layer2/layer3 method is required. Batches created before this field
-       // existed (or imported data) may have none; pre-fill the resolved default
-       // so the operator sees a real selection instead of a silent blank that
-       // would be rejected on save.
-       if (!this.currentItem.layer2_script) {
-         this.currentItem.layer2_script =
-           this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
-       }
-       if (!this.currentItem.layer3_script) {
-         this.currentItem.layer3_script =
-           this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
-       }
      },
 
      async addBatch() {
@@ -323,8 +259,6 @@
          ssid_profiles: this.add_ssid_profiles,
          jobs: this.add_jobs,
          schedules: this.add_schedules,
-         layer2_script: this.add_layer2_script,
-         layer3_script: this.add_layer3_script,
        });
        this.add_name = '';
        this.add_test_interface = '';
@@ -332,8 +266,6 @@
        this.add_jobs = [];
        this.add_schedules = [];
        this.add_priority = 0;
-       this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
-       this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
        this.addBatchForm();
      },
 
@@ -346,8 +278,6 @@
          "schedules": this.currentItem.schedules,
          "jobs": this.currentItem.jobs || [],
          "test_interface": this.currentItem.test_interface,
-         "layer2_script": this.currentItem.layer2_script || '',
-         "layer3_script": this.currentItem.layer3_script || ''
        };
        await this.batchStore.editBatch(updated_batch);
        await this.batchStore.getBatches();

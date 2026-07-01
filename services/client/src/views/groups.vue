@@ -11,6 +11,9 @@
       title="Host Groups"
       subtitle="Organize hosts into groups for bulk provisioning"
       icon="lan"
+      :can-add="!isDisabled"
+      add-label="Add Host Group"
+      @add="addGroupForm"
     />
 
     <div v-if="hostGroup.isLoading===true" class="loading-state">
@@ -20,7 +23,6 @@
 
     <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
       <button @click="hostGroup.createConfig(currentGroup)" class="btn btn-warning" :disabled="isDisabled || showAddGroup">Configure selected group</button>
-      <button @click="addGroupForm" class="btn btn-primary" v-if="showAddGroup==false" :disabled="isDisabled">Add Host Group</button>
     </div>
     <div class="list row">
       <!-- Host Group List -->
@@ -67,7 +69,7 @@
               <label> Host Regex Input </label>
               <hostRegex :regex_array="regex"></hostRegex>
             </div>
-            <label for="params"> Optional Data </label>
+            <label for="params"> Metadata </label>
             <dynamic_add_data :addedData="addedData"></dynamic_add_data>
           </div>
           <button class="btn btn-success" style="margin-bottom: 2em;"> Submit </button>
@@ -110,7 +112,7 @@
             <label> Host Regex Input </label>
             <hostRegex :regex_array="editRegex"></hostRegex>
           </div>
-          <label for="params"> Optional Data </label>
+          <label for="params"> Metadata </label>
           <dynamic_add_data :addedData="editOptionalData"></dynamic_add_data>
           <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
             <button class="btn btn-success"> Update </button>

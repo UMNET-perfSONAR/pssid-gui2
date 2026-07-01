@@ -180,23 +180,22 @@ function listScriptNames(dirPath: string): Set<string> | null {
 }
 
 /**
- * Re-validates the layer 2 / layer 3 method selection on every batch
+ * Re-validates the layer 2 / layer 3 method selection on every SSID profile
  * against the scripts currently present on disk, right before the config file is
  * generated.
  *
- * The selection is already validated when a batch is written (see
- * batches.controllers.ts), but this is a second, independent check at render
- * time: it prevents a stale value (a script deleted from disk after it was
- * selected) or a value injected directly into MongoDB from being emitted into
- * pssid_config.json, which is deployed to and acted on by the probes. Any value
- * that does not correspond to a real script file is reset to '' (none) and a
- * warning is logged. If a directory cannot be read, the value is kept only if it
- * passes a conservative character check so traversal/injection characters are
- * still stripped.
+ * The selection is already constrained by the SSID profile form, but this is a
+ * second, independent check at render time: it prevents a stale value (a script
+ * deleted from disk after it was selected) or a value injected directly into
+ * MongoDB from being emitted into pssid_config.json, which is deployed to and
+ * acted on by the probes. Any value that does not correspond to a real script
+ * file is reset to '' (none) and a warning is logged. If a directory cannot be
+ * read, the value is kept only if it passes a conservative character check so
+ * traversal/injection characters are still stripped.
  *
- * @param batch_data - the { batches: [...] } object returned by get_collection
+ * @param ssid_data - the { ssid_profiles: [...] } object returned by get_collection
  */
-function sanitizeBatchScripts(batch_data: any) {
+function sanitizeSsidMethods(ssid_data: any) {
   const paths = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../../paths_config.json'), 'utf-8')
   );
@@ -210,16 +209,16 @@ function sanitizeBatchScripts(batch_data: any) {
     return names.has(value);
   };
 
-  for (const batch of batch_data.batches ?? []) {
+  for (const ssid of ssid_data.ssid_profiles ?? []) {
     for (const [field, names] of [
       ['layer2_script', layer2Names],
       ['layer3_script', layer3Names],
     ] as [string, Set<string> | null][]) {
-      if (!isValid(batch[field] ?? '', names)) {
+      if (!isValid(ssid[field] ?? '', names)) {
         console.warn(
-          `Dropping invalid ${field} "${batch[field]}" on batch "${batch.name}"`
+          `Dropping invalid ${field} "${ssid[field]}" on ssid profile "${ssid.name}"`
         );
-        batch[field] = '';
+        ssid[field] = '';
       }
     }
   }
@@ -264,8 +263,8 @@ function ensureBatchArchivers(batch_data: any) {
  *  - job.parallel must be the STRING "True"/"False" (daemon string-compares it)
  *  - job['continue-if'] must be a STRING (daemon calls .lower() on it)
  *  - every batch must have a non-empty ssid_profiles array
- *  - every batch must declare a layer2_script and layer3_script (required;
- *    never blank) so the config always states which methods the batch uses
+ *  - every ssid_profile must declare a layer2_script and layer3_script
+ *    (required; never blank) so the config always states the connection methods
  *  - every name referenced by a batch (jobs, ssid_profiles, schedules) must
  *    resolve to an actually-defined object
  *  - every host's batches and every host_group's hosts/batches must resolve
@@ -299,17 +298,20 @@ function assertDaemonValid(obj: any): void {
     }
   }
 
+  // ---- ssid_profiles: layer 2 and layer 3 method are required --------------
+  for (const ssid of Array.isArray(obj.ssid_profiles) ? obj.ssid_profiles : []) {
+    if (!ssid.layer2_script) {
+      errors.push(`ssid_profile "${ssid.name}": layer2_script (layer 2 method) is required`);
+    }
+    if (!ssid.layer3_script) {
+      errors.push(`ssid_profile "${ssid.name}": layer3_script (layer 3 method) is required`);
+    }
+  }
+
   // ---- batches: non-empty ssid_profiles + all references resolve -----------
   for (const batch of Array.isArray(obj.batches) ? obj.batches : []) {
     if (!Array.isArray(batch.ssid_profiles) || batch.ssid_profiles.length === 0) {
       errors.push(`batch "${batch.name}": ssid_profiles must be a non-empty list`);
-    }
-    // layer2/layer3 method are required: a batch must declare both, never blank.
-    if (!batch.layer2_script) {
-      errors.push(`batch "${batch.name}": layer2_script (layer 2 method) is required`);
-    }
-    if (!batch.layer3_script) {
-      errors.push(`batch "${batch.name}": layer3_script (layer 3 method) is required`);
     }
     for (const s of batch.ssid_profiles ?? []) {
       if (!definedSsids.has(s)) {
@@ -397,6 +399,30 @@ export function stripConfigMetadata(configStr: string | null): string {
 }
 
 /**
+ * Metadata (v1): host- and group-level key/value data, stored in the `data`
+ * field on hosts and host_groups. For each host, the effective metadata layers
+ * the metadata of every group the host belongs to underneath the host's own, so
+ * host keys win on collision. Collisions between two groups are order-dependent
+ * and therefore indeterminate by contract. The result is attached as `metadata`
+ * on each host in the generated config so the daemon can resolve references (for
+ * example a test destination or an interface name) per host.
+ */
+function applyMetadata(host_data: any, host_group_data: any) {
+  const asObject = (d: any): Record<string, any> =>
+    (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
+  const groupMetaByHost: Record<string, Record<string, any>> = {};
+  for (const group of host_group_data.host_groups ?? []) {
+    const gmeta = asObject(group.data);
+    for (const hostName of group.hosts ?? []) {
+      groupMetaByHost[hostName] = { ...(groupMetaByHost[hostName] || {}), ...gmeta };
+    }
+  }
+  for (const host of host_data.hosts ?? []) {
+    host.metadata = { ...(groupMetaByHost[host.name] || {}), ...asObject(host.data) };
+  }
+}
+
+/**
  * Builds the daemon config (pssid_config.json) and ansible inventory (hosts.ini)
  * from the current database state, WITHOUT writing them or running provision.
  * Shared by create_config_file (the real provision) and the dry-run preview.
@@ -413,9 +439,10 @@ export async function build_config_payload(
   const host_group_data = await get_collection(client, "host_groups");
   const job_data = await get_collection(client, "jobs");
   const batch_data = await get_collection(client, "batches");
-  sanitizeBatchScripts(batch_data);
   ensureBatchArchivers(batch_data);
   const ssid_data = await get_collection(client, "ssid_profiles");
+  sanitizeSsidMethods(ssid_data);
+  applyMetadata(host_data, host_group_data);
   const test_data = await get_collection(client, "tests");
   const formatted_test_data = await formatTestData(test_data.tests);
   // pssid_metadata first so it heads the generated file as a provenance header,

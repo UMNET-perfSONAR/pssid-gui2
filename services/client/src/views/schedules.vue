@@ -4,6 +4,9 @@
       title="Schedules"
       subtitle="Define when and how often batches run on your probes"
       icon="schedule"
+      :can-add="!isDisabled"
+      add-label="Add Schedule"
+      @add="addScheduleForm"
     />
 
     <div v-if="scheduleStore.isLoading===true" class="loading-state">
@@ -11,14 +14,6 @@
       <span>Loading schedules…</span>
     </div>
 
-    <!-- Add schedule button -->
-    <div>
-      <button v-if="showAddSchedule"
-                    style="margin-bottom: 2em;"></button>
-      <button @click="addScheduleForm" class="btn btn-primary" v-if="!showAddSchedule"
-                                              style="margin-bottom: 1em;"
-                                              :disabled="isDisabled"> Add Schedule </button>
-    </div>
     <h3> Schedule List </h3>
     <div class="list row"> 
       <!-- schedule list and regex searchbar -->

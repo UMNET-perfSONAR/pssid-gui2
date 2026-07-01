@@ -11,15 +11,15 @@
       title="Hosts"
       subtitle="Manage network probe hosts and their batch assignments"
       icon="computer"
+      :can-add="!isDisabled"
+      add-label="Add Host"
+      @add="addHostComp"
     />
 
     <!-- buttons -->
     <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
       <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);" :disabled="isDisabled || showAddHost">
         Configure selected host
-      </button>
-      <button class="btn btn-primary" @click="addHostComp" v-if="!showAddHost" :disabled="isDisabled">
-        Add Host
       </button>
     </div>
     <div class="list row">
@@ -58,7 +58,7 @@
             >
             </VueMultiselect>
           </div>
-          <p> Optional Data </p>
+          <p> Metadata </p>
           <dynamic_add_data :addedData="addedOptionalData"></dynamic_add_data>
           <button class="btn btn-success"> Submit </button>
         </fieldset>

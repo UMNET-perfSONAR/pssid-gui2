@@ -4,6 +4,9 @@
       title="Tests"
       subtitle="Define the performance tests run by each job"
       icon="science"
+      :can-add="!isDisabled"
+      add-label="Add Test"
+      @add="addTestForm"
     />
 
     <div v-if="testStore.isLoading===true" class="loading-state">
@@ -11,17 +14,6 @@
       <span>Loading tests…</span>
     </div>
 
-    <!-- Add Test button -->
-    <div>
-      <button style="margin-bottom: 2em;" v-if="showAddTest"></button>
-      <button
-        @click="addTestForm"
-        class="btn btn-primary"
-        v-if="!showAddTest"
-        style="margin-bottom: 1em;"
-        :disabled="isDisabled"
-        :title="!enable_sso ? 'Please sign in to add a test' : ''"> Add Test </button>
-    </div>
     <h3> Test List </h3>
     <div class="list row"> 
       <!-- schedule list -->
