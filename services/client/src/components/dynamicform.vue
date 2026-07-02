@@ -114,7 +114,7 @@
      },
      submitLabel: {
        type: String,
-       default: 'Submit'
+       default: 'Save'
      }
      
    },

@@ -2,7 +2,7 @@
   <!-- buttons -->
   <div style="margin-bottom:1em;">
     <button class="btn btn-primary" @click="addHostComp" style="margin-right: 1em;"> Add Hosts</button>
-    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);"> Submit to probes </button>
+    <button class="btn btn-warning" @click="hostStore.createConfig(currentItem);"> Configure selected host </button>
   </div>
   <div class="list row">
     <!-- List out the items -->
@@ -41,7 +41,7 @@
         </div>
         <p> Optional Data </p>
         <dynamic_add_data :addedData="addedData"></dynamic_add_data>
-        <button class="btn btn-success"> Submit </button>
+        <button class="btn btn-success"> Add Host </button>
 	
       </form>
     </div>
