@@ -28,7 +28,8 @@ export default {
     subtitle: { type: String, default: '' },
     icon:     { type: String, default: 'settings' },
     // When canAdd is true a green "+ Add ..." button is shown between the icon
-    // and the title; clicking it emits `add`. Pages gate this on write access.
+    // and the title; clicking it switches the page into a new-item form.
+    // The form's own Add/Update button performs the save.
     canAdd:   { type: Boolean, default: false },
     addLabel: { type: String, default: 'Add' }
   },

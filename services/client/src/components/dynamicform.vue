@@ -85,8 +85,9 @@
       </div>
     </div>
     <div>
-      <button class="btn btn-success" @onclick="handleFormSubmit"
-        style="margin-right: 1em;"> Submit </button>
+      <button class="btn btn-success" type="submit" style="margin-right: 1em;">
+        {{ submitLabel }}
+      </button>
     </div>
     
   </form>
@@ -110,6 +111,10 @@
      },
      optional_data: {
        type: Array
+     },
+     submitLabel: {
+       type: String,
+       default: 'Submit'
      }
      
    },

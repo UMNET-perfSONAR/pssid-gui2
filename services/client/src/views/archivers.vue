@@ -7,7 +7,6 @@
 
     <!-- Add ssid_profile button -->
     <div>
-      <button style="margin-bottom: 2em;" v-if="showAddArchiver"></button>
       <button @click="addArchiverForm" v-if="!showAddArchiver"
         class="btn btn-primary" style="margin-bottom: 1em;"> Add Archiver </button>
     </div>
@@ -50,7 +49,8 @@
           <div v-if="showForm===true">
             <dynamicForm @formData="handleSubmit"
               :form_layout="allArchiverOptions"
-              :optional_data="addedOptionalData">
+              :optional_data="addedOptionalData"
+              submit-label="Add Archiver">
             </dynamicForm>
           </div>
         </form>
@@ -88,13 +88,15 @@
           <editFormComp :current_item="currentItem" 
             :dynamic_options="currOptionalData"
             @deleteItem="deleteArchiver"
-            @editItem="editArchiver"> 
+            @editItem="editArchiver"
+            submit-label="Update Archiver"> 
           </editFormComp> 
         </div>
         <div v-else> 
           <dynamicForm :form_layout="allArchiverOptions"
             @formData="editArchiver"
             :optional_data="currOptionalData"
+            submit-label="Update Archiver"
           >
           </dynamicForm>
         </div>

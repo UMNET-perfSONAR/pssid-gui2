@@ -11,7 +11,7 @@
       title="Batches"
       subtitle="Group jobs, schedules, and SSID profiles into deployable probe configurations"
       icon="inventory_2"
-      :can-add="!isDisabled"
+      :can-add="!isDisabled && !showAddBatch"
       add-label="Add Batch"
       @add="addBatchForm"
     />
@@ -95,7 +95,7 @@
             />
           </div>
           <div class="mb-3">
-            <button class="btn btn-success"> Submit </button>
+            <button class="btn btn-success"> Add Batch </button>
           </div>
           </fieldset>
         </form>

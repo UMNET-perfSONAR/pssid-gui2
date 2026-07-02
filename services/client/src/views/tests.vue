@@ -4,7 +4,7 @@
       title="Tests"
       subtitle="Define the performance tests run by each job"
       icon="science"
-      :can-add="!isDisabled"
+      :can-add="!isDisabled && !showAddTest"
       add-label="Add Test"
       @add="addTestForm"
     />
@@ -59,6 +59,7 @@
               :form_layout="allTestOptions"
               :current_item="selected_test"
               :optional_data="addedOptionalData"
+              submit-label="Add Test"
             >
             </dynamicform>
           </div>
@@ -103,12 +104,14 @@
             @editItem="editTest"
             @deleteItem="deleteTest"
             :dynamic_options="currOptionalData"
+            submit-label="Update Test"
           > </editFormComp>
         </div>
         <div v-else>
           <dynamicform :form_layout="allTestOptions"
             @formData="editTest"
             :optional_data="currOptionalData"
+            submit-label="Update Test"
           >
           </dynamicform>
         </div>

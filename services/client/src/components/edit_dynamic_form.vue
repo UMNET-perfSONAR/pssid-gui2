@@ -73,7 +73,7 @@
 
   <div>
     <button class="btn btn-success" @click="editCurItem"
-      style="margin-right: 1em;"> Submit </button>
+      style="margin-right: 1em;"> {{ submitLabel }} </button>
     <button class="btn btn-danger" @click.prevent="deleteCurItem"> Delete </button>
   </div>
 </template>
@@ -120,6 +120,10 @@
      dynamic_options: {
        type: Array,
        required: false,
+     },
+     submitLabel: {
+       type: String,
+       default: 'Update'
      }
    }
    
