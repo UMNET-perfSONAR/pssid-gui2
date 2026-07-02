@@ -53,7 +53,7 @@ function removeIdsProperties(obj:any) {
  * Pure function, returns the string so it can be written or previewed.
  * @param obj config file contents
  */
-function buildIniContent(obj:&any): string {
+function buildIniContent(obj:any): string {
   let iniContent = ''
   // print all hosts first
   for (const host of obj.hosts.map((item:{name:string})=> item.name)) {
@@ -483,45 +483,24 @@ export function get_current_config(): { config: string | null; inventory: string
  * @param click_context - 'host', 'host_group', or 'auto'
  * @param caller - username of the authenticated user, or 'unauthenticated'
  * @param caller_role - 'authenticated' or 'unauthenticated'
- * @param trigger - 'manual' (user clicked Configure) or 'auto' (auto-provision)
  */
-export async function create_config_file(name: string, click_context: string, caller: string = 'unauthenticated', caller_role: string = 'unauthenticated', trigger: 'manual' | 'auto' = 'manual') {
-  try {
-    const { config: config_content, inventory } = await build_config_payload({ caller, caller_role });
+export async function create_config_file(name: string, click_context: string, caller: string = 'unauthenticated', caller_role: string = 'unauthenticated') {
+  const { config: config_content, inventory } = await build_config_payload({ caller, caller_role });
 
-    writeFileSync(ini_path, inventory);
-    console.log("Writing config file...");
-    writeFileSync(config_path, config_content, 'utf8');
+  writeFileSync(ini_path, inventory);
+  console.log("Writing config file...");
+  writeFileSync(config_path, config_content, 'utf8');
 
-    // Pass arguments as a vector (no shell) so a host/group name can never be
-    // interpreted as shell syntax (command injection).
-    console.log(`Executing provision script: ${shellscript_path} ${click_context} ${name} ${caller} ${caller_role}`);
-    execFile(shellscript_path as string, [click_context, name, caller, caller_role], async (err) => {
-      const record = {
-        timestamp: new Date(),
-        caller,
-        caller_role,
-        target_name: name,
-        click_context,
-        trigger,
-        success: !err,
-        ...(err ? { error: err.message } : {})
-      };
-      try {
-        const histClient = await connectToMongoDB();
-        await histClient.db('gui').collection('provision_history').insertOne(record);
-      } catch (dbErr) {
-        console.error('Failed to save provision history:', dbErr);
-      }
-      if (err) {
-        console.error(`Provision script failed: context=${click_context} name=${name}`, err);
-      } else {
-        console.log(`Provision script completed: context=${click_context} name=${name} caller=${caller} role=${caller_role}`);
-      }
-    });
-    
-    console.log('Data successfully saved to disk');
-  } catch (error) {
-    console.log('An error has occurred ', error);
-  }
+  // Pass arguments as a vector (no shell) so a host/group name can never be
+  // interpreted as shell syntax (command injection).
+  console.log(`Executing provision script: ${shellscript_path} ${click_context} ${name} ${caller} ${caller_role}`);
+  execFile(shellscript_path as string, [click_context, name, caller, caller_role], (err) => {
+    if (err) {
+      console.error(`Provision script failed: context=${click_context} name=${name}`, err);
+    } else {
+      console.log(`Provision script completed: context=${click_context} name=${name} caller=${caller} role=${caller_role}`);
+    }
+  });
+
+  console.log('Data successfully saved to disk');
 }

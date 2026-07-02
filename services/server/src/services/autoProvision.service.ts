@@ -5,7 +5,6 @@
 // Safety model (see docs/deployment.md):
 //   * OFF by default, only runs when the operator turns it on in Settings.
 //   * Debounced, a burst of edits collapses into a single Ansible run.
-//   * Audited, every run is recorded in provision_history with trigger:'auto'.
 //   * Reuses create_config_file, so the same script re-validation/sanitisation
 //     that protects manual provisioning also protects auto runs.
 
@@ -54,9 +53,8 @@ async function runAutoProvision(): Promise<void> {
   running = true;
   try {
     console.log(`Auto-provision firing (reason: ${lastReason}, caller: ${lastCaller})`);
-    // Provision all hosts ('*') from the current DB state. click_context 'auto'
-    // and trigger 'auto' make the run identifiable in provision history.
-    await create_config_file('*', 'auto', lastCaller, lastCallerRole, 'auto');
+    // Provision all hosts ('*') from the current DB state.
+    await create_config_file('*', 'auto', lastCaller, lastCallerRole);
   } catch (err) {
     console.error('Auto-provision run failed:', err);
   } finally {

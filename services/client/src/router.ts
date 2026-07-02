@@ -55,11 +55,6 @@ const routes =  [
     component: () => import("./views/ssid_profiles.vue")
   },
   {
-    path: "/history",
-    name: "history_page",
-    component: () => import("./views/provision_history.vue")
-  },
-  {
     path: "/settings",
     name: "settings_page",
     component: () => import("./views/settings.vue")

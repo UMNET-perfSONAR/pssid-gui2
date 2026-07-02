@@ -56,26 +56,28 @@ export async function startup() {
     {
       "name": "MWireless_profile",
       "SSID": "MWireless",
-      "min_signal": -73
+      "layer2_script": "wpa_supplicant",
+      "layer3_script": "dhcp_client"
     }
   );
   db.collection('tests').insertOne(
     {
       "name": "http-google",
       "type": "http",
-      "spec": {
-        "url": "www.google.com"
-      }
+      "spec": [
+        { "type": "text", "name": "url", "value": "www.google.com" }
+      ]
     }
   )
 
   db.collection('jobs').insertOne(
     {
       "name": "layer-2-auth",
-      "parallel": true,
+      "parallel": "True",
       "test_ids":[],
       "tests": [],
-      "continue_if": true
+      "continue-if": "true",
+      "backoff": "PT1S"
     }
   )
 }

@@ -2,31 +2,54 @@ import { defineStore } from 'pinia'
 import config from '../shared/config'
 import { useToastStore } from './toast.store'
 
+interface ConfigPreview {
+  proposed: { config: string; inventory: string };
+  current: { config: string | null; inventory: string | null };
+  changed: boolean;
+}
+
+function authOptions(): RequestInit {
+  return config.ENABLE_SSO ? { credentials: 'include' } : {};
+}
+
+async function responseMessage(res: Response, fallback: string): Promise<string> {
+  const text = await res.text();
+  if (!text) return fallback;
+
+  try {
+    const data = JSON.parse(text);
+    return typeof data?.message === 'string' ? data.message : fallback;
+  } catch {
+    return text;
+  }
+}
+
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
     autoProvision: false,
     isLoading: false,
     isSaving: false,
-    preview: null as null | {
-      proposed: { config: string; inventory: string };
-      current: { config: string | null; inventory: string | null };
-      changed: boolean;
-    },
+    preview: null as ConfigPreview | null,
     previewLoading: false,
+    provisionLoading: false,
   }),
 
   actions: {
     async getSettings() {
       try {
         this.isLoading = true;
-        const res = await fetch('/api/settings', {
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-        });
+        const res = await fetch('/api/settings', authOptions());
+        if (!res.ok) {
+          throw new Error(await responseMessage(res, 'Failed to load settings'));
+        }
         const data = await res.json();
         this.autoProvision = !!data.autoProvision;
       } catch (err) {
         console.error(err);
-        useToastStore().show('Failed to load settings', 'error');
+        useToastStore().show(
+          err instanceof Error ? err.message : 'Failed to load settings',
+          'error'
+        );
       } finally {
         this.isLoading = false;
       }
@@ -41,14 +64,11 @@ export const useSettingsStore = defineStore('settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ autoProvision: value }),
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          ...authOptions(),
         });
         if (!res.ok) {
           this.autoProvision = previous; // revert
-          const text = await res.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to update settings', 'error');
-          return;
+          throw new Error(await responseMessage(res, 'Failed to update settings'));
         }
         const data = await res.json();
         this.autoProvision = !!data.autoProvision;
@@ -59,49 +79,59 @@ export const useSettingsStore = defineStore('settings', {
       } catch (err) {
         this.autoProvision = previous;
         console.error(err);
-        useToastStore().show('Failed to update settings', 'error');
+        useToastStore().show(
+          err instanceof Error ? err.message : 'Failed to update settings',
+          'error'
+        );
       } finally {
         this.isSaving = false;
       }
     },
 
-    /** Dry run: fetch the config that WOULD be deployed, without provisioning. */
     async previewConfig() {
       try {
         this.previewLoading = true;
-        const res = await fetch('/api/provision/preview', {
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-        });
+        this.preview = null;
+        const res = await fetch('/api/provision/preview', authOptions());
         if (!res.ok) {
-          useToastStore().show('Failed to build preview', 'error');
-          return;
+          throw new Error(await responseMessage(res, 'Failed to build preview'));
         }
         this.preview = await res.json();
       } catch (err) {
         console.error(err);
-        useToastStore().show('Failed to build preview', 'error');
+        useToastStore().show(
+          err instanceof Error ? err.message : 'Failed to build preview',
+          'error'
+        );
       } finally {
         this.previewLoading = false;
       }
     },
 
-    /** Manually provision all probes now (reuses the hosts /config endpoint). */
     async provisionNow() {
+      if (this.provisionLoading) return;
+
       try {
+        this.provisionLoading = true;
         const res = await fetch('/api/hosts/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify([]), // empty body => provision all ('*')
-          ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          ...authOptions(),
         });
         if (res.ok) {
-          useToastStore().show('Provisioning started, check History for the result', 'success');
+          useToastStore().show('Provisioning started', 'success');
         } else {
-          useToastStore().show('Failed to start provisioning', 'error');
+          throw new Error(await responseMessage(res, 'Failed to start provisioning'));
         }
       } catch (err) {
         console.error(err);
-        useToastStore().show('Failed to start provisioning', 'error');
+        useToastStore().show(
+          err instanceof Error ? err.message : 'Failed to start provisioning',
+          'error'
+        );
+      } finally {
+        this.provisionLoading = false;
       }
     }
   }

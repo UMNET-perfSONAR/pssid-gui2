@@ -2,24 +2,28 @@
   <div>
     <PageHeader
       title="Settings"
-      subtitle="Deployment-wide automation and provisioning controls"
+      subtitle="Manage how configuration changes are generated and pushed to probes"
       icon="settings"
     />
 
     <div v-if="settingsStore.isLoading" class="loading-state">
       <div class="spinner"></div>
-      <span>Loading settings…</span>
+      <span>Loading settings...</span>
     </div>
 
     <template v-else>
-      <!-- Automation -->
-      <section class="settings-card">
+      <p v-if="isDisabled" class="readonly-banner">
+        <span class="material-icons">lock</span>
+        You have read-only access. Sign in with a write-enabled account to change provisioning settings.
+      </p>
+
+      <section class="settings-card" aria-labelledby="automation-title">
         <div class="settings-card-head">
           <span class="material-icons settings-card-icon">bolt</span>
           <div>
-            <h3 class="settings-card-title">Automation</h3>
+            <h3 id="automation-title" class="settings-card-title">Configuration delivery</h3>
             <p class="settings-card-desc">
-              Control how configuration changes reach your probes.
+              Choose whether saved GUI changes deploy automatically or wait for an operator.
             </p>
           </div>
         </div>
@@ -28,110 +32,116 @@
           <div class="setting-text">
             <div class="setting-name">Auto-provision on change</div>
             <div class="setting-sub">
-              When enabled, saving a change to hosts, groups, schedules, SSID profiles,
-              tests, jobs, or batches automatically regenerates the daemon config and
-              pushes it to the probes, no manual “Configure” click required.
+              After successful edits to hosts, groups, schedules, SSID profiles, tests,
+              jobs, or batches, the server can regenerate the daemon config and push it
+              to the probes.
             </div>
           </div>
-          <label class="switch" :class="{ disabled: isDisabled || settingsStore.isSaving }">
-            <input
-              type="checkbox"
-              :checked="settingsStore.autoProvision"
-              :disabled="isDisabled || settingsStore.isSaving"
-              @change="onToggle($event)"
-            />
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
+          <div class="setting-control">
+            <span class="status-chip" :class="settingsStore.autoProvision ? 'on' : 'off'">
+              {{ settingsStore.autoProvision ? 'On' : 'Off' }}
+            </span>
+            <label class="switch" :class="{ disabled: isDisabled || settingsStore.isSaving }" aria-label="Auto-provision on change">
+              <input
+                type="checkbox"
+                :checked="settingsStore.autoProvision"
+                :disabled="isDisabled || settingsStore.isSaving"
+                @change="onToggle($event)"
+              />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
         </div>
 
-        <div v-if="settingsStore.autoProvision" class="setting-callout">
-          <span class="material-icons">info</span>
-          <span>
-            Auto-provision is <strong>on</strong>. Edits are pushed to the probes
-            automatically (debounced, so a burst of edits results in a single run).
-            Every run is recorded in <router-link to="/history">History</router-link>.
+        <div class="setting-callout" :class="{ muted: !settingsStore.autoProvision }">
+          <span class="material-icons">{{ settingsStore.autoProvision ? 'info' : 'pause_circle' }}</span>
+          <span v-if="settingsStore.autoProvision">
+            Auto-provision is on. A burst of saved edits is bundled into one background provision run.
           </span>
-        </div>
-        <div v-else class="setting-callout muted">
-          <span class="material-icons">shield</span>
-          <span>
-            Auto-provision is <strong>off</strong>. Changes only reach the probes when
-            you click “Configure selected host/group” or “Provision now” below.
+          <span v-else>
+            Auto-provision is off. Saved edits stay in the database until you provision from Hosts, Groups, or the tools below.
           </span>
         </div>
       </section>
 
-      <!-- Manual provisioning -->
-      <section class="settings-card">
+      <section class="settings-card" aria-labelledby="tools-title">
         <div class="settings-card-head">
           <span class="material-icons settings-card-icon">cloud_upload</span>
           <div>
-            <h3 class="settings-card-title">Manual provisioning</h3>
+            <h3 id="tools-title" class="settings-card-title">Provisioning tools</h3>
             <p class="settings-card-desc">
-              Push the current configuration to all probes immediately.
-            </p>
-          </div>
-        </div>
-        <div class="setting-row">
-          <div class="setting-text">
-            <div class="setting-name">Provision now</div>
-            <div class="setting-sub">
-              Regenerates <code>hosts.ini</code> and <code>pssid_config.json</code> from the
-              current state and runs the provision script for all hosts.
-            </div>
-          </div>
-          <button class="btn btn-primary" :disabled="isDisabled" @click="provisionNow">
-            <span class="material-icons" style="font-size:1rem; vertical-align:-3px; margin-right:.35rem;">play_arrow</span>
-            Provision now
-          </button>
-        </div>
-      </section>
-
-      <!-- Dry run / preview -->
-      <section class="settings-card">
-        <div class="settings-card-head">
-          <span class="material-icons settings-card-icon">preview</span>
-          <div>
-            <h3 class="settings-card-title">Dry run &amp; preview</h3>
-            <p class="settings-card-desc">
-              See exactly what would be pushed to the probes, before pushing it.
+              Inspect or push the current generated configuration.
             </p>
           </div>
         </div>
 
         <div class="setting-row">
           <div class="setting-text">
-            <div class="setting-name">Preview configuration</div>
+            <div class="setting-name">Preview generated files</div>
             <div class="setting-sub">
-              Builds the config from the current state without writing or deploying anything,
-              and shows whether it differs from what is currently deployed.
+              Builds <code>pssid_config.json</code> and <code>hosts.ini</code> from the
+              current database state without writing files or running the provision script.
             </div>
           </div>
-          <button class="btn btn-secondary" @click="settingsStore.previewConfig()" :disabled="settingsStore.previewLoading">
-            <span class="material-icons" style="font-size:1rem; vertical-align:-3px; margin-right:.35rem;">visibility</span>
-            {{ settingsStore.previewLoading ? 'Building…' : 'Preview' }}
+          <button
+            type="button"
+            class="btn btn-secondary"
+            :disabled="settingsStore.previewLoading"
+            @click="previewConfig"
+          >
+            <span class="material-icons btn-icon">visibility</span>
+            {{ settingsStore.previewLoading ? 'Building...' : 'Preview' }}
           </button>
         </div>
 
-        <div v-if="settingsStore.preview" class="preview-result">
+        <div class="setting-row with-divider">
+          <div class="setting-text">
+            <div class="setting-name">Provision all probes now</div>
+            <div class="setting-sub">
+              Writes the generated config and inventory, then starts the provision script
+              for all hosts.
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="isDisabled || settingsStore.provisionLoading"
+            @click="provisionNow"
+          >
+            <span class="material-icons btn-icon">play_arrow</span>
+            {{ settingsStore.provisionLoading ? 'Starting...' : 'Provision now' }}
+          </button>
+        </div>
+
+        <div v-if="settingsStore.preview" class="preview-result" aria-live="polite">
           <div class="preview-status" :class="settingsStore.preview.changed ? 'changed' : 'unchanged'">
             <span class="material-icons">{{ settingsStore.preview.changed ? 'sync_problem' : 'check_circle' }}</span>
-            <span v-if="settingsStore.preview.changed">Proposed config <strong>differs</strong> from what is currently deployed.</span>
-            <span v-else>Proposed config <strong>matches</strong> what is currently deployed, nothing to push.</span>
+            <span>{{ previewStatusText }}</span>
           </div>
 
-          <div class="preview-tabs">
-            <button :class="{ active: previewTab === 'config' }" @click="previewTab = 'config'">pssid_config.json</button>
-            <button :class="{ active: previewTab === 'inventory' }" @click="previewTab = 'inventory'">hosts.ini</button>
+          <div class="preview-tabs" role="tablist" aria-label="Preview file">
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="previewTab === 'config'"
+              :class="{ active: previewTab === 'config' }"
+              @click="previewTab = 'config'"
+            >
+              pssid_config.json
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="previewTab === 'inventory'"
+              :class="{ active: previewTab === 'inventory' }"
+              @click="previewTab = 'inventory'"
+            >
+              hosts.ini
+            </button>
           </div>
-          <pre class="preview-pre">{{ previewTab === 'config' ? settingsStore.preview.proposed.config : settingsStore.preview.proposed.inventory }}</pre>
+          <pre class="preview-pre">{{ previewText }}</pre>
         </div>
       </section>
-
-      <p v-if="isDisabled" class="settings-readonly-note">
-        <span class="material-icons" style="font-size:1rem; vertical-align:-3px;">lock</span>
-        You have read-only access. Sign in with a write-enabled account to change these settings.
-      </p>
     </template>
   </div>
 </template>
@@ -157,7 +167,26 @@ export default {
   computed: {
     isDisabled() {
       return isFormDisabled();
-    }
+    },
+    previewText() {
+      if (!this.settingsStore.preview) return '';
+      return this.previewTab === 'config'
+        ? this.settingsStore.preview.proposed.config
+        : this.settingsStore.preview.proposed.inventory;
+    },
+    previewStatusText() {
+      const preview = this.settingsStore.preview;
+      if (!preview) return '';
+      const hasCurrent = !!preview.current.config || !!preview.current.inventory;
+
+      if (!hasCurrent) {
+        return 'No deployed config was found. This preview shows what the first provision will write.';
+      }
+
+      return preview.changed
+        ? 'The generated files differ from what is currently deployed.'
+        : 'The generated files match what is currently deployed.';
+    },
   },
   async mounted() {
     if (this.enable_sso) {
@@ -169,10 +198,13 @@ export default {
     onToggle(e) {
       this.settingsStore.setAutoProvision(e.target.checked);
     },
+    previewConfig() {
+      this.settingsStore.previewConfig();
+    },
     provisionNow() {
       this.settingsStore.provisionNow();
-    }
-  }
+    },
+  },
 }
 </script>
 
@@ -196,7 +228,7 @@ export default {
 .settings-card-icon {
   width: 40px;
   height: 40px;
-  border-radius: 9px;
+  border-radius: 8px;
   background: rgba(var(--primary-rgb), .07);
   color: var(--primary);
   display: flex;
@@ -226,7 +258,21 @@ export default {
   gap: 1.5rem;
   padding: 0.85rem 0 0.35rem;
 }
-.setting-text { flex: 1; }
+.setting-row.with-divider {
+  border-top: 1px solid var(--border);
+  margin-top: 0.75rem;
+  padding-top: 1.1rem;
+}
+.setting-text {
+  flex: 1;
+  min-width: 0;
+}
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
 .setting-name {
   font-weight: 600;
   font-size: 0.92rem;
@@ -237,20 +283,50 @@ export default {
   font-size: 0.8rem;
   color: var(--muted);
   line-height: 1.5;
-  max-width: 60ch;
+  max-width: 68ch;
 }
 .setting-sub code {
-  background: #f1f3f6;
+  background: rgba(var(--primary-rgb), .08);
   padding: 0.05rem 0.3rem;
   border-radius: 4px;
   font-size: 0.78rem;
   color: var(--text);
 }
-
-/* Toggle switch */
-.switch { position: relative; display: inline-flex; flex-shrink: 0; cursor: pointer; }
-.switch.disabled { cursor: not-allowed; opacity: 0.55; }
-.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.status-chip {
+  min-width: 42px;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+}
+.status-chip.on {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+.status-chip.off {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #dbe2ea;
+}
+.switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.switch.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
 .switch-track {
   width: 46px;
   height: 26px;
@@ -277,8 +353,6 @@ export default {
 .switch input:checked + .switch-track .switch-thumb {
   transform: translateX(20px);
 }
-
-/* Callouts */
 .setting-callout {
   display: flex;
   align-items: flex-start;
@@ -293,23 +367,41 @@ export default {
   border: 1px solid rgba(var(--primary-rgb), .12);
 }
 .setting-callout.muted {
-  background: #f6f8fa;
+  background: rgba(100, 116, 139, .08);
   border-color: var(--border);
   color: var(--muted);
 }
-.setting-callout .material-icons { font-size: 1.1rem; color: var(--primary); flex-shrink: 0; }
-.setting-callout.muted .material-icons { color: var(--muted); }
-
-.settings-readonly-note {
-  font-size: 0.8rem;
+.setting-callout .material-icons {
+  font-size: 1.1rem;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.setting-callout.muted .material-icons {
+  color: var(--muted);
+}
+.readonly-banner {
+  font-size: 0.82rem;
   color: var(--muted);
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
 }
-
-/* Dry-run preview */
-.preview-result { margin-top: 1rem; }
+.readonly-banner .material-icons {
+  font-size: 1rem;
+}
+.btn-icon {
+  font-size: 1rem;
+  vertical-align: -3px;
+  margin-right: 0.35rem;
+}
+.preview-result {
+  margin-top: 1rem;
+}
 .preview-status {
   display: flex;
   align-items: center;
@@ -319,10 +411,25 @@ export default {
   font-size: 0.85rem;
   margin-bottom: 0.75rem;
 }
-.preview-status .material-icons { font-size: 1.15rem; }
-.preview-status.changed { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
-.preview-status.unchanged { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-.preview-tabs { display: flex; gap: 0.25rem; margin-bottom: -1px; }
+.preview-status .material-icons {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+.preview-status.changed {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+}
+.preview-status.unchanged {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.preview-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: -1px;
+}
 .preview-tabs button {
   background: transparent;
   border: 1px solid var(--border);
@@ -350,9 +457,38 @@ export default {
   font-size: 0.78rem;
   line-height: 1.5;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  white-space: pre;
 }
 
-@media (max-width: 600px) {
-  .setting-row { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+:global(:root[data-theme="dark"]) .status-chip.off {
+  background: #182235;
+  color: var(--muted);
+  border-color: var(--border);
+}
+:global(:root[data-theme="dark"]) .setting-sub code {
+  background: #0e1626;
+}
+:global(:root[data-theme="dark"]) .preview-status.changed {
+  background: #341b0b;
+  color: #fed7aa;
+  border-color: #7c2d12;
+}
+:global(:root[data-theme="dark"]) .preview-status.unchanged,
+:global(:root[data-theme="dark"]) .status-chip.on {
+  background: #0f2f1c;
+  color: #bbf7d0;
+  border-color: #166534;
+}
+
+@media (max-width: 700px) {
+  .setting-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .setting-control {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>

@@ -11,7 +11,7 @@
       title="Host Groups"
       subtitle="Organize hosts into groups for bulk provisioning"
       icon="lan"
-      :can-add="!isDisabled"
+      :can-add="!isDisabled && !showAddGroup"
       add-label="Add Host Group"
       @add="addGroupForm"
     />
@@ -72,7 +72,7 @@
             <label for="params"> Metadata </label>
             <dynamic_add_data :addedData="addedData"></dynamic_add_data>
           </div>
-          <button class="btn btn-success" style="margin-bottom: 2em;"> Submit </button>
+          <button class="btn btn-success" style="margin-bottom: 2em;"> Add Host Group </button>
         </form>
       </fieldset>
       </div>

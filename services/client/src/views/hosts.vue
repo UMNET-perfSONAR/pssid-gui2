@@ -11,7 +11,7 @@
       title="Hosts"
       subtitle="Manage network probe hosts and their batch assignments"
       icon="computer"
-      :can-add="!isDisabled"
+      :can-add="!isDisabled && !showAddHost"
       add-label="Add Host"
       @add="addHostComp"
     />
@@ -60,7 +60,7 @@
           </div>
           <p> Metadata </p>
           <dynamic_add_data :addedData="addedOptionalData"></dynamic_add_data>
-          <button class="btn btn-success"> Submit </button>
+          <button class="btn btn-success"> Add Host </button>
         </fieldset>
         </form>
       </div>

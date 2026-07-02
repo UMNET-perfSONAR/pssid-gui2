@@ -49,7 +49,6 @@ export default {
         { to: '/tests',         label: 'Tests' },
         { to: '/jobs',          label: 'Jobs' },
         { to: '/batches',       label: 'Batches' },
-        { to: '/history',       label: 'History' },
         { to: '/settings',      label: 'Settings' },
       ]
     }

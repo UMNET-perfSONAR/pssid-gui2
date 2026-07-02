@@ -4,7 +4,7 @@
       title="Schedules"
       subtitle="Define when and how often batches run on your probes"
       icon="schedule"
-      :can-add="!isDisabled"
+      :can-add="!isDisabled && !showAddSchedule"
       add-label="Add Schedule"
       @add="addScheduleForm"
     />
@@ -40,7 +40,7 @@
             </div>
           </div>
           <cronstuff :init="cronExpression" @update-cron="cronExpression=$event"></cronstuff>
-          <button class="btn btn-success"> Submit </button>
+          <button class="btn btn-success"> Add Schedule </button>
          </fieldset>
         </form>
       </div>

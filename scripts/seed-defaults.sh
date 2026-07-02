@@ -1,5 +1,5 @@
 #!/bin/bash
-# Proposed ship-with defaults for pSSID GUI (a starting point; edit with Ed).
+# Reusable starter defaults for pSSID GUI, not the full demo dataset.
 #
 # Loads a small set of reusable building blocks into MongoDB so a fresh install is
 # not empty: a schedule set named general-to-specific, SSID profiles with their
@@ -10,12 +10,14 @@
 # Safe to re-run: it removes the docs it owns (by name) before inserting. It does
 # not create hosts or batches, which are site-specific. This is a proposal, so
 # adjust the set before shipping.
+#
+# For a populated demo stack, use scripts/seed-demo.sh instead.
 set -euo pipefail
 
 DB_NAME="gui"
 MONGO_CONTAINER="$(docker ps --filter "name=mongo" --format '{{.Names}}' | head -n1)"
 if [ -z "$MONGO_CONTAINER" ]; then
-  echo "Could not find a running mongo container." >&2
+  echo "Could not find a running mongo container. Start the stack first (make dev or make up)." >&2
   exit 1
 fi
 
@@ -52,7 +54,7 @@ db.ssid_profiles.insertMany([
 db.tests.insertOne({
   name: 'throughput-by-metadata',
   type: 'throughput',
-  spec: { dest: '{{throughput_dest}}' },
+  spec: [ { type: 'text', name: 'dest', value: '{{throughput_dest}}' } ],
 });
 
 // The "all" group: host regex ".*" matches every host. NOTE this is the custom

@@ -10,7 +10,7 @@
     <PageHeader
       title="Batches"
       subtitle="Group jobs, schedules, and SSID profiles into deployable probe configurations"
-      icon="layers"
+      icon="inventory_2"
       :can-add="!isDisabled"
       add-label="Add Batch"
       @add="addBatchForm"

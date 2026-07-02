@@ -1,14 +1,15 @@
 #!/bin/bash
-# Demo data seeder for pSSID GUI.
+# Canonical demo data seeder for pSSID GUI.
 #
 # Inserts a coherent set of sample objects (schedules, SSID profiles, tests,
-# archivers, jobs, batches, hosts, host groups) with the relations wired up, plus
-# a realistic ~3-week provisioning-history log so every page, including the
-# dashboard, Fleet Health, and Fleet Intelligence, shows meaningful data.
+# jobs, batches, hosts, host groups, and settings) with the relations wired up.
+# The inserted rows match the current GUI forms and the config generator, so the
+# demo can be used both for clicking through the app and for previewing
+# pssid_config.json.
 #
 # This is DEMO data, not production config. Safe to re-run: it removes the docs it
-# owns (by name, and history by caller "demo@seed") before re-inserting. It never
-# touches the mongo_db volume otherwise and never drops the database.
+# owns (by name) before re-inserting. It never touches the mongo_db volume
+# otherwise and never drops the database.
 #
 # Usage (on the host running the stack):  bash scripts/seed-demo.sh
 set -euo pipefail
@@ -16,7 +17,7 @@ set -euo pipefail
 DB_NAME="gui"
 MONGO_CONTAINER="$(docker ps --filter "name=mongo" --format '{{.Names}}' | head -n1)"
 if [ -z "$MONGO_CONTAINER" ]; then
-  echo "Could not find a running mongo container." >&2
+  echo "Could not find a running mongo container. Start the stack first (make dev or make up)." >&2
   exit 1
 fi
 
@@ -24,11 +25,15 @@ echo "Seeding demo data into '$DB_NAME' via container '$MONGO_CONTAINER'..."
 
 docker exec -i "$MONGO_CONTAINER" mongosh --quiet "$DB_NAME" <<'EOF'
 // ---- idempotent cleanup of previous demo data -------------------------------
-const DEMO_CALLER = 'demo@seed';
 const demoNames = {
-  schedules:     ['every-5-min', 'hourly', 'nightly'],
+  schedules:     [
+    'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 23:00',
+    // Legacy demo names from older seed scripts; clean them up on re-run.
+    'every-5-min', 'hourly', 'nightly'
+  ],
   ssid_profiles: ['MWireless', 'eduroam', 'MGuest'],
   tests:         ['http-google', 'ping-gateway', 'dns-resolve', 'throughput-iperf'],
+  // Legacy demo archiver from older seed scripts; remove it, but do not re-seed it.
   archivers:     ['rabbitmq-archive'],
   jobs:          ['connectivity-suite', 'throughput-suite'],
   batches:       ['edge-batch', 'core-batch'],
@@ -38,13 +43,15 @@ const demoNames = {
 for (const [coll, names] of Object.entries(demoNames)) {
   db.getCollection(coll).deleteMany({ name: { $in: names } });
 }
-db.provision_history.deleteMany({ caller: DEMO_CALLER });
+// Legacy dashboard/history demo data from older seed scripts.
+db.provision_history.deleteMany({ caller: 'demo@seed' });
 
 // ---- leaf objects -----------------------------------------------------------
 const sIds = db.schedules.insertMany([
-  { name: 'every-5-min', repeat: '*/5 * * * *' },
-  { name: 'hourly',      repeat: '0 * * * *' },
-  { name: 'nightly',     repeat: '0 2 * * *' },
+  { name: 'every 5 minutes',    repeat: '*/5 * * * *' },
+  { name: 'every hour',         repeat: '0 * * * *' },
+  { name: 'every 4 hours',      repeat: '0 */4 * * *' },
+  { name: 'every day at 23:00', repeat: '0 23 * * *' },
 ]).insertedIds;
 
 const pIds = db.ssid_profiles.insertMany([
@@ -54,23 +61,28 @@ const pIds = db.ssid_profiles.insertMany([
 ]).insertedIds;
 
 const tIds = db.tests.insertMany([
-  { name: 'http-google',      type: 'http',       spec: { url: 'www.google.com' } },
-  { name: 'ping-gateway',     type: 'rtt',        spec: { dest: '141.211.144.1' } },
-  { name: 'dns-resolve',      type: 'dns',        spec: { query: 'umich.edu' } },
-  { name: 'throughput-iperf', type: 'throughput', spec: { dest: 'perfsonar.umich.edu' } },
+  { name: 'http-google',      type: 'http',       spec: [
+      { type: 'text', name: 'url',     value: 'www.google.com' },
+      { type: 'text', name: 'timeout', value: 'PT10S' },
+  ] },
+  { name: 'ping-gateway',     type: 'rtt',        spec: [
+      { type: 'text',         name: 'dest',     value: '141.211.144.1' },
+      { type: 'number',       name: 'length',   value: 512 },
+      { type: 'singleselect', name: 'protocol', selected: { name: 'TCP' } },
+  ] },
+  { name: 'dns-resolve',      type: 'dns',        spec: [
+      { type: 'text',         name: 'nameserver', value: '8.8.8.8' },
+      { type: 'singleselect', name: 'record',     selected: { name: 'A' } },
+      { key: 'query', value: 'umich.edu' },
+  ] },
+  { name: 'throughput-iperf', type: 'throughput', spec: [ { type: 'text', name: 'dest',  value: 'perfsonar.umich.edu' } ] },
 ]).insertedIds;
-
-db.archivers.insertOne({
-  name: 'rabbitmq-archive',
-  archiver: 'rabbitmq',
-  data: { '_url': 'amqp://elastic:elastic@pssid-elk.miserver.it.umich.edu', 'routing-key': 'pscheduler_raw' },
-});
 
 // ---- jobs (reference tests by name + id) ------------------------------------
 const jIds = db.jobs.insertMany([
-  { name: 'connectivity-suite', parallel: true,  continue_if: true,
+  { name: 'connectivity-suite', parallel: 'True', 'continue-if': 'true', backoff: 'PT1S',
     tests: ['http-google', 'ping-gateway', 'dns-resolve'], test_ids: [tIds[0], tIds[1], tIds[2]] },
-  { name: 'throughput-suite',   parallel: false, continue_if: true,
+  { name: 'throughput-suite',   parallel: 'True', 'continue-if': 'true', backoff: 'PT1S',
     tests: ['throughput-iperf'], test_ids: [tIds[3]] },
 ]).insertedIds;
 
@@ -78,78 +90,42 @@ const jIds = db.jobs.insertMany([
 const bIds = db.batches.insertMany([
   { name: 'edge-batch', priority: 10, test_interface: 'wlan0',
     ssid_profiles: ['MWireless', 'eduroam'], ssid_profile_ids: [pIds[0], pIds[1]],
-    schedules: ['every-5-min', 'hourly'],    schedule_ids: [sIds[0], sIds[1]],
+    schedules: ['every 5 minutes', 'every hour'],    schedule_ids: [sIds[0], sIds[1]],
     jobs: ['connectivity-suite'],            job_ids: [jIds[0]] },
-  { name: 'core-batch', priority: 20, test_interface: 'eth0',
+  { name: 'core-batch', priority: 20, test_interface: 'wlan0',
     ssid_profiles: ['MWireless'], ssid_profile_ids: [pIds[0]],
-    schedules: ['nightly'],       schedule_ids: [sIds[2]],
+    schedules: ['every day at 23:00'],       schedule_ids: [sIds[3]],
     jobs: ['throughput-suite', 'connectivity-suite'], job_ids: [jIds[1], jIds[0]] },
 ]).insertedIds;
 
 // ---- hosts (one left unconfigured for contrast) -----------------------------
 const hIds = db.hosts.insertMany([
-  { name: 'rp-bbb-01',      batches: ['edge-batch'],               batch_ids: [bIds[0]],          data: [] },
-  { name: 'rp-eecs-02',     batches: ['edge-batch'],               batch_ids: [bIds[0]],          data: [] },
-  { name: 'rp-union-03',    batches: ['core-batch'],               batch_ids: [bIds[1]],          data: [] },
-  { name: 'rp-li-04',       batches: ['edge-batch', 'core-batch'], batch_ids: [bIds[0], bIds[1]], data: [] },
-  { name: 'rp-pierpont-05', batches: [],                           batch_ids: [],                 data: [] },
+  { name: 'rp-bbb-01',      batches: ['edge-batch'],               batch_ids: [bIds[0]],          data: { site: 'bbb' } },
+  { name: 'rp-eecs-02',     batches: ['edge-batch'],               batch_ids: [bIds[0]],          data: { site: 'eecs' } },
+  { name: 'rp-union-03',    batches: ['core-batch'],               batch_ids: [bIds[1]],          data: { site: 'union' } },
+  { name: 'rp-li-04',       batches: ['edge-batch', 'core-batch'], batch_ids: [bIds[0], bIds[1]], data: { site: 'library' } },
+  { name: 'rp-pierpont-05', batches: [],                           batch_ids: [],                 data: { site: 'pierpont' } },
 ]).insertedIds;
 
 // ---- host groups ------------------------------------------------------------
 db.host_groups.insertMany([
   { name: 'campus-edge', batches: ['edge-batch'], batch_ids: [bIds[0]],
     hosts: ['rp-bbb-01', 'rp-eecs-02', 'rp-li-04'], host_ids: [hIds[0], hIds[1], hIds[3]],
-    hosts_regex: '', data: [] },
+    hosts_regex: [], data: { region: 'edge' } },
   { name: 'campus-core', batches: ['core-batch'], batch_ids: [bIds[1]],
     hosts: ['rp-union-03', 'rp-li-04'], host_ids: [hIds[2], hIds[3]],
-    hosts_regex: '', data: [] },
+    hosts_regex: [], data: { region: 'core' } },
 ]);
 
-// ---- provisioning history: ~3 weeks so Fleet Health/Intelligence have signal -
-// Per-host profile drives the demo story: healthy, degrading (anomaly), critical,
-// and a stale probe whose newest event is well in the past.
-const DAY = 86400000;
-const now = Date.now();
-const profiles = {
-  'rp-bbb-01':      { base: 0.04, recentBad: false, stale: false },  // healthy
-  'rp-eecs-02':     { base: 0.10, recentBad: false, stale: false },  // mostly healthy
-  'rp-union-03':    { base: 0.12, recentBad: true,  stale: false },  // drifting worse (anomaly)
-  'rp-li-04':       { base: 0.55, recentBad: true,  stale: false },  // critical
-  'rp-pierpont-05': { base: 0.03, recentBad: false, stale: true  },  // healthy but stale
-};
-const errors = ['SSH timeout to probe', 'Ansible task failed: wpa_supplicant',
-                'pScheduler unreachable', 'DHCP lease failed'];
-const EVENTS_PER_HOST = 18;
-const events = [];
-for (const [host, p] of Object.entries(profiles)) {
-  for (let i = 0; i < EVENTS_PER_HOST; i++) {
-    // Newest event (i=0) is "now" for active hosts; the stale host's newest is ~10 days old.
-    const ageDays = p.stale ? (10 + i * 0.7) : (i * (21 / EVENTS_PER_HOST));
-    let failProb = p.base;
-    if (p.recentBad && ageDays < 5) failProb = Math.min(0.9, p.base + 0.5);
-    const success = Math.random() > failProb;
-    const ev = {
-      timestamp: new Date(now - ageDays * DAY),
-      caller: DEMO_CALLER,
-      caller_role: 'demo',
-      target_name: host,
-      click_context: (i % 4 === 0) ? 'auto' : 'host',
-      trigger: (i % 4 === 0) ? 'auto' : 'manual',
-      success,
-    };
-    if (!success) ev.error = errors[i % errors.length];
-    events.push(ev);
-  }
-}
-db.provision_history.insertMany(events);
+// ---- settings ---------------------------------------------------------------
+db.settings.updateOne({ key: 'global' }, { $set: { autoProvision: false } }, { upsert: true });
 
 // ---- summary ----------------------------------------------------------------
 print('Seeded:');
-for (const coll of ['schedules', 'ssid_profiles', 'tests', 'archivers', 'jobs', 'batches', 'hosts', 'host_groups']) {
+for (const coll of ['schedules', 'ssid_profiles', 'tests', 'jobs', 'batches', 'hosts', 'host_groups']) {
   print('  ' + coll.padEnd(15) + db.getCollection(coll).countDocuments());
 }
-print('  provision_history (demo) ' + db.provision_history.countDocuments({ caller: DEMO_CALLER }));
 EOF
 
 echo ""
-echo "Done. Refresh the GUI (every page should now be populated)."
+echo "Done. Refresh the GUI, then open Settings > Provisioning tools to preview the generated config."

@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="Overview"
-      subtitle="Configuration summary, system status, and recent activity"
+      subtitle="Configuration summary and system status"
       icon="dashboard"
     />
 
@@ -22,13 +22,6 @@
           <div class="status-value">{{ settingsStore.autoProvision ? 'On' : 'Off' }}</div>
         </div>
       </div>
-      <div class="status-pill neutral">
-        <span class="material-icons">history</span>
-        <div>
-          <div class="status-label">Last provision</div>
-          <div class="status-value">{{ lastProvisionLabel }}</div>
-        </div>
-      </div>
     </div>
 
     <!-- Stat cards -->
@@ -39,36 +32,6 @@
         <div class="stat-label">{{ s.label }}</div>
       </router-link>
     </div>
-
-    <!-- Recent activity -->
-    <section class="recent">
-      <div class="recent-head">
-        <h3>Recent provisioning</h3>
-        <router-link to="/history" class="recent-link">View all →</router-link>
-      </div>
-      <div v-if="historyStore.isLoading" class="loading-state">
-        <div class="spinner"></div><span>Loading…</span>
-      </div>
-      <div v-else-if="recent.length === 0" class="recent-empty">
-        No provisioning events yet.
-      </div>
-      <table v-else class="table table-sm table-hover">
-        <thead>
-          <tr><th>Time</th><th>Target</th><th>Trigger</th><th>Status</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="(row, i) in recent" :key="i">
-            <td style="white-space:nowrap; font-size:0.82rem;">{{ formatTime(row.timestamp) }}</td>
-            <td><code style="background:none; color:inherit; font-size:0.82rem;">{{ row.target_name }}</code></td>
-            <td style="font-size:0.82rem;">{{ triggerLabel(row) }}</td>
-            <td>
-              <span v-if="row.success" class="badge badge-success">Success</span>
-              <span v-else class="badge badge-danger" :title="row.error">Failed</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
   </div>
 </template>
 
@@ -82,7 +45,6 @@ import { useSsidStore } from '../stores/ssid_profiles_stores'
 import { useTestStore } from '../stores/test_store'
 import { useJobStore } from '../stores/job_store'
 import { useBatchStore } from '../stores/batches.store'
-import { useProvisionHistoryStore } from '../stores/provision_history.store'
 import { useSettingsStore } from '../stores/settings.store'
 
 export default {
@@ -97,7 +59,6 @@ export default {
       testStore: useTestStore(),
       jobStore: useJobStore(),
       batchStore: useBatchStore(),
-      historyStore: useProvisionHistoryStore(),
       settingsStore: useSettingsStore(),
       healthOk: false,
     }
@@ -112,15 +73,8 @@ export default {
         { label: 'SSID Profiles', icon: 'wifi',         to: '/ssid_profiles', count: len(this.ssidStore.ssid_profiles) },
         { label: 'Tests',         icon: 'science',      to: '/tests',         count: len(this.testStore.tests) },
         { label: 'Jobs',          icon: 'work',         to: '/jobs',          count: len(this.jobStore.jobs) },
-        { label: 'Batches',       icon: 'layers',       to: '/batches',       count: len(this.batchStore.batches) },
+        { label: 'Batches',       icon: 'inventory_2',  to: '/batches',       count: len(this.batchStore.batches) },
       ];
-    },
-    recent() {
-      return Array.isArray(this.historyStore.history) ? this.historyStore.history.slice(0, 5) : [];
-    },
-    lastProvisionLabel() {
-      const last = this.recent[0];
-      return last ? this.formatTime(last.timestamp) : '-';
     }
   },
   async mounted() {
@@ -133,7 +87,6 @@ export default {
       this.testStore.getTests(),
       this.jobStore.getJobs(),
       this.batchStore.getBatches(),
-      this.historyStore.getHistory(),
       this.settingsStore.getSettings(),
       this.checkHealth(),
     ]);
@@ -149,14 +102,6 @@ export default {
       } catch {
         this.healthOk = false;
       }
-    },
-    formatTime(ts) {
-      if (!ts) return '-';
-      return new Date(ts).toLocaleString();
-    },
-    triggerLabel(row) {
-      const t = row.trigger || (row.click_context === 'auto' ? 'auto' : 'manual');
-      return t === 'auto' ? 'Auto' : 'Manual';
     }
   }
 }
@@ -187,7 +132,6 @@ export default {
 .status-pill.bad     { border-left-color: #dc2626; } .status-pill.bad .material-icons { color: #dc2626; }
 .status-pill.on      { border-left-color: var(--accent); } .status-pill.on .material-icons { color: var(--accent); }
 .status-pill.off     { border-left-color: #94a3b8; } .status-pill.off .material-icons { color: #94a3b8; }
-.status-pill.neutral { border-left-color: var(--primary); } .status-pill.neutral .material-icons { color: var(--primary); }
 
 .stat-grid {
   display: grid;
@@ -213,19 +157,4 @@ export default {
 .stat-icon { font-size: 1.5rem; color: var(--primary); }
 .stat-count { font-size: 1.9rem; font-weight: 700; color: var(--text); line-height: 1.1; margin-top: 0.35rem; }
 .stat-label { font-size: 0.82rem; color: var(--muted); font-weight: 600; }
-
-.recent {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  padding: 1.25rem 1.35rem;
-}
-.recent-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
-.recent-head h3 {
-  font-size: 0.72rem !important; font-weight: 700 !important; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--muted) !important; margin: 0 !important;
-}
-.recent-link { font-size: 0.8rem; color: var(--primary); text-decoration: none; font-weight: 600; }
-.recent-empty { color: var(--muted); font-size: 0.85rem; padding: 0.5rem 0; }
 </style>

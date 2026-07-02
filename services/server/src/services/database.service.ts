@@ -30,8 +30,6 @@ export async function ensureIndexes() {
     for (const col of collections) {
       await db.collection(col).createIndex({ name: 1 }, { unique: true, sparse: true });
     }
-    // Index for fast time-sorted queries on provision history
-    await db.collection('provision_history').createIndex({ timestamp: -1 });
     console.info('MongoDB indexes ensured');
   } catch (err) {
     console.error('Failed to ensure MongoDB indexes:', err);

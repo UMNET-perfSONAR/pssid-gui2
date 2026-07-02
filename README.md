@@ -31,6 +31,21 @@ Day-to-day operations are wrapped in a Makefile (`make up`, `make down`,
 `make logs`, `make dev`, `make doctor`, and others). Run `make help` for the
 full list.
 
+## Demo data
+
+For a populated demo stack, start the containers and run:
+
+```bash
+make seed-demo
+```
+
+That target runs [`scripts/seed-demo.sh`](scripts/seed-demo.sh), the canonical
+demo seeder. It populates the current GUI data model and produces data that can
+be previewed through Settings > Provisioning tools. The older
+`scripts/seed-config-demo.sh` command is kept as a compatibility wrapper around
+the same seeder. `scripts/seed-defaults.sh` is different: it loads reusable
+starter building blocks for a fresh install, not a full demo.
+
 ## Documentation
 
 The [deployment guide](docs/deployment.md) covers installation, single sign-on

@@ -10,6 +10,7 @@ and published images) are gathered in their own section near the end.
 - [Quickstart](#quickstart)
 - [What the installer does](#what-the-installer-does)
 - [Everyday operations](#everyday-operations)
+- [Demo data](#demo-data)
 - [Single sign-on](#single-sign-on)
 - [TLS](#tls)
 - [Editions](#editions)
@@ -100,6 +101,28 @@ The Makefile wraps the common commands:
 | `make backup` / `make restore` | Back up or restore MongoDB |
 | `make doctor` | Check prerequisites and ports |
 | `make clean` | Stop the stack and remove its volumes (this deletes data) |
+
+## Demo data
+
+Use one command for demos:
+
+```bash
+make seed-demo
+```
+
+This loads the canonical sample dataset through
+[`scripts/seed-demo.sh`](../scripts/seed-demo.sh). The data matches the current
+GUI forms and config generator: SSID profiles include their layer 2 and layer 3
+methods, tests use the dynamic-form `spec` array shape, jobs use the daemon's
+string fields, host metadata is stored as objects, and host regexes are arrays.
+After seeding, use Settings > Provisioning tools to preview or provision the
+generated files.
+
+The old [`scripts/seed-config-demo.sh`](../scripts/seed-config-demo.sh) command
+is kept only as a compatibility wrapper around `seed-demo.sh`, so running it will
+load the same current dataset. [`scripts/seed-defaults.sh`](../scripts/seed-defaults.sh)
+is not a demo loader; it inserts reusable starter schedules, SSID profiles, a
+metadata-based test, and an `all` host group for a fresh site.
 
 ## Single sign-on
 
@@ -248,8 +271,7 @@ files the probes use and sends them out: it writes `hosts.ini` (the Ansible
 inventory) and `pssid_config.json` (the merged daemon configuration), then runs
 `bin/provision`, which uses Ansible to copy the config to the probes and restart
 the daemon. This is implemented in
-[`create_config_file()`](../services/server/src/services/config.service.ts), and
-every run is recorded in the provision history, visible under History in the GUI.
+[`create_config_file()`](../services/server/src/services/config.service.ts).
 
 By default this is manual: use Configure selected host or Configure selected group
 on the Hosts or Groups page, or Provision now on the Settings page. You can also
@@ -263,10 +285,8 @@ When automatic provisioning is on:
 - Rapid edits are grouped into a single run using a short window of about five
   seconds, so a burst of changes does not start a series of Ansible runs. If a run
   is already in progress, the next one waits rather than overlapping.
-- Every run, manual or automatic, is recorded with its trigger (`manual` or
-  `auto`), the caller, the target, and the result. The History page shows it.
 - Automatic runs follow the same path as manual ones, including the on-disk
-  re-check of each batch's layer-2, layer-3, and script selections.
+  re-check of each SSID profile's layer 2 and layer 3 methods.
 - Turning the setting on or off requires write access.
 
 The setting is stored in the Mongo `settings` collection and served at `GET` and

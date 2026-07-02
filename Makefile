@@ -11,7 +11,7 @@ EDITION ?= $(shell [ -f .env ] && sed -n 's/^EDITION=//p' .env || echo default)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install up down restart logs ps build dev dev-down \
+.PHONY: help install up down restart logs ps build dev dev-down seed-demo \
         edition-umich edition-default backup restore doctor clean
 
 help: ## Show this help
@@ -48,6 +48,9 @@ dev: ## Start the local dev stack with hot reload (http://localhost:8888)
 
 dev-down: ## Stop the local dev stack
 	@$(LOCAL) down
+
+seed-demo: ## Load the canonical demo dataset into the running MongoDB container
+	@bash scripts/seed-demo.sh
 
 edition-umich: ## Switch the client to the University of Michigan edition
 	@$(MAKE) --no-print-directory _set-edition EDITION=umich
