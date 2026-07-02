@@ -4,7 +4,7 @@
       title="SSID Profiles"
       subtitle="A wireless network plus the layer 2 and layer 3 methods used to connect to it"
       icon="wifi"
-      :can-add="!isDisabled"
+      :can-add="!isDisabled && !showAddSSID"
       add-label="Add SSID Profile"
       @add="addSsidForm"
     />
@@ -59,7 +59,7 @@
             </select>
           </div>
           <div class="mb-3">
-            <button class="btn btn-success"> Submit </button>
+            <button class="btn btn-success"> Add SSID Profile </button>
           </div>
           </fieldset>
         </form>
@@ -93,7 +93,7 @@
             </select>
           </div>
           <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
-            <button class="btn btn-success"> Submit </button>
+            <button class="btn btn-success"> Update </button>
             <button class="btn btn-danger" type="button" @click="deleteCurItem"> Delete </button>
           </div>
           </fieldset>

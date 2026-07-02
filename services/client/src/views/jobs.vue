@@ -11,7 +11,7 @@
       title="Jobs"
       subtitle="Combine tests into reusable job configurations"
       icon="work"
-      :can-add="!isDisabled"
+      :can-add="!isDisabled && !showAddJob"
       add-label="Add Job"
       @add="addJobForm"
     />
@@ -81,7 +81,7 @@
               />
             </div>
 
-            <button class="btn btn-success" style="margin-right: 1em;"> Submit </button>
+            <button class="btn btn-success" style="margin-right: 1em;"> Add Job </button>
           </div>
           </fieldset>
         </form>
