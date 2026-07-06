@@ -39,7 +39,7 @@ const getOneTest = (async (req: Request, res: Response) => {
     const name = String(req.params.testname);
     (await client).connect();
     var collection = (await client).db('gui').collection('tests');
-    var response = collection.find({"name": name}).toArray();
+    var response = await collection.find({"name": name}).toArray();
     res.send(response); 
   }
   catch(error) {
@@ -58,7 +58,7 @@ const deleteTest = (async (req:Request, res:Response) => {
     var job_col = (await client).db('gui').collection('jobs');
     
     const deleted = await test_col.findOne({ "name" : name });    
-    deleteDocument(job_col, 'tests', 'test_ids', deleted?.name);        // delete references from other collections
+    await deleteDocument(job_col, 'tests', 'test_ids', deleted?.name);        // delete references from other collections
     
     await test_col.findOneAndDelete({ "name" : name });       
     
@@ -131,7 +131,11 @@ const readFileNames = ((req:Request, res:Response) => {
     
     fs.readdir(directoryPath, function(err, files) {
       if (err) {
-        return console.log('Unable to scan directory:' + err)
+        // A missing/unreadable directory means no templates are installed. That
+        // is a valid state: answer with an empty list. (Returning without a
+        // response here used to hang the request until the proxy gave up.)
+        console.warn('Unable to scan test templates directory: ' + err);
+        return res.json([]);
       }
       let fileArray: string[] = [];
       files.forEach(function(file) {

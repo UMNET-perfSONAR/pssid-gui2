@@ -1,0 +1,20 @@
+[
+    {
+        "name": "identity",
+        "type": "text",
+        "default": "pssid",
+        "validator": "return input && !/\\s/.test(input);",
+        "description": "identity should be nonempty and free of whitespace"
+    },
+    {
+        "name": "facility",
+        "type": "singleselect",
+        "options": [
+            { "name": "local0" }, { "name": "local1" }, { "name": "local2" },
+            { "name": "local3" }, { "name": "local4" }, { "name": "local5" },
+            { "name": "local6" }, { "name": "local7" }, { "name": "user" },
+            { "name": "daemon" }
+        ],
+        "default": { "name": "local0" }
+    }
+]

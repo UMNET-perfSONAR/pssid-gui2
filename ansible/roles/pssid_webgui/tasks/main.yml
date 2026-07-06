@@ -1,0 +1,128 @@
+---
+# Deploys the pSSID GUI application stack.
+#
+# In prod mode the heavy lifting is done by the repository's own installer
+# (install.sh), which this role runs non-interactively. That keeps the Ansible
+# path and the manual "./install.sh" path identical: one set of logic generates
+# the secrets, certificates, nginx config, and environment files.
+#
+# In dev mode the role brings up the hot-reload stack (docker-compose.local.yml)
+# instead; no certificates or nginx config are needed for that.
+
+- name: Install packages the deployment needs
+  ansible.builtin.package:
+    name:
+      - git
+      - make
+      - openssl
+      - curl
+    state: present
+
+# ---- Locate or fetch the application source --------------------------------
+
+- name: Check whether this playbook is running from inside a checkout
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../install.sh"
+  register: local_checkout
+  when: pssid_gui_deploy_from in ['auto', 'checkout']
+
+- name: Use the local checkout as the application source
+  ansible.builtin.set_fact:
+    pssid_gui_src: "{{ (playbook_dir ~ '/..') | realpath }}"
+  when: >
+    pssid_gui_deploy_from == 'checkout' or
+    (pssid_gui_deploy_from == 'auto' and (local_checkout.stat.exists | default(false)))
+
+- name: Clone the repository as the application source
+  when: pssid_gui_src is not defined
+  block:
+    - name: Clone pSSID GUI
+      ansible.builtin.git:
+        repo: "{{ pssid_gui_repo }}"
+        dest: "{{ pssid_gui_install_dir }}"
+        version: "{{ pssid_gui_version }}"
+
+    - name: Record the source directory
+      ansible.builtin.set_fact:
+        pssid_gui_src: "{{ pssid_gui_install_dir }}"
+
+# ---- Production: run the installer ------------------------------------------
+
+- name: Assemble the installer arguments
+  ansible.builtin.set_fact:
+    pssid_gui_installer_argv: >-
+      {{ ['bash', 'install.sh', '-y',
+          '--edition=' ~ pssid_gui_edition,
+          '--hostname=' ~ pssid_gui_hostname,
+          '--tls=' ~ pssid_gui_tls,
+          '--sso=' ~ (pssid_gui_sso | bool | string | lower)]
+         + ((pssid_gui_sso | bool) | ternary(
+              ['--issuer=' ~ pssid_gui_oidc_issuer,
+               '--client-id=' ~ pssid_gui_oidc_client_id,
+               '--client-secret=' ~ pssid_gui_oidc_client_secret], []))
+         + ((pssid_gui_tls == 'letsencrypt' and (pssid_gui_letsencrypt_email | length > 0)) | ternary(
+              ['--email=' ~ pssid_gui_letsencrypt_email], []))
+         + ((pssid_gui_no_build | bool) | ternary(['--no-build'], [])) }}
+  when: pssid_gui_mode == 'prod'
+  no_log: "{{ pssid_gui_sso | bool }}"
+
+- name: Run the pSSID GUI installer (config, certificates, containers)
+  ansible.builtin.command:
+    argv: "{{ pssid_gui_installer_argv }}"
+    chdir: "{{ pssid_gui_src }}"
+  when: pssid_gui_mode == 'prod'
+  changed_when: true
+  # Never print the OIDC client secret. On failure, re-run install.sh by hand
+  # in the source directory to see its full output.
+  no_log: "{{ pssid_gui_sso | bool }}"
+
+# ---- Development: hot-reload stack ------------------------------------------
+
+- name: Development stack
+  when: pssid_gui_mode == 'dev'
+  block:
+    - name: Ensure services/server/.env exists (compose mounts it as a file)
+      ansible.builtin.copy:
+        dest: "{{ pssid_gui_src }}/services/server/.env"
+        content: |
+          # Minimal development environment written by the Ansible dev playbook.
+          # The dev database runs without authentication on the internal network.
+          MONGODB_URI=mongodb://mongo:27017
+          BASE_URL=http://localhost:8888
+        force: false
+        mode: "0600"
+
+    - name: Start the development stack (hot reload)
+      ansible.builtin.command:
+        argv: [docker, compose, -f, docker-compose.local.yml, up, -d, --build]
+        chdir: "{{ pssid_gui_src }}"
+      environment:
+        EDITION: "{{ pssid_gui_edition }}"
+      changed_when: true
+
+# ---- Verify ------------------------------------------------------------------
+
+- name: Determine the health check URL
+  ansible.builtin.set_fact:
+    pssid_gui_health_url: >-
+      {{ 'http://localhost:8888/api/health' if pssid_gui_mode == 'dev'
+         else (('http' if pssid_gui_tls == 'none' else 'https') ~ '://localhost/api/health') }}
+
+- name: Wait for the application to become healthy
+  ansible.builtin.uri:
+    url: "{{ pssid_gui_health_url }}"
+    validate_certs: false
+    status_code: 200
+  register: pssid_gui_health
+  retries: 30
+  delay: 3
+  until: pssid_gui_health.status == 200
+
+- name: Deployment summary
+  ansible.builtin.debug:
+    msg: >-
+      pSSID GUI is up at
+      {{ 'http://localhost:8888' if pssid_gui_mode == 'dev'
+         else (('http' if pssid_gui_tls == 'none' else 'https') ~ '://' ~ pssid_gui_hostname) }}
+      (mode: {{ pssid_gui_mode }}, edition: {{ pssid_gui_edition }},
+      source: {{ pssid_gui_src }})

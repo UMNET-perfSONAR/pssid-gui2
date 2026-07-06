@@ -1,5 +1,4 @@
-Need to verify but I don't think anything in this folder is actually used. 
+This folder holds `hostSelection.vue`, the host picker used by the Host Groups
+page (Add and Edit forms) to select which hosts belong to a group.
 
-The idea behind this folder was to create smaller components for each input that we would render on the form (text, multiselect, singleselect, and integer). This would pair nicely with the ./components/cleaned_dynamic.vue
-
-Idea for future implementation^!
+An earlier FormKit scaffolding demo that lived here has been removed.

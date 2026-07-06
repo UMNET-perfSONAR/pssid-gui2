@@ -37,7 +37,7 @@ const getOneHostGroup = (async (req: Request, res: Response) => {
     const host_group = String(req.params.host_group);
     (await client).connect();
     var collection = (await client).db('gui').collection('host_groups');
-    var response = collection.find({"name": host_group}).project({_id:0}).toArray();
+    var response = await collection.find({"name": host_group}).project({_id:0}).toArray();
     res.send(response); 
   }
   catch(error) {

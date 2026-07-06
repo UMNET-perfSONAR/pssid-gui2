@@ -12,8 +12,10 @@ services:
     profiles:
       - sso
     container_name: redis
-    ports:
-      - "6379:6379"
+    # Internal only: the server reaches redis over the Docker network. Nothing
+    # on the host needs it, and redis runs without auth, so never publish it.
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -181,8 +183,6 @@ volumes:
   client_node_modules:
   server_node_modules:
   mongo_db:
-  npm_data:
-  npm_letsencrypt:
   redis_data:
 
 networks:

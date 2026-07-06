@@ -24,14 +24,5 @@ Component that lists arbitrary list of objects by name. Includes regex search ba
 <img width="800" alt="Screenshot 2023-08-03 at 1 42 35 PM" src="https://github.com/UMNET-perfSONAR/pssid-gui2/assets/74212084/2ad27f51-126e-4106-af32-007a25678a4c">
 
 
-### cleaned_dynamic.vue
-
-Same as dynamic_form.vue but much cleaner template. Not currently used but would recommend either this or something similar in the future to improve readability. 
-
-
-
-
-
-
 
 

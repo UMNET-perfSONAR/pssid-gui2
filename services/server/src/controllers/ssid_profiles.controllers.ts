@@ -62,10 +62,10 @@ const getSSIDProfiles = (async (req: Request, res: Response) =>{
  */
 const getOneSSIDProfile = (async (req: Request, res: Response) => {
   try {
-    const name = String(req.params.SSIDProfilename);
+    const name = String(req.params.ssidProfile);
     (await client).connect();
     var collection = (await client).db('gui').collection('ssid_profiles');
-    var response = collection.find({"name": name}).toArray();
+    var response = await collection.find({"name": name}).toArray();
     res.send(response); 
   }
   catch(error) {
@@ -89,7 +89,7 @@ const deleteSSIDProfile = (async (req:Request, res:Response) => {
     
     const deleted = await ssid_profile_col.findOne({ "name" : name });    
     
-    deleteDocument(batch_col, 'ssid_profiles', 'ssid_profile_ids', deleted?.name);        // delete references from other collections
+    await deleteDocument(batch_col, 'ssid_profiles', 'ssid_profile_ids', deleted?.name);        // delete references from other collections
     
     await ssid_profile_col.findOneAndDelete({ "name" : name });                           // remove from collection 
     

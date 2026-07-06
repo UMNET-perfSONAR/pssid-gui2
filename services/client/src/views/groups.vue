@@ -49,6 +49,7 @@
                 id="groups"
                 class="form-control"
               />
+              <small v-if="addGroupNameError" class="text-danger">{{ addGroupNameError }}</small>
             </div>
             <hostSelection v-if="mounted == true"
              :copy_of_data="copyOfData"
@@ -72,7 +73,7 @@
             <label for="params"> Metadata </label>
             <dynamic_add_data :addedData="addedData"></dynamic_add_data>
           </div>
-          <button class="btn btn-success" style="margin-bottom: 2em;"> Add Host Group </button>
+          <button class="btn btn-success" style="margin-bottom: 2em;" :disabled="!addGroupValid"> Add Host Group </button>
         </form>
       </fieldset>
       </div>
@@ -93,6 +94,7 @@
                 id="groups"
                 class="form-control"
               />
+              <small v-if="editGroupNameError" class="text-danger">{{ editGroupNameError }}</small>
             </div>
             <div class="form-group">
               <hostSelection :copy_of_data="hostsToEdit"></hostSelection>
@@ -115,7 +117,7 @@
           <label for="params"> Metadata </label>
           <dynamic_add_data :addedData="editOptionalData"></dynamic_add_data>
           <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
-            <button class="btn btn-success"> Update </button>
+            <button class="btn btn-success" :disabled="!editGroupValid"> Update </button>
             <button class="btn btn-danger" type="button" @click="requestDeleteGroup"> Delete </button>
           </div>
         </form>
@@ -140,6 +142,7 @@
  import PageHeader from '../components/PageHeader.vue';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
+ import { validName } from "../utils/validators.ts"
 
  export default defineComponent({
    components: { VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection, ConfirmModal, PageHeader },
@@ -192,6 +195,18 @@
    computed: {
      isDisabled() {
        return isFormDisabled();
+     },
+     addGroupNameError() {
+       return this.newGroup ? validName(this.newGroup).error : '';
+     },
+     addGroupValid() {
+       return validName(this.newGroup).valid;
+     },
+     editGroupNameError() {
+       return this.currentGroup && this.currentGroup.name ? validName(this.currentGroup.name).error : '';
+     },
+     editGroupValid() {
+       return validName((this.currentGroup && this.currentGroup.name) || '').valid;
      }
    },
 

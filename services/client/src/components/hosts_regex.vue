@@ -23,12 +23,13 @@
 <script>
  export default {
    props: {
-     regex_array: Array,
-     required: true
+     regex_array: {
+       type: Array,
+       required: true
+     }
    },
    methods: {
      add_regex() {
-       console.log(this.regex_array)
        this.regex_array.push({regex:''});
      },
      deleteParameter(counter) {

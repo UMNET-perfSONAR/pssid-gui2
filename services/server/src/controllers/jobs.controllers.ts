@@ -34,10 +34,10 @@ const getJobs = (async (req: Request, res: Response) =>{
  */
 const getOneJob = (async (req: Request, res: Response) => {
   try {
-    const name = String(req.params.hostname);
+    const name = String(req.params.job);
     (await client).connect();
     var collection = (await client).db('gui').collection('jobs');
-    var response = collection.find({"name": name}).toArray();
+    var response = await collection.find({"name": name}).toArray();
     res.send(response); 
   }
   catch(error) {
@@ -61,7 +61,7 @@ const deleteJob = (async (req:Request, res:Response) => {
     const batch_col = (await client).db('gui').collection('batches');
 
     const deleted = await job_col.findOne({ "name" : name });    
-    deleteDocument(batch_col, 'jobs', 'job_ids', deleted?.name);        // delete references from other collections
+    await deleteDocument(batch_col, 'jobs', 'job_ids', deleted?.name);        // delete references from other collections
 
     await job_col.findOneAndDelete({ "name" : name });       
 

@@ -45,6 +45,7 @@ import { useSsidStore } from '../stores/ssid_profiles_stores'
 import { useTestStore } from '../stores/test_store'
 import { useJobStore } from '../stores/job_store'
 import { useBatchStore } from '../stores/batches.store'
+import { useArchiverStore } from '../stores/archiver.store'
 import { useSettingsStore } from '../stores/settings.store'
 
 export default {
@@ -59,6 +60,7 @@ export default {
       testStore: useTestStore(),
       jobStore: useJobStore(),
       batchStore: useBatchStore(),
+      archiverStore: useArchiverStore(),
       settingsStore: useSettingsStore(),
       healthOk: false,
     }
@@ -72,8 +74,9 @@ export default {
         { label: 'Schedules',     icon: 'schedule',     to: '/schedules',     count: len(this.scheduleStore.schedules) },
         { label: 'SSID Profiles', icon: 'wifi',         to: '/ssid_profiles', count: len(this.ssidStore.ssid_profiles) },
         { label: 'Tests',         icon: 'science',      to: '/tests',         count: len(this.testStore.tests) },
-        { label: 'Jobs',          icon: 'work',         to: '/jobs',          count: len(this.jobStore.jobs) },
+        { label: 'Jobs',          icon: 'folder_copy',  to: '/jobs',          count: len(this.jobStore.jobs) },
         { label: 'Batches',       icon: 'inventory_2',  to: '/batches',       count: len(this.batchStore.batches) },
+        { label: 'Archivers',     icon: 'archive',      to: '/archivers',     count: len(this.archiverStore.archivers) },
       ];
     }
   },
@@ -87,6 +90,7 @@ export default {
       this.testStore.getTests(),
       this.jobStore.getJobs(),
       this.batchStore.getBatches(),
+      this.archiverStore.getArchivers(),
       this.settingsStore.getSettings(),
       this.checkHealth(),
     ]);

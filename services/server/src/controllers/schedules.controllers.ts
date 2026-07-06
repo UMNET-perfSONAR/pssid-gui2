@@ -43,7 +43,7 @@ const deleteSchedule = (async (req:Request, res:Response) => {
 
     const deleted = await schedule_col.findOne({ "name" : name });    
 
-    deleteDocument(batch_col, 'schedules', 'schedule_ids', deleted?.name);        // delete references from other collections
+    await deleteDocument(batch_col, 'schedules', 'schedule_ids', deleted?.name);        // delete references from other collections
 
     await schedule_col.findOneAndDelete({ "name" : name });       
 

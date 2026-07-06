@@ -7,6 +7,7 @@ and published images) are gathered in their own section near the end.
 ## Contents
 
 - [Prerequisites](#prerequisites)
+- [Deploying with Ansible](#deploying-with-ansible)
 - [Quickstart](#quickstart)
 - [What the installer does](#what-the-installer-does)
 - [Everyday operations](#everyday-operations)
@@ -38,6 +39,28 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 sudo systemctl enable --now docker
 sudo usermod -aG docker ${USER}   # log out and back in, or run: newgrp docker
 ```
+
+The Ansible playbook below performs these steps for you; installing Docker by
+hand is only needed for the plain installer path.
+
+## Deploying with Ansible
+
+The repository ships a role-based Ansible playbook under
+[`ansible/`](../ansible/README.md) that takes a fresh box to a running
+deployment, Docker included:
+
+```bash
+apt-get update && apt-get install -y git ansible
+git clone https://github.com/UMNET-perfSONAR/pssid-gui2.git /opt/pssid-gui
+cd /opt/pssid-gui/ansible
+ansible-playbook site.yml -e pssid_gui_hostname=pssid.example.edu
+```
+
+It uses two roles: `docker` installs Docker Engine and the compose plugin, and
+`pssid_webgui` runs the same installer described below, so both paths produce
+identical deployments. `ansible-playbook dev.yml` brings up the hot-reload
+development stack instead. Remote hosts, SSO, and all variables are covered in
+the [Ansible guide](../ansible/README.md).
 
 ## Quickstart
 
@@ -100,7 +123,18 @@ The Makefile wraps the common commands:
 | `make dev` | Local development stack on `http://localhost:8888` |
 | `make backup` / `make restore` | Back up or restore MongoDB |
 | `make doctor` | Check prerequisites and ports |
+| `make test` | Run every unit test (server and client; no stack needed) |
+| `make smoke` | Walk every user action against a running stack |
 | `make clean` | Stop the stack and remove its volumes (this deletes data) |
+
+`make test` covers the daemon-contract rules for the generated
+`pssid_config.json` (the shape rules the probes depend on) and every form
+validator. `make smoke` runs `scripts/smoke-test.sh` against a live stack
+(default `http://localhost:8888`; pass `SMOKE_URL=https://host` for another):
+it creates its own objects, exercises create/read/update/delete on every
+collection, the settings toggle, the provision preview, and reference cleanup
+on delete, then removes everything it created. The smoke test needs a
+writable stack; it aborts with instructions when the target is read-only.
 
 ## Demo data
 
@@ -317,11 +351,14 @@ A typical UMich install:
   --tls=letsencrypt --email=<team-alias>@umich.edu
 ```
 
-UMNET also maintains an Ansible playbook for deployment
-(`https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy.git`).
-Either approach works. The installer is convenient for a single host; the playbook
-fits where the controller is provisioned alongside other UMNET roles or across
-several hosts. Use whichever matches how the rest of the environment is managed.
+For an Ansible-managed install, use the playbook that ships in this repository
+([`ansible/`](../ansible/README.md)); it wraps the same installer with a
+`docker` role and a `pssid_webgui` role. UMNET separately maintains an older
+standalone playbook
+(`https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy.git`)
+that renders its own compose file under `/usr/lib/pssid`; it predates the
+in-repo playbook. Prefer the in-repo playbook unless the host is already
+managed by the standalone one.
 
 Release images are published under the `umnetworking` Docker Hub organization. Pin
 a release tag for reproducible deployments:
@@ -348,8 +385,9 @@ curl -k https://<host>/api/health    # server and database health
 
 A few common issues:
 
-- If a port is already in use (80, 443, 8000, 8080, or 27017), stop the other
-  service or change the mapping in `docker-compose.yml`.
+- If a port is already in use, stop the other service or change the mapping.
+  The production stack publishes only 80 and 443 (nginx); everything else stays
+  on the internal Docker network. The development stack publishes 8888.
 - The certificate warning under `--tls=self-signed` is expected; choose Advanced,
   then Proceed.
 - For an SSO redirect loop, check that `BASE_URL` and `COOKIE_DOMAIN` in

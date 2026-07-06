@@ -11,17 +11,29 @@ model: HTTPS, optional single sign-on, and an isolated Docker network.
 
 ## Quickstart
 
-On a host with Docker and Docker Compose:
+On a fresh Unix box, as root, the Ansible playbook does everything, including
+installing Docker:
 
 ```bash
-git clone <this-repo> pssid-gui
-cd pssid-gui
+apt-get update && apt-get install -y git ansible
+git clone https://github.com/UMNET-perfSONAR/pssid-gui2.git /opt/pssid-gui
+cd /opt/pssid-gui/ansible
+ansible-playbook site.yml -e pssid_gui_hostname=pssid.example.edu
+```
+
+Then open `https://pssid.example.edu`. The playbook uses two roles, `docker`
+and `pssid_webgui`; the [Ansible guide](ansible/README.md) covers remote
+hosts, SSO, editions, and the development stack (`ansible-playbook dev.yml`).
+
+If Docker is already installed, the installer alone does the same job:
+
+```bash
 ./install.sh
 ```
 
-The installer asks for the edition, hostname, SSO, and TLS settings, generates the
-secrets and certificates, writes the nginx config, and starts the containers. It
-can also run without prompts:
+It asks for the edition, hostname, SSO, and TLS settings, generates the
+secrets and certificates, writes the nginx config, and starts the containers.
+It can also run without prompts:
 
 ```bash
 ./install.sh -y --edition=default --hostname=pssid.example.com --tls=self-signed --sso=false
@@ -49,7 +61,8 @@ starter building blocks for a fresh install, not a full demo.
 ## Documentation
 
 The [deployment guide](docs/deployment.md) covers installation, single sign-on
-(including UMich Okta), TLS, editions, and the provisioning pipeline.
+(including UMich Okta), TLS, editions, and the provisioning pipeline. The
+[Ansible guide](ansible/README.md) covers the role-based deployment.
 
 ## System overview
 
@@ -106,6 +119,16 @@ setup.
   [test templates](services/server/README.md)
 - [Frontend directories](services/client/src/README.md) and
   [components](services/client/src/components/README.md)
+
+## Testing
+
+```bash
+make test     # all unit tests (config generation contract, validators)
+make smoke    # every user action, end to end, against a running stack
+```
+
+Both are wired into CI; the [deployment guide](docs/deployment.md#everyday-operations)
+describes what each covers.
 
 ## Troubleshooting
 

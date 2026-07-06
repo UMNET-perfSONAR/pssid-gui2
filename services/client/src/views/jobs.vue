@@ -10,7 +10,7 @@
     <PageHeader
       title="Jobs"
       subtitle="Combine tests into reusable job configurations"
-      icon="work"
+      icon="folder_copy"
       :can-add="!isDisabled && !showAddJob"
       add-label="Add Job"
       @add="addJobForm"
@@ -60,28 +60,30 @@
             </div>
 
             <div class="form-group">
-              <label style="margin-right:1em"> Continue-If:</label>
+              <label style="margin-right:1em"> Continue-If (jq):</label>
               <input
                 type="text"
-                placeholder="Enter here"
+                placeholder="jq expression, e.g. true"
                 required
                 class="form-control"
                 v-model="continue_if"
               />
+              <small v-if="continueIfError" class="text-danger">{{ continueIfError }}</small>
             </div>
 
             <div class="form-group">
-              <label style="margin-right:1em"> Backoff:</label>
+              <label style="margin-right:1em"> Backoff (ISO 8601 duration):</label>
               <input
                 type="text"
-                placeholder="Enter here"
+                placeholder="e.g. PT1S, PT30S, PT5M"
                 required
                 class="form-control"
                 v-model="backoff"
               />
+              <small v-if="backoffError" class="text-danger">{{ backoffError }}</small>
             </div>
 
-            <button class="btn btn-success" style="margin-right: 1em;"> Add Job </button>
+            <button class="btn btn-success" style="margin-right: 1em;" :disabled="!addJobValid"> Add Job </button>
           </div>
           </fieldset>
         </form>
@@ -116,29 +118,31 @@
             </div>
 
             <div class="form-group">
-              <label style="margin-right:1em"> Continue-If:</label>
+              <label style="margin-right:1em"> Continue-If (jq):</label>
               <input
                 type="text"
-                placeholder="Enter here"
+                placeholder="jq expression, e.g. true"
                 required
                 class="form-control"
                 v-model="currentItem['continue-if']"
               />
+              <small v-if="editContinueIfError" class="text-danger">{{ editContinueIfError }}</small>
             </div>
 
             <div class="form-group">
-              <label style="margin-right:1em"> Backoff:</label>
+              <label style="margin-right:1em"> Backoff (ISO 8601 duration):</label>
               <input
                 type="text"
-                placeholder="Enter here"
+                placeholder="e.g. PT1S, PT30S, PT5M"
                 required
                 class="form-control"
                 v-model="currentItem.backoff"
               />
+              <small v-if="editBackoffError" class="text-danger">{{ editBackoffError }}</small>
             </div>
 
             <div class="d-flex flex-wrap" style="gap: 0.5rem;">
-              <button class="btn btn-success"> Update </button>
+              <button class="btn btn-success" :disabled="!editJobValid"> Update </button>
               <button class="btn btn-danger" type="button" @click="requestDeleteJob"> Delete </button>
             </div>
           </div>
@@ -160,6 +164,7 @@
  import { useToastStore } from '../stores/toast.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
+ import { validName, validIso8601Duration, validJqClause } from "../utils/validators.ts"
 
  export default {
    components: { VueMultiselect, itemList, ConfirmModal, PageHeader },
@@ -200,6 +205,28 @@
    computed: {
      isDisabled() {
        return isFormDisabled();
+     },
+     backoffError() {
+       return this.backoff ? validIso8601Duration(this.backoff).error : '';
+     },
+     continueIfError() {
+       return this.continue_if ? validJqClause(this.continue_if).error : '';
+     },
+     addJobValid() {
+       return validName(this.jobName).valid &&
+              validIso8601Duration(this.backoff).valid &&
+              validJqClause(this.continue_if).valid;
+     },
+     editBackoffError() {
+       return this.currentItem.backoff ? validIso8601Duration(this.currentItem.backoff).error : '';
+     },
+     editContinueIfError() {
+       return this.currentItem['continue-if'] ? validJqClause(this.currentItem['continue-if']).error : '';
+     },
+     editJobValid() {
+       return validName(this.currentItem.name || '').valid &&
+              validIso8601Duration(this.currentItem.backoff || '').valid &&
+              validJqClause(this.currentItem['continue-if'] || '').valid;
      }
    },
 
@@ -220,8 +247,8 @@
      },
 
      submitJob() {
-       if (!this.validateNoWhitespace(this.backoff)) {
-         useToastStore().show("Backoff cannot contain whitespace", 'error');
+       if (!this.addJobValid) {
+         useToastStore().show('Please fix the highlighted fields', 'error');
          return;
        }
        if (this.jobName.length > 0) {
@@ -257,10 +284,8 @@
      },
 
      async editJob() {
-       if (!this.validateNoWhitespace(this.currentItem.backoff)) {
-         useToastStore().show("Backoff cannot contain whitespace", 'error');
-         this.currentItem = this.jobStore.jobs[this.currentIndex];
-         this.setActiveJob([this.currentItem, this.currentIndex]);
+       if (!this.editJobValid) {
+         useToastStore().show('Please fix the highlighted fields', 'error');
          return;
        }
        await this.jobStore.updateJob({
@@ -273,11 +298,6 @@
        await this.jobStore.getJobs();
        this.currentItem = this.jobStore.jobs[this.currentIndex];
        this.setActiveJob([this.currentItem, this.currentIndex]);
-     },
-
-     validateNoWhitespace(input) {
-       const whitespace = /\s/;
-       return !whitespace.test(input);
      }
    }
  }

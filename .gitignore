@@ -25,3 +25,6 @@ services/database/init-mongo.js
 .env.bak
 nginx.conf.bak
 www/
+
+# Site-specific Ansible inventories (copied from remote.example.ini)
+ansible/inventories/remote.ini

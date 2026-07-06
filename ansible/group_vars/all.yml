@@ -1,0 +1,35 @@
+---
+# pSSID GUI deployment settings.
+#
+# Every variable is optional; the defaults live in
+# roles/pssid_webgui/defaults/main.yml. Uncomment a line here to override it
+# for all hosts, or pass -e name=value on the command line for a single run.
+
+# prod (HTTPS stack behind nginx) or dev (hot reload on http://localhost:8888).
+# pssid_gui_mode: prod
+
+# Interface edition: default | umich
+# pssid_gui_edition: default
+
+# Public hostname of this deployment. Defaults to the machine's FQDN.
+# pssid_gui_hostname: pssid.example.edu
+
+# TLS mode: self-signed | letsencrypt | none
+# pssid_gui_tls: self-signed
+# pssid_gui_letsencrypt_email: you@example.edu
+
+# Single sign-on (OIDC). Store the secret in an Ansible Vault file rather than
+# here in plain text when committing inventories.
+# pssid_gui_sso: true
+# pssid_gui_oidc_issuer: https://umich.okta.com
+# pssid_gui_oidc_client_id: ...
+# pssid_gui_oidc_client_secret: ...
+
+# Source selection: auto | checkout | git (see roles/pssid_webgui/defaults).
+# pssid_gui_deploy_from: auto
+# pssid_gui_repo: https://github.com/UMNET-perfSONAR/pssid-gui2.git
+# pssid_gui_version: main
+# pssid_gui_install_dir: /opt/pssid-gui
+
+# Reuse existing local images instead of building.
+# pssid_gui_no_build: false

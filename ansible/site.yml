@@ -1,0 +1,22 @@
+---
+# Deploys the pSSID GUI on the target host: installs Docker, then installs,
+# configures, and starts the application stack (HTTPS behind nginx).
+#
+# Run from this directory:
+#
+#   ansible-playbook site.yml                                  # this machine
+#   ansible-playbook -i inventories/remote.ini site.yml        # a remote host
+#
+# Common overrides (all variables are documented in group_vars/all.yml):
+#
+#   ansible-playbook site.yml -e pssid_gui_hostname=pssid.example.edu
+#   ansible-playbook site.yml -e pssid_gui_edition=umich -e pssid_gui_sso=true \
+#       -e pssid_gui_oidc_issuer=https://umich.okta.com \
+#       -e pssid_gui_oidc_client_id=... -e pssid_gui_oidc_client_secret=...
+
+- name: Deploy pSSID GUI
+  hosts: pssid_gui
+  become: true
+  roles:
+    - docker
+    - pssid_webgui

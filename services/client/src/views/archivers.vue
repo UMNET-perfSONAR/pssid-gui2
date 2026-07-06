@@ -1,15 +1,19 @@
 <template>
   <div>
-    <!-- Loading page feedback -->
-    <div v-if="archiverStore.isLoading===true"> 
-      <p> Loading archivers page... </p>
+    <PageHeader
+      title="Archivers"
+      subtitle="Configure destinations where measurement results are sent"
+      icon="archive"
+      :can-add="!isDisabled && !showAddArchiver"
+      add-label="Add Archiver"
+      @add="addArchiverForm"
+    />
+
+    <div v-if="archiverStore.isLoading===true" class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading archivers…</span>
     </div>
 
-    <!-- Add ssid_profile button -->
-    <div>
-      <button @click="addArchiverForm" v-if="!showAddArchiver"
-        class="btn btn-primary" style="margin-bottom: 1em;"> Add Archiver </button>
-    </div>
     <h3>Archiver List</h3>
     <div class="list row"> 
       <!-- archiver list -->
@@ -20,6 +24,7 @@
       <!-- Add form page -->
       <div class="col-md-6" v-if="showAddArchiver == true">
         <h3> Add Archiver </h3>
+        <fieldset :disabled="isDisabled" :title="!enable_sso ? 'Please sign in to edit this form' : ''">
         <form>
           <!-- Non-dynamic components -->
           <div style="margin-bottom: 1em;">
@@ -54,11 +59,13 @@
             </dynamicForm>
           </div>
         </form>
+        </fieldset>
       </div>
 
       <!-- Edit form page -->
       <div class="col-md-6" v-if="showAddArchiver == false">
         <h3> Edit Archiver </h3>
+        <fieldset :disabled="isDisabled" :title="!enable_sso ? 'Please sign in to edit this form' : ''">
         <!-- Non-dynamic componenets -->
         <div style="margin-bottom: 1em;">
           <label> Archiver Name </label>
@@ -100,6 +107,7 @@
           >
           </dynamicForm>
         </div>
+        </fieldset>
 
       </div>
     </div>
@@ -108,14 +116,17 @@
 
 <script>
  import { useArchiverStore } from '../stores/archiver.store.ts';
+ import { useUserStore } from '/src/stores/user.store';
  import dynamicForm from '../components/dynamicform.vue';
  import editFormComp from '../components/edit_dynamic_form.vue';
  import VueMultiselect from 'vue-multiselect';
- import dynamic_add_data from '../components/dynamic_add_data.vue';
  import itemList from '../components/list_items.vue'
+ import PageHeader from '../components/PageHeader.vue';
  import { useToastStore } from '../stores/toast.store';
+ import config from '../shared/config';
+ import { isFormDisabled } from "../utils/formControl.ts"
  export default {
-   components: { dynamicForm, VueMultiselect, editFormComp, dynamic_add_data, itemList },
+   components: { dynamicForm, VueMultiselect, editFormComp, itemList, PageHeader },
    data() {
      return {
        mount: false,
@@ -157,14 +168,25 @@
        /*
         * Method(s) to access the store
         */
-       archiverStore: useArchiverStore()
+       archiverStore: useArchiverStore(),
+       userStore: useUserStore(),
+       enable_sso: config.ENABLE_SSO,
      }
    },
 
    async mounted() {
      await this.archiverStore.getArchivers();
      await this.archiverStore.getArchiverNames();
-     this.mount = true; 
+     if (this.enable_sso) {
+       await this.userStore.fetchUser();
+     }
+     this.mount = true;
+   },
+
+   computed: {
+     isDisabled() {
+       return isFormDisabled();
+     }
    },
 
    methods: {

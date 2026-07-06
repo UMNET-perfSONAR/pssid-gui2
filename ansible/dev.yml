@@ -1,0 +1,17 @@
+---
+# Brings up the local development stack (hot reload, no TLS) on this machine:
+#
+#   ansible-playbook dev.yml
+#
+# The stack serves http://localhost:8888 and reloads as you edit files under
+# services/*/src. Stop it with:  make dev-down  (or docker compose -f
+# docker-compose.local.yml down) from the repository root.
+
+- name: Deploy pSSID GUI (development mode)
+  hosts: pssid_gui
+  become: true
+  vars:
+    pssid_gui_mode: dev
+  roles:
+    - docker
+    - pssid_webgui

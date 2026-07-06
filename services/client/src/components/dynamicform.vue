@@ -5,7 +5,7 @@
       v-bind:key="index"
       class = 'form-group'>
       <div v-if="item.type==='text'">
-        <label> {{ item.name }} </label>
+        <label> {{ item.name }} <small class="text-muted">({{ item.type }})</small> </label>
         <input
           type="text"
           placeholder="Enter here"
@@ -16,7 +16,7 @@
       </div>
 
       <div v-if="item.type==='number'">
-        <label for="num"> {{ item.name }} </label>
+        <label for="num"> {{ item.name }} <small class="text-muted">({{ item.type }})</small> </label>
         <input
           type="number"
           placeholder="0"
@@ -27,7 +27,7 @@
       </div>
 
       <div v-if="item.type==='float'" >
-        <label for="num"> {{ item.name }} </label>
+        <label for="num"> {{ item.name }} <small class="text-muted">({{ item.type }})</small> </label>
         <input
           type="number"
           step="any"
@@ -52,7 +52,7 @@
       </div>
 
       <div v-if="item.type==='singleselect'">
-        <label> {{ item.name }} </label>
+        <label> {{ item.name }} <small class="text-muted">({{ item.type }})</small> </label>
         <VueMultiselect
           v-model="form_values[index].selected"
           :multiple="false"
@@ -73,7 +73,7 @@
 
       <div v-if="item.type==='toggle' && shouldDisplay(item)">
         <div>
-          <label> {{ item.name }} </label>
+          <label> {{ item.name }} <small class="text-muted">({{ item.type }})</small> </label>
         </div>
         <button
           type="button"
@@ -94,7 +94,6 @@
 </template>
 
 <script>
- import { ref } from 'vue'
  import VueMultiselect from 'vue-multiselect';
  import dynamic_add_data from './dynamic_add_data.vue';
  import { useToastStore } from '../stores/toast.store';

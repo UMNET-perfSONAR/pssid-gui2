@@ -39,10 +39,12 @@
           <div class="form-group">
             <label> Profile Name </label>
             <input type="text" placeholder="Enter profile name here" v-model="add_name" class="form-control" required />
+            <small v-if="addProfileNameError" class="text-danger">{{ addProfileNameError }}</small>
           </div>
           <div class="form-group">
             <label> SSID </label>
             <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="add_SSID" class="form-control" required />
+            <small v-if="addSsidNameError" class="text-danger">{{ addSsidNameError }}</small>
           </div>
           <div class="form-group">
             <label> Layer 2 Method </label>
@@ -59,7 +61,7 @@
             </select>
           </div>
           <div class="mb-3">
-            <button class="btn btn-success"> Add SSID Profile </button>
+            <button class="btn btn-success" :disabled="!addSsidValid"> Add SSID Profile </button>
           </div>
           </fieldset>
         </form>
@@ -73,10 +75,12 @@
           <div class="form-group">
             <label> Profile Name </label>
             <input type="text" placeholder="Enter profile name here" v-model="currentItem.name" class="form-control" required />
+            <small v-if="editProfileNameError" class="text-danger">{{ editProfileNameError }}</small>
           </div>
           <div class="form-group">
             <label> SSID </label>
             <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="currentItem.SSID" class="form-control" required />
+            <small v-if="editSsidNameError" class="text-danger">{{ editSsidNameError }}</small>
           </div>
           <div class="form-group">
             <label> Layer 2 Method </label>
@@ -93,7 +97,7 @@
             </select>
           </div>
           <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
-            <button class="btn btn-success"> Update </button>
+            <button class="btn btn-success" :disabled="!editSsidValid"> Update </button>
             <button class="btn btn-danger" type="button" @click="deleteCurItem"> Delete </button>
           </div>
           </fieldset>
@@ -111,6 +115,7 @@
  import PageHeader from '../components/PageHeader.vue';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
+ import { validName, validSsidNetworkName } from "../utils/validators.ts"
 
  export default {
    components: { itemList, PageHeader },
@@ -159,6 +164,28 @@
       noLayerScripts() {
         return this.layerScriptsStore.layer2_scripts.length === 0 ||
                this.layerScriptsStore.layer3_scripts.length === 0;
+      },
+      addProfileNameError() {
+        return this.add_name ? validName(this.add_name).error : '';
+      },
+      addSsidNameError() {
+        return this.add_SSID ? validSsidNetworkName(this.add_SSID).error : '';
+      },
+      addSsidValid() {
+        return validName(this.add_name).valid &&
+               validSsidNetworkName(this.add_SSID).valid &&
+               !!this.add_layer2_script && !!this.add_layer3_script;
+      },
+      editProfileNameError() {
+        return this.currentItem.name ? validName(this.currentItem.name).error : '';
+      },
+      editSsidNameError() {
+        return this.currentItem.SSID ? validSsidNetworkName(this.currentItem.SSID).error : '';
+      },
+      editSsidValid() {
+        return validName(this.currentItem.name || '').valid &&
+               validSsidNetworkName(this.currentItem.SSID || '').valid &&
+               !!this.currentItem.layer2_script && !!this.currentItem.layer3_script;
       }
     },
 

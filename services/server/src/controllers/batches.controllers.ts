@@ -37,10 +37,10 @@ const getBatches = (async (req: Request, res: Response) =>{
  */
 const getOneBatch = (async (req: Request, res: Response) => {
   try {
-    const batch = String(req.params.batch);
+    const batch = String(req.params.batchname);
     (await client).connect();
-    var collection = await (await client).db('gui').collection('batches');
-    var response = collection.find({"name": batch}).project({_id:0}).toArray();
+    var collection = (await client).db('gui').collection('batches');
+    var response = await collection.find({"name": batch}).project({_id:0}).toArray();
     res.send(response); 
   }
   catch(error) {

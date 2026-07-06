@@ -50,10 +50,11 @@
             <label> Test Interface </label>
             <input
               type="text"
-              placeholder="Enter here"
+              placeholder="Alphanumeric, e.g. wlan0"
               v-model="add_test_interface"
               class="form-control"
             />
+            <small v-if="addInterfaceError" class="text-danger">{{ addInterfaceError }}</small>
           </div>
           <div class="form-group">
             <label> SSID Profile Selection </label>
@@ -93,9 +94,10 @@
               class="form-control"
               v-model="add_priority"
             />
+            <small v-if="addPriorityError" class="text-danger">{{ addPriorityError }}</small>
           </div>
           <div class="mb-3">
-            <button class="btn btn-success"> Add Batch </button>
+            <button class="btn btn-success" :disabled="!addBatchValid"> Add Batch </button>
           </div>
           </fieldset>
         </form>
@@ -118,10 +120,11 @@
             <label> Test Interface </label>
             <input
               type="text"
-              placeholder="Enter here"
+              placeholder="Alphanumeric, e.g. wlan0"
               v-model="currentItem.test_interface"
               class="form-control"
             />
+            <small v-if="editInterfaceError" class="text-danger">{{ editInterfaceError }}</small>
           </div>
           <div class="form-group">
             <label> SSID Profile Selection </label>
@@ -162,9 +165,10 @@
               required
               v-model="currentItem.priority"
             />
+            <small v-if="editPriorityError" class="text-danger">{{ editPriorityError }}</small>
           </div>
           <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
-            <button class="btn btn-success"> Update </button>
+            <button class="btn btn-success" :disabled="!editBatchValid"> Update </button>
             <button class="btn btn-danger" type="button" @click="requestDeleteBatch"> Delete </button>
           </div>
           </fieldset>
@@ -187,6 +191,7 @@
  import { useUserStore } from '/src/stores/user.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
+ import { validName, validInterfaceName, validWholeNumber } from "../utils/validators.ts"
 
  export default {
    components: { itemList, VueMultiselect, ConfirmModal, PageHeader },
@@ -234,6 +239,28 @@
    computed: {
      isDisabled() {
        return isFormDisabled();
+     },
+     addInterfaceError() {
+       return this.add_test_interface ? validInterfaceName(this.add_test_interface).error : '';
+     },
+     addPriorityError() {
+       return String(this.add_priority) !== '' ? validWholeNumber(this.add_priority).error : '';
+     },
+     addBatchValid() {
+       return validName(this.add_name).valid &&
+              validInterfaceName(this.add_test_interface).valid &&
+              validWholeNumber(this.add_priority).valid;
+     },
+     editInterfaceError() {
+       return this.currentItem.test_interface ? validInterfaceName(this.currentItem.test_interface).error : '';
+     },
+     editPriorityError() {
+       return String(this.currentItem.priority ?? '') !== '' ? validWholeNumber(this.currentItem.priority).error : '';
+     },
+     editBatchValid() {
+       return validName(this.currentItem.name || '').valid &&
+              validInterfaceName(this.currentItem.test_interface || '').valid &&
+              validWholeNumber(this.currentItem.priority).valid;
      }
    },
 

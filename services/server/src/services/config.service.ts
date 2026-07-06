@@ -5,7 +5,6 @@ import { execFile } from 'node:child_process';
 
 import path from 'path';
 import fs from 'fs';
-const { writeFileSync } = require('fs');
 // The following paths are read in from paths_config.json. Initialize them to null
 // to ensure they are not used before being set in function `get_paths`.
 let output_directory: string | null = null;
@@ -36,7 +35,7 @@ async function get_collection(client: MongoClient, col: String) {
  * @param obj - full config file with additional *_ids fields
  * @returns - modified object with **_ids removed 
  */
-function removeIdsProperties(obj:any) {
+export function removeIdsProperties(obj:any) {
   for (const key in obj) {
     if (key.endsWith('_ids')) {
       delete obj[key];
@@ -53,7 +52,7 @@ function removeIdsProperties(obj:any) {
  * Pure function, returns the string so it can be written or previewed.
  * @param obj config file contents
  */
-function buildIniContent(obj:any): string {
+export function buildIniContent(obj:any): string {
   let iniContent = ''
   // print all hosts first
   for (const host of obj.hosts.map((item:{name:string})=> item.name)) {
@@ -194,9 +193,14 @@ function listScriptNames(dirPath: string): Set<string> | null {
  * traversal/injection characters are still stripped.
  *
  * @param ssid_data - the { ssid_profiles: [...] } object returned by get_collection
+ * @param pathsOverride - layer2/layer3 directories to check instead of the ones
+ *   in paths_config.json (used by tests for deterministic directory state)
  */
-function sanitizeSsidMethods(ssid_data: any) {
-  const paths = JSON.parse(
+export function sanitizeSsidMethods(
+  ssid_data: any,
+  pathsOverride?: { layer2_path: string; layer3_path: string }
+) {
+  const paths = pathsOverride ?? JSON.parse(
     fs.readFileSync(path.join(__dirname, '../../paths_config.json'), 'utf-8')
   );
   const layer2Names = listScriptNames(paths.layer2_path);
@@ -237,7 +241,7 @@ function sanitizeSsidMethods(ssid_data: any) {
  *
  * @param batch_data - the { batches: [...] } object returned by get_collection
  */
-function ensureBatchArchivers(batch_data: any) {
+export function ensureBatchArchivers(batch_data: any) {
   for (const batch of batch_data.batches ?? []) {
     if (!Array.isArray(batch.archivers)) {
       batch.archivers = [];
@@ -272,7 +276,7 @@ function ensureBatchArchivers(batch_data: any) {
  * @param obj - the fully-assembled config object (hosts, host_groups, schedules,
  *   ssid_profiles, tests, jobs, batches) prior to serialization
  */
-function assertDaemonValid(obj: any): void {
+export function assertDaemonValid(obj: any): void {
   const errors: string[] = [];
 
   const names = (arr: any): Set<string> =>
@@ -407,7 +411,7 @@ export function stripConfigMetadata(configStr: string | null): string {
  * on each host in the generated config so the daemon can resolve references (for
  * example a test destination or an interface name) per host.
  */
-function applyMetadata(host_data: any, host_group_data: any) {
+export function applyMetadata(host_data: any, host_group_data: any) {
   const asObject = (d: any): Record<string, any> =>
     (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
   const groupMetaByHost: Record<string, Record<string, any>> = {};
@@ -487,9 +491,9 @@ export function get_current_config(): { config: string | null; inventory: string
 export async function create_config_file(name: string, click_context: string, caller: string = 'unauthenticated', caller_role: string = 'unauthenticated') {
   const { config: config_content, inventory } = await build_config_payload({ caller, caller_role });
 
-  writeFileSync(ini_path, inventory);
+  fs.writeFileSync(ini_path as string, inventory);
   console.log("Writing config file...");
-  writeFileSync(config_path, config_content, 'utf8');
+  fs.writeFileSync(config_path as string, config_content, 'utf8');
 
   // Pass arguments as a vector (no shell) so a host/group name can never be
   // interpreted as shell syntax (command injection).

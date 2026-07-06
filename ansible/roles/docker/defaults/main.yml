@@ -1,0 +1,11 @@
+---
+# Docker Engine packages, installed from Docker's official apt repository.
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+# Repository architecture label for the current machine.
+docker_apt_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64', 'armv7l': 'armhf'}.get(ansible_architecture, 'amd64') }}"

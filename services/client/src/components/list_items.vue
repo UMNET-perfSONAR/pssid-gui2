@@ -68,8 +68,9 @@ export default {
       try {
         const regex = new RegExp(this.searchKey, 'uim');
         this.filteredArray = this.itemArray.filter(item => regex.test(item.name));
-      } catch (error) {
-        console.log(error);
+      } catch {
+        // A partially typed pattern (e.g. an unclosed "[") is not an error;
+        // keep the previous filter until the expression becomes valid.
       }
     },
     itemArray() {

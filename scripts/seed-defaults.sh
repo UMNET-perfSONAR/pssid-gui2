@@ -25,7 +25,7 @@ echo "Loading default data into '$DB_NAME' via container '$MONGO_CONTAINER'..."
 
 docker exec -i "$MONGO_CONTAINER" mongosh --quiet "$DB_NAME" <<'EOF'
 const names = {
-  schedules:     ['every 5 minutes', 'every hour', 'every 4 hours', 'every day at 23:00'],
+  schedules:     ['every 5 minutes', 'every hour', 'every 4 hours', 'every day at 16:00'],
   ssid_profiles: ['MWireless1', 'MWireless2', 'eduroam'],
   tests:         ['throughput-by-metadata'],
   host_groups:   ['all'],
@@ -39,7 +39,7 @@ db.schedules.insertMany([
   { name: 'every 5 minutes',    repeat: '*/5 * * * *' },
   { name: 'every hour',         repeat: '0 * * * *' },
   { name: 'every 4 hours',      repeat: '0 */4 * * *' },
-  { name: 'every day at 23:00', repeat: '0 23 * * *' },
+  { name: 'every day at 16:00', repeat: '0 16 * * *' },
 ]);
 
 // Two profiles sharing one SSID (MWireless) plus eduroam. Methods are required.

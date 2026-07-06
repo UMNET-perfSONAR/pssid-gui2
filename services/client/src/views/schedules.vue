@@ -37,10 +37,12 @@
                 id="name"
                 class="form-control"
               />
+              <small v-if="scheduleNameError" class="text-danger">{{ scheduleNameError }}</small>
             </div>
           </div>
           <cronstuff :init="cronExpression" @update-cron="cronExpression=$event"></cronstuff>
-          <button class="btn btn-success"> Add Schedule </button>
+          <small v-if="cronError" class="text-danger d-block mb-2">{{ cronError }}</small>
+          <button class="btn btn-success" :disabled="!addScheduleValid"> Add Schedule </button>
          </fieldset>
         </form>
       </div>
@@ -60,12 +62,14 @@
                 id="name"
                 class="form-control"
               />
+              <small v-if="editScheduleNameError" class="text-danger">{{ editScheduleNameError }}</small>
             </div>
           </div>
           <div>
             <cronstuff :init="currentItem.repeat" @update-cron="currentItem.repeat=$event"></cronstuff>
           </div>
-          <button class="btn btn-success" style="margin-right: 1em;"> Update </button>
+          <small v-if="editCronError" class="text-danger d-block mb-2">{{ editCronError }}</small>
+          <button class="btn btn-success" style="margin-right: 1em;" :disabled="!editScheduleValid"> Update </button>
           <button class="btn btn-danger" @click.prevent="deleteSchedule"> Delete </button>
           </fieldset>
         </form>
@@ -77,7 +81,6 @@
 </template>
 
 <script>
- import VueMultiselect from 'vue-multiselect'
  import { useScheduleStore } from '/src/stores/schedule_store';
  import { useUserStore } from '/src/stores/user.store';
  import cronstuff from '../components/cron.vue'
@@ -85,9 +88,10 @@
  import PageHeader from '../components/PageHeader.vue';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
+ import { validName, validCron } from "../utils/validators.ts"
 
  export default {
-   components: { VueMultiselect, cronstuff, itemList, PageHeader },
+   components: { cronstuff, itemList, PageHeader },
    data() {
      return {
        scheduleStore: useScheduleStore(),
@@ -117,6 +121,24 @@
    computed: {
       isDisabled() {
         return isFormDisabled();
+      },
+      scheduleNameError() {
+        return this.schedule_name ? validName(this.schedule_name).error : '';
+      },
+      cronError() {
+        return this.cronExpression ? validCron(this.cronExpression).error : '';
+      },
+      addScheduleValid() {
+        return validName(this.schedule_name).valid && validCron(this.cronExpression).valid;
+      },
+      editScheduleNameError() {
+        return this.currentItem.name ? validName(this.currentItem.name).error : '';
+      },
+      editCronError() {
+        return this.currentItem.repeat ? validCron(this.currentItem.repeat).error : '';
+      },
+      editScheduleValid() {
+        return validName(this.currentItem.name || '').valid && validCron(this.currentItem.repeat || '').valid;
       }
     },
 
@@ -200,4 +222,3 @@
    }
  }
 </script>
-<style src="vue-multiselect/dist/vue-multiselect.css"></style>

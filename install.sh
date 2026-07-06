@@ -147,14 +147,15 @@ ok "compose command: $COMPOSE"
 command -v openssl >/dev/null 2>&1 || die "openssl is required (for cert/secret generation)."
 ok "openssl found"
 
-# Warn (do not fail) on busy ports.
+# Warn (do not fail) on busy ports. Only nginx publishes ports to the host
+# (80/443); everything else stays on the internal Docker network.
 check_port() {
   local p="$1"
   if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$p "; then
     warn "Port $p already in use; the stack may fail to bind it."
   fi
 }
-for p in 80 443 8000 8080 27017; do check_port "$p"; done
+for p in 80 443; do check_port "$p"; done
 
 # ─── 2. Gather configuration ─────────────────────────────────────────────────
 step "Configuration"
@@ -410,12 +411,20 @@ ok "Containers started"
 
 # ─── 9. Health check ─────────────────────────────────────────────────────────
 step "Waiting for the server to become healthy"
-HEALTH_URL="http://localhost:8000/api/health"
+# Poll through nginx: it is the only published entry point (the server's port
+# 8000 stays on the internal Docker network), and nginx itself only starts
+# once the client and server containers report healthy, so a passing check
+# here means the whole chain is up. -k accepts the self-signed certificate.
+if [ "$TLS" = "none" ]; then
+  HEALTH_URL="http://localhost/api/health"
+else
+  HEALTH_URL="https://localhost/api/health"
+fi
 HEALTHY="false"
-for i in $(seq 1 30); do
-  if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then HEALTHY="true"; break; fi
+for i in $(seq 1 45); do
+  if curl -fsSk "$HEALTH_URL" >/dev/null 2>&1; then HEALTHY="true"; break; fi
   sleep 2
-  printf "  ${C_DIM}…still starting (%s/30)${C_RESET}\r" "$i"
+  printf "  ${C_DIM}…still starting (%s/45)${C_RESET}\r" "$i"
 done
 echo
 if [ "$HEALTHY" = "true" ]; then

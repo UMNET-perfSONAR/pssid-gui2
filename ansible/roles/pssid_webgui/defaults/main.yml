@@ -1,0 +1,38 @@
+---
+# Defaults for the pSSID GUI deployment. Override in group_vars/all.yml or on
+# the command line with -e. These are the single source of the default values;
+# group_vars/all.yml documents them and ships commented out.
+
+# prod: HTTPS stack behind nginx (docker-compose.yml), set up by install.sh.
+# dev:  hot-reload stack on http://localhost:8888 (docker-compose.local.yml).
+pssid_gui_mode: prod
+
+# Interface edition: default | umich
+pssid_gui_edition: default
+
+# Public hostname of this deployment (the URL users will visit).
+pssid_gui_hostname: "{{ ansible_fqdn | default('localhost', true) }}"
+
+# TLS mode passed to the installer: self-signed | letsencrypt | none
+pssid_gui_tls: self-signed
+pssid_gui_letsencrypt_email: ""
+
+# Single sign-on (OIDC). Supply the issuer and client values when enabling.
+pssid_gui_sso: false
+pssid_gui_oidc_issuer: ""
+pssid_gui_oidc_client_id: ""
+pssid_gui_oidc_client_secret: ""
+
+# Where the application source comes from.
+#   auto:     use the checkout this playbook is part of when it exists on the
+#             target (the usual case when deploying to localhost from a clone),
+#             otherwise clone from GitHub.
+#   checkout: always use the checkout containing this playbook.
+#   git:      always clone pssid_gui_repo at pssid_gui_version.
+pssid_gui_deploy_from: auto
+pssid_gui_repo: "https://github.com/UMNET-perfSONAR/pssid-gui2.git"
+pssid_gui_version: main
+pssid_gui_install_dir: /opt/pssid-gui
+
+# Skip the docker image build and reuse existing local images.
+pssid_gui_no_build: false

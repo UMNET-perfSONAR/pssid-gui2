@@ -27,7 +27,7 @@ docker exec -i "$MONGO_CONTAINER" mongosh --quiet "$DB_NAME" <<'EOF'
 // ---- idempotent cleanup of previous demo data -------------------------------
 const demoNames = {
   schedules:     [
-    'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 23:00',
+    'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 16:00',
     // Legacy demo names from older seed scripts; clean them up on re-run.
     'every-5-min', 'hourly', 'nightly'
   ],
@@ -51,7 +51,7 @@ const sIds = db.schedules.insertMany([
   { name: 'every 5 minutes',    repeat: '*/5 * * * *' },
   { name: 'every hour',         repeat: '0 * * * *' },
   { name: 'every 4 hours',      repeat: '0 */4 * * *' },
-  { name: 'every day at 23:00', repeat: '0 23 * * *' },
+  { name: 'every day at 16:00', repeat: '0 16 * * *' },
 ]).insertedIds;
 
 const pIds = db.ssid_profiles.insertMany([
@@ -94,7 +94,7 @@ const bIds = db.batches.insertMany([
     jobs: ['connectivity-suite'],            job_ids: [jIds[0]] },
   { name: 'core-batch', priority: 20, test_interface: 'wlan0',
     ssid_profiles: ['MWireless'], ssid_profile_ids: [pIds[0]],
-    schedules: ['every day at 23:00'],       schedule_ids: [sIds[3]],
+    schedules: ['every day at 16:00'],       schedule_ids: [sIds[3]],
     jobs: ['throughput-suite', 'connectivity-suite'], job_ids: [jIds[1], jIds[0]] },
 ]).insertedIds;
 

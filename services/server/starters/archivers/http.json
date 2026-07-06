@@ -1,0 +1,22 @@
+[
+    {
+        "name": "_url",
+        "type": "text",
+        "default": "",
+        "validator": "return input && !/\\s/.test(input);",
+        "description": "_url should be a nonempty URL, e.g. https://collector.example.edu/results"
+    },
+    {
+        "name": "op",
+        "type": "singleselect",
+        "options": [ { "name": "post" }, { "name": "put" } ],
+        "default": { "name": "post" }
+    },
+    {
+        "name": "timeout",
+        "type": "text",
+        "default": "PT10S",
+        "validator": "return input && !/\\s/.test(input);",
+        "description": "timeout should be an ISO 8601 duration, e.g. PT10S"
+    }
+]

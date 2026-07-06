@@ -59,12 +59,6 @@ const routes =  [
     name: "settings_page",
     component: () => import("./views/settings.vue")
   },
-  {
-    path: "/newform",
-    alias: "/newform",
-    name: "json_page",
-    component: () => import("./forms/addForm.vue")
-  },
 ];
 
 const router = createRouter({

@@ -39,8 +39,8 @@ const getOneHost = (async (req: Request, res: Response) => {
     const name = String(req.params.hostname);
     (await client).connect();
     var collection = (await client).db('gui').collection('hosts');
-    var response = collection.find({"name": name}).toArray();
-    res.send(response);  
+    var response = await collection.find({"name": name}).toArray();
+    res.send(response);
   }
   catch(error) {
     console.error(error);

@@ -12,7 +12,7 @@ EDITION ?= $(shell [ -f .env ] && sed -n 's/^EDITION=//p' .env || echo default)
 .DEFAULT_GOAL := help
 
 .PHONY: help install up down restart logs ps build dev dev-down seed-demo \
-        edition-umich edition-default backup restore doctor clean
+        edition-umich edition-default backup restore doctor clean test smoke
 
 help: ## Show this help
 	@echo "pSSID GUI make targets:"
@@ -52,6 +52,15 @@ dev-down: ## Stop the local dev stack
 seed-demo: ## Load the canonical demo dataset into the running MongoDB container
 	@bash scripts/seed-demo.sh
 
+test: ## Run all unit tests (server + client, no stack needed)
+	@echo "== server unit tests =="
+	@cd services/server && npx vitest run
+	@echo "== client unit tests =="
+	@cd services/client && npx vitest run
+
+smoke: ## End-to-end test of every user action against a running stack
+	@bash scripts/smoke-test.sh $(SMOKE_URL)
+
 edition-umich: ## Switch the client to the University of Michigan edition
 	@$(MAKE) --no-print-directory _set-edition EDITION=umich
 
@@ -77,7 +86,7 @@ doctor: ## Check prerequisites and port availability
 	@command -v docker >/dev/null 2>&1 && echo "  ok  docker: $$(docker --version | cut -d, -f1)" || echo "  ERR docker not found"
 	@$(COMPOSE) version >/dev/null 2>&1 && echo "  ok  compose: $(COMPOSE)" || echo "  ERR compose not found"
 	@command -v openssl >/dev/null 2>&1 && echo "  ok  openssl" || echo "  ERR openssl not found"
-	@for p in 80 443 8000 8080 27017; do \
+	@for p in 80 443 8888; do \
 		if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$$p "; then \
 			echo "  !   port $$p in use"; else echo "  ok  port $$p free"; fi; \
 	done

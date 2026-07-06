@@ -79,8 +79,6 @@
 </template>
 
 <script>
- import { onMounted } from 'vue';
- import { ref } from 'vue';
  import VueMultiselect from 'vue-multiselect';
  import dynamic_add_data from './dynamic_add_data.vue';
 

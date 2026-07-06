@@ -1,0 +1,83 @@
+---
+# Installs Docker Engine and the compose plugin from Docker's official apt
+# repository (the same steps documented in docs/deployment.md) and makes sure
+# the daemon is running. When Docker is already installed, the installation
+# steps are skipped and the existing setup is left untouched.
+
+- name: Check whether Docker is already installed
+  ansible.builtin.command: docker --version
+  register: docker_present
+  changed_when: false
+  failed_when: false
+
+- name: Install Docker Engine (Debian/Ubuntu)
+  when: docker_present.rc != 0
+  block:
+    - name: Verify the OS is supported for automatic installation
+      ansible.builtin.assert:
+        that: ansible_os_family == 'Debian'
+        fail_msg: >-
+          Automatic Docker installation supports Debian and Ubuntu only.
+          Install Docker Engine manually (https://docs.docker.com/engine/install/)
+          and re-run this playbook.
+
+    - name: Install prerequisites for the Docker repository
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+        update_cache: true
+
+    - name: Create the apt keyring directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Download Docker's GPG key
+      ansible.builtin.get_url:
+        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Add Docker's apt repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [arch={{ docker_apt_arch }} signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/{{ ansible_distribution | lower }}
+          {{ ansible_distribution_release }} stable
+        filename: docker
+        state: present
+
+    - name: Install Docker Engine and the compose plugin
+      ansible.builtin.apt:
+        name: "{{ docker_packages }}"
+        state: present
+        update_cache: true
+
+- name: Make sure the Docker service is enabled and running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Check for the compose plugin
+  ansible.builtin.command: docker compose version
+  register: compose_plugin
+  changed_when: false
+  failed_when: false
+
+- name: Check for standalone docker-compose
+  ansible.builtin.command: docker-compose version
+  register: compose_standalone
+  changed_when: false
+  failed_when: false
+  when: compose_plugin.rc != 0
+
+- name: Fail when no Docker Compose implementation is present
+  ansible.builtin.fail:
+    msg: >-
+      Docker Compose is not available. Install the docker-compose-plugin
+      package (or standalone docker-compose) and re-run this playbook.
+  when: compose_plugin.rc != 0 and (compose_standalone.rc | default(1)) != 0

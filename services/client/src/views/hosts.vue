@@ -38,13 +38,14 @@
             <label for="hosts"> Hosts </label>
             <input
               type="text"
-              placeholder="Enter hostname"
+              placeholder="Hostname or IP address"
               v-model="hostname"
               required
               id="hosts"
               name="host form"
               class="form-control"
             >
+            <small v-if="hostnameError" class="text-danger">{{ hostnameError }}</small>
           </div>
           <div class="form-group">
             <label> Batches </label>
@@ -60,7 +61,7 @@
           </div>
           <p> Metadata </p>
           <dynamic_add_data :addedData="addedOptionalData"></dynamic_add_data>
-          <button class="btn btn-success"> Add Host </button>
+          <button class="btn btn-success" :disabled="!addHostValid"> Add Host </button>
         </fieldset>
         </form>
       </div>
@@ -74,13 +75,14 @@
             <label for="hosts"> Hosts </label>
             <input
               type="text"
-              placeholder="Enter hostname"
+              placeholder="Hostname or IP address"
               v-model="this.currentItem.name"
               required
               id="hosts"
               name="host form"
               class="form-control"
             >
+            <small v-if="editHostnameError" class="text-danger">{{ editHostnameError }}</small>
           </div>
           <div class="form-group">
             <label> Batches </label>
@@ -94,7 +96,7 @@
           </div>
           <dynamic_add_data :addedData="currOptionalData"></dynamic_add_data>
           <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
-            <button class="btn btn-success"> Update </button>
+            <button class="btn btn-success" :disabled="!editHostValid"> Update </button>
             <button class="btn btn-danger" type="button" @click="requestDeleteHost"> Delete </button>
           </div>
         </fieldset>
@@ -117,6 +119,7 @@
  import PageHeader from '../components/PageHeader.vue';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
+ import { validHostOrIp } from "../utils/validators.ts"
 
  export default defineComponent({
    components: { itemList, dynamic_add_data, VueMultiselect, ConfirmModal, PageHeader },
@@ -158,6 +161,18 @@
    computed: {
      isDisabled() {
        return isFormDisabled();
+     },
+     hostnameError() {
+       return this.hostname ? validHostOrIp(this.hostname).error : '';
+     },
+     addHostValid() {
+       return validHostOrIp(this.hostname).valid;
+     },
+     editHostnameError() {
+       return this.currentItem && this.currentItem.name ? validHostOrIp(this.currentItem.name).error : '';
+     },
+     editHostValid() {
+       return validHostOrIp((this.currentItem && this.currentItem.name) || '').valid;
      }
    },
 
