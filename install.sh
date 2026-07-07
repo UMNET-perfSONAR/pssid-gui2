@@ -382,12 +382,12 @@ step "Preparing probe runtime directories"
 if [ "$(uname -s)" = "Linux" ]; then
   SUDO=""; [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
   $SUDO mkdir -p /usr/lib/exec/pssid \
-    /var/lib/pssid/plugins/tests /var/lib/pssid/plugins/archivers \
+    /var/lib/pssid/plugins/tests \
     /var/lib/pssid/plugins/layer2 /var/lib/pssid/plugins/layer3 \
     /var/lib/pssid/output 2>/dev/null || warn "Could not create /var/lib/pssid (insufficient permissions)"
   ok "Runtime directories ready"
 
-  # Note: the layer 2 / layer 3 (and tests/archivers) starter methods are seeded
+  # Note: the layer 2 / layer 3 (and tests) starter methods are seeded
   # into these directories by the server container's entrypoint.sh on every start
   # (it copies services/server/starters/* into plugins/), so no host-side copy is
   # needed here. We only ensure the directories exist as bind-mount sources.
