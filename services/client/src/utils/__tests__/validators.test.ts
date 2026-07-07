@@ -41,7 +41,7 @@ describe('validName (RFC 1123: host/group/profile names)', () => {
 describe('validDisplayName (human-readable labels, e.g. schedule names)', () => {
   it.each([
     'Every 5 minutes',
-    'Every hour',
+    'Every 1 hour',
     'Every 4 hours',
     'Every day at 23:00',   // the shipped defaults must all pass
     'scheduled-run_v2.1',
@@ -69,7 +69,7 @@ describe('validHostOrIp (hosts may also be addresses)', () => {
 });
 
 describe('validSsidNetworkName (IEEE 802.11: 1-32 bytes)', () => {
-  it.each(['eduroam', 'Campus WiFi', 'a', 'x'.repeat(32)])(
+  it.each(['MWireless', 'Campus WiFi', 'a', 'x'.repeat(32)])(
     'accepts %s', (v) => expect(validSsidNetworkName(v).valid).toBe(true));
 
   it('rejects empty and over 32 bytes', () => {

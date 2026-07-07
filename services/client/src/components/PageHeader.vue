@@ -7,6 +7,7 @@
       v-if="canAdd"
       class="page-header-add"
       type="button"
+      :disabled="addDisabled"
       :title="addLabel"
       @click="$emit('add')"
     >
@@ -27,11 +28,14 @@ export default {
     title:    { type: String, required: true },
     subtitle: { type: String, default: '' },
     icon:     { type: String, default: 'settings' },
-    // When canAdd is true a green "+ Add ..." button is shown between the icon
-    // and the title; clicking it switches the page into a new-item form.
-    // The form's own Add/Update button performs the save.
-    canAdd:   { type: Boolean, default: false },
-    addLabel: { type: String, default: 'Add' }
+    // Pages with an Add form show a permanent "+ Add ..." button between the
+    // icon and the title. It doubles as the submit control: the page keeps it
+    // grey (addDisabled) until every field of the new item is valid, and a
+    // click then saves it. When the page is showing an item instead, the
+    // click switches back to a blank Add form.
+    canAdd:      { type: Boolean, default: false },
+    addDisabled: { type: Boolean, default: false },
+    addLabel:    { type: String, default: 'Add' }
   },
   emits: ['add']
 }
@@ -52,8 +56,20 @@ export default {
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background .12s;
+  transition: background .12s, border-color .12s, color .12s;
 }
-.page-header-add:hover { background: #16a34a; color: #fff; }
+.page-header-add:hover:not(:disabled) { background: #16a34a; color: #fff; }
+.page-header-add:disabled {
+  background: #a7b0bc;
+  border-color: #a7b0bc;
+  color: #fff;
+  cursor: not-allowed;
+}
 .page-header-add .material-icons { font-size: 1.15rem; color: inherit; }
+
+:global(:root[data-theme="dark"]) .page-header-add:disabled {
+  background: #33415c;
+  border-color: #33415c;
+  color: #93a1b5;
+}
 </style>

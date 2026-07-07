@@ -84,7 +84,7 @@
         </button>
       </div>
     </div>
-    <div>
+    <div v-if="showSubmit">
       <button class="btn btn-success" type="submit" style="margin-right: 1em;" :disabled="submitDisabled">
         {{ submitLabel }}
       </button>
@@ -120,6 +120,12 @@
      submitDisabled: {
        type: Boolean,
        default: false
+     },
+     // Hidden when the parent provides its own submit control (the header
+     // "+ Add ..." button calls handleFormSubmit through a ref instead).
+     showSubmit: {
+       type: Boolean,
+       default: true
      }
 
    },

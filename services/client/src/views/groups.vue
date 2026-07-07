@@ -11,9 +11,10 @@
       title="Host Groups"
       subtitle="Organize hosts into groups for bulk provisioning"
       icon="lan"
-      :can-add="!isDisabled && !showAddGroup"
+      :can-add="true"
+      :add-disabled="isDisabled || (showAddGroup && !addGroupValid)"
       add-label="Add Host Group"
-      @add="addGroupForm"
+      @add="onHeaderAdd"
     />
 
     <div v-if="hostGroup.isLoading===true" class="loading-state">
@@ -73,7 +74,6 @@
             <label for="params"> Metadata </label>
             <dynamic_add_data :addedData="addedData"></dynamic_add_data>
           </div>
-          <button class="btn btn-success" style="margin-bottom: 2em;" :disabled="!addGroupValid"> Add Host Group </button>
         </form>
       </fieldset>
       </div>
@@ -232,7 +232,19 @@
        this.editRegex = this.currentGroup.hosts_regex.map(item => ({ regex: item }));
      },
 
+     // The header "+ Add Host Group" button doubles as the submit control: it
+     // opens a blank form when a group is shown, and saves the new group once
+     // every field is valid.
+     onHeaderAdd() {
+       if (!this.showAddGroup) {
+         this.addGroupForm();
+       } else {
+         this.handleSubmit();
+       }
+     },
+
      async handleSubmit() {
+       if (!this.addGroupValid) return;   // also guards Enter-key submission
        this.selectedHosts = this.copyOfData.filter(h => h.selected == true);
        if (this.newGroup.length > 0) {
          const spec_object = this.addedData.reduce((result, item) => {

@@ -81,8 +81,8 @@ directory, no code change is required.
 These fields are written into the ssid_profile document and are emitted unchanged
 into the generated `pssid_config.json` (the whole `ssid_profiles` collection is
 serialized), so the daemon reads the connection methods from each SSID profile.
-Multiple profiles may share the same `SSID` (for example two profiles both
-pointing at `Campus-WiFi`) while differing in their methods.
+Multiple profiles may share the same `SSID` (for example `MWireless1` and
+`MWireless2` both pointing at `MWireless`) while differing in their methods.
 
 ## Security model for selectable scripts
 

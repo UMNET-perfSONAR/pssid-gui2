@@ -4,9 +4,10 @@
       title="Schedules"
       subtitle="Define when and how often batches run on your probes"
       icon="schedule"
-      :can-add="!isDisabled && !showAddSchedule"
+      :can-add="true"
+      :add-disabled="isDisabled || (showAddSchedule && !addScheduleValid)"
       add-label="Add Schedule"
-      @add="addScheduleForm"
+      @add="onHeaderAdd"
     />
 
     <div v-if="scheduleStore.isLoading===true" class="loading-state">
@@ -42,7 +43,6 @@
           </div>
           <cronstuff :init="cronExpression" @update-cron="cronExpression=$event"></cronstuff>
           <small v-if="cronError" class="text-danger d-block mb-2">{{ cronError }}</small>
-          <button class="btn btn-success" :disabled="!addScheduleValid"> Add Schedule </button>
          </fieldset>
         </form>
       </div>
@@ -183,7 +183,19 @@
      },
 
      // submit schedule - pass along to addSchedule in schedule store 
+     // The header "+ Add Schedule" button doubles as the submit control: it
+     // opens a blank form when a schedule is shown, and saves the new schedule
+     // once every field is valid.
+     onHeaderAdd() {
+       if (!this.showAddSchedule) {
+         this.addScheduleForm();
+       } else {
+         this.submitSchedule();
+       }
+     },
+
      async submitSchedule() {
+       if (!this.addScheduleValid) return;   // also guards Enter-key submission
        await this.scheduleStore.addSchedule({
          "name": this.schedule_name,
          "repeat": this.cronExpression

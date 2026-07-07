@@ -27,16 +27,16 @@ docker exec -i "$MONGO_CONTAINER" mongosh --quiet "$DB_NAME" <<'EOF'
 // ---- idempotent cleanup of previous demo data -------------------------------
 const demoNames = {
   schedules:     [
-    'Every 5 minutes', 'Every hour', 'Every 4 hours', 'Every day at 23:00',
+    'Every 5 minutes', 'Every 1 hour', 'Every 4 hours', 'Every day at 23:00',
     // Legacy demo names from older seed scripts; clean them up on re-run.
     // These are cleanup keys only, not the current displayed default schedules.
-    'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 23:00',
+    'Every hour', 'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 23:00',
     'every-5-min', 'hourly', 'nightly', 'every day at 16:00'
   ],
   ssid_profiles: [
-    'campus-wifi', 'eduroam', 'guest-wifi',
+    'MWireless', 'eduroam', 'MGuest',
     // Legacy demo names from older seed scripts; clean them up on re-run.
-    'MWireless', 'MGuest'
+    'campus-wifi', 'guest-wifi'
   ],
   tests:         ['http-google', 'ping-gateway', 'dns-resolve', 'throughput-iperf'],
   // The archivers feature was removed from the GUI; purge the legacy demo doc so
@@ -60,15 +60,15 @@ db.provision_history.deleteMany({ caller: 'demo@seed' });
 // ---- leaf objects -----------------------------------------------------------
 const sIds = db.schedules.insertMany([
   { name: 'Every 5 minutes',    repeat: '*/5 * * * *' },
-  { name: 'Every hour',         repeat: '0 * * * *' },
+  { name: 'Every 1 hour',       repeat: '0 * * * *' },
   { name: 'Every 4 hours',      repeat: '0 */4 * * *' },
   { name: 'Every day at 23:00', repeat: '0 23 * * *' },
 ]).insertedIds;
 
 const pIds = db.ssid_profiles.insertMany([
-  { name: 'campus-wifi', SSID: 'Campus-WiFi', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
-  { name: 'eduroam',     SSID: 'eduroam',     layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
-  { name: 'guest-wifi',  SSID: 'Guest-WiFi',  layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'MWireless', SSID: 'MWireless', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'eduroam',   SSID: 'eduroam',   layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'MGuest',    SSID: 'MGuest',    layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
 ]).insertedIds;
 
 const tIds = db.tests.insertMany([
@@ -100,11 +100,11 @@ const jIds = db.jobs.insertMany([
 // ---- batches (wire jobs, schedules, SSID profiles) --------------------------
 const bIds = db.batches.insertMany([
   { name: 'edge-batch', priority: 10, test_interface: 'wlan0',
-    ssid_profiles: ['campus-wifi', 'eduroam'], ssid_profile_ids: [pIds[0], pIds[1]],
-    schedules: ['Every 5 minutes', 'Every hour'],    schedule_ids: [sIds[0], sIds[1]],
+    ssid_profiles: ['MWireless', 'eduroam'], ssid_profile_ids: [pIds[0], pIds[1]],
+    schedules: ['Every 5 minutes', 'Every 1 hour'],  schedule_ids: [sIds[0], sIds[1]],
     jobs: ['connectivity-suite'],            job_ids: [jIds[0]] },
   { name: 'core-batch', priority: 20, test_interface: 'wlan0',
-    ssid_profiles: ['campus-wifi'], ssid_profile_ids: [pIds[0]],
+    ssid_profiles: ['MWireless'], ssid_profile_ids: [pIds[0]],
     schedules: ['Every day at 23:00'],       schedule_ids: [sIds[3]],
     jobs: ['throughput-suite', 'connectivity-suite'], job_ids: [jIds[1], jIds[0]] },
 ]).insertedIds;

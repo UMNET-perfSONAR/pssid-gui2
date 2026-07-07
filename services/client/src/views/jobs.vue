@@ -11,9 +11,10 @@
       title="Jobs"
       subtitle="Combine tests into reusable job configurations"
       icon="folder_copy"
-      :can-add="!isDisabled && !showAddJob"
+      :can-add="true"
+      :add-disabled="isDisabled || (showAddJob && !addJobValid)"
       add-label="Add Job"
-      @add="addJobForm"
+      @add="onHeaderAdd"
     />
 
     <div v-if="jobStore.isLoading===true" class="loading-state">
@@ -82,8 +83,6 @@
               />
               <small v-if="backoffError" class="text-danger">{{ backoffError }}</small>
             </div>
-
-            <button class="btn btn-success" style="margin-right: 1em;" :disabled="!addJobValid"> Add Job </button>
           </div>
           </fieldset>
         </form>
@@ -244,6 +243,17 @@
        this.currentIndex = indexArray[1];
        this.showAddJob = false;
        this.old_job_name = this.currentItem.name;
+     },
+
+     // The header "+ Add Job" button doubles as the submit control: it opens
+     // a blank form when a job is shown, and saves the new job once every
+     // field is valid.
+     onHeaderAdd() {
+       if (!this.showAddJob) {
+         this.addJobForm();
+       } else {
+         this.submitJob();
+       }
      },
 
      submitJob() {

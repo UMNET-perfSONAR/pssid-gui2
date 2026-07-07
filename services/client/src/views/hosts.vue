@@ -11,9 +11,10 @@
       title="Hosts"
       subtitle="Manage network probe hosts and their batch assignments"
       icon="computer"
-      :can-add="!isDisabled && !showAddHost"
+      :can-add="true"
+      :add-disabled="isDisabled || (showAddHost && !addHostValid)"
       add-label="Add Host"
-      @add="addHostComp"
+      @add="onHeaderAdd"
     />
 
     <!-- buttons -->
@@ -61,7 +62,6 @@
           </div>
           <p> Metadata </p>
           <dynamic_add_data :addedData="addedOptionalData"></dynamic_add_data>
-          <button class="btn btn-success" :disabled="!addHostValid"> Add Host </button>
         </fieldset>
         </form>
       </div>
@@ -204,7 +204,19 @@
        this.updateActiveHost([this.currentItem, this.currentIndex]);
      },
 
+     // The header "+ Add Host" button doubles as the submit control: it opens
+     // a blank form when an item is shown, and saves the new host once every
+     // field is valid.
+     onHeaderAdd() {
+       if (!this.showAddHost) {
+         this.addHostComp();
+       } else {
+         this.submitHost();
+       }
+     },
+
      async submitHost() {
+       if (!this.addHostValid) return;   // also guards Enter-key submission
        const spec_object = this.addedOptionalData.reduce((result, item) => {
          result[item.key] = item.value;
          return result;

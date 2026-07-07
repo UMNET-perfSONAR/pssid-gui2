@@ -4,9 +4,10 @@
       title="Tests"
       subtitle="Define the performance tests run by each job"
       icon="science"
-      :can-add="!isDisabled && !showAddTest"
+      :can-add="true"
+      :add-disabled="isDisabled || (showAddTest && !addTestValid)"
       add-label="Add Test"
-      @add="addTestForm"
+      @add="onHeaderAdd"
     />
 
     <div v-if="testStore.isLoading===true" class="loading-state">
@@ -55,12 +56,13 @@
           <!-- dynamic componnent-->
           <div v-if="showForm===true">
             <dynamicform
+              ref="addDynForm"
               @formData="handleSubmit"
               :form_layout="allTestOptions"
               :current_item="selected_test"
               :optional_data="addedOptionalData"
               submit-label="Add Test"
-              :submit-disabled="!addTestValid"
+              :show-submit="false"
             >
             </dynamicform>
           </div>
@@ -202,6 +204,17 @@
     },
 
    methods: {
+     // The header "+ Add Test" button doubles as the submit control: it opens
+     // a blank form when a test is shown, and submits the dynamic form (which
+     // validates its template fields) once the name and type are in place.
+     onHeaderAdd() {
+       if (!this.showAddTest) {
+         this.addTestForm();
+       } else if (this.$refs.addDynForm) {
+         this.$refs.addDynForm.handleFormSubmit();
+       }
+     },
+
      addTestForm() {
        // Set control variables.
        this.showAddTest = true;

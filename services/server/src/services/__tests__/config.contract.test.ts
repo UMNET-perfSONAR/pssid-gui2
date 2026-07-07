@@ -31,7 +31,7 @@ function validConfig() {
       { name: 'all', hosts: ['probe-1'], batches: ['batch-1'], hosts_regex: ['.*'], data: {} },
     ],
     schedules: [
-      { name: 'Every hour', repeat: '0 * * * *' },
+      { name: 'Every 1 hour', repeat: '0 * * * *' },
     ],
     ssid_profiles: [
       { name: 'campus', SSID: 'Campus-WiFi', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
@@ -49,7 +49,7 @@ function validConfig() {
         test_interface: 'wlan0',
         ssid_profiles: ['campus'],
         jobs: ['job-1'],
-        schedules: ['Every hour'],
+        schedules: ['Every 1 hour'],
       },
     ],
   };

@@ -11,9 +11,10 @@
       title="Batches"
       subtitle="Group jobs, schedules, and SSID profiles into deployable probe configurations"
       icon="work_history"
-      :can-add="!isDisabled && !showAddBatch"
+      :can-add="true"
+      :add-disabled="isDisabled || (showAddBatch && !addBatchValid)"
       add-label="Add Batch"
-      @add="addBatchForm"
+      @add="onHeaderAdd"
     />
 
     <div v-if="batchStore.isLoading===true" class="loading-state">
@@ -95,9 +96,6 @@
               v-model="add_priority"
             />
             <small v-if="addPriorityError" class="text-danger">{{ addPriorityError }}</small>
-          </div>
-          <div class="mb-3">
-            <button class="btn btn-success" :disabled="!addBatchValid"> Add Batch </button>
           </div>
           </fieldset>
         </form>
@@ -278,7 +276,19 @@
        this.old_batchname = this.currentItem.name;
      },
 
+     // The header "+ Add Batch" button doubles as the submit control: it
+     // opens a blank form when a batch is shown, and saves the new batch once
+     // every field is valid.
+     onHeaderAdd() {
+       if (!this.showAddBatch) {
+         this.addBatchForm();
+       } else {
+         this.addBatch();
+       }
+     },
+
      async addBatch() {
+       if (!this.addBatchValid) return;   // also guards Enter-key submission
        await this.batchStore.addBatch({
          name: this.add_name,
          test_interface: this.add_test_interface,

@@ -4,9 +4,10 @@
       title="SSID Profiles"
       subtitle="A wireless network plus the layer 2 and layer 3 methods used to connect to it"
       icon="wifi"
-      :can-add="!isDisabled && !showAddSSID"
+      :can-add="true"
+      :add-disabled="isDisabled || (showAddSSID && !addSsidValid)"
       add-label="Add SSID Profile"
-      @add="addSsidForm"
+      @add="onHeaderAdd"
     />
 
     <div v-if="mount && noLayerScripts" class="alert alert-warning" role="alert">
@@ -43,7 +44,7 @@
           </div>
           <div class="form-group">
             <label> SSID </label>
-            <input type="text" placeholder="Wireless network name, e.g. eduroam" v-model="add_SSID" class="form-control" required />
+            <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="add_SSID" class="form-control" required />
             <small v-if="addSsidNameError" class="text-danger">{{ addSsidNameError }}</small>
           </div>
           <div class="form-group">
@@ -59,9 +60,6 @@
               <option value="" disabled>-- Select Layer 3 Method --</option>
               <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
             </select>
-          </div>
-          <div class="mb-3">
-            <button class="btn btn-success" :disabled="!addSsidValid"> Add SSID Profile </button>
           </div>
           </fieldset>
         </form>
@@ -79,7 +77,7 @@
           </div>
           <div class="form-group">
             <label> SSID </label>
-            <input type="text" placeholder="Wireless network name, e.g. eduroam" v-model="currentItem.SSID" class="form-control" required />
+            <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="currentItem.SSID" class="form-control" required />
             <small v-if="editSsidNameError" class="text-danger">{{ editSsidNameError }}</small>
           </div>
           <div class="form-group">
@@ -221,7 +219,19 @@
      }
     },
 
+     // The header "+ Add SSID Profile" button doubles as the submit control:
+     // it opens a blank form when a profile is shown, and saves the new
+     // profile once every field is valid.
+     onHeaderAdd() {
+       if (!this.showAddSSID) {
+         this.addSsidForm();
+       } else {
+         this.addSsid();
+       }
+     },
+
      async addSsid() {
+       if (!this.addSsidValid) return;   // also guards Enter-key submission
        await this.ssidStore.addSsidProfile({
          name: this.add_name,
          SSID: this.add_SSID,
