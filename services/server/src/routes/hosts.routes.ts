@@ -8,10 +8,13 @@ const {getHosts,
        postHost,
        deleteAll,
        updateHost,
-       createConfig} = require('../controllers/hosts.controllers');
+       createConfig,
+       getHostConfig} = require('../controllers/hosts.controllers');
 
 
 hosts.get('/', authorize('read'), getHosts);
+// The two-segment path never collides with the '/:hostname' catch-all below.
+hosts.get('/host-config/:hostname', authorize('read'), getHostConfig);
 hosts.get('/:hostname', authorize('read'), getOneHost);
 hosts.delete('/:hostname', authorize('write'), deleteHost);
 hosts.post('/config', authorize('write'), createConfig);

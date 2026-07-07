@@ -10,6 +10,7 @@ import {
   stripLegacyArchivers,
   sanitizeSsidMethods,
   stripConfigMetadata,
+  matchesHostPattern,
 } from '../config.service';
 
 /**
@@ -306,5 +307,31 @@ describe('stripConfigMetadata', () => {
   it('returns raw input when it is not JSON, and empty string for null', () => {
     expect(stripConfigMetadata('not json')).toBe('not json');
     expect(stripConfigMetadata(null)).toBe('');
+  });
+});
+
+describe('matchesHostPattern (pSSID host patterns in hosts_regex)', () => {
+  it('treats "." as any character and "*" as zero-or-more of the preceding', () => {
+    expect(matchesHostPattern('.*', 'anything-at-all')).toBe(true);
+    expect(matchesHostPattern('probe-.*', 'probe-library-01')).toBe(true);
+    expect(matchesHostPattern('probe-.*', 'sensor-library-01')).toBe(false);
+    expect(matchesHostPattern('probe-0.', 'probe-01')).toBe(true);
+  });
+
+  it('treats other regex specials as literal characters', () => {
+    expect(matchesHostPattern('a+b', 'a+b')).toBe(true);
+    expect(matchesHostPattern('a+b', 'aab')).toBe(false);
+    expect(matchesHostPattern('p(1)', 'p(1)')).toBe(true);
+    expect(matchesHostPattern('p(1)', 'p1')).toBe(false);
+  });
+
+  it('anchors the whole name (no substring matches)', () => {
+    expect(matchesHostPattern('probe', 'probe-01')).toBe(false);
+    expect(matchesHostPattern('probe', 'probe')).toBe(true);
+  });
+
+  it('rejects empty and non-string patterns', () => {
+    expect(matchesHostPattern('', 'x')).toBe(false);
+    expect(matchesHostPattern(undefined as any, 'x')).toBe(false);
   });
 });

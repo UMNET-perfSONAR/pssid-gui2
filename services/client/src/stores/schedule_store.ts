@@ -25,7 +25,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
       }
     },
 
-    async addSchedule(schedule:JSON) {
+    async addSchedule(schedule:any) {
       try {
         this.isLoading = true;
         const response = await fetch(
@@ -41,7 +41,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
 
         if (response.ok) {
           this.schedules.push(schedule);
-          useToastStore().show('Schedule added successfully', 'success');
+          useToastStore().show(`Schedule "${schedule.name}" added`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
@@ -90,7 +90,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
           }
         );
         if (response.ok) {
-          useToastStore().show('Schedule updated successfully', 'success');
+          useToastStore().show(`Schedule "${updateScheduleObj.new_schedule}" updated`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};

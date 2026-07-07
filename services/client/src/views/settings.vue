@@ -126,11 +126,14 @@
         </div>
       </section>
     </template>
+
+    <RecentActivity />
   </div>
 </template>
 
 <script>
 import PageHeader from '../components/PageHeader.vue'
+import RecentActivity from '../components/RecentActivity.vue'
 import { useSettingsStore } from '../stores/settings.store'
 import { useUserStore } from '../stores/user.store'
 import config from '../shared/config'
@@ -138,7 +141,7 @@ import { isFormDisabled } from '../utils/formControl.ts'
 
 export default {
   name: 'Settings',
-  components: { PageHeader },
+  components: { PageHeader, RecentActivity },
   data() {
     return {
       settingsStore: useSettingsStore(),

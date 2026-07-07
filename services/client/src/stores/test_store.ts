@@ -67,7 +67,7 @@ export const useTestStore = defineStore('test', {
           }
         );
         if (response.ok) {
-          useToastStore().show('Test updated successfully', 'success');
+          useToastStore().show(`Test "${test.new_testname}" updated`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
@@ -95,7 +95,7 @@ export const useTestStore = defineStore('test', {
 
         if (response.ok) {
           this.tests.push(test);
-          useToastStore().show('Test added successfully', 'success');
+          useToastStore().show(`Test "${test.name}" added`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};

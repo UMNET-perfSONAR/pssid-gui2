@@ -173,6 +173,8 @@
         </form>
       </div>
     </div>
+
+    <RecentActivity />
   </div>
 </template>
 
@@ -182,6 +184,7 @@
  import VueMultiselect from 'vue-multiselect';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
+ import RecentActivity from '../components/RecentActivity.vue'
 
  import { useSsidStore } from '../stores/ssid_profiles_stores';
  import { useJobStore } from '../stores/job_store';
@@ -192,7 +195,7 @@
  import { validName, validInterfaceName, validWholeNumber } from "../utils/validators.ts"
 
  export default {
-   components: { itemList, VueMultiselect, ConfirmModal, PageHeader },
+   components: { itemList, VueMultiselect, ConfirmModal, PageHeader, RecentActivity },
    data() {
      return {
        showAddBatch: true,

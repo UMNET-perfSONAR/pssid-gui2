@@ -123,6 +123,8 @@
       </fieldset>
       </div>
     </div>
+
+    <RecentActivity />
   </div>
 </template>
 
@@ -133,14 +135,15 @@
  import  VueMultiselect  from 'vue-multiselect';
  import editFormComp from '../components/edit_dynamic_form.vue';
  import itemList from '../components/list_items.vue'
- import PageHeader from '../components/PageHeader.vue'
+ import PageHeader from '../components/PageHeader.vue'
+ import RecentActivity from '../components/RecentActivity.vue'
  import { useToastStore } from '../stores/toast.store'
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validDisplayName } from "../utils/validators.ts"
 
  export default {
-   components: { dynamicform, VueMultiselect, editFormComp, itemList, PageHeader },
+   components: { dynamicform, VueMultiselect, editFormComp, itemList, PageHeader, RecentActivity },
    data() {
      return {
        mount: false,

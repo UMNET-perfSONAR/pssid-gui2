@@ -77,6 +77,8 @@
       </div>
     </div>
     
+
+    <RecentActivity />
   </div>
 </template>
 
@@ -85,13 +87,14 @@
  import { useUserStore } from '/src/stores/user.store';
  import cronstuff from '../components/cron.vue'
  import itemList from '../components/list_items.vue';
- import PageHeader from '../components/PageHeader.vue';
+ import PageHeader from '../components/PageHeader.vue';
+ import RecentActivity from '../components/RecentActivity.vue'
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validDisplayName, validCron } from "../utils/validators.ts"
 
  export default {
-   components: { cronstuff, itemList, PageHeader },
+   components: { cronstuff, itemList, PageHeader, RecentActivity },
    data() {
      return {
        scheduleStore: useScheduleStore(),

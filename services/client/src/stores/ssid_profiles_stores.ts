@@ -40,7 +40,7 @@ export const useSsidStore = defineStore('ssidStore', {
 
         if (response.ok) {
           this.ssid_profiles.push(ssid_profile);
-          useToastStore().show('SSID profile added successfully', 'success');
+          useToastStore().show(`SSID profile "${ssid_profile.name}" added`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
@@ -89,7 +89,7 @@ export const useSsidStore = defineStore('ssidStore', {
           }
         );
         if (response.ok) {
-          useToastStore().show('SSID profile updated successfully', 'success');
+          useToastStore().show(`SSID profile "${ssid_profile.new_ssid_name}" updated`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};

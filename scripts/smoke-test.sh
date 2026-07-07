@@ -125,6 +125,16 @@ check "preview: ssid profile carries layer 2 method"       200 "$STATUS" 'wpa_su
 check "preview: inventory carries the group section"       200 "$STATUS" 'smoke-group' "$BODY"
 check "preview: metadata provenance block present"         200 "$STATUS" 'pssid_metadata' "$BODY"
 
+# ---- Per-probe effective configuration -------------------------------------------
+# The Hosts page shows what one probe will run, sliced from the same generated
+# payload the daemon receives (batches via direct assignment and group
+# membership, with schedules/jobs/tests/SSID profiles expanded).
+req GET /api/hosts/host-config/smoke-probe-1
+check "probe config includes its batch" 200 "$STATUS" '"smoke-batch"' "$BODY"
+check "probe config lists its group" 200 "$STATUS" '"smoke-group"' "$BODY"
+req GET /api/hosts/host-config/no-such-probe
+check "probe config for unknown host returns 404" 404 "$STATUS" '' "$BODY"
+
 # ---- Settings toggle (auto-provision on, then off) ------------------------------
 req PUT /api/settings '{"autoProvision":true}'
 check "enable auto-provision" 200 "$STATUS" '' "$BODY"

@@ -494,6 +494,79 @@ export async function build_config_payload(
 }
 
 /**
+ * pSSID host patterns (hosts_regex) use '.' = any character and '*' = zero or
+ * more of the preceding character. That is a subset of real regular
+ * expressions, so a pattern compiles by escaping every other special
+ * character and anchoring both ends.
+ */
+export function matchesHostPattern(pattern: string, hostname: string): boolean {
+  if (typeof pattern !== 'string' || pattern.length === 0) return false;
+  const escaped = pattern.replace(/[+?^$(){}[\]|\\]/g, '\\$&');
+  try {
+    return new RegExp('^' + escaped + '$').test(hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The slice of the generated config that one probe acts on: its merged
+ * metadata, the groups it belongs to (listed by name or matched by pattern),
+ * and the batches those assignments give it, with schedules, jobs, tests and
+ * SSID profiles expanded in place. The daemon receives the whole
+ * pssid_config.json; this is a read-only view of what this host does with it.
+ * Returns null when the host does not exist.
+ */
+export async function build_host_view(hostname: string): Promise<any | null> {
+  const { config } = await build_config_payload();
+  const obj = JSON.parse(config);
+
+  const host = (obj.hosts ?? []).find((h: any) => h.name === hostname);
+  if (!host) return null;
+
+  const groups = (obj.host_groups ?? []).filter((g: any) =>
+    (g.hosts ?? []).includes(hostname) ||
+    (g.hosts_regex ?? []).some((p: string) => matchesHostPattern(p, hostname))
+  );
+
+  const batchNames = new Set<string>(host.batches ?? []);
+  for (const g of groups) {
+    for (const b of g.batches ?? []) batchNames.add(b);
+  }
+
+  const byName = (arr: any[]) =>
+    new Map<string, any>((arr ?? []).map((x: any) => [x.name, x]));
+  const schedules = byName(obj.schedules);
+  const jobs = byName(obj.jobs);
+  const tests = byName(obj.tests);
+  const profiles = byName(obj.ssid_profiles);
+
+  const batches = (obj.batches ?? [])
+    .filter((b: any) => batchNames.has(b.name))
+    .map((b: any) => ({
+      ...b,
+      schedules: (b.schedules ?? []).map((n: string) => schedules.get(n) ?? { name: n }),
+      ssid_profiles: (b.ssid_profiles ?? []).map((n: string) => profiles.get(n) ?? { name: n }),
+      jobs: (b.jobs ?? []).map((n: string) => {
+        const job = jobs.get(n) ?? { name: n };
+        return {
+          ...job,
+          tests: (job.tests ?? []).map((t: string) => tests.get(t) ?? { name: t }),
+        };
+      }),
+    }));
+
+  return {
+    host: host.name,
+    metadata: host.metadata ?? {},
+    groups: groups.map((g: any) => g.name),
+    batches,
+    config_version: obj.pssid_metadata?.config_version,
+    generated_at: obj.pssid_metadata?.generated_at,
+  };
+}
+
+/**
  * Reads the currently-deployed config + inventory from disk (what was last
  * written by a provision run), or null if not yet written. Used to diff against
  * the proposed payload in the dry-run preview.

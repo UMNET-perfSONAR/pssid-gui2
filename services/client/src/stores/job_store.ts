@@ -42,7 +42,7 @@ export const useJobStore = defineStore('jobStore', {
 
         if (response.ok) {
           this.jobs.push(job);
-          useToastStore().show('Job added successfully', 'success');
+          useToastStore().show(`Job "${job.name}" added`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
@@ -107,7 +107,7 @@ export const useJobStore = defineStore('jobStore', {
           }
         );
         if (response.ok) {
-          useToastStore().show('Job updated successfully', 'success');
+          useToastStore().show(`Job "${updatedJobObj.new_job}" updated`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};

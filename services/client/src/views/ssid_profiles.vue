@@ -102,6 +102,8 @@
         </form>
       </div>
     </div>
+
+    <RecentActivity />
   </div>
 </template>
 
@@ -111,12 +113,13 @@
  import { useLayerScriptsStore } from '../stores/layer_scripts_store';
  import itemList from '../components/list_items.vue';
  import PageHeader from '../components/PageHeader.vue';
+ import RecentActivity from '../components/RecentActivity.vue'
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName, validSsidNetworkName } from "../utils/validators.ts"
 
  export default {
-   components: { itemList, PageHeader },
+   components: { itemList, PageHeader, RecentActivity },
    data() {
      return {
        ssidStore: useSsidStore(),

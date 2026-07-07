@@ -43,7 +43,7 @@ export const useBatchStore = defineStore('batchStore', {
 
         if (response.ok) {
           this.batches.push(batch);
-          useToastStore().show('Batch added successfully', 'success');
+          useToastStore().show(`Batch "${batch.name}" added`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
@@ -59,7 +59,7 @@ export const useBatchStore = defineStore('batchStore', {
       }
     },
 
-    async editBatch(updated_batch_obj: JSON) {
+    async editBatch(updated_batch_obj: any) {
       try {
         const response = await fetch(
           '/api/batches/update-batch',
@@ -72,7 +72,7 @@ export const useBatchStore = defineStore('batchStore', {
           }
         );
         if (response.ok) {
-          useToastStore().show('Batch updated successfully', 'success');
+          useToastStore().show(`Batch "${updated_batch_obj.new_batchname}" updated`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};

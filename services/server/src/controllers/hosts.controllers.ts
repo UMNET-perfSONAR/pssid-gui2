@@ -3,7 +3,7 @@ import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { get_batch_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
-import { create_config_file } from '../services/config.service';
+import { create_config_file, build_host_view } from '../services/config.service';
 import { isNameInDB, isValidHostEntry, isNameArray, isPlainObjectOrAbsent } from './helpers';
 
 /**
@@ -190,6 +190,30 @@ const updateHost = (async (req:Request, res:Response) => {
   }
 } )
 
+/**
+ * The effective configuration of one probe: metadata, group memberships, and
+ * the fully-expanded batches it will run, sliced from the same payload the
+ * daemon receives. 422 when the database holds data the daemon would reject
+ * (the error message lists the problems).
+ */
+const getHostConfig = (async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.hostname);
+    const view = await build_host_view(name);
+    if (view === null) {
+      return res.status(404).json({message: "Host not found"});
+    }
+    res.json(view);
+  }
+  catch(error) {
+    if (error instanceof Error && error.message.startsWith('Config validation failed')) {
+      return res.status(422).json({message: error.message});
+    }
+    console.error(error);
+    res.status(500).json({message:"Server Error"});
+  }
+})
+
 const createConfig = (async (req: Request, res: Response) =>{
   try {
     let name = (req.body.length==0)? '*' : req.body.name;
@@ -205,10 +229,11 @@ const createConfig = (async (req: Request, res: Response) =>{
   }
 })
 
-module.exports = {getHosts, 
-                  getOneHost, 
-                  deleteHost, 
-                  postHost, 
+module.exports = {getHosts,
+                  getOneHost,
+                  deleteHost,
+                  postHost,
                   deleteAll,
                   updateHost,
-                  createConfig};
+                  createConfig,
+                  getHostConfig};

@@ -6,7 +6,12 @@ export const useHostStore = defineStore('hostStore', {
   state: () => ({
     hosts: [{}],
     isLoading: false,
-    isError: false
+    isError: false,
+    // Effective configuration of the currently selected probe (what it will
+    // run, sliced from the generated pssid_config.json).
+    probeConfig: null as any,
+    probeConfigError: '',
+    probeConfigLoading: false
   }),
 
   actions: {
@@ -44,7 +49,7 @@ export const useHostStore = defineStore('hostStore', {
 
         if (response.ok) {
           this.hosts.push(host);
-          useToastStore().show('Host added successfully', 'success');
+          useToastStore().show(`Host "${host.name}" added`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
@@ -95,7 +100,7 @@ export const useHostStore = defineStore('hostStore', {
           }
         );
         if (response.ok) {
-          useToastStore().show('Host updated successfully', 'success');
+          useToastStore().show(`Host "${updateHostObj.new_hostname}" updated`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
@@ -140,7 +145,7 @@ export const useHostStore = defineStore('hostStore', {
           }
         );
         if (response.ok) {
-          useToastStore().show('Host submitted for provisioning', 'success');
+          useToastStore().show(`Host "${currentHost.name}" submitted for provisioning`, 'success');
         } else {
           useToastStore().show('Provision request failed', 'error');
         }
@@ -150,6 +155,34 @@ export const useHostStore = defineStore('hostStore', {
         this.isError = true;
         useToastStore().show('Provision request failed', 'error');
       }
+    },
+
+    /**
+     * The effective configuration of one probe: metadata, groups, and the
+     * fully expanded batches it runs, sliced from the same payload the
+     * daemon receives.
+     */
+    async getHostConfig(name: string) {
+      this.probeConfigLoading = true;
+      this.probeConfigError = '';
+      this.probeConfig = null;
+      try {
+        const res = await fetch(
+          '/api/hosts/host-config/' + encodeURIComponent(name),
+          { ...(config.ENABLE_SSO ? { credentials: 'include' } : {}) }
+        );
+        const data = await res.json();
+        if (res.ok) {
+          this.probeConfig = data;
+        } else {
+          this.probeConfigError = data.message || 'Could not build the probe configuration';
+        }
+      }
+      catch(error) {
+        console.error(error);
+        this.probeConfigError = 'Could not build the probe configuration';
+      }
+      this.probeConfigLoading = false;
     },
   }
 })

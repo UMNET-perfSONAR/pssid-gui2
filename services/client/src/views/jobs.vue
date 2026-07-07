@@ -149,6 +149,8 @@
         </form>
       </div>
     </div>
+
+    <RecentActivity />
   </div>
 </template>
 
@@ -160,13 +162,14 @@
  import itemList from '../components/list_items.vue';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
+ import RecentActivity from '../components/RecentActivity.vue'
  import { useToastStore } from '../stores/toast.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName, validIso8601Duration, validJqClause } from "../utils/validators.ts"
 
  export default {
-   components: { VueMultiselect, itemList, ConfirmModal, PageHeader },
+   components: { VueMultiselect, itemList, ConfirmModal, PageHeader, RecentActivity },
    data() {
      return {
        jobName: '',

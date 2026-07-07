@@ -124,6 +124,8 @@
       </fieldset>
       </div>
     </div>
+
+    <RecentActivity />
   </div>
 </template>
 
@@ -140,12 +142,13 @@
  import hostSelection from '../forms/hostSelection.vue';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
+ import RecentActivity from '../components/RecentActivity.vue'
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName } from "../utils/validators.ts"
 
  export default defineComponent({
-   components: { VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection, ConfirmModal, PageHeader },
+   components: { VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection, ConfirmModal, PageHeader, RecentActivity },
    data() {
      return {
        selectedGroup: '',

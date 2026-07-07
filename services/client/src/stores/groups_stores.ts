@@ -53,7 +53,7 @@ export const useGroupStore = defineStore('groupStore', {
 
         if (response.ok) {
           this.host_groups.push(host_group);
-          useToastStore().show('Host group added successfully', 'success');
+          useToastStore().show(`Host group "${host_group.name}" added`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
@@ -82,7 +82,7 @@ export const useGroupStore = defineStore('groupStore', {
           }
         );
         if (response.ok) {
-          useToastStore().show('Host group updated successfully', 'success');
+          useToastStore().show(`Host group "${host_group.new_hostgroup}" updated`, 'success');
         } else {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
@@ -151,7 +151,7 @@ export const useGroupStore = defineStore('groupStore', {
           }
         );
         if (response.ok) {
-          useToastStore().show('Group submitted for provisioning', 'success');
+          useToastStore().show(`Group "${currentGroup.name}" submitted for provisioning`, 'success');
         } else {
           useToastStore().show('Provision request failed', 'error');
         }
