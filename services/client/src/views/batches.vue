@@ -10,7 +10,7 @@
     <PageHeader
       title="Batches"
       subtitle="Group jobs, schedules, and SSID profiles into deployable probe configurations"
-      icon="inventory_2"
+      icon="work_history"
       :can-add="!isDisabled && !showAddBatch"
       add-label="Add Batch"
       @add="addBatchForm"
@@ -50,7 +50,7 @@
             <label> Test Interface </label>
             <input
               type="text"
-              placeholder="Alphanumeric, e.g. wlan0"
+              placeholder="e.g. wlan0"
               v-model="add_test_interface"
               class="form-control"
             />
@@ -120,7 +120,7 @@
             <label> Test Interface </label>
             <input
               type="text"
-              placeholder="Alphanumeric, e.g. wlan0"
+              placeholder="e.g. wlan0"
               v-model="currentItem.test_interface"
               class="form-control"
             />

@@ -36,3 +36,27 @@ pssid_gui_install_dir: /opt/pssid-gui
 
 # Skip the docker image build and reuse existing local images.
 pssid_gui_no_build: false
+
+# Load the reusable starter defaults (schedules, SSID profiles, a metadata test,
+# the "all" host group) into MongoDB the FIRST time this host is deployed. A
+# marker file ({{ pssid_gui_state_dir }}/.defaults-seeded) guarantees re-runs
+# and upgrades never touch data, so deleting or editing the defaults in the GUI
+# sticks. Prod mode only.
+pssid_gui_seed_defaults: true
+
+# Nightly MongoDB backups via cron (prod mode only). Archives land in
+# mongo-backups/ inside the source directory; scripts/restore.sh restores them.
+pssid_gui_backup_cron: true
+pssid_gui_backup_minute: "15"
+pssid_gui_backup_hour: "3"
+# Prune backup archives older than this many days (0 keeps everything).
+pssid_gui_backup_retention_days: 14
+
+# Host directory for deployment state markers (also the probe data dir the
+# installer prepares).
+pssid_gui_state_dir: /var/lib/pssid
+
+# Set by upgrade.yml: fast-forward the source checkout before deploying.
+pssid_gui_git_update: false
+# Set by upgrade.yml: take a database backup before anything else changes.
+pssid_gui_backup_first: false

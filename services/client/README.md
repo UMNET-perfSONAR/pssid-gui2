@@ -26,4 +26,4 @@ development effort).
 
 * Move to composition API layout! Currently using vue's options layout and it isn't the cleanest approach. Attempted to start this with the src/views/hosts.api.vue file! (Not perfectly functional but a good start :p)
 
-* Move some of the data formatting/ computation stuff (tests and archivers especially) to the corresponding /src/stores/ file. Will help trim files significantly. Ran out of time for this!
+* Move some of the data formatting/ computation stuff (tests especially) to the corresponding /src/stores/ file. Will help trim files significantly. Ran out of time for this!

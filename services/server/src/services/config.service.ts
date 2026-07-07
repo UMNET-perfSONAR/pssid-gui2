@@ -14,7 +14,9 @@ let shellscript_path: string | null = null;
 
 // Schema version of the generated pssid_config.json. Bump this when the SHAPE of
 // the generated config changes in a way a consumer (daemon/tooling) should notice.
-const CONFIG_VERSION = '1.0';
+// 1.1: batches no longer carry an `archivers` array (feature removed; the daemon
+//      never read it).
+const CONFIG_VERSION = '1.1';
 
 /**
  * Get specified collection data - flexible for all collections
@@ -229,23 +231,22 @@ export function sanitizeSsidMethods(
 }
 
 /**
- * Guarantees every batch carries an `archivers` array in the generated config.
+ * Strips legacy archiver fields from batches before the config is generated.
  *
- * Defensive only. The current pSSID daemon (verified from source) does NOT read
- * `batch["archivers"]` — it hardcodes the syslog archiver in its own template —
- * so emitting this field changes nothing on the daemon side today and its
- * absence does not crash anything. We still normalize it to [] so the field is
- * always present and well-typed: it keeps the generated config shape stable and
- * future-proofs it if a later daemon version starts honoring per-batch
- * archivers. Do not describe this as crash-prevention; it isn't.
+ * The archivers feature was removed from the GUI: the daemon (verified from
+ * source) never read `batch["archivers"]`, so the field carried no meaning in
+ * the deployed config. Databases written by older versions may still hold
+ * `archivers` / `archiver_ids` arrays on batch documents; this drops them so
+ * the emitted config is identical whether the data predates the removal or not.
+ * (`archiver_ids` would also be caught by removeIdsProperties; it is deleted
+ * here as well so this function alone fully describes the legacy cleanup.)
  *
  * @param batch_data - the { batches: [...] } object returned by get_collection
  */
-export function ensureBatchArchivers(batch_data: any) {
+export function stripLegacyArchivers(batch_data: any) {
   for (const batch of batch_data.batches ?? []) {
-    if (!Array.isArray(batch.archivers)) {
-      batch.archivers = [];
-    }
+    delete batch.archivers;
+    delete batch.archiver_ids;
   }
 }
 
@@ -273,6 +274,10 @@ export function ensureBatchArchivers(batch_data: any) {
  *    resolve to an actually-defined object
  *  - every host's batches and every host_group's hosts/batches must resolve
  *
+ * Plus one generated-file safety rule: host and host_group names must be safe
+ * to write into hosts.ini (no newlines or square brackets), because those names
+ * are emitted verbatim into the Ansible inventory.
+ *
  * @param obj - the fully-assembled config object (hosts, host_groups, schedules,
  *   ssid_profiles, tests, jobs, batches) prior to serialization
  */
@@ -281,6 +286,25 @@ export function assertDaemonValid(obj: any): void {
 
   const names = (arr: any): Set<string> =>
     new Set((Array.isArray(arr) ? arr : []).map((x: any) => x?.name));
+
+  // ---- host / group names must be inventory-safe ----------------------------
+  // These names are written verbatim into hosts.ini (an Ansible inventory), so
+  // a name carrying a newline or square brackets could inject inventory syntax
+  // (a fake [section] header or a variable assignment). Write-time validation
+  // in the controllers enforces this too; this is the render-time backstop for
+  // values that reached the database another way.
+  const iniSafe = (v: any): boolean =>
+    typeof v === 'string' && v.length > 0 && !/[\r\n\[\]]/.test(v);
+  for (const host of Array.isArray(obj.hosts) ? obj.hosts : []) {
+    if (!iniSafe(host.name)) {
+      errors.push(`host name ${JSON.stringify(host.name)} is not inventory-safe (no newlines or square brackets)`);
+    }
+  }
+  for (const group of Array.isArray(obj.host_groups) ? obj.host_groups : []) {
+    if (!iniSafe(group.name)) {
+      errors.push(`host_group name ${JSON.stringify(group.name)} is not inventory-safe (no newlines or square brackets)`);
+    }
+  }
 
   const definedJobs = names(obj.jobs);
   const definedSsids = names(obj.ssid_profiles);
@@ -443,7 +467,7 @@ export async function build_config_payload(
   const host_group_data = await get_collection(client, "host_groups");
   const job_data = await get_collection(client, "jobs");
   const batch_data = await get_collection(client, "batches");
-  ensureBatchArchivers(batch_data);
+  stripLegacyArchivers(batch_data);
   const ssid_data = await get_collection(client, "ssid_profiles");
   sanitizeSsidMethods(ssid_data);
   applyMetadata(host_data, host_group_data);

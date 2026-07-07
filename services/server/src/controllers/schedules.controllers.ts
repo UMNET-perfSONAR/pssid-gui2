@@ -3,7 +3,7 @@ import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
-import { isNameInDB } from './helpers';
+import { isNameInDB, isValidObjectName, isValidCron } from './helpers';
 
 var client = connectToMongoDB();
 
@@ -64,13 +64,19 @@ const deleteSchedule = (async (req:Request, res:Response) => {
  */
 const postSchedule = (async (req:Request, res:Response) => {
   try {
+    if (!isValidObjectName(req.body.name)) {
+      return res.status(400).json({message:"Invalid schedule name"});
+    }
+    if (!isValidCron(req.body.repeat)) {
+      return res.status(400).json({message:"repeat must be a 5-field cron expression"});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('schedules');
     const isDuplicate = await isNameInDB(collection, req.body.name);
     if (isDuplicate) {
       return res.status(400).json({message:"Schedule already exists!"});
     }
-    collection.insertOne({
+    await collection.insertOne({
       "name" : req.body.name,
       "repeat" : req.body.repeat
     });
@@ -91,6 +97,12 @@ const postSchedule = (async (req:Request, res:Response) => {
  */
 const updateSchedule = (async (req:Request, res:Response) => {
   try {
+    if (!isValidObjectName(req.body.new_schedule)) {
+      return res.status(400).json({message:"Invalid schedule name"});
+    }
+    if (!isValidCron(req.body.repeat)) {
+      return res.status(400).json({message:"repeat must be a 5-field cron expression"});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('schedules');
     const isDuplicate = await isNameInDB(collection, req.body.new_schedule);

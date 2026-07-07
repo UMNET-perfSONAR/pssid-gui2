@@ -85,11 +85,11 @@
       </div>
     </div>
     <div>
-      <button class="btn btn-success" type="submit" style="margin-right: 1em;">
+      <button class="btn btn-success" type="submit" style="margin-right: 1em;" :disabled="submitDisabled">
         {{ submitLabel }}
       </button>
     </div>
-    
+
   </form>
 </template>
 
@@ -114,8 +114,14 @@
      submitLabel: {
        type: String,
        default: 'Save'
+     },
+     // Lets the parent keep the submit button grey until the fields it owns
+     // (for example the item name) are valid.
+     submitDisabled: {
+       type: Boolean,
+       default: false
      }
-     
+
    },
    data() {
      return {
@@ -169,7 +175,7 @@
        // However, it should not be a part of the form_values array
        // since optional data values are stored separately in the optional_data array,
        // which is a reference to either addedOptionalData or currOptionalData in the
-       // parent (archivers/tests) components.
+       // parent (tests) component.
        this.form_values = this.form_layout
          .filter(item => item.type !== 'optional')
          .map((item) => ({

@@ -60,6 +60,7 @@
               :current_item="selected_test"
               :optional_data="addedOptionalData"
               submit-label="Add Test"
+              :submit-disabled="!addTestValid"
             >
             </dynamicform>
           </div>
@@ -99,12 +100,13 @@
         </div>
         <!-- dynamic components -->
         <div v-if="viewType===test">
-          <editFormComp 
+          <editFormComp
             :current_item="currentItem"
             @editItem="editTest"
             @deleteItem="deleteTest"
             :dynamic_options="currOptionalData"
             submit-label="Update Test"
+            :submit-disabled="!editTestValid"
           > </editFormComp>
         </div>
         <div v-else>
@@ -112,6 +114,7 @@
             @formData="editTest"
             :optional_data="currOptionalData"
             submit-label="Update Test"
+            :submit-disabled="!editTestValid"
           >
           </dynamicform>
         </div>
@@ -132,6 +135,7 @@
  import { useToastStore } from '../stores/toast.store'
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
+ import { validDisplayName } from "../utils/validators.ts"
 
  export default {
    components: { dynamicform, VueMultiselect, editFormComp, itemList, PageHeader },
@@ -186,6 +190,14 @@
    computed: {
       isDisabled() {
         return isFormDisabled();
+      },
+      // The submit buttons stay grey until every field this view owns is
+      // valid; the dynamic form validates its template fields on submit.
+      addTestValid() {
+        return validDisplayName(this.test_name).valid && !!this.selected_test;
+      },
+      editTestValid() {
+        return validDisplayName(this.currentItem.name || '').valid;
       }
     },
 
@@ -270,7 +282,8 @@
 
      // Creates a new test.
      async handleSubmit (form_data) {
-       if (this.test_name.length > 0) {
+       const nameCheck = validDisplayName(this.test_name);
+       if (nameCheck.valid) {
          const obj = this.testStore.formatPostData(form_data, this.addedOptionalData);
          await this.testStore.addTest({
            name: this.test_name,
@@ -281,7 +294,7 @@
          this.addTestForm();
        }
        else {
-         useToastStore().show('Please add a test name!', 'error');
+         useToastStore().show('Test name: ' + nameCheck.error, 'error');
        }
      },
 
@@ -312,9 +325,9 @@
       * an input field and its metadata (validation, etc.)
       */
      async editTest(editFormInputs) {
-       // Validate that the name is not empty.
-       if (this.currentItem.name.length === 0) {
-         useToastStore().show('Please enter a test name!', 'error');
+       const nameCheck = validDisplayName(this.currentItem.name);
+       if (!nameCheck.valid) {
+         useToastStore().show('Test name: ' + nameCheck.error, 'error');
          return;
        }
 

@@ -6,8 +6,10 @@ and published images) are gathered in their own section near the end.
 
 ## Contents
 
+- [One-command bootstrap](#one-command-bootstrap)
 - [Prerequisites](#prerequisites)
 - [Deploying with Ansible](#deploying-with-ansible)
+- [Upgrades and backups](#upgrades-and-backups)
 - [Quickstart](#quickstart)
 - [What the installer does](#what-the-installer-does)
 - [Everyday operations](#everyday-operations)
@@ -18,6 +20,24 @@ and published images) are gathered in their own section near the end.
 - [Provisioning and automation](#provisioning-and-automation)
 - [University of Michigan notes](#university-of-michigan-notes)
 - [Troubleshooting](#troubleshooting)
+
+## One-command bootstrap
+
+The fastest path from a fresh box to a running deployment is the bootstrap
+script at the repository root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh | bash
+```
+
+It installs git and Ansible when missing, clones the repository to
+`/opt/pssid-gui`, and runs the `site.yml` playbook, which performs everything
+in this guide: Docker installation, secrets, certificates, nginx config,
+containers, the first-install starter defaults, and the nightly backup
+schedule. Settings are environment variables (`PSSID_HOSTNAME`,
+`PSSID_EDITION`, `PSSID_TLS`, `PSSID_SSO`, `PSSID_OIDC_*`; the script header
+documents them all). Everything below describes what that one command does, so
+each stage can be run or repaired by hand.
 
 ## Prerequisites
 
@@ -58,9 +78,66 @@ ansible-playbook site.yml -e pssid_gui_hostname=pssid.example.edu
 
 It uses two roles: `docker` installs Docker Engine and the compose plugin, and
 `pssid_webgui` runs the same installer described below, so both paths produce
-identical deployments. `ansible-playbook dev.yml` brings up the hot-reload
-development stack instead. Remote hosts, SSO, and all variables are covered in
-the [Ansible guide](../ansible/README.md).
+identical deployments. On a first install the playbook also loads the reusable
+starter defaults (guarded by a marker file under `/var/lib/pssid`, so re-runs
+never touch data) and schedules the nightly backup. `ansible-playbook dev.yml`
+brings up the hot-reload development stack instead. Remote hosts, SSO, and all
+variables are covered in the [Ansible guide](../ansible/README.md).
+
+## Upgrades and backups
+
+Upgrading an existing deployment is one command:
+
+```bash
+make upgrade                # or: cd ansible && ansible-playbook upgrade.yml
+```
+
+It backs up the database, fast-forwards the checkout, rebuilds the images,
+restarts the stack with the existing settings, and waits for the health check.
+MongoDB lives in a named volume that survives rebuilds, and starter defaults
+only load on first installs, so upgrades never modify data.
+
+### Controller-integrated installs
+
+On machines where the GUI containers run inside the pSSID controller stack
+(the compose file the pSSID Ansible playbooks install, normally
+`/usr/lib/pssid/docker-compose.yml`) rather than this repository's own stack,
+use the controller upgrade script instead:
+
+```bash
+scripts/upgrade-controller.sh          # backup, pull, rebuild, restart, verify
+```
+
+One-time setup: point the controller's GUI services at the locally built
+images with an override file, so playbook re-runs cannot revert it. Check the
+service names first (`grep -B4 'umnetworking/pssid-gui2'
+/usr/lib/pssid/docker-compose.yml`), then create
+`/usr/lib/pssid/docker-compose.override.yml`:
+
+```yaml
+services:
+  client:
+    image: pssid-gui2_client:latest
+  server:
+    image: pssid-gui2_server:latest
+  mongo:
+    image: pssid-gui2_mongo:latest
+```
+
+Compose merges the override automatically, and `docker compose build` in this
+repository produces exactly those image names, so editing the playbook-owned
+compose file by hand is never needed.
+
+Backups run automatically: production playbook runs install a cron entry that
+archives the `gui` database nightly at 03:15 to `mongo-backups/` and prunes
+archives older than 14 days (see the [Ansible guide](../ansible/README.md) for
+the tuning variables; the log is `/var/log/pssid-gui-backup.log`). On-demand
+backups and restores stay one command each:
+
+```bash
+make backup                 # archive now (scripts/backup.sh)
+make restore                # restore an archive (scripts/restore.sh)
+```
 
 ## Quickstart
 
@@ -115,6 +192,8 @@ The Makefile wraps the common commands:
 
 | Command | Purpose |
 |---|---|
+| `make deploy` | Full automated deployment (Ansible `site.yml`) |
+| `make upgrade` | Upgrade in place: backup, pull, rebuild, verify |
 | `make up` / `make down` | Start or stop the stack |
 | `make restart` | Restart the stack |
 | `make logs` | Follow logs from all services |
@@ -122,6 +201,7 @@ The Makefile wraps the common commands:
 | `make build` | Rebuild the images |
 | `make dev` | Local development stack on `http://localhost:8888` |
 | `make backup` / `make restore` | Back up or restore MongoDB |
+| `make seed-defaults` | Load the reusable starter defaults |
 | `make doctor` | Check prerequisites and ports |
 | `make test` | Run every unit test (server and client; no stack needed) |
 | `make smoke` | Walk every user action against a running stack |

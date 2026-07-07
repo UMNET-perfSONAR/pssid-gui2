@@ -17,7 +17,11 @@ const readScriptNames = (dirPath: string, res: Response) => {
     if (err) {
       return res.send([]);
     }
-    const fileArray = files.map(file => path.parse(file).name);
+    // Only .json files are methods; anything else in the directory (editor
+    // backups, hidden files) must not appear as a selectable option.
+    const fileArray = files
+      .filter(file => file.endsWith('.json'))
+      .map(file => path.parse(file).name);
     res.send(fileArray);
   });
 };

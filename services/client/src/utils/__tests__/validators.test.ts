@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   validName,
+  validDisplayName,
   validHostOrIp,
   validSsidNetworkName,
   validSingleToken,
@@ -13,7 +14,7 @@ import {
 
 // Every form field validator in one place. Each case states the rule it pins.
 
-describe('validName (RFC 1123: host/group/schedule/profile names)', () => {
+describe('validName (RFC 1123: host/group/profile names)', () => {
   it.each(['probe-1', 'a', 'lab.example.edu', 'A-1.b-2', '0start'])(
     'accepts %s', (v) => expect(validName(v).valid).toBe(true));
 
@@ -37,6 +38,28 @@ describe('validName (RFC 1123: host/group/schedule/profile names)', () => {
   });
 });
 
+describe('validDisplayName (human-readable labels, e.g. schedule names)', () => {
+  it.each([
+    'Every 5 minutes',
+    'Every hour',
+    'Every 4 hours',
+    'Every day at 23:00',   // the shipped defaults must all pass
+    'scheduled-run_v2.1',
+  ])('accepts %s', (v) => expect(validDisplayName(v).valid).toBe(true));
+
+  it.each([
+    ['', 'empty'],
+    ['-starts with hyphen', 'must start with letter or digit'],
+    ['bad[name]', 'brackets'],
+    ['line\nbreak', 'newline'],
+    ['x'.repeat(130), 'over 128 characters'],
+  ])('rejects %s (%s)', (v) => {
+    const r = validDisplayName(v);
+    expect(r.valid).toBe(false);
+    expect(r.error).toBeTruthy();
+  });
+});
+
 describe('validHostOrIp (hosts may also be addresses)', () => {
   it.each(['10.0.0.1', '255.255.255.255', '::1', 'fe80::a:b', 'probe.example.edu'])(
     'accepts %s', (v) => expect(validHostOrIp(v).valid).toBe(true));
@@ -46,7 +69,7 @@ describe('validHostOrIp (hosts may also be addresses)', () => {
 });
 
 describe('validSsidNetworkName (IEEE 802.11: 1-32 bytes)', () => {
-  it.each(['MWireless', 'Campus WiFi', 'a', 'x'.repeat(32)])(
+  it.each(['eduroam', 'Campus WiFi', 'a', 'x'.repeat(32)])(
     'accepts %s', (v) => expect(validSsidNetworkName(v).valid).toBe(true));
 
   it('rejects empty and over 32 bytes', () => {
@@ -110,7 +133,7 @@ describe('validJqClause (job continue-if)', () => {
 describe('validCron (schedule repeat, 5 fields)', () => {
   it.each([
     '* * * * *',
-    '0 16 * * *',      // every day at 4pm (the shipped default)
+    '0 23 * * *',      // Every day at 23:00 (the shipped default)
     '*/5 * * * *',
     '0 */4 * * *',
     '15 8 1,15 * 1-5',

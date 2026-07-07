@@ -35,6 +35,52 @@ jobs:
       - name: Dependency audit (advisory)
         run: npm audit --omit=dev --audit-level=high || true
 
+  automation:
+    name: Automation (ansible + shell syntax)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ansible-core
+        run: pipx install ansible-core || pip install ansible-core
+      - name: Playbook syntax check
+        working-directory: ansible
+        run: |
+          ansible-playbook --syntax-check site.yml
+          ansible-playbook --syntax-check upgrade.yml
+          ansible-playbook --syntax-check dev.yml
+      - name: Shell script syntax check
+        run: |
+          bash -n bootstrap.sh install.sh
+          for f in scripts/*.sh; do bash -n "$f"; done
+
+  smoke:
+    name: End-to-end smoke (full stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The compose file bind-mounts this env file; create it before `up` so
+      # Docker does not materialize a directory in its place.
+      - name: Write the dev server environment
+        run: |
+          printf 'MONGODB_URI=mongodb://mongo:27017\nBASE_URL=http://localhost:8888\n' \
+            > services/server/.env
+      - name: Build and start the dev stack
+        run: docker compose -f docker-compose.local.yml up -d --build
+      - name: Wait for the stack to become healthy
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8888/api/health >/dev/null; then exit 0; fi
+            sleep 5
+          done
+          echo "Stack never became healthy"; exit 1
+      - name: Run the end-to-end smoke suite (every user action)
+        run: bash scripts/smoke-test.sh http://localhost:8888
+      - name: Show container state and logs on failure
+        if: failure()
+        run: |
+          docker compose -f docker-compose.local.yml ps
+          docker compose -f docker-compose.local.yml logs --tail=200
+
   client:
     name: Client (build + tests)
     runs-on: ubuntu-latest

@@ -1,19 +1,42 @@
 # Deploying pSSID GUI with Ansible
 
-This playbook deploys the pSSID GUI end to end on a fresh Unix box: it installs
-Docker, then installs, configures, and starts the application stack. It is
-built from two roles:
+These playbooks deploy and maintain the pSSID GUI end to end on a Unix box:
+they install Docker, then install, configure, start, and keep the application
+stack maintained. Two roles do the work:
 
 - **docker**: installs Docker Engine and the compose plugin from Docker's
   official repository (Debian/Ubuntu). Hosts that already have Docker are left
   untouched.
 - **pssid_webgui**: fetches the application, generates its secrets,
-  certificates, and nginx configuration, starts the containers, and waits for
-  the health check to pass.
+  certificates, and nginx configuration, starts the containers, waits for the
+  health check to pass, loads the starter defaults on the first install, and
+  schedules nightly database backups.
+
+Three playbooks use them:
+
+| Playbook | Purpose |
+|---|---|
+| `site.yml` | Install or reconfigure a deployment |
+| `upgrade.yml` | Upgrade in place: backup, pull latest, rebuild, verify |
+| `dev.yml` | Hot-reload development stack on `http://localhost:8888` |
+
+## One-command install
+
+The repository root carries [`bootstrap.sh`](../bootstrap.sh), which wraps this
+playbook so a fresh box needs exactly one command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh | bash
+```
+
+It installs git and Ansible if missing, clones the repository to
+`/opt/pssid-gui`, and runs `site.yml`. Settings travel as environment
+variables (`PSSID_HOSTNAME`, `PSSID_EDITION`, `PSSID_TLS`, `PSSID_SSO`, and
+the `PSSID_OIDC_*` values; see the header of the script).
 
 ## Production install
 
-On the target box, as root:
+The same thing, step by step, on the target box as root:
 
 ```bash
 apt-get update && apt-get install -y git ansible
@@ -24,8 +47,10 @@ ansible-playbook site.yml -e pssid_gui_hostname=pssid.example.edu
 
 Then open `https://pssid.example.edu`. That is the whole procedure: the
 playbook installs Docker if it is missing, generates a self-signed certificate
-and all secrets, and brings the stack up. With the default self-signed
-certificate the browser shows a warning once; choose Advanced, then Proceed.
+and all secrets, brings the stack up, loads the starter defaults (first
+install only), and schedules a nightly database backup. With the default
+self-signed certificate the browser shows a warning once; choose Advanced,
+then Proceed.
 
 A University of Michigan install with Okta sign-on:
 
@@ -39,6 +64,34 @@ ansible-playbook site.yml \
   -e pssid_gui_oidc_client_secret=<from Okta> \
   -e pssid_gui_tls=letsencrypt -e pssid_gui_letsencrypt_email=<team>@umich.edu
 ```
+
+## Upgrades
+
+```bash
+cd /opt/pssid-gui/ansible
+ansible-playbook upgrade.yml          # or: make upgrade (from the repo root)
+```
+
+The upgrade backs up the database first, fast-forwards the checkout, rebuilds
+the images, restarts the stack with the existing settings, and waits for the
+health check. Data is never touched: the starter defaults only load on a first
+install (a marker file under `/var/lib/pssid` records that), and MongoDB lives
+in a named volume that survives rebuilds. If an upgrade misbehaves, the
+pre-upgrade archive is in `mongo-backups/`; restore it with
+`scripts/restore.sh`.
+
+## Backups
+
+Every production run of `site.yml` (or `upgrade.yml`) installs a cron entry
+that archives the database nightly at 03:15 into `mongo-backups/` and prunes
+archives older than 14 days. Tune or disable it with variables:
+
+```bash
+ansible-playbook site.yml -e pssid_gui_backup_hour=2 -e pssid_gui_backup_retention_days=30
+ansible-playbook site.yml -e pssid_gui_backup_cron=false     # remove the schedule
+```
+
+The backup log is `/var/log/pssid-gui-backup.log` on the host.
 
 ## Development environment
 
@@ -81,6 +134,9 @@ The most common:
 | `pssid_gui_tls` | `self-signed` | `self-signed`, `letsencrypt`, or `none` |
 | `pssid_gui_sso` | `false` | Enable OIDC single sign-on |
 | `pssid_gui_version` | `main` | Branch or tag to deploy when cloning |
+| `pssid_gui_seed_defaults` | `true` | Load starter defaults on the first install |
+| `pssid_gui_backup_cron` | `true` | Nightly MongoDB backup schedule |
+| `pssid_gui_backup_retention_days` | `14` | Prune backups older than this (0 keeps all) |
 
 ## Relationship to install.sh
 

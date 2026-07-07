@@ -44,9 +44,6 @@ async function item (outdated_col_doc: &any, truth_collection: &Collection, trut
   else if (truth_col_name === 'ssid_profiles') {
     matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.ssid_profile_ids}}).toArray();
   }
-  else if (truth_col_name === 'archivers') {
-    matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.archiver_ids}}).toArray();
-  }
   else if (truth_col_name === 'schedules') {
     matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.schedule_ids}}).toArray();
   }

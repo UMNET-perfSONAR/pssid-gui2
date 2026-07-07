@@ -1,0 +1,28 @@
+---
+# Upgrades an existing pSSID GUI deployment in place:
+#
+#   1. backs up the MongoDB database (best effort when nothing is running yet),
+#   2. fast-forwards the source checkout to the latest commit,
+#   3. rebuilds the images and restarts the stack with the same settings,
+#   4. waits for the health check and re-asserts the backup schedule.
+#
+# Run from this directory, with the same overrides used for site.yml (or none,
+# when group_vars/all.yml carries the settings):
+#
+#   ansible-playbook upgrade.yml
+#   ansible-playbook -i inventories/remote.ini upgrade.yml
+#
+# Data is never touched: starter defaults are only loaded on a first install
+# (marker file), and mongo_db is a named volume that survives rebuilds. If the
+# upgrade misbehaves, restore the pre-upgrade archive from mongo-backups/ with
+# scripts/restore.sh.
+
+- name: Upgrade pSSID GUI
+  hosts: pssid_gui
+  become: true
+  vars:
+    pssid_gui_backup_first: true
+    pssid_gui_git_update: true
+  roles:
+    - docker
+    - pssid_webgui

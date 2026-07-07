@@ -19,12 +19,6 @@ const routes =  [
     component: () => import("./views/groups.vue")
   },
   {
-    path: "/archivers",
-    alias: "/archiver",
-    name: "archiver_page",
-    component: () => import("./views/archivers.vue")
-  },
-  {
     path: "/batches",
     alias: "/batch",
     name: "batch_page",

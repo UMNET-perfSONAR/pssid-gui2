@@ -4,7 +4,21 @@ import { updateCollection } from '../services/update.service';
 import { get_batch_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
 import { create_config_file } from '../services/config.service';
-import { isNameInDB } from './helpers';
+import { isNameInDB, isValidHostEntry, isNameArray, isPlainObjectOrAbsent } from './helpers';
+
+/**
+ * Field rules for a host payload beyond the name. Returns an error message,
+ * or null when the payload is valid.
+ */
+const hostFieldError = (body: any): string | null => {
+  if (!isNameArray(body.batches)) {
+    return "Batches must be a list of batch names";
+  }
+  if (!isPlainObjectOrAbsent(body.data)) {
+    return "Metadata must be an object of key/value pairs";
+  }
+  return null;
+};
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -19,7 +33,7 @@ const getHosts = (async (req: Request, res: Response) =>{
   try {
     (await client).connect();
     const collection = (await client).db('gui').collection('hosts');
-    const response = await collection.find().toArray();
+    const response = await collection.find().project({_id:0}).toArray();
     res.send(response);
   }
   catch(error) {
@@ -39,7 +53,7 @@ const getOneHost = (async (req: Request, res: Response) => {
     const name = String(req.params.hostname);
     (await client).connect();
     var collection = (await client).db('gui').collection('hosts');
-    var response = await collection.find({"name": name}).toArray();
+    var response = await collection.find({"name": name}).project({_id:0}).toArray();
     res.send(response);
   }
   catch(error) {
@@ -104,6 +118,13 @@ const deleteAll = (async (req:Request, res:Response) => {
  */
 const postHost = (async (req:Request, res:Response) => {
   try {
+    if (!isValidHostEntry(req.body.name)) {
+      return res.status(400).json({message: "Host must be a valid host name or IP address"});
+    }
+    const fieldError = hostFieldError(req.body);
+    if (fieldError) {
+      return res.status(400).json({message: fieldError});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('hosts');
     const isDuplicate = await isNameInDB(collection, req.body.name);
@@ -135,18 +156,27 @@ const postHost = (async (req:Request, res:Response) => {
 const updateHost = (async (req:Request, res:Response) => {
   try {
     let body = req.body;
+    if (!isValidHostEntry(body.new_hostname)) {
+      return res.status(400).json({message: "Host must be a valid host name or IP address"});
+    }
+    const fieldError = hostFieldError(body);
+    if (fieldError) {
+      return res.status(400).json({message: fieldError});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('hosts');
     const isDuplicate = await isNameInDB(collection, req.body.new_hostname);
     if (isDuplicate && req.body.new_hostname !== req.body.old_hostname) {
       return res.status(400).json({message: "Host already exists!"});
     }
-    let doc = await collection.findOne({name: req.body.old_hostname});
+    // Always recompute the reference ids from the submitted names. This is a
+    // handful of indexed lookups, and it self-heals documents whose stored
+    // *_ids drifted from the names (an old fast-path bug wrote names into the
+    // ids array, which silently broke rename propagation).
     await collection.updateOne({
       "name": body.old_hostname
     }, {$set:{"name": body.new_hostname, "batches": body.batches,
-              "batch_ids": (JSON.stringify(req.body.batches) === JSON.stringify(doc?.batches)) ?     // update reference _ids if changes made 
-      doc?.batches: await get_batch_ids(client, req.body),
+              "batch_ids": await get_batch_ids(client, req.body),
               "data": body.data},
        });
     if (body.new_hostname !== body.old_hostname) {            // Trigger update in hosts

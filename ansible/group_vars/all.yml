@@ -33,3 +33,15 @@
 
 # Reuse existing local images instead of building.
 # pssid_gui_no_build: false
+
+# Load the starter defaults (schedules, SSID profiles, a metadata test, the
+# "all" host group) on the FIRST install only. A marker file under
+# /var/lib/pssid makes re-runs and upgrades leave data alone.
+# pssid_gui_seed_defaults: true
+
+# Nightly MongoDB backups (cron). Archives go to mongo-backups/ in the source
+# directory; restore with scripts/restore.sh. Retention 0 keeps everything.
+# pssid_gui_backup_cron: true
+# pssid_gui_backup_hour: "3"
+# pssid_gui_backup_minute: "15"
+# pssid_gui_backup_retention_days: 14

@@ -3,7 +3,26 @@ import { connectToMongoDB } from '../services/database.service';
 import { get_ssid_profile_ids, get_schedule_ids, get_job_ids } from '../services/utility.services'
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
-import { isNameInDB } from './helpers';
+import { isNameInDB, isValidObjectName, isValidInterfaceName, isWholeNumber, isNameArray } from './helpers';
+
+/**
+ * Field rules for a batch payload beyond the name, shared by create and
+ * update. Returns an error message, or null when the payload is valid.
+ * Mirrors the client-side form rules so the API enforces what the form
+ * promises.
+ */
+const batchFieldError = (data: any): string | null => {
+  if (!isValidInterfaceName(data.test_interface)) {
+    return "Test interface must use letters and numbers only, e.g. wlan0";
+  }
+  if (!isWholeNumber(data.priority)) {
+    return "Priority must be a whole number (0 or greater)";
+  }
+  if (!isNameArray(data.ssid_profiles) || !isNameArray(data.schedules) || !isNameArray(data.jobs)) {
+    return "SSID profiles, schedules and jobs must be lists of object names";
+  }
+  return null;
+};
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -84,6 +103,13 @@ const deleteBatch = (async (req:Request, res:Response) => {
  */
 const postBatch = (async (req:Request, res:Response) => {
   try {
+    if (!isValidObjectName(req.body.name)) {
+      return res.status(400).json({message: "Invalid batch name"});
+    }
+    const fieldError = batchFieldError(req.body);
+    if (fieldError) {
+      return res.status(400).json({message: fieldError});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('batches');
     const isDuplicate = await isNameInDB(collection, req.body.name);
@@ -96,9 +122,9 @@ const postBatch = (async (req:Request, res:Response) => {
     const schedule_ids = await get_schedule_ids(client, data);
     const job_ids = await get_job_ids(client, data);
 
-    collection.insertOne({                                  // include names and _ids of objects
+    await collection.insertOne({                            // include names and _ids of objects
       "name": data.name,
-      "priority": data.priority,
+      "priority": Number(data.priority),
       "test_interface": data.test_interface,
       "ssid_profiles": data.ssid_profiles,
       "ssid_profile_ids": ssid_profile_ids,
@@ -125,6 +151,13 @@ const postBatch = (async (req:Request, res:Response) => {
  */
 const updateBatch = (async (req:Request, res:Response) => {
   try {
+    if (!isValidObjectName(req.body.new_batchname)) {
+      return res.status(400).json({message:"Invalid batch name"});
+    }
+    const fieldError = batchFieldError(req.body);
+    if (fieldError) {
+      return res.status(400).json({message: fieldError});
+    }
     (await client).connect();
     let collection = (await client).db('gui').collection('batches');
     const isDuplicate = await isNameInDB(collection, req.body.new_batchname);
@@ -132,28 +165,26 @@ const updateBatch = (async (req:Request, res:Response) => {
       return res.status(400).json({message:"Batch already exists!"});
     }
     let data = req.body;
-    let doc = await collection.findOne({name: data.old_batchname});
 
+    // Always recompute the reference ids from the submitted names. This is a
+    // handful of indexed lookups, and it self-heals documents whose stored
+    // *_ids drifted from the names (an old fast-path bug wrote names into the
+    // ids array, which silently broke rename propagation).
     await collection.updateOne({
       "name": data.old_batchname
-    }, {$set:{"name": data.new_batchname, "priority": data.priority,
-              "test_interface":data.test_interface, "ttl": data.ttl,
+    }, {$set:{"name": data.new_batchname, "priority": Number(data.priority),
+              "test_interface":data.test_interface,
               "ssid_profiles":data.ssid_profiles, "schedules":data.schedules,
               "jobs": data.jobs,
-              "ssid_profile_ids": (JSON.stringify(data.ssid_profiles) === JSON.stringify(doc?.ssid_profiles)) ?     // update reference _ids if changes made
-      doc?.ssid_profile_ids: await get_ssid_profile_ids(client, data),
-
-              "schedule_ids": (JSON.stringify(data.schedules) === JSON.stringify(doc?.schedules)) ?
-      doc?.schedules: await get_schedule_ids(client, data),
-
-              "job_ids": (JSON.stringify(data.jobs) === JSON.stringify(doc?.jobs)) ?
-      doc?.job_ids: await get_job_ids(client, data),
+              "ssid_profile_ids": await get_ssid_profile_ids(client, data),
+              "schedule_ids": await get_schedule_ids(client, data),
+              "job_ids": await get_job_ids(client, data),
              }
        });
 
-    if (data.old_batchname !== data.new_batchname) {           // trigger host and host_groups updates
-      updateCollection('hosts', 'batches', client);           // update hosts using batches collection
-      updateCollection('host_groups', 'batches', client);     // update host_groups using batches collection
+    if (data.old_batchname !== data.new_batchname) {              // trigger host and host_groups updates
+      await updateCollection('hosts', 'batches', client);        // update hosts using batches collection
+      await updateCollection('host_groups', 'batches', client);  // update host_groups using batches collection
     }
     res.json(data);
   }

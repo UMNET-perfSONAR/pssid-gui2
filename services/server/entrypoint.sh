@@ -8,10 +8,6 @@ if [ -f starters/provision ]; then
   cp -f starters/provision bin/
 fi
 
-if [ -d starters/archivers ]; then
-  cp -r starters/archivers plugins/
-fi
-
 if [ -d starters/tests ]; then
   cp -r starters/tests plugins/
 fi

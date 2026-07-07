@@ -3,7 +3,26 @@ import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { get_test_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
-import { isNameInDB } from './helpers';
+import { isNameInDB, isValidObjectName, isValidIso8601Duration, isValidJqExpression, isNameArray } from './helpers';
+
+/**
+ * Field rules for a job payload beyond the name, shared by create and update.
+ * Returns an error message, or null when the payload is valid. backoff is a
+ * pScheduler ISO 8601 duration and continue-if is a jq expression; both
+ * mirror the client-side form rules.
+ */
+const jobFieldError = (body: any): string | null => {
+  if (!isValidIso8601Duration(body.backoff)) {
+    return "Backoff must be an ISO 8601 duration, e.g. PT30S or PT1H";
+  }
+  if (!isValidJqExpression(body['continue-if'])) {
+    return "continue-if must be a jq expression with balanced brackets";
+  }
+  if (!isNameArray(body.tests)) {
+    return "Tests must be a list of test names";
+  }
+  return null;
+};
 
 var client = connectToMongoDB();
 
@@ -37,8 +56,8 @@ const getOneJob = (async (req: Request, res: Response) => {
     const name = String(req.params.job);
     (await client).connect();
     var collection = (await client).db('gui').collection('jobs');
-    var response = await collection.find({"name": name}).toArray();
-    res.send(response); 
+    var response = await collection.find({"name": name}).project({_id:0}).toArray();
+    res.send(response);
   }
   catch(error) {
     console.error(error);
@@ -63,9 +82,9 @@ const deleteJob = (async (req:Request, res:Response) => {
     const deleted = await job_col.findOne({ "name" : name });    
     await deleteDocument(batch_col, 'jobs', 'job_ids', deleted?.name);        // delete references from other collections
 
-    await job_col.findOneAndDelete({ "name" : name });       
+    await job_col.findOneAndDelete({ "name" : name });
 
-    res.send('host ' + name + ' was deleted');
+    res.send('job ' + name + ' was deleted');
   }
   catch(error) {
     console.error(error);
@@ -81,6 +100,13 @@ const deleteJob = (async (req:Request, res:Response) => {
  */
 const postJob = (async (req:Request, res:Response) => {
   try {
+    if (!isValidObjectName(req.body.name)) {
+      return res.status(400).json({message:"Invalid job name"});
+    }
+    const fieldError = jobFieldError(req.body);
+    if (fieldError) {
+      return res.status(400).json({message: fieldError});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('jobs');
     const isDuplicate = await isNameInDB(collection, req.body.name);
@@ -117,23 +143,32 @@ const postJob = (async (req:Request, res:Response) => {
 const updateJob = (async (req:Request, res:Response) => {
   try {
     let body = req.body;
+    if (!isValidObjectName(body.new_job)) {
+      return res.status(400).json({message:"Invalid job name"});
+    }
+    const fieldError = jobFieldError(body);
+    if (fieldError) {
+      return res.status(400).json({message: fieldError});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('jobs');
     const isDuplicate = await isNameInDB(collection, body.new_job);
     if (isDuplicate && body.old_job !== body.new_job) {
       return res.status(400).json({message:"Job already exists!"});
     }
-    let doc = await collection.findOne({name: req.body.old_job});
+    // Always recompute the reference ids from the submitted names. This is a
+    // handful of indexed lookups, and it self-heals documents whose stored
+    // *_ids drifted from the names (an old fast-path bug wrote names into the
+    // ids array, which silently broke rename propagation).
     await collection.updateOne({
       "name": body.old_job
     }, {$set:{"name": body.new_job, "backoff": body.backoff, "continue-if": body['continue-if'],
-              "test_ids": (JSON.stringify(doc?.tests) === JSON.stringify(body.tests)) 
-      ? doc?.tests : await get_test_ids(client, body),
+              "test_ids": await get_test_ids(client, body),
               "tests": body.tests
-             } 
-       }) 
+             }
+       })
     if (body.old_job !== body.new_job) {                           // Trigger update in batches collection
-      updateCollection('batches', 'jobs', client);               // update batches using jobs collection
+      await updateCollection('batches', 'jobs', client);         // update batches using jobs collection
     }
     res.json(body);
   }

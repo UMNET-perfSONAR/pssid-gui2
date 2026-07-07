@@ -60,12 +60,11 @@ req DELETE /api/schedules/smoke-canary
 check "canary cleanup" 200 "$STATUS" '' "$BODY"
 
 # ---- Reads of every collection (what every page load does) --------------------
-for p in hosts host-groups schedules ssid-profiles tests jobs batches archivers; do
+for p in hosts host-groups schedules ssid-profiles tests jobs batches; do
   req GET "/api/$p"
   check "GET /api/$p" 200 "$STATUS" '^\[' "$BODY"
 done
 req GET /api/tests/test-files;              check "test type templates list" 200 "$STATUS" '^\[' "$BODY"
-req GET /api/archivers/archiver-files;      check "archiver type templates list" 200 "$STATUS" '^\[' "$BODY"
 req GET /api/layer-scripts/layer2-files;    check "layer 2 methods list" 200 "$STATUS" '^\[' "$BODY"
 req GET /api/layer-scripts/layer3-files;    check "layer 3 methods list" 200 "$STATUS" '^\[' "$BODY"
 req GET /api/layer-scripts/defaults;        check "layer method defaults" 200 "$STATUS" '' "$BODY"
@@ -73,7 +72,7 @@ req GET /api/settings;                      check "settings read" 200 "$STATUS" 
 req GET /api/nonexistent;                   check "unknown API path returns JSON 404" 404 "$STATUS" 'Not found' "$BODY"
 
 # ---- Full user journey: build a working config from scratch -------------------
-req POST /api/schedules/create-schedule '{"name":"smoke-schedule","repeat":"0 16 * * *"}'
+req POST /api/schedules/create-schedule '{"name":"smoke-schedule","repeat":"0 23 * * *"}'
 check "create schedule" 200 "$STATUS" '' "$BODY"
 
 req POST /api/ssid-profiles/create-ssidProfile '{"name":"smoke-ssid","SSID":"SmokeNet","layer2_script":"wpa_supplicant","layer3_script":"dhcp_client"}'
@@ -93,9 +92,6 @@ check "create host" 200 "$STATUS" '' "$BODY"
 
 req POST /api/host-groups/create-hostgroup '{"name":"smoke-group","hosts":["smoke-probe-1"],"batches":["smoke-batch"],"data":{"site":"lab"},"hosts_regex":["smoke-.*"]}'
 check "create host group" 200 "$STATUS" '' "$BODY"
-
-req POST /api/archivers/create-archiver '{"name":"smoke-archiver","archiver":"syslog","data":{"facility":"local0"}}'
-check "create archiver" 200 "$STATUS" '' "$BODY"
 
 # ---- Read back and verify presence --------------------------------------------
 req GET /api/hosts;         check "created host listed" 200 "$STATUS" 'smoke-probe-1' "$BODY"
@@ -152,6 +148,26 @@ else
   req DELETE /api/ssid-profiles/smoke-bad
 fi
 
+# ---- API floor: field rules hold even for direct API calls ----------------------
+# The forms enforce these client-side; the server must enforce the same rules so
+# a hand-crafted request cannot store values the daemon would choke on.
+req POST /api/batches/create-batch '{"name":"smoke-bad-batch","test_interface":"eth0.100","priority":0,"ssid_profiles":[],"jobs":[],"schedules":[]}'
+check "server rejects dotted test interface" 400 "$STATUS" '' "$BODY"
+req POST /api/batches/create-batch '{"name":"smoke-bad-batch","test_interface":"wlan0","priority":-1,"ssid_profiles":[],"jobs":[],"schedules":[]}'
+check "server rejects negative priority" 400 "$STATUS" '' "$BODY"
+req POST /api/jobs/create-job '{"name":"smoke-bad-job","tests":[],"backoff":"30 seconds","continue-if":"true"}'
+check "server rejects non-ISO-8601 backoff" 400 "$STATUS" '' "$BODY"
+req POST /api/jobs/create-job '{"name":"smoke-bad-job","tests":[],"backoff":"PT30S","continue-if":"(.a"}'
+check "server rejects unbalanced continue-if" 400 "$STATUS" '' "$BODY"
+req POST /api/ssid-profiles/create-ssidProfile '{"name":"smoke-bad-ssid","SSID":"0123456789012345678901234567890123","layer2_script":"wpa_supplicant","layer3_script":"dhcp_client"}'
+check "server rejects SSID over 32 bytes" 400 "$STATUS" '' "$BODY"
+req POST /api/hosts/create-host '{"name":"999.1.2.3","batches":[],"data":{}}'
+check "server rejects mistyped IPv4 host" 400 "$STATUS" '' "$BODY"
+req POST /api/host-groups/create-hostgroup '{"name":"smoke_bad_group","batches":[],"hosts":[],"hosts_regex":[],"data":{}}'
+check "server rejects non-hostname group name" 400 "$STATUS" '' "$BODY"
+req POST /api/tests/create-test '{"name":"smoke-bad-test","type":"no-such-template","spec":[]}'
+check "server rejects unknown test type" 400 "$STATUS" '' "$BODY"
+
 # ---- Reference scrubbing: deleting an object cleans up references to it ---------
 # smoke-probe-1 and smoke-group still reference smoke-batch here; deleting the
 # batch must remove it from both (otherwise the generated config would carry a
@@ -176,7 +192,6 @@ req POST /api/batches/create-batch '{"name":"smoke-batch","test_interface":"wlan
 check "recreate batch for cleanup pass" 200 "$STATUS" '' "$BODY"
 
 # ---- Deletes (cleanup is also the delete-path test) ------------------------------
-req DELETE /api/archivers/smoke-archiver;      check "delete archiver" 200 "$STATUS" '' "$BODY"
 req DELETE /api/hosts/smoke-probe-1;           check "delete host" 200 "$STATUS" '' "$BODY"
 req DELETE /api/host-groups/smoke-group;       check "delete host group" 200 "$STATUS" '' "$BODY"
 req DELETE /api/batches/smoke-batch;           check "delete batch" 200 "$STATUS" '' "$BODY"

@@ -7,8 +7,7 @@ import { Collection } from 'mongodb';
  * referenced it, so the generated config never contains dangling names.
  *
  * Documents that do not carry the reference array at all are skipped: not every
- * document references every collection (batches created in the GUI have no
- * archivers field, for instance), and a missing parallel *_ids array is
+ * document references every collection, and a missing parallel *_ids array is
  * tolerated for documents written before ids were tracked.
  *
  * @param outdated_collection - collection to scrub (e.g. host_groups when a host is deleted)

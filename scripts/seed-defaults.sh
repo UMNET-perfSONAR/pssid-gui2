@@ -25,8 +25,17 @@ echo "Loading default data into '$DB_NAME' via container '$MONGO_CONTAINER'..."
 
 docker exec -i "$MONGO_CONTAINER" mongosh --quiet "$DB_NAME" <<'EOF'
 const names = {
-  schedules:     ['every 5 minutes', 'every hour', 'every 4 hours', 'every day at 16:00'],
-  ssid_profiles: ['MWireless1', 'MWireless2', 'eduroam'],
+  schedules:     [
+    'Every 5 minutes', 'Every hour', 'Every 4 hours', 'Every day at 23:00',
+    // Earlier wordings of the same defaults; removed on re-run so a reseed
+    // upgrades an existing database instead of duplicating schedules.
+    'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 23:00', 'every day at 16:00'
+  ],
+  ssid_profiles: [
+    'campus-wifi', 'guest-wifi', 'eduroam',
+    // Earlier organization-specific starter names; removed on re-run.
+    'MWireless1', 'MWireless2'
+  ],
   tests:         ['throughput-by-metadata'],
   host_groups:   ['all'],
 };
@@ -34,19 +43,20 @@ for (const [coll, ns] of Object.entries(names)) {
   db.getCollection(coll).deleteMany({ name: { $in: ns } });
 }
 
-// Schedule names read general-to-specific.
+// Schedule names read general-to-specific, in formal wording with 24-hour time.
 db.schedules.insertMany([
-  { name: 'every 5 minutes',    repeat: '*/5 * * * *' },
-  { name: 'every hour',         repeat: '0 * * * *' },
-  { name: 'every 4 hours',      repeat: '0 */4 * * *' },
-  { name: 'every day at 16:00', repeat: '0 16 * * *' },
+  { name: 'Every 5 minutes',    repeat: '*/5 * * * *' },
+  { name: 'Every hour',         repeat: '0 * * * *' },
+  { name: 'Every 4 hours',      repeat: '0 */4 * * *' },
+  { name: 'Every day at 23:00', repeat: '0 23 * * *' },
 ]);
 
-// Two profiles sharing one SSID (MWireless) plus eduroam. Methods are required.
+// Generic starter profiles; rename to match the networks on your campus.
+// Layer 2 / layer 3 methods are required.
 db.ssid_profiles.insertMany([
-  { name: 'MWireless1', SSID: 'MWireless', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
-  { name: 'MWireless2', SSID: 'MWireless', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
-  { name: 'eduroam',    SSID: 'eduroam',   layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'campus-wifi', SSID: 'Campus-WiFi', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'guest-wifi',  SSID: 'Guest-WiFi',  layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'eduroam',     SSID: 'eduroam',     layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
 ]);
 
 // A metadata-using test: the destination is a placeholder resolved per host from

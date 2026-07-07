@@ -55,8 +55,7 @@ methods from the SSID profiles it references, so the methods travel with the
 network rather than the batch.
 
 Per the agreed layout, the plugin directory has one parent (`plugins/`) with a
-subdirectory per category: `tests/`, `scripts/`, `layer2/`, `layer3/` (plus the
-pre-existing `archivers/`).
+subdirectory per category: `tests/`, `scripts/`, `layer2/`, `layer3/`.
 
 - The available files live in `starters/layer2/` and `starters/layer3/`. At
   startup `entrypoint.sh` copies them to `plugins/layer2/` and `plugins/layer3/`
@@ -82,8 +81,8 @@ directory, no code change is required.
 These fields are written into the ssid_profile document and are emitted unchanged
 into the generated `pssid_config.json` (the whole `ssid_profiles` collection is
 serialized), so the daemon reads the connection methods from each SSID profile.
-Multiple profiles may share the same `SSID` (for example `MWireless1` and
-`MWireless2` both pointing at `MWireless`) while differing in their methods.
+Multiple profiles may share the same `SSID` (for example two profiles both
+pointing at `Campus-WiFi`) while differing in their methods.
 
 ## Security model for selectable scripts
 

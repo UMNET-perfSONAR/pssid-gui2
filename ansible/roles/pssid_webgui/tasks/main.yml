@@ -16,6 +16,8 @@
       - make
       - openssl
       - curl
+      # cron daemon for the scheduled backups (Debian: cron, RHEL: cronie)
+      - "{{ 'cron' if ansible_os_family == 'Debian' else 'cronie' }}"
     state: present
 
 # ---- Locate or fetch the application source --------------------------------
@@ -45,6 +47,27 @@
     - name: Record the source directory
       ansible.builtin.set_fact:
         pssid_gui_src: "{{ pssid_gui_install_dir }}"
+
+# ---- Upgrade support ---------------------------------------------------------
+# Both tasks are inert on a normal deploy; upgrade.yml switches them on.
+
+- name: Back up the database before upgrading (best effort on first runs)
+  ansible.builtin.command:
+    argv: [bash, scripts/backup.sh]
+    chdir: "{{ pssid_gui_src }}"
+  when: pssid_gui_backup_first | bool
+  register: pssid_gui_preupgrade_backup
+  changed_when: pssid_gui_preupgrade_backup.rc == 0
+  # A missing mongo container just means there is nothing to back up yet.
+  failed_when: false
+
+- name: Fast-forward the source checkout
+  ansible.builtin.command:
+    argv: [git, -C, "{{ pssid_gui_src }}", pull, --ff-only]
+  when: pssid_gui_git_update | bool
+  register: pssid_gui_git_pull
+  changed_when: "'Already up to date' not in pssid_gui_git_pull.stdout"
+  failed_when: pssid_gui_git_pull.rc != 0
 
 # ---- Production: run the installer ------------------------------------------
 
@@ -118,6 +141,54 @@
   delay: 3
   until: pssid_gui_health.status == 200
 
+# ---- First-install starter data ----------------------------------------------
+# Runs once per host: the marker file makes every later run (and every upgrade)
+# leave the operator's data alone, including deliberately deleted defaults.
+
+- name: Starter defaults (first install only)
+  when: pssid_gui_mode == 'prod' and (pssid_gui_seed_defaults | bool)
+  block:
+    - name: Ensure the state directory exists
+      ansible.builtin.file:
+        path: "{{ pssid_gui_state_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Check whether starter defaults were already loaded
+      ansible.builtin.stat:
+        path: "{{ pssid_gui_state_dir }}/.defaults-seeded"
+      register: pssid_gui_seed_marker
+
+    - name: Load the starter defaults into MongoDB
+      ansible.builtin.command:
+        argv: [bash, scripts/seed-defaults.sh]
+        chdir: "{{ pssid_gui_src }}"
+      when: not pssid_gui_seed_marker.stat.exists
+      changed_when: true
+
+    - name: Record that the starter defaults were loaded
+      ansible.builtin.copy:
+        dest: "{{ pssid_gui_state_dir }}/.defaults-seeded"
+        content: |
+          Starter defaults loaded by the pSSID GUI Ansible role.
+          Delete this file and re-run the playbook to load them again.
+        mode: "0644"
+      when: not pssid_gui_seed_marker.stat.exists
+
+# ---- Scheduled backups ---------------------------------------------------------
+
+- name: Schedule the nightly MongoDB backup
+  ansible.builtin.cron:
+    name: pSSID GUI nightly MongoDB backup
+    minute: "{{ pssid_gui_backup_minute }}"
+    hour: "{{ pssid_gui_backup_hour }}"
+    job: >-
+      cd {{ pssid_gui_src }} &&
+      BACKUP_RETENTION_DAYS={{ pssid_gui_backup_retention_days }}
+      bash scripts/backup.sh >> /var/log/pssid-gui-backup.log 2>&1
+    state: "{{ 'present' if (pssid_gui_backup_cron | bool) else 'absent' }}"
+  when: pssid_gui_mode == 'prod'
+
 - name: Deployment summary
   ansible.builtin.debug:
     msg: >-
@@ -125,4 +196,5 @@
       {{ 'http://localhost:8888' if pssid_gui_mode == 'dev'
          else (('http' if pssid_gui_tls == 'none' else 'https') ~ '://' ~ pssid_gui_hostname) }}
       (mode: {{ pssid_gui_mode }}, edition: {{ pssid_gui_edition }},
-      source: {{ pssid_gui_src }})
+      source: {{ pssid_gui_src }},
+      nightly backups: {{ 'on (' ~ pssid_gui_backup_hour ~ ':' ~ pssid_gui_backup_minute ~ ')' if (pssid_gui_backup_cron | bool and pssid_gui_mode == 'prod') else 'off' }})

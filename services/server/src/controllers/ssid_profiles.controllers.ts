@@ -4,7 +4,7 @@ import path from 'path';
 import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
-import { isNameInDB } from './helpers';
+import { isNameInDB, isValidRfc1123Name, isValidSsidName } from './helpers';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -65,8 +65,8 @@ const getOneSSIDProfile = (async (req: Request, res: Response) => {
     const name = String(req.params.ssidProfile);
     (await client).connect();
     var collection = (await client).db('gui').collection('ssid_profiles');
-    var response = await collection.find({"name": name}).toArray();
-    res.send(response); 
+    var response = await collection.find({"name": name}).project({_id:0}).toArray();
+    res.send(response);
   }
   catch(error) {
     console.error(error);
@@ -110,6 +110,12 @@ const deleteSSIDProfile = (async (req:Request, res:Response) => {
  */
 const postSSIDProfile = (async (req:Request, res:Response) => {
   try {
+    if (!isValidRfc1123Name(req.body.name)) {
+      return res.status(400).json({message:"Invalid SSID profile name"});
+    }
+    if (!isValidSsidName(req.body.SSID)) {
+      return res.status(400).json({message:"SSID must be 1-32 bytes with no control characters"});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('ssid_profiles');
     const isDuplicate = await isNameInDB(collection, req.body.name);
@@ -126,7 +132,7 @@ const postSSIDProfile = (async (req:Request, res:Response) => {
     }
     await collection.insertOne({
       "name": req.body.name,
-      "SSID": req.body.SSID || '',
+      "SSID": req.body.SSID,
       "layer2_script": layer2_script,
       "layer3_script": layer3_script
     });
@@ -148,8 +154,13 @@ const postSSIDProfile = (async (req:Request, res:Response) => {
 const updateSSIDProfile = (async (req:Request, res:Response) => {
   try {
     let body = req.body;
+    if (!isValidRfc1123Name(body.new_ssid_name)) {
+      return res.status(400).json({message:"Invalid SSID profile name"});
+    }
+    if (!isValidSsidName(body.SSID)) {
+      return res.status(400).json({message:"SSID must be 1-32 bytes with no control characters"});
+    }
     (await client).connect();
-    console.log(body.old_ssid_name);
     var collection = (await client).db('gui').collection('ssid_profiles');
     const isDuplicate = await isNameInDB(collection, body.new_ssid_name);
     if (isDuplicate && body.old_ssid_name !== body.new_ssid_name) {
@@ -167,13 +178,13 @@ const updateSSIDProfile = (async (req:Request, res:Response) => {
       "name": body.old_ssid_name
     }, {$set:{
          "name": body.new_ssid_name,
-         "SSID": body.SSID ?? '',
-         "layer2_script": body.layer2_script ?? '',
-         "layer3_script": body.layer3_script ?? ''
+         "SSID": body.SSID,
+         "layer2_script": layer2_script,
+         "layer3_script": layer3_script
        }})
     
-    if (body.old_ssid_name !== body.new_ssid_name) {               // Trigger update in batches collection
-      updateCollection('batches', 'ssid_profiles', client)       // update batches using ssid_profiles collection
+    if (body.old_ssid_name !== body.new_ssid_name) {                   // Trigger update in batches collection
+      await updateCollection('batches', 'ssid_profiles', client)      // update batches using ssid_profiles collection
     }
     res.json(body);
   }

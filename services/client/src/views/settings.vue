@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="Settings"
-      subtitle="Manage how configuration changes are generated and pushed to probes"
+      subtitle="Control how configuration changes reach the probes"
       icon="settings"
     />
 
@@ -21,10 +21,8 @@
         <div class="settings-card-head">
           <span class="material-icons settings-card-icon">bolt</span>
           <div>
-            <h3 id="automation-title" class="settings-card-title">Configuration delivery</h3>
-            <p class="settings-card-desc">
-              Choose whether saved GUI changes deploy automatically or wait for an operator.
-            </p>
+            <h3 id="automation-title" class="settings-card-title">Automation</h3>
+            <p class="settings-card-desc">How saved changes reach the probes.</p>
           </div>
         </div>
 
@@ -32,35 +30,20 @@
           <div class="setting-text">
             <div class="setting-name">Auto-provision on change</div>
             <div class="setting-sub">
-              After successful edits to hosts, groups, schedules, SSID profiles, tests,
-              jobs, or batches, the server can regenerate the daemon config and push it
-              to the probes.
+              When on, saved edits to hosts, groups, schedules, SSID profiles, tests,
+              jobs, or batches are bundled and pushed to the probes automatically.
+              When off, changes stay in the database until you provision manually.
             </div>
           </div>
-          <div class="setting-control">
-            <span class="status-chip" :class="settingsStore.autoProvision ? 'on' : 'off'">
-              {{ settingsStore.autoProvision ? 'On' : 'Off' }}
-            </span>
-            <label class="switch" :class="{ disabled: isDisabled || settingsStore.isSaving }" aria-label="Auto-provision on change">
-              <input
-                type="checkbox"
-                :checked="settingsStore.autoProvision"
-                :disabled="isDisabled || settingsStore.isSaving"
-                @change="onToggle($event)"
-              />
-              <span class="switch-track"><span class="switch-thumb"></span></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="setting-callout" :class="{ muted: !settingsStore.autoProvision }">
-          <span class="material-icons">{{ settingsStore.autoProvision ? 'info' : 'pause_circle' }}</span>
-          <span v-if="settingsStore.autoProvision">
-            Auto-provision is on. A burst of saved edits is bundled into one background provision run.
-          </span>
-          <span v-else>
-            Auto-provision is off. Saved edits stay in the database until you provision from Hosts, Groups, or the tools below.
-          </span>
+          <label class="switch" :class="{ disabled: isDisabled || settingsStore.isSaving }" aria-label="Auto-provision on change">
+            <input
+              type="checkbox"
+              :checked="settingsStore.autoProvision"
+              :disabled="isDisabled || settingsStore.isSaving"
+              @change="onToggle($event)"
+            />
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
         </div>
       </section>
 
@@ -68,7 +51,7 @@
         <div class="settings-card-head">
           <span class="material-icons settings-card-icon">cloud_upload</span>
           <div>
-            <h3 id="tools-title" class="settings-card-title">Provisioning tools</h3>
+            <h3 id="tools-title" class="settings-card-title">Provisioning</h3>
             <p class="settings-card-desc">
               Inspect or push the current generated configuration.
             </p>
@@ -267,12 +250,6 @@ export default {
   flex: 1;
   min-width: 0;
 }
-.setting-control {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-shrink: 0;
-}
 .setting-name {
   font-weight: 600;
   font-size: 0.92rem;
@@ -291,25 +268,6 @@ export default {
   border-radius: 4px;
   font-size: 0.78rem;
   color: var(--text);
-}
-.status-chip {
-  min-width: 42px;
-  border-radius: 999px;
-  padding: 0.18rem 0.55rem;
-  text-align: center;
-  font-size: 0.72rem;
-  font-weight: 700;
-  border: 1px solid var(--border);
-}
-.status-chip.on {
-  background: #dcfce7;
-  color: #166534;
-  border-color: #bbf7d0;
-}
-.status-chip.off {
-  background: #f1f5f9;
-  color: #475569;
-  border-color: #dbe2ea;
 }
 .switch {
   position: relative;
@@ -348,36 +306,10 @@ export default {
   transition: transform .18s ease;
 }
 .switch input:checked + .switch-track {
-  background: var(--primary);
+  background: #16a34a;
 }
 .switch input:checked + .switch-track .switch-thumb {
   transform: translateX(20px);
-}
-.setting-callout {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
-  margin-top: 0.85rem;
-  padding: 0.7rem 0.9rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  line-height: 1.5;
-  background: rgba(var(--primary-rgb), .06);
-  color: var(--text);
-  border: 1px solid rgba(var(--primary-rgb), .12);
-}
-.setting-callout.muted {
-  background: rgba(100, 116, 139, .08);
-  border-color: var(--border);
-  color: var(--muted);
-}
-.setting-callout .material-icons {
-  font-size: 1.1rem;
-  color: var(--primary);
-  flex-shrink: 0;
-}
-.setting-callout.muted .material-icons {
-  color: var(--muted);
 }
 .readonly-banner {
   font-size: 0.82rem;
@@ -460,11 +392,6 @@ export default {
   white-space: pre;
 }
 
-:global(:root[data-theme="dark"]) .status-chip.off {
-  background: #182235;
-  color: var(--muted);
-  border-color: var(--border);
-}
 :global(:root[data-theme="dark"]) .setting-sub code {
   background: #0e1626;
 }
@@ -473,8 +400,7 @@ export default {
   color: #fed7aa;
   border-color: #7c2d12;
 }
-:global(:root[data-theme="dark"]) .preview-status.unchanged,
-:global(:root[data-theme="dark"]) .status-chip.on {
+:global(:root[data-theme="dark"]) .preview-status.unchanged {
   background: #0f2f1c;
   color: #bbf7d0;
   border-color: #166534;
@@ -485,10 +411,6 @@ export default {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
-  }
-  .setting-control {
-    width: 100%;
-    justify-content: space-between;
   }
 }
 </style>

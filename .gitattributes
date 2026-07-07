@@ -1,0 +1,5 @@
+# Shell scripts and Makefiles must keep LF endings everywhere: bash rejects
+# CRLF scripts and make rejects CRLF recipes, so a Windows checkout with
+# autocrlf enabled would otherwise break the automation.
+*.sh text eol=lf
+Makefile text eol=lf

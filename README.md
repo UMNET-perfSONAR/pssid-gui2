@@ -9,37 +9,78 @@ The same codebase can be themed for different organizations, and the included
 installer brings the stack up in one step while keeping the existing security
 model: HTTPS, optional single sign-on, and an isolated Docker network.
 
-## Quickstart
+## Quickstart: one command
 
-On a fresh Unix box, as root, the Ansible playbook does everything, including
-installing Docker:
-
-```bash
-apt-get update && apt-get install -y git ansible
-git clone https://github.com/UMNET-perfSONAR/pssid-gui2.git /opt/pssid-gui
-cd /opt/pssid-gui/ansible
-ansible-playbook site.yml -e pssid_gui_hostname=pssid.example.edu
-```
-
-Then open `https://pssid.example.edu`. The playbook uses two roles, `docker`
-and `pssid_webgui`; the [Ansible guide](ansible/README.md) covers remote
-hosts, SSO, editions, and the development stack (`ansible-playbook dev.yml`).
-
-If Docker is already installed, the installer alone does the same job:
+On a fresh Unix box, as root:
 
 ```bash
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh | bash
 ```
 
-It asks for the edition, hostname, SSO, and TLS settings, generates the
-secrets and certificates, writes the nginx config, and starts the containers.
-It can also run without prompts:
+That single command installs git and Ansible, fetches the application,
+installs Docker, generates the secrets and certificates, builds and starts the
+stack, loads the reusable starter defaults, and schedules nightly database
+backups. When it finishes, open `https://<this machine's hostname>`.
+
+Settings ride along as environment variables (all optional):
 
 ```bash
-./install.sh -y --edition=default --hostname=pssid.example.com --tls=self-signed --sso=false
+curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh \
+  | PSSID_HOSTNAME=pssid.example.edu PSSID_EDITION=umich bash
 ```
 
-Day-to-day operations are wrapped in a Makefile (`make up`, `make down`,
+`bootstrap.sh` documents the full list (TLS mode, Let's Encrypt email, SSO and
+its OIDC values). From a clone, `./bootstrap.sh` does the same thing.
+
+Afterwards, one command each keeps the deployment maintained:
+
+```bash
+make upgrade    # backup, pull the latest release, rebuild, verify health
+make backup     # extra on-demand database backup (nightly ones are automatic)
+make help       # every operator shortcut (up, down, logs, doctor, ...)
+```
+
+## The same steps, by hand
+
+The automation only strings together the stages below. Run them yourself when
+you want control at each point, or when something needs investigating; the
+[deployment guide](docs/deployment.md) covers every stage in depth and is
+written for the Unix sysadmin and WiFi engineer who has to intervene when the
+automation cannot.
+
+1. **Prerequisites** (root shell):
+   ```bash
+   apt-get update && apt-get install -y git ansible
+   ```
+2. **Fetch the source**:
+   ```bash
+   git clone https://github.com/UMNET-perfSONAR/pssid-gui2.git /opt/pssid-gui
+   ```
+3. **Deploy**. Either the playbook (installs Docker for you; the
+   [Ansible guide](ansible/README.md) covers remote hosts, SSO, editions,
+   upgrades, and backups):
+   ```bash
+   cd /opt/pssid-gui/ansible
+   ansible-playbook site.yml -e pssid_gui_hostname=pssid.example.edu
+   ```
+   or, when Docker is already installed, the interactive installer, which asks
+   for the edition, hostname, SSO, and TLS settings and can also run without
+   prompts:
+   ```bash
+   ./install.sh
+   ./install.sh -y --edition=default --hostname=pssid.example.com --tls=self-signed --sso=false
+   ```
+4. **Verify**:
+   ```bash
+   curl -k https://localhost/api/health    # {"status":"ok",...}
+   make ps                                 # container status
+   ```
+5. **Optional starter data** (the playbook already does this on first install):
+   ```bash
+   make seed-defaults
+   ```
+
+Day-to-day operations are wrapped in the Makefile (`make up`, `make down`,
 `make logs`, `make dev`, `make doctor`, and others). Run `make help` for the
 full list.
 

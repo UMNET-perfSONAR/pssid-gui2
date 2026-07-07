@@ -1,79 +1,37 @@
 import { MongoClient } from 'mongodb'
 
-export async function get_ssid_profile_ids(client: Promise<MongoClient>, data: any) {
-  // test to see if manual reference works 
-  const col = (await client).db('gui').collection('ssid_profiles');
-  var arr = [];
-  arr.length += data.ssid_profiles.length;
-  for (let i = 0; i < data.ssid_profiles.length; i++) {
-    arr[i] = (await col.findOne({"name":`${data.ssid_profiles[i]}`}))?._id
-  }
-  return arr;
+/**
+ * Maps an array of object names to their MongoDB _ids by looking each name up
+ * in the given collection. Every controller stores names (user-facing) plus a
+ * parallel *_ids array (stable across renames); this produces the latter.
+ *
+ * Names are coerced to strings so an operator object in a request body (e.g.
+ * {"$ne": null}) can never become a NoSQL query. A missing or non-array input
+ * yields [], and unknown names yield undefined entries (the historical
+ * behavior callers tolerate).
+ */
+async function get_ids(client: Promise<MongoClient>, colName: string, names: unknown) {
+  const col = (await client).db('gui').collection(colName);
+  const list = Array.isArray(names) ? names : [];
+  return Promise.all(
+    list.map(async (name) => (await col.findOne({ "name": String(name) }))?._id)
+  );
 }
 
-export async function get_schedule_ids(client: Promise<MongoClient>, data: any) {
-  // test to see if manual reference works 
-  const col = (await client).db('gui').collection('schedules');
-  var arr = [];
-  arr.length += data.schedules.length;
-  for (let i = 0; i < data.schedules.length; i++) {
-    arr[i] = (await col.findOne({"name":`${data.schedules[i]}`}))?._id
-  }
-  console.log(arr);
-  return arr;
-}
+export const get_ssid_profile_ids = (client: Promise<MongoClient>, data: any) =>
+  get_ids(client, 'ssid_profiles', data?.ssid_profiles);
 
-export async function get_job_ids(client: Promise<MongoClient>, data: any) {
-  // test to see if manual reference works 
-  const col = (await client).db('gui').collection('jobs');
-  var arr = [];
-  arr.length += data.jobs.length;
-  for (let i = 0; i < data.jobs.length; i++) {
-    arr[i] = (await col.findOne({"name":`${data.jobs[i]}`}))?._id
-  }
-  return arr;
-}
+export const get_schedule_ids = (client: Promise<MongoClient>, data: any) =>
+  get_ids(client, 'schedules', data?.schedules);
 
-export async function get_archiver_ids(client: Promise<MongoClient>, data: any) {
-  // test to see if manual reference works s
-  const col = (await client).db('gui').collection('archivers');
-  var arr = [];
-  arr.length += data.archivers.length;
-  for (let i = 0; i < data.archivers.length; i++) {
-    arr[i] = (await col.findOne({"name":`${data.archivers[i]}`}))?._id
-  }
-  return arr;
-}
+export const get_job_ids = (client: Promise<MongoClient>, data: any) =>
+  get_ids(client, 'jobs', data?.jobs);
 
-export async function get_test_ids(client: Promise<MongoClient>, data: any) {
-  // test to see if manual reference works 
-  const col = (await client).db('gui').collection('tests');
-  var arr = [];
-  arr.length += data.tests.length;
-  for (let i = 0; i < data.tests.length; i++) {
-    arr[i] = (await col.findOne({"name":`${data.tests[i]}`}))?._id
-  }
-  return arr;
-}
+export const get_test_ids = (client: Promise<MongoClient>, data: any) =>
+  get_ids(client, 'tests', data?.tests);
 
-export async function get_batch_ids(client: Promise<MongoClient>, data: any) {
-  // test to see if manual reference works 
-  const col = (await client).db('gui').collection('batches');
-  var arr = [];
-  arr.length += data.batches.length;
-  for (let i = 0; i < data.batches.length; i++) {
-    arr[i] = (await col.findOne({"name":`${data.batches[i]}`}))?._id
-  }
-  return arr;
-}
+export const get_batch_ids = (client: Promise<MongoClient>, data: any) =>
+  get_ids(client, 'batches', data?.batches);
 
-export async function get_host_ids(client: Promise<MongoClient>, data: any) {
-  // test to see if manual reference works 
-  const col = (await client).db('gui').collection('hosts');
-  var arr = [];
-  arr.length += data.hosts.length;
-  for (let i = 0; i < data.hosts.length; i++) {
-    arr[i] = (await col.findOne({"name":`${data.hosts[i]}`}))?._id
-  }
-  return arr;
-}
+export const get_host_ids = (client: Promise<MongoClient>, data: any) =>
+  get_ids(client, 'hosts', data?.hosts);

@@ -1,68 +1,102 @@
 <template>
-  <div class="toast-container" aria-live="polite">
-    <div
-      v-for="toast in toastStore.toasts"
-      :key="toast.id"
-      class="toast-item"
-      :class="toast.type"
-    >
-      <span class="toast-message">{{ toast.message }}</span>
-      <button class="toast-close" @click="toastStore.dismiss(toast.id)" aria-label="Dismiss">&times;</button>
-    </div>
+  <div class="snackbar-region" aria-live="polite">
+    <transition-group name="snackbar">
+      <div
+        v-for="toast in toastStore.toasts"
+        :key="toast.id"
+        class="snackbar"
+        :class="toast.type"
+      >
+        <span class="material-icons snackbar-icon">{{ iconFor(toast.type) }}</span>
+        <span class="snackbar-message">{{ toast.message }}</span>
+        <button class="snackbar-close" @click="toastStore.dismiss(toast.id)" aria-label="Dismiss">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+    </transition-group>
   </div>
 </template>
 
 <script>
 import { useToastStore } from '../stores/toast.store'
+
 export default {
   name: 'ToastNotification',
   setup() {
     return { toastStore: useToastStore() }
+  },
+  methods: {
+    iconFor(type) {
+      return { success: 'check_circle', error: 'error', info: 'info' }[type] || 'info'
+    }
   }
 }
 </script>
 
 <style scoped>
-.toast-container {
+/* Feedback appears as a snackbar rising from the bottom centre of the page,
+   out of the way of the header actions and the form being edited. */
+.snackbar-region {
   position: fixed;
-  top: 1rem;
-  right: 1rem;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 9999;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
+  align-items: center;
   gap: 0.5rem;
-  max-width: 380px;
+  width: min(480px, calc(100vw - 2rem));
   pointer-events: none;
 }
-.toast-item {
+.snackbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  align-items: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  background: #1f2937;
+  color: #f3f4f6;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   pointer-events: all;
-  animation: toast-in 0.22s ease;
 }
-.toast-item.success { background: #28a745; }
-.toast-item.error   { background: #dc3545; }
-.toast-item.info    { background: #17a2b8; }
-.toast-message { flex: 1; }
-.toast-close {
+:root[data-theme="dark"] .snackbar {
+  background: #2b3852;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+.snackbar-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+.snackbar.success .snackbar-icon { color: #4ade80; }
+.snackbar.error   .snackbar-icon { color: #f87171; }
+.snackbar.info    .snackbar-icon { color: #60a5fa; }
+.snackbar-message {
+  flex: 1;
+  white-space: pre-line;
+  word-break: break-word;
+}
+.snackbar-close {
   background: none;
   border: none;
-  color: rgba(255,255,255,0.85);
-  font-size: 1.25rem;
-  line-height: 1;
+  color: #9ca3af;
   cursor: pointer;
-  margin-left: 0.75rem;
   padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
 }
-.toast-close:hover { color: #fff; }
-@keyframes toast-in {
-  from { opacity: 0; transform: translateX(30px); }
-  to   { opacity: 1; transform: translateX(0); }
+.snackbar-close .material-icons { font-size: 1rem; }
+.snackbar-close:hover { color: #f3f4f6; }
+
+.snackbar-enter-active { transition: opacity .18s ease, transform .18s ease; }
+.snackbar-leave-active { transition: opacity .15s ease, transform .15s ease; }
+.snackbar-enter-from,
+.snackbar-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 </style>

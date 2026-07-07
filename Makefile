@@ -11,8 +11,9 @@ EDITION ?= $(shell [ -f .env ] && sed -n 's/^EDITION=//p' .env || echo default)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install up down restart logs ps build dev dev-down seed-demo \
-        edition-umich edition-default backup restore doctor clean test smoke
+.PHONY: help install deploy upgrade up down restart logs ps build dev dev-down \
+        seed-demo seed-defaults edition-umich edition-default backup restore \
+        doctor clean test smoke
 
 help: ## Show this help
 	@echo "pSSID GUI make targets:"
@@ -21,6 +22,12 @@ help: ## Show this help
 
 install: ## Run the installer (interactive)
 	@./install.sh
+
+deploy: ## Full automated deployment via Ansible (Docker, certs, stack, backups)
+	@cd ansible && ansible-playbook site.yml
+
+upgrade: ## Upgrade in place: backup, pull latest, rebuild, verify
+	@cd ansible && ansible-playbook upgrade.yml
 
 up: ## Start the production stack (HTTPS/nginx)
 	@EDITION=$(EDITION) $(PROD) up -d
@@ -51,6 +58,9 @@ dev-down: ## Stop the local dev stack
 
 seed-demo: ## Load the canonical demo dataset into the running MongoDB container
 	@bash scripts/seed-demo.sh
+
+seed-defaults: ## Load the reusable starter defaults (fresh installs)
+	@bash scripts/seed-defaults.sh
 
 test: ## Run all unit tests (server + client, no stack needed)
 	@echo "== server unit tests =="

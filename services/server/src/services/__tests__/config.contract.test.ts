@@ -7,7 +7,7 @@ import {
   applyMetadata,
   buildIniContent,
   removeIdsProperties,
-  ensureBatchArchivers,
+  stripLegacyArchivers,
   sanitizeSsidMethods,
   stripConfigMetadata,
 } from '../config.service';
@@ -31,7 +31,7 @@ function validConfig() {
       { name: 'all', hosts: ['probe-1'], batches: ['batch-1'], hosts_regex: ['.*'], data: {} },
     ],
     schedules: [
-      { name: 'hourly', repeat: '0 * * * *' },
+      { name: 'Every hour', repeat: '0 * * * *' },
     ],
     ssid_profiles: [
       { name: 'campus', SSID: 'Campus-WiFi', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
@@ -49,8 +49,7 @@ function validConfig() {
         test_interface: 'wlan0',
         ssid_profiles: ['campus'],
         jobs: ['job-1'],
-        schedules: ['hourly'],
-        archivers: [],
+        schedules: ['Every hour'],
       },
     ],
   };
@@ -132,6 +131,18 @@ describe('assertDaemonValid', () => {
     const groupHost = validConfig();
     (groupHost.host_groups[0] as any).hosts = ['ghost'];
     expect(() => assertDaemonValid(groupHost)).toThrow(/unknown host "ghost"/);
+  });
+
+  it('rejects host and group names that could inject Ansible inventory syntax', () => {
+    // A newline in a host name would let the name smuggle an extra inventory
+    // line (e.g. a [section] header or a variable assignment) into hosts.ini.
+    const host = validConfig();
+    (host.hosts[0] as any).name = "probe-1\n[all:vars]\nansible_user=root";
+    expect(() => assertDaemonValid(host)).toThrow(/not inventory-safe/);
+
+    const group = validConfig();
+    (group.host_groups[0] as any).name = 'bad[group]';
+    expect(() => assertDaemonValid(group)).toThrow(/not inventory-safe/);
   });
 
   it('reports every problem in one error, not just the first', () => {
@@ -222,13 +233,21 @@ describe('removeIdsProperties', () => {
   });
 });
 
-describe('ensureBatchArchivers', () => {
-  it('normalizes a missing or malformed archivers field to []', () => {
-    const data = { batches: [{ name: 'a' }, { name: 'b', archivers: 'x' }, { name: 'c', archivers: ['keep'] }] };
-    ensureBatchArchivers(data);
-    expect((data.batches[0] as any).archivers).toEqual([]);
-    expect((data.batches[1] as any).archivers).toEqual([]);
-    expect((data.batches[2] as any).archivers).toEqual(['keep']);
+describe('stripLegacyArchivers', () => {
+  it('removes legacy archiver fields left over from databases written before the feature was removed', () => {
+    const data = {
+      batches: [
+        { name: 'a' },
+        { name: 'b', archivers: ['rabbitmq-archive'], archiver_ids: ['x'] },
+      ],
+    };
+    stripLegacyArchivers(data);
+    expect(data.batches[0]).toEqual({ name: 'a' });
+    expect(data.batches[1]).toEqual({ name: 'b' });
+  });
+
+  it('tolerates missing batches', () => {
+    expect(() => stripLegacyArchivers({})).not.toThrow();
   });
 });
 

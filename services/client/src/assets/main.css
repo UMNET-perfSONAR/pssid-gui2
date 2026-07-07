@@ -45,9 +45,6 @@
    covers both class-styled icons and the few that set the colour inline. */
 :root[data-theme="dark"] .page-header-icon,
 :root[data-theme="dark"] .settings-card-icon,
-:root[data-theme="dark"] .stat-icon,
-:root[data-theme="dark"] .status-pill.neutral .material-icons,
-:root[data-theme="dark"] .setting-callout:not(.muted) .material-icons,
 :root[data-theme="dark"] .material-icons[style*="var(--primary)"] {
   color: var(--accent) !important;
 }
@@ -243,6 +240,21 @@ fieldset[disabled] .form-control {
 .btn[disabled] {
   opacity: 0.5 !important;
   cursor: not-allowed;
+}
+/* Add/Update buttons read as grey until every field is valid; the green fill
+   is the signal that the entry is complete and can be submitted. */
+.btn.btn-success:disabled,
+.btn.btn-success[disabled] {
+  background-color: #a7b0bc !important;
+  border-color: #a7b0bc !important;
+  color: #fff !important;
+  opacity: 1 !important;
+}
+:root[data-theme="dark"] .btn.btn-success:disabled,
+:root[data-theme="dark"] .btn.btn-success[disabled] {
+  background-color: #33415c !important;
+  border-color: #33415c !important;
+  color: #93a1b5 !important;
 }
 
 /* ─── Item list (list_items.vue) ─────────────────────────────── */

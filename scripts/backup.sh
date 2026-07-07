@@ -1,10 +1,15 @@
 #!/bin/bash
 # Backs up the MongoDB 'gui' database as a compressed archive to ./mongo-backups.
+#
+# Set BACKUP_RETENTION_DAYS=N to prune archives older than N days after a
+# successful backup (0 or unset keeps everything). The scheduled nightly backup
+# installed by the Ansible role uses this.
 set -euo pipefail
 
 TIMESTAMP=$(date +%F-%H-%M)
 BACKUP_DIR="./mongo-backups"
 DB_NAME="gui"
+RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-0}"
 
 mkdir -p "$BACKUP_DIR"
 
@@ -29,3 +34,9 @@ docker exec "$DB_CONTAINER" sh -c "mongodump $AUTH --archive --gzip --db=$DB_NAM
   > "$BACKUP_DIR/backup-$TIMESTAMP.gz"
 
 echo "Backup created: $BACKUP_DIR/backup-$TIMESTAMP.gz"
+
+# Prune old archives only after this backup succeeded.
+if [ "$RETENTION_DAYS" -gt 0 ] 2>/dev/null; then
+  find "$BACKUP_DIR" -name 'backup-*.gz' -type f -mtime "+$RETENTION_DAYS" -print -delete \
+    | sed 's/^/Pruned: /'
+fi

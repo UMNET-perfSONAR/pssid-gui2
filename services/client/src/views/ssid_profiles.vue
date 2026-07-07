@@ -43,7 +43,7 @@
           </div>
           <div class="form-group">
             <label> SSID </label>
-            <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="add_SSID" class="form-control" required />
+            <input type="text" placeholder="Wireless network name, e.g. eduroam" v-model="add_SSID" class="form-control" required />
             <small v-if="addSsidNameError" class="text-danger">{{ addSsidNameError }}</small>
           </div>
           <div class="form-group">
@@ -79,7 +79,7 @@
           </div>
           <div class="form-group">
             <label> SSID </label>
-            <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="currentItem.SSID" class="form-control" required />
+            <input type="text" placeholder="Wireless network name, e.g. eduroam" v-model="currentItem.SSID" class="form-control" required />
             <small v-if="editSsidNameError" class="text-danger">{{ editSsidNameError }}</small>
           </div>
           <div class="form-group">

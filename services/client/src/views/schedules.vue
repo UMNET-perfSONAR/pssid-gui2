@@ -88,7 +88,7 @@
  import PageHeader from '../components/PageHeader.vue';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
- import { validName, validCron } from "../utils/validators.ts"
+ import { validDisplayName, validCron } from "../utils/validators.ts"
 
  export default {
    components: { cronstuff, itemList, PageHeader },
@@ -123,22 +123,22 @@
         return isFormDisabled();
       },
       scheduleNameError() {
-        return this.schedule_name ? validName(this.schedule_name).error : '';
+        return this.schedule_name ? validDisplayName(this.schedule_name).error : '';
       },
       cronError() {
         return this.cronExpression ? validCron(this.cronExpression).error : '';
       },
       addScheduleValid() {
-        return validName(this.schedule_name).valid && validCron(this.cronExpression).valid;
+        return validDisplayName(this.schedule_name).valid && validCron(this.cronExpression).valid;
       },
       editScheduleNameError() {
-        return this.currentItem.name ? validName(this.currentItem.name).error : '';
+        return this.currentItem.name ? validDisplayName(this.currentItem.name).error : '';
       },
       editCronError() {
         return this.currentItem.repeat ? validCron(this.currentItem.repeat).error : '';
       },
       editScheduleValid() {
-        return validName(this.currentItem.name || '').valid && validCron(this.currentItem.repeat || '').valid;
+        return validDisplayName(this.currentItem.name || '').valid && validCron(this.currentItem.repeat || '').valid;
       }
     },
 

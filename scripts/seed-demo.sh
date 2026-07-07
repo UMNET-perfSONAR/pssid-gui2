@@ -27,17 +27,28 @@ docker exec -i "$MONGO_CONTAINER" mongosh --quiet "$DB_NAME" <<'EOF'
 // ---- idempotent cleanup of previous demo data -------------------------------
 const demoNames = {
   schedules:     [
-    'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 16:00',
+    'Every 5 minutes', 'Every hour', 'Every 4 hours', 'Every day at 23:00',
     // Legacy demo names from older seed scripts; clean them up on re-run.
-    'every-5-min', 'hourly', 'nightly'
+    // These are cleanup keys only, not the current displayed default schedules.
+    'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 23:00',
+    'every-5-min', 'hourly', 'nightly', 'every day at 16:00'
   ],
-  ssid_profiles: ['MWireless', 'eduroam', 'MGuest'],
+  ssid_profiles: [
+    'campus-wifi', 'eduroam', 'guest-wifi',
+    // Legacy demo names from older seed scripts; clean them up on re-run.
+    'MWireless', 'MGuest'
+  ],
   tests:         ['http-google', 'ping-gateway', 'dns-resolve', 'throughput-iperf'],
-  // Legacy demo archiver from older seed scripts; remove it, but do not re-seed it.
+  // The archivers feature was removed from the GUI; purge the legacy demo doc so
+  // old demo stacks do not keep a dead collection around.
   archivers:     ['rabbitmq-archive'],
   jobs:          ['connectivity-suite', 'throughput-suite'],
   batches:       ['edge-batch', 'core-batch'],
-  hosts:         ['rp-bbb-01', 'rp-eecs-02', 'rp-union-03', 'rp-li-04', 'rp-pierpont-05'],
+  hosts:         [
+    'probe-library-01', 'probe-labs-02', 'probe-union-03', 'probe-dorms-04', 'probe-annex-05',
+    // Legacy demo names from older seed scripts; clean them up on re-run.
+    'rp-bbb-01', 'rp-eecs-02', 'rp-union-03', 'rp-li-04', 'rp-pierpont-05'
+  ],
   host_groups:   ['campus-edge', 'campus-core'],
 };
 for (const [coll, names] of Object.entries(demoNames)) {
@@ -48,16 +59,16 @@ db.provision_history.deleteMany({ caller: 'demo@seed' });
 
 // ---- leaf objects -----------------------------------------------------------
 const sIds = db.schedules.insertMany([
-  { name: 'every 5 minutes',    repeat: '*/5 * * * *' },
-  { name: 'every hour',         repeat: '0 * * * *' },
-  { name: 'every 4 hours',      repeat: '0 */4 * * *' },
-  { name: 'every day at 16:00', repeat: '0 16 * * *' },
+  { name: 'Every 5 minutes',    repeat: '*/5 * * * *' },
+  { name: 'Every hour',         repeat: '0 * * * *' },
+  { name: 'Every 4 hours',      repeat: '0 */4 * * *' },
+  { name: 'Every day at 23:00', repeat: '0 23 * * *' },
 ]).insertedIds;
 
 const pIds = db.ssid_profiles.insertMany([
-  { name: 'MWireless', SSID: 'MWireless', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
-  { name: 'eduroam',   SSID: 'eduroam',   layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
-  { name: 'MGuest',    SSID: 'MGuest',    layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'campus-wifi', SSID: 'Campus-WiFi', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'eduroam',     SSID: 'eduroam',     layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
+  { name: 'guest-wifi',  SSID: 'Guest-WiFi',  layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
 ]).insertedIds;
 
 const tIds = db.tests.insertMany([
@@ -66,16 +77,16 @@ const tIds = db.tests.insertMany([
       { type: 'text', name: 'timeout', value: 'PT10S' },
   ] },
   { name: 'ping-gateway',     type: 'rtt',        spec: [
-      { type: 'text',         name: 'dest',     value: '141.211.144.1' },
+      { type: 'text',         name: 'dest',     value: '192.0.2.1' },
       { type: 'number',       name: 'length',   value: 512 },
       { type: 'singleselect', name: 'protocol', selected: { name: 'TCP' } },
   ] },
   { name: 'dns-resolve',      type: 'dns',        spec: [
       { type: 'text',         name: 'nameserver', value: '8.8.8.8' },
       { type: 'singleselect', name: 'record',     selected: { name: 'A' } },
-      { key: 'query', value: 'umich.edu' },
+      { key: 'query', value: 'example.edu' },
   ] },
-  { name: 'throughput-iperf', type: 'throughput', spec: [ { type: 'text', name: 'dest',  value: 'perfsonar.umich.edu' } ] },
+  { name: 'throughput-iperf', type: 'throughput', spec: [ { type: 'text', name: 'dest',  value: 'perfsonar.example.edu' } ] },
 ]).insertedIds;
 
 // ---- jobs (reference tests by name + id) ------------------------------------
@@ -89,31 +100,31 @@ const jIds = db.jobs.insertMany([
 // ---- batches (wire jobs, schedules, SSID profiles) --------------------------
 const bIds = db.batches.insertMany([
   { name: 'edge-batch', priority: 10, test_interface: 'wlan0',
-    ssid_profiles: ['MWireless', 'eduroam'], ssid_profile_ids: [pIds[0], pIds[1]],
-    schedules: ['every 5 minutes', 'every hour'],    schedule_ids: [sIds[0], sIds[1]],
+    ssid_profiles: ['campus-wifi', 'eduroam'], ssid_profile_ids: [pIds[0], pIds[1]],
+    schedules: ['Every 5 minutes', 'Every hour'],    schedule_ids: [sIds[0], sIds[1]],
     jobs: ['connectivity-suite'],            job_ids: [jIds[0]] },
   { name: 'core-batch', priority: 20, test_interface: 'wlan0',
-    ssid_profiles: ['MWireless'], ssid_profile_ids: [pIds[0]],
-    schedules: ['every day at 16:00'],       schedule_ids: [sIds[3]],
+    ssid_profiles: ['campus-wifi'], ssid_profile_ids: [pIds[0]],
+    schedules: ['Every day at 23:00'],       schedule_ids: [sIds[3]],
     jobs: ['throughput-suite', 'connectivity-suite'], job_ids: [jIds[1], jIds[0]] },
 ]).insertedIds;
 
 // ---- hosts (one left unconfigured for contrast) -----------------------------
 const hIds = db.hosts.insertMany([
-  { name: 'rp-bbb-01',      batches: ['edge-batch'],               batch_ids: [bIds[0]],          data: { site: 'bbb' } },
-  { name: 'rp-eecs-02',     batches: ['edge-batch'],               batch_ids: [bIds[0]],          data: { site: 'eecs' } },
-  { name: 'rp-union-03',    batches: ['core-batch'],               batch_ids: [bIds[1]],          data: { site: 'union' } },
-  { name: 'rp-li-04',       batches: ['edge-batch', 'core-batch'], batch_ids: [bIds[0], bIds[1]], data: { site: 'library' } },
-  { name: 'rp-pierpont-05', batches: [],                           batch_ids: [],                 data: { site: 'pierpont' } },
+  { name: 'probe-library-01', batches: ['edge-batch'],               batch_ids: [bIds[0]],          data: { site: 'library' } },
+  { name: 'probe-labs-02',    batches: ['edge-batch'],               batch_ids: [bIds[0]],          data: { site: 'labs' } },
+  { name: 'probe-union-03',   batches: ['core-batch'],               batch_ids: [bIds[1]],          data: { site: 'union' } },
+  { name: 'probe-dorms-04',   batches: ['edge-batch', 'core-batch'], batch_ids: [bIds[0], bIds[1]], data: { site: 'dorms' } },
+  { name: 'probe-annex-05',   batches: [],                           batch_ids: [],                 data: { site: 'annex' } },
 ]).insertedIds;
 
 // ---- host groups ------------------------------------------------------------
 db.host_groups.insertMany([
   { name: 'campus-edge', batches: ['edge-batch'], batch_ids: [bIds[0]],
-    hosts: ['rp-bbb-01', 'rp-eecs-02', 'rp-li-04'], host_ids: [hIds[0], hIds[1], hIds[3]],
+    hosts: ['probe-library-01', 'probe-labs-02', 'probe-dorms-04'], host_ids: [hIds[0], hIds[1], hIds[3]],
     hosts_regex: [], data: { region: 'edge' } },
   { name: 'campus-core', batches: ['core-batch'], batch_ids: [bIds[1]],
-    hosts: ['rp-union-03', 'rp-li-04'], host_ids: [hIds[2], hIds[3]],
+    hosts: ['probe-union-03', 'probe-dorms-04'], host_ids: [hIds[2], hIds[3]],
     hosts_regex: [], data: { region: 'core' } },
 ]);
 

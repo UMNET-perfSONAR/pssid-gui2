@@ -1,11 +1,11 @@
 # About each Client Component
 
 ### dynamic_add_data.vue
-Contains component to dynamically add optional data. Used in hosts, host groups, tests, and archivers. 
+Contains component to dynamically add optional data. Used in hosts, host groups, and tests. 
 <img width="623" alt="Screenshot 2023-08-03 at 9 34 48 AM" src="https://github.com/UMNET-perfSONAR/pssid-gui2/assets/74212084/994097ae-a3d7-4e22-ae5e-056e3687dce0">
 
 ### dynamic_form.vue
-Component that dynamically generates forms based on "type" selection for tests and archivers. 
+Component that dynamically generates forms based on "type" selection for tests. 
 * Iterates though a list of objects specifying name and type of form data, then conditionally adds and renders the corresponding form type.
 * Created this file to make compatible with dynamic rendering of json files into form. Most obvious solution.
   
@@ -15,7 +15,7 @@ In the future, this file could possibly be implemented with formkit to simplify 
 
 ### edit_dynamic_form.vue
 
-Component that dynamically generates forms based on type of selected object. Used in tests and archivers.
+Component that dynamically generates forms based on type of selected object. Used in tests.
 
 ### list_items.vue
 

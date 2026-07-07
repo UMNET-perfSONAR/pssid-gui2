@@ -5,7 +5,7 @@ import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
 import fs from 'fs';
 import path from 'path';
-import { isNameInDB } from './helpers';
+import { isNameInDB, isValidObjectName } from './helpers';
 
 // TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
@@ -18,12 +18,47 @@ const getTestsPath = (): string => {
   return object.tests_path;
 };
 
+/**
+ * A test's type must name an installed pScheduler test template (a .json file
+ * in the tests directory), since the template defines the spec fields the
+ * daemon expects. If the directory cannot be read, fall back to a
+ * conservative character allow-list so traversal characters are still
+ * rejected.
+ */
+const isValidTestType = (value: unknown): boolean => {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9._-]+$/.test(value) || value.includes('..')) {
+    return false;
+  }
+  try {
+    const names = fs.readdirSync(getTestsPath())
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => path.parse(f).name);
+    return names.includes(value);
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * Field rules for a test payload beyond the name: a known template type and
+ * a spec in the shape the dynamic form produces (an array of field entries).
+ */
+const testFieldError = (body: any): string | null => {
+  if (!isValidTestType(body.type)) {
+    return "Unknown test type";
+  }
+  if (!Array.isArray(body.spec)) {
+    return "Test options must be a list of fields";
+  }
+  return null;
+};
+
 // get all tests
 const getTests = (async (req: Request, res: Response) =>{
   try {
     (await client).connect();
     const collection = (await client).db('gui').collection('tests');
-    const response = await collection.find().toArray();
+    const response = await collection.find().project({_id:0}).toArray();
     res.send(response);
   }
   catch(error) {
@@ -39,8 +74,8 @@ const getOneTest = (async (req: Request, res: Response) => {
     const name = String(req.params.testname);
     (await client).connect();
     var collection = (await client).db('gui').collection('tests');
-    var response = await collection.find({"name": name}).toArray();
-    res.send(response); 
+    var response = await collection.find({"name": name}).project({_id:0}).toArray();
+    res.send(response);
   }
   catch(error) {
     console.error(error);
@@ -73,6 +108,13 @@ const deleteTest = (async (req:Request, res:Response) => {
 // add a single test to db 
 const postTest = (async (req:Request, res:Response) => {
   try {
+    if (!isValidObjectName(req.body.name)) {
+      return res.status(400).json({message:"Invalid test name"});
+    }
+    const fieldError = testFieldError(req.body);
+    if (fieldError) {
+      return res.status(400).json({message: fieldError});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('tests');
     const isDuplicate = await isNameInDB(collection, req.body.name);
@@ -97,6 +139,13 @@ const postTest = (async (req:Request, res:Response) => {
 const updateTest = (async (req:Request, res:Response) => {
   try {
     let body = req.body;
+    if (!isValidObjectName(body.new_testname)) {
+      return res.status(400).json({message:"Invalid test name"});
+    }
+    const fieldError = testFieldError(body);
+    if (fieldError) {
+      return res.status(400).json({message: fieldError});
+    }
     (await client).connect();
     var collection = (await client).db('gui').collection('tests');
     const isDuplicate = await isNameInDB(collection, body.new_testname);
@@ -137,10 +186,11 @@ const readFileNames = ((req:Request, res:Response) => {
         console.warn('Unable to scan test templates directory: ' + err);
         return res.json([]);
       }
-      let fileArray: string[] = [];
-      files.forEach(function(file) {
-        fileArray.push(file.slice(0, -5))
-      })
+      // Only .json files are templates; anything else in the directory (editor
+      // backups, hidden files) must not appear as a selectable test type.
+      const fileArray = files
+        .filter((file) => file.endsWith('.json'))
+        .map((file) => path.parse(file).name);
       res.send(fileArray);
     })
   }

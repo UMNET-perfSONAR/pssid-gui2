@@ -73,7 +73,7 @@
 
   <div>
     <button class="btn btn-success" @click="editCurItem"
-      style="margin-right: 1em;"> {{ submitLabel }} </button>
+      style="margin-right: 1em;" :disabled="submitDisabled"> {{ submitLabel }} </button>
     <button class="btn btn-danger" @click.prevent="deleteCurItem"> Delete </button>
   </div>
 </template>
@@ -122,6 +122,12 @@
      submitLabel: {
        type: String,
        default: 'Update'
+     },
+     // Lets the parent keep the submit button grey until the fields it owns
+     // (for example the item name) are valid.
+     submitDisabled: {
+       type: Boolean,
+       default: false
      }
    }
    
