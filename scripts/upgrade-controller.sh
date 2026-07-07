@@ -1,4 +1,4 @@
-so #!/usr/bin/env bash
+#!/usr/bin/env bash
 #
 # Upgrade the pSSID GUI inside an existing pSSID controller install.
 #
