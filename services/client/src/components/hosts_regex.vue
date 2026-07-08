@@ -6,12 +6,18 @@
     <input
       type="text"
       placeholder="Host Regex"
+      aria-label="Host regex pattern"
       v-model="item.regex"
       class="form-control"
     />
-    <i class ="material-icons" 
+    <button
+      type="button"
+      class="icon-btn"
+      :aria-label="`Remove host regex ${item.regex || 'entry'}`"
       @click="deleteParameter(counter)"
-      style="cursor: pointer;">delete</i>
+    >
+      <i class="material-icons" aria-hidden="true">delete</i>
+    </button>
   </div>
   <div>
     <button type ="button" @click="add_regex" class="btn btn-primary" 

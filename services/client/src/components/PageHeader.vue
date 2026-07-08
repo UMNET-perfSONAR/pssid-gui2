@@ -1,7 +1,7 @@
 <template>
   <div class="page-header">
     <div class="page-header-icon">
-      <span class="material-icons">{{ icon }}</span>
+      <span class="material-icons" aria-hidden="true">{{ icon }}</span>
     </div>
     <button
       v-if="canAdd"
@@ -11,7 +11,7 @@
       :title="addLabel"
       @click="$emit('add')"
     >
-      <span class="material-icons">add</span>
+      <span class="material-icons" aria-hidden="true">add</span>
       <span>{{ addLabel }}</span>
     </button>
     <div class="page-header-content">

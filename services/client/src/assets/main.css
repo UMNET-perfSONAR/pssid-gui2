@@ -571,6 +571,31 @@ fieldset[disabled] .form-control {
   border: 0;
 }
 
+/* Icon-only action button (e.g. the row "delete" controls). A real <button>
+   so it is keyboard-focusable and operable; the icon inside is aria-hidden and
+   the button carries an aria-label. Sized to meet a comfortable target. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--err-soft-bg);
+  color: var(--err);
+  border-color: var(--err-soft-bd);
+}
+.icon-btn .material-icons { font-size: 1.2rem; }
+
 /* Skip link: first tab stop, jumps past the nav to the page content
    (WCAG 2.4.1 Bypass Blocks). Off-screen until focused. */
 .skip-link {

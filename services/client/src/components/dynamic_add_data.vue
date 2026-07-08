@@ -4,20 +4,27 @@
     <div class="form-inline" style="margin-bottom: 1em;"
       v-for="(item, counter) in addedData"
       v-bind:key="counter">
-      <input 
+      <input
         type="text"
         placeholder="key"
+        aria-label="Metadata key"
         v-model="item.key"
         class="form-control"/>
-      <input 
+      <input
         type="text"
         placeholder="value"
+        aria-label="Metadata value"
         v-model="item.value"
         class="form-control"
       />
-      <i class ="material-icons" 
+      <button
+        type="button"
+        class="icon-btn"
+        :aria-label="`Remove metadata ${item.key || 'entry'}`"
         @click.prevent="deleteParameter(counter)"
-        style="cursor: pointer;">delete</i>
+      >
+        <i class="material-icons" aria-hidden="true">delete</i>
+      </button>
     </div>
     <button @click.prevent="addParameter" class="btn btn-primary" type="button"
       style="margin-top: 1em; margin-bottom: 1em; color:white"> Add parameter </button>

@@ -13,13 +13,13 @@
 
     <template v-else>
       <p v-if="isDisabled" class="readonly-banner">
-        <span class="material-icons">lock</span>
+        <span class="material-icons" aria-hidden="true">lock</span>
         You have read-only access. Sign in with a write-enabled account to change provisioning settings.
       </p>
 
       <section class="settings-card" aria-labelledby="automation-title">
         <div class="settings-card-head">
-          <span class="material-icons settings-card-icon">bolt</span>
+          <span class="material-icons settings-card-icon" aria-hidden="true">bolt</span>
           <div>
             <h3 id="automation-title" class="settings-card-title">Automation</h3>
             <p class="settings-card-desc">How saved changes reach the probes.</p>
@@ -49,7 +49,7 @@
 
       <section class="settings-card" aria-labelledby="tools-title">
         <div class="settings-card-head">
-          <span class="material-icons settings-card-icon">cloud_upload</span>
+          <span class="material-icons settings-card-icon" aria-hidden="true">cloud_upload</span>
           <div>
             <h3 id="tools-title" class="settings-card-title">Provisioning</h3>
             <p class="settings-card-desc">
@@ -72,7 +72,7 @@
             :disabled="settingsStore.previewLoading"
             @click="previewConfig"
           >
-            <span class="material-icons btn-icon">visibility</span>
+            <span class="material-icons btn-icon" aria-hidden="true">visibility</span>
             {{ settingsStore.previewLoading ? 'Building...' : 'Preview' }}
           </button>
         </div>
@@ -91,14 +91,14 @@
             :disabled="isDisabled || settingsStore.provisionLoading"
             @click="provisionNow"
           >
-            <span class="material-icons btn-icon">play_arrow</span>
+            <span class="material-icons btn-icon" aria-hidden="true">play_arrow</span>
             {{ settingsStore.provisionLoading ? 'Starting...' : 'Provision now' }}
           </button>
         </div>
 
         <div v-if="settingsStore.preview" class="preview-result" aria-live="polite">
           <div class="preview-status" :class="settingsStore.preview.changed ? 'changed' : 'unchanged'">
-            <span class="material-icons">{{ settingsStore.preview.changed ? 'sync_problem' : 'check_circle' }}</span>
+            <span class="material-icons" aria-hidden="true">{{ settingsStore.preview.changed ? 'sync_problem' : 'check_circle' }}</span>
             <span>{{ previewStatusText }}</span>
           </div>
 

@@ -12,7 +12,7 @@
     <div class="status-strip">
       <div class="status-cell">
         <div class="status-pill has-hint" :class="healthOk ? 'ok' : 'bad'" tabindex="0">
-          <span class="material-icons">{{ healthOk ? 'check_circle' : 'error' }}</span>
+          <span class="material-icons" aria-hidden="true">{{ healthOk ? 'check_circle' : 'error' }}</span>
           <div>
             <div class="status-label">System</div>
             <div class="status-value">{{ healthOk ? 'Healthy' : 'Unavailable' }}</div>
@@ -29,7 +29,7 @@
 
       <div class="status-cell">
         <div class="status-pill has-hint" :class="settingsStore.autoProvision ? 'on' : 'off'" tabindex="0">
-          <span class="material-icons">{{ settingsStore.autoProvision ? 'bolt' : 'pause_circle' }}</span>
+          <span class="material-icons" aria-hidden="true">{{ settingsStore.autoProvision ? 'bolt' : 'pause_circle' }}</span>
           <div>
             <div class="status-label">Auto-provision</div>
             <div class="status-value">{{ settingsStore.autoProvision ? 'On' : 'Off' }}</div>
@@ -77,7 +77,7 @@
         </svg>
 
         <router-link to="/tests" class="stage" data-node="tests" style="grid-area: tests">
-          <span class="material-icons stage-icon">science</span>
+          <span class="material-icons stage-icon" aria-hidden="true">science</span>
           <span class="stage-text">
             <span class="stage-title">Tests</span>
             <span class="stage-type">tests</span>
@@ -87,21 +87,21 @@
         <!-- The three things that combine into a batch, grouped in one box. -->
         <div class="box sources" data-node="sources" style="grid-area: sources">
           <router-link to="/jobs" class="stage" data-node="jobs">
-            <span class="material-icons stage-icon">folder_copy</span>
+            <span class="material-icons stage-icon" aria-hidden="true">folder_copy</span>
             <span class="stage-text">
               <span class="stage-title">Jobs</span>
               <span class="stage-type">jobs</span>
             </span>
           </router-link>
           <router-link to="/schedules" class="stage" data-node="schedules">
-            <span class="material-icons stage-icon">schedule</span>
+            <span class="material-icons stage-icon" aria-hidden="true">schedule</span>
             <span class="stage-text">
               <span class="stage-title">Schedules</span>
               <span class="stage-type">schedules</span>
             </span>
           </router-link>
           <router-link to="/ssid_profiles" class="stage" data-node="ssid">
-            <span class="material-icons stage-icon">wifi</span>
+            <span class="material-icons stage-icon" aria-hidden="true">wifi</span>
             <span class="stage-text">
               <span class="stage-title">SSID Profiles</span>
               <span class="stage-type">ssid_profiles</span>
@@ -110,7 +110,7 @@
         </div>
 
         <router-link to="/batches" class="stage hero" data-node="batches" style="grid-area: batches">
-          <span class="material-icons stage-icon">work_history</span>
+          <span class="material-icons stage-icon" aria-hidden="true">work_history</span>
           <span class="stage-text">
             <span class="stage-title">Batches</span>
             <span class="stage-type">batches</span>
@@ -118,7 +118,7 @@
         </router-link>
 
         <router-link to="/hosts" class="stage" data-node="hosts" style="grid-area: hosts">
-          <span class="material-icons stage-icon">computer</span>
+          <span class="material-icons stage-icon" aria-hidden="true">computer</span>
           <span class="stage-text">
             <span class="stage-title">Hosts</span>
             <span class="stage-type">hosts</span>
@@ -126,7 +126,7 @@
         </router-link>
 
         <router-link to="/host_groups" class="stage" data-node="groups" style="grid-area: groups">
-          <span class="material-icons stage-icon">lan</span>
+          <span class="material-icons stage-icon" aria-hidden="true">lan</span>
           <span class="stage-text">
             <span class="stage-title">Groups</span>
             <span class="stage-type">host_groups</span>
