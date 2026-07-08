@@ -18,8 +18,7 @@
             <div class="status-value">{{ healthOk ? 'Healthy' : 'Unavailable' }}</div>
           </div>
           <span v-if="healthOk" class="hint" role="tooltip">
-            The app is connected to its server and database, so everything you save here is
-            stored successfully.
+            The app is connected to its server and database — the two services it needs to run.
           </span>
         </div>
         <p v-if="!healthOk" class="status-note">
@@ -37,12 +36,12 @@
           </div>
           <span class="hint" role="tooltip">
             <template v-if="settingsStore.autoProvision">
-              On: every change you make to the configuration is pushed to the probes
-              automatically, so you don't need to configure them by hand.
+              <code>On</code> — every change you save is sent to the probes automatically,
+              so you don't need to configure them by hand.
             </template>
             <template v-else>
-              Off: your changes are saved here but not pushed to the probes yet. Open a host
-              and use Configure to send them when you're ready.
+              <code>Off</code> — your changes are saved here but not sent to the probes yet.
+              Open a host and use Configure to send them when you're ready.
             </template>
           </span>
         </div>
@@ -136,32 +135,6 @@
       </div>
     </div>
 
-    <!-- Needs attention: configuration gaps read straight from the loaded
-         stores — a probe with nothing to run, a batch deployed nowhere, a
-         half-wired group. Each row links to the page where it's fixed. Kept
-         deliberately small; when nothing is wrong it collapses to one line. -->
-    <h3 class="anatomy-title">
-      Needs attention<span v-if="findings.length"> ({{ findings.length }})</span>
-    </h3>
-    <div class="attention">
-      <router-link
-        v-for="f in findings"
-        :key="f.id"
-        :to="f.to"
-        class="attention-row warn"
-      >
-        <span class="material-icons attention-icon">warning</span>
-        <span class="attention-text">{{ f.text }}</span>
-        <span class="material-icons attention-go">chevron_right</span>
-      </router-link>
-
-      <div v-if="!findings.length" class="attention-row ok">
-        <span class="material-icons attention-icon">check_circle</span>
-        <span class="attention-text">
-          Everything is wired up — every probe has batches to run, and every batch is deployed.
-        </span>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -169,9 +142,6 @@
 import PageHeader from '../components/PageHeader.vue'
 import config from '../shared/config'
 import { useSettingsStore } from '../stores/settings.store'
-import { useHostStore } from '../stores/host_store'
-import { useGroupStore } from '../stores/groups_stores'
-import { useBatchStore } from '../stores/batches.store'
 
 // The config relationships, as source -> target. "sources" is the grouped box
 // holding jobs, schedules, and SSID profiles, which together form a batch.
@@ -187,9 +157,6 @@ export default {
   components: { PageHeader },
   data() {
     return {
-      hostStore: useHostStore(),
-      groupStore: useGroupStore(),
-      batchStore: useBatchStore(),
       settingsStore: useSettingsStore(),
       healthOk: false,
       arrowPaths: [],
@@ -207,12 +174,9 @@ export default {
       document.fonts.ready.then(this.measureArrows);
     }
 
-    // Load everything the attention panel inspects, in parallel; a failure in
-    // any one store doesn't block the rest.
+    // Load what the status strip needs, in parallel; a failure in either one
+    // doesn't block the rest.
     await Promise.allSettled([
-      this.hostStore.getHosts(),
-      this.groupStore.getGroups(),
-      this.batchStore.getBatches(),
       this.settingsStore.getSettings(),
       this.checkHealth(),
     ]);
@@ -222,99 +186,7 @@ export default {
     window.removeEventListener('resize', this.measureArrows);
     if (this.resizeObserver) this.resizeObserver.disconnect();
   },
-  computed: {
-    // Configuration gaps derived entirely from the already-loaded stores, so
-    // the dashboard can point at what's half-wired without any extra request.
-    // Each finding links to the page where it's resolved.
-    findings() {
-      const hosts = this.realItems(this.hostStore.hosts);
-      const groups = this.realItems(this.groupStore.host_groups);
-      const batches = this.realItems(this.batchStore.batches);
-      const out = [];
-
-      // A probe runs a batch either directly (its own batches) or by sitting in
-      // a group that carries batches. One with neither will do nothing.
-      const groupsWithBatches = groups.filter(g => this.names(g.batches).length);
-      const idleHosts = hosts
-        .filter(h =>
-          !this.names(h.batches).length &&
-          !groupsWithBatches.some(g => this.names(g.hosts).includes(h.name))
-        )
-        .map(h => h.name);
-      if (idleHosts.length) {
-        out.push({
-          id: 'idle-hosts',
-          to: '/hosts',
-          text: idleHosts.length === 1
-            ? `Probe "${idleHosts[0]}" will run nothing: no batches assigned, and not in a group that has any.`
-            : `${idleHosts.length} probes will run nothing (${this.formatNames(idleHosts)}): no batches, and not in a group that has any.`
-        });
-      }
-
-      // A batch no host and no group references is defined but never sent out.
-      const deployed = new Set();
-      hosts.forEach(h => this.names(h.batches).forEach(n => deployed.add(n)));
-      groups.forEach(g => this.names(g.batches).forEach(n => deployed.add(n)));
-      const orphanBatches = batches.map(b => b.name).filter(n => n && !deployed.has(n));
-      if (orphanBatches.length) {
-        out.push({
-          id: 'orphan-batches',
-          to: '/batches',
-          text: orphanBatches.length === 1
-            ? `Batch "${orphanBatches[0]}" isn't deployed to any host or group.`
-            : `${orphanBatches.length} batches aren't deployed anywhere (${this.formatNames(orphanBatches)}).`
-        });
-      }
-
-      // A group with hosts but no batches gives those probes nothing extra.
-      const emptyGroups = groups
-        .filter(g => this.names(g.hosts).length && !this.names(g.batches).length)
-        .map(g => g.name);
-      if (emptyGroups.length) {
-        out.push({
-          id: 'groups-no-batches',
-          to: '/host_groups',
-          text: emptyGroups.length === 1
-            ? `Group "${emptyGroups[0]}" has hosts but no batches — its probes gain nothing from it.`
-            : `${emptyGroups.length} groups have hosts but no batches (${this.formatNames(emptyGroups)}).`
-        });
-      }
-
-      // A group with batches but no hosts sends those batches nowhere.
-      const hostlessGroups = groups
-        .filter(g => this.names(g.batches).length && !this.names(g.hosts).length)
-        .map(g => g.name);
-      if (hostlessGroups.length) {
-        out.push({
-          id: 'groups-no-hosts',
-          to: '/host_groups',
-          text: hostlessGroups.length === 1
-            ? `Group "${hostlessGroups[0]}" has batches but no hosts — those batches run nowhere.`
-            : `${hostlessGroups.length} groups have batches but no hosts (${this.formatNames(hostlessGroups)}).`
-        });
-      }
-
-      return out;
-    }
-  },
   methods: {
-    // Records that have actually loaded: the stores seed themselves with an
-    // empty placeholder object before their data arrives.
-    realItems(arr) {
-      return Array.isArray(arr) ? arr.filter(x => x && x.name) : [];
-    },
-    // Normalise a batches/hosts list (strings, or objects with a name) to names.
-    names(arr) {
-      if (!Array.isArray(arr)) return [];
-      return arr
-        .map(n => (typeof n === 'string' ? n : (n && n.name) || ''))
-        .filter(Boolean);
-    },
-    // First few names, then a "+N more" tail, so a finding stays one line.
-    formatNames(list, max = 3) {
-      if (list.length <= max) return list.join(', ');
-      return `${list.slice(0, max).join(', ')} +${list.length - max} more`;
-    },
     measureArrows() {
       const root = this.$refs.diagram;
       if (!root) return;
@@ -396,28 +268,52 @@ export default {
 /* Hover / focus explanation bubble. */
 .status-pill.has-hint { position: relative; cursor: help; }
 .status-pill.has-hint:focus-visible { outline: 2px solid rgba(var(--primary-rgb), .5); outline-offset: 2px; }
+/* Hover/focus explanation styled as a floating tooltip: a dark, slightly
+   see-through bubble with a pointer arrow, so it's obviously a transient hint
+   raised by hovering — not another solid card like the pills. The same dark
+   treatment reads well in light, dark and high-contrast themes. */
 .hint {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   left: 0;
   z-index: 20;
   width: max-content;
   max-width: 320px;
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: rgba(17, 24, 39, 0.92);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  color: #f3f4f6;
+  border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   padding: 0.55rem 0.7rem;
   font-size: 0.76rem;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.5;
   text-align: left;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
   transition: opacity .12s ease, transform .12s ease, visibility .12s;
   pointer-events: none;
+}
+/* Little caret pointing up at the pill that raised it. */
+.hint::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 20px;
+  border: 6px solid transparent;
+  border-bottom-color: rgba(17, 24, 39, 0.92);
+}
+/* On/Off shown as a monospace chip, matching the code tokens used elsewhere. */
+.hint code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.9em;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  padding: 0.05rem 0.32rem;
 }
 .status-pill.has-hint:hover .hint,
 .status-pill.has-hint:focus-within .hint {
@@ -530,39 +426,4 @@ a.stage:hover {
 }
 
 :root[data-theme="dark"] .stage-icon { color: var(--accent); }
-
-/* ── Needs attention ──────────────────────────────────────────────
-   Same white-card family as the anatomy blocks, one row per gap, with a
-   coloured left edge for severity. Amber for a gap, green for all-clear. */
-.attention {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-}
-.attention-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left-width: 4px;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  padding: 0.7rem 0.9rem;
-  text-decoration: none;
-  transition: border-color .12s, box-shadow .12s;
-}
-a.attention-row:hover {
-  border-color: rgba(var(--primary-rgb), .45);
-  box-shadow: var(--shadow);
-}
-.attention-icon { font-size: 1.2rem; flex-shrink: 0; }
-.attention-text { font-size: 0.84rem; color: var(--text); line-height: 1.4; }
-.attention-go { margin-left: auto; color: var(--muted); font-size: 1.2rem; flex-shrink: 0; }
-
-.attention-row.warn { border-left-color: var(--warn); }
-.attention-row.warn .attention-icon { color: var(--warn); }
-.attention-row.ok { border-left-color: var(--ok); }
-.attention-row.ok .attention-icon { color: var(--ok); }
 </style>

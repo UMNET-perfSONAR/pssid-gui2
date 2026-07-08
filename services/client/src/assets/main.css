@@ -187,6 +187,12 @@ body * {
 .container {
   max-width: 1320px;
 }
+/* Breathing room beneath the last element on every page, so content never ends
+   flush against the viewport bottom and you can scroll a little past the final
+   card/form (e.g. the tall Host Groups editor). */
+#main-content {
+  padding-bottom: 4rem;
+}
 
 /* ─── Page Header component ──────────────────────────────────── */
 .page-header {

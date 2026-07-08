@@ -304,12 +304,15 @@ export default {
 .theme-menu-item.active {
   background: rgba(var(--primary-rgb), 0.06);
 }
+/* Match the icon colour to the menu's own label text so it is always exactly
+   as legible as the label, in every theme (the deep-navy --primary was too
+   dark to read on the panel in light and high-contrast modes). The active row
+   is additionally marked with the check on the right, so colour isn't the cue. */
 .theme-menu-icon {
   font-size: 1.25rem;
-  color: var(--primary);
+  color: var(--text);
   flex-shrink: 0;
 }
-:root[data-theme="dark"] .theme-menu-icon { color: var(--accent); }
 .theme-menu-text {
   display: flex;
   flex-direction: column;
