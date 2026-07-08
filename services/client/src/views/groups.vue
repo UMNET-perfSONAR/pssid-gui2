@@ -30,7 +30,7 @@
       <div class="col-md-6">
         <h3> Host Group List </h3>
         <item-list v-if="mounted==true" :itemArray="hostGroup.host_groups" :display="showAddGroup"
-          @updateActive="updateActiveGroup" style="cursor: pointer;"
+          label="Host groups" @updateActive="updateActiveGroup" style="cursor: pointer;"
         ></item-list>
       </div>
 
@@ -41,29 +41,33 @@
         <form @submit.prevent="handleSubmit">
           <div class="submit-form">
             <div class="form-group">
-              <label for="groups"> Host Group </label>
+              <label for="add-group-name"> Host Group </label>
               <input
                 type="text"
                 placeholder="Enter host group name"
                 v-model="newGroup"
                 required
-                id="groups"
+                id="add-group-name"
                 class="form-control"
+                :aria-invalid="addGroupNameError ? 'true' : 'false'"
+                :aria-describedby="addGroupNameError ? 'add-group-name-error' : null"
               />
-              <small v-if="addGroupNameError" class="text-danger">{{ addGroupNameError }}</small>
+              <small v-if="addGroupNameError" id="add-group-name-error" class="text-danger" role="alert">{{ addGroupNameError }}</small>
             </div>
             <hostSelection v-if="mounted == true"
              :copy_of_data="copyOfData"
             ></hostSelection>
             <div class="form-group">
-              <label for="batch-select"> Batch Selection </label>
+              <label for="add-group-batches"> Batch Selection </label>
               <VueMultiselect
+                id="add-group-batches"
                 v-model="selectedBatches"
                 :options="batchStore.batches"
                 :multiple="true"
                 :close-on-select="false"
                 label="name"
                 track-by="name"
+                aria-label="Batch Selection"
               >
               </VueMultiselect>
             </div>
@@ -71,7 +75,7 @@
               <label> Host Regex Input </label>
               <hostRegex :regex_array="regex"></hostRegex>
             </div>
-            <label for="params"> Metadata </label>
+            <label class="form-group-label"> Metadata </label>
             <dynamic_add_data :addedData="addedData"></dynamic_add_data>
             <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
               <button class="btn btn-success" :disabled="!addGroupValid"> Add Host Group </button>

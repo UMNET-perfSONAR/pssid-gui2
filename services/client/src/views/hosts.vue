@@ -28,7 +28,7 @@
       <div class="col-md-6">
         <h3> Host list </h3>
         <item-list v-if="mounted==true" :itemArray="hostStore.hosts" :display="showAddHost"
-          @updateActive="updateActiveHost" style="cursor: pointer;"></item-list>
+          label="Hosts" @updateActive="updateActiveHost" style="cursor: pointer;"></item-list>
       </div>
       <!--Add Host Form -->
       <div v-if="showAddHost===true" class="col-md-6">
@@ -36,27 +36,31 @@
           <h3> Add Host </h3>
           <fieldset :disabled="isDisabled">
           <div class="form-group">
-            <label for="hosts"> Hosts </label>
+            <label for="add-host-name"> Hostname </label>
             <input
               type="text"
               placeholder="Hostname or IP address"
               v-model="hostname"
               required
-              id="hosts"
-              name="host form"
+              id="add-host-name"
+              name="host-name"
               class="form-control"
+              :aria-invalid="hostnameError ? 'true' : 'false'"
+              :aria-describedby="hostnameError ? 'add-host-name-error' : null"
             >
-            <small v-if="hostnameError" class="text-danger">{{ hostnameError }}</small>
+            <small v-if="hostnameError" id="add-host-name-error" class="text-danger" role="alert">{{ hostnameError }}</small>
           </div>
           <div class="form-group">
-            <label> Batches </label>
+            <label for="add-host-batches"> Batches </label>
             <VueMultiselect
+              id="add-host-batches"
               :multiple="true"
               :close-on-select="false"
               :options="batchStore.batches"
               v-model="selectedBatches"
               track-by="name"
               label="name"
+              aria-label="Batches"
             >
             </VueMultiselect>
           </div>
@@ -75,25 +79,29 @@
           <h3> Edit Host </h3>
           <fieldset :disabled="isDisabled">
           <div class="form-group">
-            <label for="hosts"> Hosts </label>
+            <label for="edit-host-name"> Hostname </label>
             <input
               type="text"
               placeholder="Hostname or IP address"
               v-model="this.currentItem.name"
               required
-              id="hosts"
-              name="host form"
+              id="edit-host-name"
+              name="host-name"
               class="form-control"
+              :aria-invalid="editHostnameError ? 'true' : 'false'"
+              :aria-describedby="editHostnameError ? 'edit-host-name-error' : null"
             >
-            <small v-if="editHostnameError" class="text-danger">{{ editHostnameError }}</small>
+            <small v-if="editHostnameError" id="edit-host-name-error" class="text-danger" role="alert">{{ editHostnameError }}</small>
           </div>
           <div class="form-group">
-            <label> Batches </label>
+            <label for="edit-host-batches"> Batches </label>
             <VueMultiselect
+              id="edit-host-batches"
               :multiple="true"
               :close-on-select="false"
               :options="batchStore.batches.map(item=> item.name)"
               v-model="currentItem.batches"
+              aria-label="Batches"
             >
             </VueMultiselect>
           </div>
@@ -121,8 +129,8 @@
         <span>Building configuration…</span>
       </div>
 
-      <p v-else-if="hostStore.probeConfigError" class="probe-config-error">
-        <span class="material-icons">error</span>
+      <p v-else-if="hostStore.probeConfigError" class="probe-config-error" role="alert">
+        <span class="material-icons" aria-hidden="true">error</span>
         {{ hostStore.probeConfigError }}
       </p>
 
