@@ -92,27 +92,31 @@
         <form @submit.prevent="editGroup">
           <div class="submit-form">
             <div class="form-group">
-              <label for="groups"> Host Group </label>
+              <label for="edit-group-name"> Host Group </label>
               <input
                 type="text"
                 placeholder="Enter host group name"
                 v-model="currentGroup.name"
                 required
-                id="groups"
+                id="edit-group-name"
                 class="form-control"
+                :aria-invalid="editGroupNameError ? 'true' : 'false'"
+                :aria-describedby="editGroupNameError ? 'edit-group-name-error' : null"
               />
-              <small v-if="editGroupNameError" class="text-danger">{{ editGroupNameError }}</small>
+              <small v-if="editGroupNameError" id="edit-group-name-error" class="text-danger" role="alert">{{ editGroupNameError }}</small>
             </div>
             <div class="form-group">
               <hostSelection :copy_of_data="hostsToEdit"></hostSelection>
             </div>
             <div class="form-group">
-              <label for="batch-select"> Batch Selection </label>
+              <label for="edit-group-batches"> Batch Selection </label>
               <VueMultiselect
+                id="edit-group-batches"
                 v-model="currentGroup.batches"
                 :options="batchStore.batches.map(item=>item.name)"
                 :multiple="true"
                 :close-on-select="false"
+                aria-label="Batch Selection"
               >
               </VueMultiselect>
             </div>
@@ -121,7 +125,7 @@
             <label> Host Regex Input </label>
             <hostRegex :regex_array="editRegex"></hostRegex>
           </div>
-          <label for="params"> Metadata </label>
+          <label class="form-group-label"> Metadata </label>
           <dynamic_add_data :addedData="editOptionalData"></dynamic_add_data>
           <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
             <button class="btn btn-success" :disabled="!editGroupValid"> Update </button>
