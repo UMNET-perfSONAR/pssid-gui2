@@ -68,7 +68,7 @@
             </VueMultiselect>
           </div>
           <div class="form-group">
-            <label> Job Selection </label>
+            <label> Job Selection (jobs run in the listed order) </label>
             <VueMultiselect
               v-model="add_jobs"
               :multiple="true"
@@ -135,7 +135,7 @@
             </VueMultiselect>
           </div>
           <div class="form-group">
-            <label> Job Selection </label>
+            <label> Job Selection (jobs run in the listed order) </label>
             <VueMultiselect
               v-model="currentItem.jobs"
               :multiple="true"

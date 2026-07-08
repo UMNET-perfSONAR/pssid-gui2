@@ -129,6 +129,14 @@
           &nbsp;·&nbsp; Batches: <strong>{{ hostStore.probeConfig.batches.map(b => b.name).join(', ') || 'none' }}</strong>
           &nbsp;·&nbsp; Config version {{ hostStore.probeConfig.config_version }}
         </p>
+        <ul class="probe-batch-list">
+          <li v-for="b in hostStore.probeConfig.batches" :key="b.name">
+            <strong>{{ b.name }}</strong> (priority {{ b.priority }}) runs
+            <template v-for="(j, i) in b.jobs" :key="j.name">
+              <span class="probe-job">{{ i + 1 }}. {{ j.name }}</span><template v-if="i < b.jobs.length - 1">, then </template>
+            </template>
+          </li>
+        </ul>
         <pre class="probe-config-pre">{{ JSON.stringify(hostStore.probeConfig, null, 2) }}</pre>
       </template>
     </div>
@@ -339,7 +347,25 @@
 .probe-config-summary {
   font-size: 0.82rem;
   color: var(--text);
+  margin: 0 0 0.35rem;
+}
+/* One line per batch; a batch's jobs run in their listed (numbered) order. */
+.probe-batch-list {
+  list-style: none;
   margin: 0 0 0.6rem;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.probe-batch-list li {
+  padding: 0.1rem 0;
+}
+.probe-batch-list strong {
+  color: var(--text);
+}
+.probe-job {
+  color: var(--text);
+  white-space: nowrap;
 }
 .probe-config-error {
   display: flex;
