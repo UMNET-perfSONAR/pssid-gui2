@@ -337,7 +337,9 @@ export default {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--muted) !important;
-  margin: 0 0 0.75rem !important;
+  margin: 0 0 0.875rem !important;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
 }
 .anatomy-wrap {
   overflow-x: auto;
