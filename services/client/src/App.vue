@@ -1,36 +1,101 @@
 <template>
   <div id="app">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <ToastNotification />
-    <nav class="navbar navbar-expand-md navbar-dark">
+    <nav class="navbar navbar-expand-md navbar-dark" aria-label="Primary">
       <router-link class="navbar-brand" to="/" @click="navOpen = false">
-        <span class="material-icons nav-brand-icon">{{ edition.glyph }}</span>
+        <span class="material-icons nav-brand-icon" aria-hidden="true">{{ edition.glyph }}</span>
         <span class="nav-brand-text">{{ edition.shortName }} <strong>{{ edition.emphasis }}</strong></span>
       </router-link>
-      <button class="navbar-toggler" type="button" @click="navOpen = !navOpen" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
+      <button
+        class="navbar-toggler"
+        type="button"
+        @click="navOpen = !navOpen"
+        :aria-expanded="navOpen ? 'true' : 'false'"
+        aria-controls="primary-nav"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon" aria-hidden="true"></span>
       </button>
-      <div class="collapse navbar-collapse" :class="{ show: navOpen }">
+      <div id="primary-nav" class="collapse navbar-collapse" :class="{ show: navOpen }">
         <ul class="navbar-nav mx-auto">
           <li class="nav-item" v-for="link in navLinks" :key="link.to">
             <router-link :to="link.to" class="nav-link" @click="navOpen = false">{{ link.label }}</router-link>
           </li>
         </ul>
-        <button class="theme-toggle" @click="toggleThemeBtn" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" aria-label="Toggle theme">
-          <span class="material-icons">{{ theme === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
-        </button>
+
+        <!-- Appearance picker: a proper menu button rather than a blind toggle,
+             so the current mode and the available modes are always announced.
+             Fully keyboard-operable (Enter/Space/Arrows/Escape) and closes on
+             outside click. -->
+        <div class="theme-menu" ref="themeMenu" @focusout="onMenuFocusout">
+          <button
+            class="theme-toggle"
+            type="button"
+            aria-haspopup="true"
+            :aria-expanded="themeMenuOpen ? 'true' : 'false'"
+            :aria-label="`Appearance: ${currentTheme.label}. Change appearance`"
+            :title="`Appearance: ${currentTheme.label}`"
+            @click="toggleThemeMenu"
+            @keydown.down.prevent="openThemeMenu(0)"
+            @keydown.up.prevent="openThemeMenu(themeOptions.length - 1)"
+          >
+            <span class="material-icons" aria-hidden="true">{{ currentTheme.icon }}</span>
+          </button>
+          <ul
+            v-show="themeMenuOpen"
+            class="theme-menu-list"
+            role="menu"
+            aria-label="Appearance"
+          >
+            <li v-for="(opt, i) in themeOptions" :key="opt.value" role="none">
+              <button
+                type="button"
+                role="menuitemradio"
+                :aria-checked="theme === opt.value ? 'true' : 'false'"
+                class="theme-menu-item"
+                :class="{ active: theme === opt.value }"
+                ref="themeItems"
+                @click="chooseTheme(opt.value)"
+                @keydown.down.prevent="focusItem(i + 1)"
+                @keydown.up.prevent="focusItem(i - 1)"
+                @keydown.home.prevent="focusItem(0)"
+                @keydown.end.prevent="focusItem(themeOptions.length - 1)"
+                @keydown.esc.prevent="closeThemeMenu(true)"
+              >
+                <span class="material-icons theme-menu-icon" aria-hidden="true">{{ opt.icon }}</span>
+                <span class="theme-menu-text">
+                  <span class="theme-menu-label">{{ opt.label }}</span>
+                  <span class="theme-menu-desc">{{ opt.desc }}</span>
+                </span>
+                <span class="material-icons theme-menu-check" aria-hidden="true">{{ theme === opt.value ? 'check' : '' }}</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
         <span class="nav-version">{{ edition.version }}</span>
       </div>
     </nav>
-    <div class="container mt-4">
+    <main id="main-content" class="container mt-4" tabindex="-1">
       <router-view />
-    </div>
+    </main>
+    <!-- Screen-reader announcement of the active appearance. -->
+    <div class="sr-only" role="status" aria-live="polite">{{ themeAnnouncement }}</div>
   </div>
 </template>
 
 <script>
 import ToastNotification from './components/ToastNotification.vue'
 import { activeEdition } from './edition'
-import { getTheme, toggleTheme } from './theme'
+import { getTheme, setTheme } from './theme'
+
+// The three appearance modes, with the icon/label/description shown in the menu.
+const THEME_OPTIONS = [
+  { value: 'light',      icon: 'light_mode',         label: 'Light',      desc: 'Bright surfaces' },
+  { value: 'dark',       icon: 'dark_mode',          label: 'Dark',       desc: 'Dim, low-light surfaces' },
+  { value: 'colorblind', icon: 'accessibility_new',  label: 'High contrast', desc: 'Colour-blind-safe palette' },
+];
 
 export default {
   name: 'app',
@@ -40,6 +105,9 @@ export default {
       navOpen: false,
       edition: activeEdition,
       theme: getTheme(),
+      themeOptions: THEME_OPTIONS,
+      themeMenuOpen: false,
+      themeAnnouncement: '',
       navLinks: [
         { to: '/',              label: 'Dashboard' },
         { to: '/hosts',         label: 'Hosts' },
@@ -53,9 +121,72 @@ export default {
       ]
     }
   },
+  computed: {
+    currentTheme() {
+      return this.themeOptions.find(o => o.value === this.theme) || this.themeOptions[0];
+    }
+  },
+  mounted() {
+    document.addEventListener('click', this.onDocumentClick);
+    document.addEventListener('keydown', this.onDocumentKeydown);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.onDocumentClick);
+    document.removeEventListener('keydown', this.onDocumentKeydown);
+  },
   methods: {
-    toggleThemeBtn() {
-      this.theme = toggleTheme();
+    toggleThemeMenu() {
+      this.themeMenuOpen ? this.closeThemeMenu(false) : this.openThemeMenu();
+    },
+    openThemeMenu(index) {
+      this.themeMenuOpen = true;
+      // Focus the requested item (or the active one) once it is rendered.
+      this.$nextTick(() => {
+        const target = typeof index === 'number'
+          ? index
+          : Math.max(0, this.themeOptions.findIndex(o => o.value === this.theme));
+        this.focusItem(target);
+      });
+    },
+    closeThemeMenu(returnFocus) {
+      this.themeMenuOpen = false;
+      if (returnFocus) {
+        this.$nextTick(() => {
+          const btn = this.$refs.themeMenu && this.$refs.themeMenu.querySelector('.theme-toggle');
+          if (btn) btn.focus();
+        });
+      }
+    },
+    focusItem(index) {
+      const items = this.$refs.themeItems;
+      if (!items || !items.length) return;
+      const n = items.length;
+      const i = ((index % n) + n) % n;   // wrap around both ends
+      items[i].focus();
+    },
+    chooseTheme(value) {
+      this.theme = value;
+      setTheme(value);
+      const opt = this.themeOptions.find(o => o.value === value);
+      this.themeAnnouncement = `${opt ? opt.label : value} appearance enabled`;
+      this.closeThemeMenu(true);
+    },
+    onDocumentClick(e) {
+      if (this.themeMenuOpen && this.$refs.themeMenu && !this.$refs.themeMenu.contains(e.target)) {
+        this.closeThemeMenu(false);
+      }
+    },
+    onMenuFocusout(e) {
+      // Close when focus leaves the menu entirely (e.g. tabbing out), but not
+      // when it moves between the trigger and its own items.
+      if (this.themeMenuOpen && this.$refs.themeMenu && !this.$refs.themeMenu.contains(e.relatedTarget)) {
+        this.closeThemeMenu(false);
+      }
+    },
+    onDocumentKeydown(e) {
+      if (e.key === 'Escape' && this.themeMenuOpen) {
+        this.closeThemeMenu(true);
+      }
     }
   }
 }
@@ -117,6 +248,10 @@ export default {
 .navbar-toggler {
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
+.theme-menu {
+  position: relative;
+  margin-left: 0.5rem;
+}
 .theme-toggle {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -128,11 +263,75 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  margin-left: 0.5rem;
   transition: background .15s;
 }
 .theme-toggle:hover { background: rgba(255, 255, 255, 0.16); }
 .theme-toggle .material-icons { font-size: 1.15rem; }
+
+/* The dropdown of appearance modes. Anchored to the trigger on desktop; on the
+   collapsed mobile nav it sits inline within the menu column. */
+.theme-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1050;
+  min-width: 260px;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.theme-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+}
+.theme-menu-item:hover,
+.theme-menu-item:focus-visible {
+  background: rgba(var(--primary-rgb), 0.08);
+}
+.theme-menu-item.active {
+  background: rgba(var(--primary-rgb), 0.06);
+}
+.theme-menu-icon {
+  font-size: 1.25rem;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+:root[data-theme="dark"] .theme-menu-icon { color: var(--accent); }
+.theme-menu-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.theme-menu-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.theme-menu-desc {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.theme-menu-check {
+  font-size: 1.1rem;
+  color: var(--ok);
+  flex-shrink: 0;
+  width: 1.1rem;
+}
 .nav-version {
   background: rgba(var(--accent-rgb), 0.15);
   color: var(--accent);

@@ -1,5 +1,5 @@
 <template>
-  <div class="snackbar-region" aria-live="polite">
+  <div class="snackbar-region" role="status" aria-live="polite" aria-atomic="false">
     <transition-group name="snackbar">
       <div
         v-for="toast in toastStore.toasts"
@@ -7,10 +7,11 @@
         class="snackbar"
         :class="toast.type"
       >
-        <span class="material-icons snackbar-icon">{{ iconFor(toast.type) }}</span>
+        <span class="material-icons snackbar-icon" aria-hidden="true">{{ iconFor(toast.type) }}</span>
+        <span class="sr-only">{{ labelFor(toast.type) }}:</span>
         <span class="snackbar-message">{{ toast.message }}</span>
-        <button class="snackbar-close" @click="toastStore.dismiss(toast.id)" aria-label="Dismiss">
-          <span class="material-icons">close</span>
+        <button class="snackbar-close" @click="toastStore.dismiss(toast.id)" aria-label="Dismiss notification">
+          <span class="material-icons" aria-hidden="true">close</span>
         </button>
       </div>
     </transition-group>
@@ -28,6 +29,11 @@ export default {
   methods: {
     iconFor(type) {
       return { success: 'check_circle', error: 'error', info: 'info' }[type] || 'info'
+    },
+    // Spoken prefix so a screen-reader user hears the toast's kind even though
+    // the visual cue is colour + icon (WCAG 1.4.1 — never colour alone).
+    labelFor(type) {
+      return { success: 'Success', error: 'Error', info: 'Information' }[type] || 'Information'
     }
   }
 }
@@ -72,9 +78,9 @@ export default {
   flex-shrink: 0;
   margin-top: 0.05rem;
 }
-.snackbar.success .snackbar-icon { color: #4ade80; }
-.snackbar.error   .snackbar-icon { color: #f87171; }
-.snackbar.info    .snackbar-icon { color: #60a5fa; }
+.snackbar.success .snackbar-icon { color: var(--toast-ok); }
+.snackbar.error   .snackbar-icon { color: var(--toast-err); }
+.snackbar.info    .snackbar-icon { color: var(--toast-info); }
 .snackbar-message {
   flex: 1;
   white-space: pre-line;

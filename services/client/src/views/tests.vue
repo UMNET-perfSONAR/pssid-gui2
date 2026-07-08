@@ -15,12 +15,14 @@
       <span>Loading tests…</span>
     </div>
 
-    <h3> Test List </h3>
-    <div class="list row"> 
-      <!-- schedule list -->
-      <itemList v-if="mount == true" :item-array="testStore.tests" :display="showAddTest"
-        @updateActive="updateActiveTest" style="cursor:pointer;" class="col-md-6"
-      ></itemList>
+    <div class="list row">
+      <!-- test list -->
+      <div class="col-md-6">
+        <h3> Test List </h3>
+        <itemList v-if="mount == true" :item-array="testStore.tests" :display="showAddTest"
+          @updateActive="updateActiveTest" style="cursor:pointer;"
+        ></itemList>
+      </div>
 
       <div class="col-md-6" v-if="showAddTest==true">
         <h3> Add Test </h3>
@@ -62,7 +64,7 @@
               :current_item="selected_test"
               :optional_data="addedOptionalData"
               submit-label="Add Test"
-              :show-submit="false"
+              :submit-disabled="!addTestValid"
             >
             </dynamicform>
           </div>
@@ -124,7 +126,6 @@
       </div>
     </div>
 
-    <RecentActivity />
   </div>
 </template>
 
@@ -135,15 +136,14 @@
  import  VueMultiselect  from 'vue-multiselect';
  import editFormComp from '../components/edit_dynamic_form.vue';
  import itemList from '../components/list_items.vue'
- import PageHeader from '../components/PageHeader.vue'
- import RecentActivity from '../components/RecentActivity.vue'
+ import PageHeader from '../components/PageHeader.vue'
  import { useToastStore } from '../stores/toast.store'
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validDisplayName } from "../utils/validators.ts"
 
  export default {
-   components: { dynamicform, VueMultiselect, editFormComp, itemList, PageHeader, RecentActivity },
+   components: { dynamicform, VueMultiselect, editFormComp, itemList, PageHeader },
    data() {
      return {
        mount: false,

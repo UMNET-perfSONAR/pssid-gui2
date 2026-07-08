@@ -5,6 +5,7 @@
    edition; see src/edition/. The values here are the neutral default and act as
    a fallback if the edition layer has not run yet. */
 :root {
+  color-scheme: light;
   --primary:      #0b2545;   /* default deep navy */
   --primary-dark: #081a33;
   --primary-rgb:  11,37,69;
@@ -22,11 +23,51 @@
   --radius-sm: 5px;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
   --shadow:    0 2px 10px rgba(0,0,0,.09);
+
+  /* ── Semantic state tokens ──────────────────────────────────────
+     Every status pill, badge, banner, toggle and coloured button reads its
+     colour from these tokens rather than a hard-coded hex, so a single theme
+     override (dark, colour-blind) recolours the whole app consistently. The
+     light defaults below reproduce the original appearance exactly. */
+  --ok:           #16a34a;   /* positive / success / healthy — solid fill   */
+  --ok-hover:     #15803d;
+  --ok-contrast:  #ffffff;   /* text/icon on a solid --ok fill              */
+  --ok-soft-bg:   #dcfce7;
+  --ok-soft-fg:   #166534;
+  --ok-soft-bd:   #bbf7d0;
+
+  --err:          #dc2626;   /* negative / danger / error — solid fill      */
+  --err-hover:    #b91c1c;
+  --err-contrast: #ffffff;
+  --err-soft-bg:  #fee2e2;
+  --err-soft-fg:  #991b1b;
+  --err-soft-bd:  #fecaca;
+  --err-tint-bg:  #fef2f2;   /* faint row highlight (table-danger)          */
+  --err-note:     #b91c1c;   /* danger text on the page background          */
+
+  --warn:         #d97706;   /* caution / changed / needs-attention — solid */
+  --warn-soft-bg: #fff7ed;
+  --warn-soft-fg: #9a3412;
+  --warn-soft-bd: #fed7aa;
+
+  --neutral:      #94a3b8;   /* off / inactive                              */
+  --track-off:    #cbd2dc;   /* switch track, off                           */
+  --disabled-bg:  #a7b0bc;   /* greyed submit button                        */
+  --disabled-fg:  #ffffff;
+
+  /* Snackbar icons always sit on a dark toast, in every theme. */
+  --toast-ok:     #4ade80;
+  --toast-err:    #f87171;
+  --toast-info:   #60a5fa;
+
+  /* Keyboard focus ring (WCAG 2.4.7 / 2.4.11). Tuned per theme for contrast. */
+  --focus-ring:   #1a56db;
 }
 
 /* Dark theme: overrides neutral surfaces only; the edition colours are untouched.
    Toggled via data-theme="dark" on <html> (see src/theme.ts). */
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --bg:        #0b1220;
   --surface:   #111a2e;
   --border:    #243049;
@@ -34,6 +75,85 @@
   --muted:     #94a3b8;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
   --shadow:    0 2px 12px rgba(0,0,0,.5);
+
+  /* Soft state fills tuned for the dark surfaces (unchanged from before). */
+  --ok-soft-bg:   #0f2f1c;
+  --ok-soft-fg:   #bbf7d0;
+  --ok-soft-bd:   #166534;
+  --warn:         #f59e0b;
+  --warn-soft-bg: #341b0b;
+  --warn-soft-fg: #fed7aa;
+  --warn-soft-bd: #7c2d12;
+  --err-note:     #f87171;
+  --disabled-bg:  #33415c;
+  --disabled-fg:  #93a1b5;
+  --focus-ring:   #7aa7ff;
+}
+
+/* ── Colour-blind / high-contrast theme ─────────────────────────────
+   A bright, high-contrast light scheme whose state colours use the
+   Okabe–Ito palette. Success (blue) and danger (vermillion) differ in BOTH
+   hue and lightness, so they stay distinct under protanopia, deuteranopia,
+   tritanopia and full monochromacy — and every status is also labelled with
+   an icon and text, never colour alone (WCAG 1.4.1). Toggled via
+   data-theme="colorblind" on <html> (see src/theme.ts). Note: the edition
+   --primary/--accent are inline styles set by the edition layer and cannot be
+   overridden here; only the neutral surfaces and semantic tokens change. */
+:root[data-theme="colorblind"] {
+  color-scheme: light;
+  --bg:        #ffffff;
+  --surface:   #ffffff;
+  --border:    #767e8c;   /* >= 3:1 on white, meeting 1.4.11 for UI borders  */
+  --text:      #14181f;   /* near-black body text for AAA contrast           */
+  --muted:     #3a414c;   /* still >= 7:1 on white                           */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.14), 0 1px 2px rgba(0,0,0,.10);
+  --shadow:    0 2px 10px rgba(0,0,0,.16);
+
+  /* Blue = good. #0072B2 gives >= 5:1 with white for solid fills + icons. */
+  --ok:           #0072b2;
+  --ok-hover:     #005a8c;
+  --ok-contrast:  #ffffff;
+  --ok-soft-bg:   #d7ecf8;
+  --ok-soft-fg:   #00436e;
+  --ok-soft-bd:   #0072b2;
+
+  /* Vermillion = bad. #c2410c keeps >= 4.5:1 white text on the solid fill. */
+  --err:          #c2410c;
+  --err-hover:    #9a3412;
+  --err-contrast: #ffffff;
+  --err-soft-bg:  #fbe4d5;
+  --err-soft-fg:  #8a3d00;
+  --err-soft-bd:  #c2410c;
+  --err-tint-bg:  #fbeadf;
+  --err-note:     #8a3d00;
+
+  /* Amber = caution, distinct from both blue and vermillion. Darkened for the
+     solid variant so it keeps >= 3:1 with white when used as an icon/border. */
+  --warn:         #a15c00;
+  --warn-soft-bg: #fbeccb;
+  --warn-soft-fg: #6a4a00;
+  --warn-soft-bd: #e69f00;
+
+  --neutral:      #4b5563;
+  --track-off:    #6b7280;
+  --disabled-bg:  #9aa2ae;
+  --disabled-fg:  #ffffff;
+
+  /* Bright, mutually-distinct hues that read on the dark snackbar. */
+  --toast-ok:     #56b4e9;
+  --toast-err:    #e69f00;
+  --toast-info:   #f0e442;
+
+  --focus-ring:   #003f7a;
+}
+/* Reuse the dark-mode icon-recolour so the deep-navy edition glyphs are not lost
+   on any coloured chip — not needed here, but keep the accent-on-white pill
+   readable: recolour the accent-tinted "on" state to the safe blue. */
+:root[data-theme="colorblind"] .status-pill.on {
+  border-left-color: var(--ok) !important;
+}
+:root[data-theme="colorblind"] .status-pill.on .material-icons {
+  color: var(--ok) !important;
 }
 /* Lighten a few hardcoded light fills so dark mode reads correctly. */
 :root[data-theme="dark"] .table thead th { background: #0e1626; color: var(--muted); }
@@ -210,22 +330,22 @@ fieldset[disabled] .form-control {
   filter: brightness(0.92);
 }
 .btn.btn-success {
-  background-color: #16a34a !important;
-  border-color: #16a34a !important;
-  color: #fff !important;
+  background-color: var(--ok) !important;
+  border-color: var(--ok) !important;
+  color: var(--ok-contrast) !important;
 }
 .btn.btn-success:hover:not(:disabled) {
-  background-color: #15803d !important;
-  border-color: #15803d !important;
+  background-color: var(--ok-hover) !important;
+  border-color: var(--ok-hover) !important;
 }
 .btn.btn-danger {
-  background-color: #dc2626 !important;
-  border-color: #dc2626 !important;
-  color: #fff !important;
+  background-color: var(--err) !important;
+  border-color: var(--err) !important;
+  color: var(--err-contrast) !important;
 }
 .btn.btn-danger:hover:not(:disabled) {
-  background-color: #b91c1c !important;
-  border-color: #b91c1c !important;
+  background-color: var(--err-hover) !important;
+  border-color: var(--err-hover) !important;
 }
 .btn.btn-secondary {
   background-color: #64748b !important;
@@ -245,16 +365,10 @@ fieldset[disabled] .form-control {
    is the signal that the entry is complete and can be submitted. */
 .btn.btn-success:disabled,
 .btn.btn-success[disabled] {
-  background-color: #a7b0bc !important;
-  border-color: #a7b0bc !important;
-  color: #fff !important;
+  background-color: var(--disabled-bg) !important;
+  border-color: var(--disabled-bg) !important;
+  color: var(--disabled-fg) !important;
   opacity: 1 !important;
-}
-:root[data-theme="dark"] .btn.btn-success:disabled,
-:root[data-theme="dark"] .btn.btn-success[disabled] {
-  background-color: #33415c !important;
-  border-color: #33415c !important;
-  color: #93a1b5 !important;
 }
 
 /* ─── Item list (list_items.vue) ─────────────────────────────── */
@@ -335,6 +449,25 @@ fieldset[disabled] .form-control {
   transform: translateX(2px);
 }
 
+/* In dark mode the deep-navy --primary reads as almost-black on the dark
+   surfaces, so a selected/hovered row would be dark-blue-on-dark and hard to
+   see. Use the bright accent for selection state instead. */
+:root[data-theme="dark"] .item-list .list-group-item:hover:not(.active) {
+  background: rgba(var(--accent-rgb), .07) !important;
+  border-left-color: rgba(var(--accent-rgb), .4) !important;
+}
+:root[data-theme="dark"] .item-list .list-group-item.active,
+:root[data-theme="dark"] .item-list .list-group-item.active:focus,
+:root[data-theme="dark"] .item-list .list-group-item.active:hover {
+  background: rgba(var(--accent-rgb), .16) !important;
+  border-left-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+:root[data-theme="dark"] .item-list .list-group-item.active .list-chevron,
+:root[data-theme="dark"] .item-list .list-group-item:hover .list-chevron {
+  color: var(--accent);
+}
+
 /* ─── Loading spinner ────────────────────────────────────────── */
 .loading-state {
   display: flex;
@@ -356,6 +489,8 @@ fieldset[disabled] .form-control {
 @keyframes pssid-spin {
   to { transform: rotate(360deg); }
 }
+/* Navy spinner accent is invisible on the dark surface; use the bright accent. */
+:root[data-theme="dark"] .spinner { border-top-color: var(--accent); }
 
 /* ─── Table ──────────────────────────────────────────────────── */
 .table {
@@ -379,7 +514,7 @@ fieldset[disabled] .form-control {
   background: rgba(var(--primary-rgb),.025) !important;
 }
 .table-danger {
-  background: #fef2f2 !important;
+  background: var(--err-tint-bg) !important;
 }
 
 /* ─── Badges ─────────────────────────────────────────────────── */
@@ -391,12 +526,14 @@ fieldset[disabled] .form-control {
   letter-spacing: 0.03em;
 }
 .badge.badge-success {
-  background: #dcfce7 !important;
-  color: #166534 !important;
+  background: var(--ok-soft-bg) !important;
+  color: var(--ok-soft-fg) !important;
+  border: 1px solid var(--ok-soft-bd) !important;
 }
 .badge.badge-danger {
-  background: #fee2e2 !important;
-  color: #991b1b !important;
+  background: var(--err-soft-bg) !important;
+  color: var(--err-soft-fg) !important;
+  border: 1px solid var(--err-soft-bd) !important;
 }
 
 /* ─── Action bar (buttons above the content panel) ───────────── */
@@ -411,3 +548,119 @@ fieldset[disabled] .form-control {
 .new-form { display: flex; }
 .add_to_col { display: flex; flex-direction: column; }
 .loading { max-width: 640px; border: 1px solid #ffd859; background: #ffe9a0; color: #3a3a3a; padding: 5px 0; text-align: center; margin: 30px auto; }
+
+/* ─── Accessibility ──────────────────────────────────────────────
+   Shared primitives that make the whole app keyboard- and screen-reader
+   friendly and satisfy WCAG 2.1 AA across every theme. */
+
+/* Visually-hidden but available to assistive tech (labels, live regions). */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: first tab stop, jumps past the nav to the page content
+   (WCAG 2.4.1 Bypass Blocks). Off-screen until focused. */
+.skip-link {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  transform: translateY(-120%);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) 0;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  transition: transform .15s ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* A single, consistent, high-visibility focus indicator for every interactive
+   element (WCAG 2.4.7 Focus Visible, 2.4.11 Focus Appearance). Keyboard users
+   get a clear ring; mouse users are unaffected thanks to :focus-visible. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="menuitemradio"]:focus-visible,
+[role="tab"]:focus-visible,
+.list-group-item:focus-visible {
+  outline: 3px solid var(--focus-ring) !important;
+  outline-offset: 2px !important;
+  border-radius: var(--radius-sm);
+}
+/* The main content region gets no ring when focused programmatically via the
+   skip link — it is a scroll target, not an interactive control. */
+#main-content:focus,
+#main-content:focus-visible {
+  outline: none !important;
+}
+/* On the dark navbar a coloured ring can be low-contrast; use white there. */
+.navbar a:focus-visible,
+.navbar button:focus-visible {
+  outline-color: #ffffff !important;
+}
+
+/* Respect users who ask for reduced motion (WCAG 2.3.3 / prefers-reduced-motion):
+   collapse animations and transitions to a single frame. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Users who ask their OS for more contrast get stronger borders, higher-contrast
+   secondary text and always-on underlines for links. Tuned per theme so the
+   adjustment strengthens contrast in dark mode too (a global darker --muted
+   would otherwise disappear on the dark surfaces). */
+@media (prefers-contrast: more) {
+  :root {                          /* light + colour-blind (light) surfaces */
+    --border: #4b5563;
+    --muted:  #3a414c;
+  }
+  :root[data-theme="dark"] {       /* dark surfaces: go lighter, not darker  */
+    --border: #5b6b86;
+    --muted:  #cbd5e1;
+  }
+  a { text-decoration: underline; }
+  .form-control { border-width: 2px !important; }
+}
+
+/* Windows High Contrast / forced-colors: let the OS palette drive colours and
+   keep a visible focus outline that respects the user's chosen highlight. */
+@media (forced-colors: active) {
+  *:focus-visible {
+    outline: 3px solid Highlight !important;
+    outline-offset: 2px !important;
+  }
+  .btn,
+  .status-pill,
+  .item-list .list-group-item {
+    border: 1px solid ButtonBorder;
+  }
+}

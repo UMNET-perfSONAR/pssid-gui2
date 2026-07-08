@@ -73,6 +73,9 @@
             </div>
             <label for="params"> Metadata </label>
             <dynamic_add_data :addedData="addedData"></dynamic_add_data>
+            <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
+              <button class="btn btn-success" :disabled="!addGroupValid"> Add Host Group </button>
+            </div>
           </div>
         </form>
       </fieldset>
@@ -125,7 +128,6 @@
       </div>
     </div>
 
-    <RecentActivity />
   </div>
 </template>
 
@@ -142,13 +144,12 @@
  import hostSelection from '../forms/hostSelection.vue';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
- import RecentActivity from '../components/RecentActivity.vue'
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName } from "../utils/validators.ts"
 
  export default defineComponent({
-   components: { VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection, ConfirmModal, PageHeader, RecentActivity },
+   components: { VueMultiselect, itemList, hostRegex, dynamic_add_data, hostSelection, ConfirmModal, PageHeader },
    data() {
      return {
        selectedGroup: '',

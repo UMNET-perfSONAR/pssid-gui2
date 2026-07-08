@@ -127,13 +127,11 @@
       </section>
     </template>
 
-    <RecentActivity />
   </div>
 </template>
 
 <script>
 import PageHeader from '../components/PageHeader.vue'
-import RecentActivity from '../components/RecentActivity.vue'
 import { useSettingsStore } from '../stores/settings.store'
 import { useUserStore } from '../stores/user.store'
 import config from '../shared/config'
@@ -141,7 +139,7 @@ import { isFormDisabled } from '../utils/formControl.ts'
 
 export default {
   name: 'Settings',
-  components: { PageHeader, RecentActivity },
+  components: { PageHeader },
   data() {
     return {
       settingsStore: useSettingsStore(),
@@ -292,7 +290,7 @@ export default {
   width: 46px;
   height: 26px;
   border-radius: 13px;
-  background: #cbd2dc;
+  background: var(--track-off);
   transition: background .18s ease;
   display: inline-block;
   position: relative;
@@ -309,7 +307,7 @@ export default {
   transition: transform .18s ease;
 }
 .switch input:checked + .switch-track {
-  background: #16a34a;
+  background: var(--accent);
 }
 .switch input:checked + .switch-track .switch-thumb {
   transform: translateX(20px);
@@ -351,14 +349,14 @@ export default {
   flex-shrink: 0;
 }
 .preview-status.changed {
-  background: #fff7ed;
-  color: #9a3412;
-  border: 1px solid #fed7aa;
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+  border: 1px solid var(--warn-soft-bd);
 }
 .preview-status.unchanged {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: var(--ok-soft-bg);
+  color: var(--ok-soft-fg);
+  border: 1px solid var(--ok-soft-bd);
 }
 .preview-tabs {
   display: flex;
@@ -398,15 +396,9 @@ export default {
 :global(:root[data-theme="dark"]) .setting-sub code {
   background: #0e1626;
 }
-:global(:root[data-theme="dark"]) .preview-status.changed {
-  background: #341b0b;
-  color: #fed7aa;
-  border-color: #7c2d12;
-}
-:global(:root[data-theme="dark"]) .preview-status.unchanged {
-  background: #0f2f1c;
-  color: #bbf7d0;
-  border-color: #166534;
+/* Navy on dark is nearly black; the active preview tab uses the accent. */
+:global(:root[data-theme="dark"]) .preview-tabs button.active {
+  color: var(--accent);
 }
 
 @media (max-width: 700px) {

@@ -22,12 +22,13 @@
       <span>Loading jobs…</span>
     </div>
 
-    <h3> Job List </h3>
     <div class="list row">
       <!-- job list and regex search bar-->
-      <itemList v-if="mount ==true" :itemArray="jobStore.jobs" :display="showAddJob"
-        @updateActive="setActiveJob" style="cursor:pointer;"
-        class="col-md-6"></itemList>
+      <div class="col-md-6">
+        <h3> Job List </h3>
+        <itemList v-if="mount ==true" :itemArray="jobStore.jobs" :display="showAddJob"
+          @updateActive="setActiveJob" style="cursor:pointer;"></itemList>
+      </div>
 
       <!-- Add Form -->
       <div class="col-md-6" v-if="showAddJob==true">
@@ -82,6 +83,10 @@
                 v-model="backoff"
               />
               <small v-if="backoffError" class="text-danger">{{ backoffError }}</small>
+            </div>
+
+            <div class="d-flex flex-wrap" style="gap: 0.5rem;">
+              <button class="btn btn-success" :disabled="!addJobValid"> Add Job </button>
             </div>
           </div>
           </fieldset>
@@ -150,7 +155,6 @@
       </div>
     </div>
 
-    <RecentActivity />
   </div>
 </template>
 
@@ -162,14 +166,13 @@
  import itemList from '../components/list_items.vue';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
- import RecentActivity from '../components/RecentActivity.vue'
  import { useToastStore } from '../stores/toast.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName, validIso8601Duration, validJqClause } from "../utils/validators.ts"
 
  export default {
-   components: { VueMultiselect, itemList, ConfirmModal, PageHeader, RecentActivity },
+   components: { VueMultiselect, itemList, ConfirmModal, PageHeader },
    data() {
      return {
        jobName: '',

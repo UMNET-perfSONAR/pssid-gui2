@@ -15,12 +15,14 @@
       <span>Loading schedules…</span>
     </div>
 
-    <h3> Schedule List </h3>
-    <div class="list row"> 
+    <div class="list row">
       <!-- schedule list and regex searchbar -->
-      <item-list v-if="mount==true" class="col-md-6" :item-array="scheduleStore.schedules"  :display="showAddSchedule"
-        @updateActive="updateActiveSchedule" style="cursor: pointer;"> 
-      </item-list>
+      <div class="col-md-6">
+        <h3> Schedule List </h3>
+        <item-list v-if="mount==true" :item-array="scheduleStore.schedules"  :display="showAddSchedule"
+          @updateActive="updateActiveSchedule" style="cursor: pointer;">
+        </item-list>
+      </div>
 
       <!-- Add Schedule Form -->
       <div class="col-lg-6" v-if="showAddSchedule==true">
@@ -43,6 +45,7 @@
           </div>
           <cronstuff :init="cronExpression" @update-cron="cronExpression=$event"></cronstuff>
           <small v-if="cronError" class="text-danger d-block mb-2">{{ cronError }}</small>
+          <button class="btn btn-success" style="margin-right: 1em;" :disabled="!addScheduleValid"> Add Schedule </button>
          </fieldset>
         </form>
       </div>
@@ -78,7 +81,6 @@
     </div>
     
 
-    <RecentActivity />
   </div>
 </template>
 
@@ -87,14 +89,13 @@
  import { useUserStore } from '/src/stores/user.store';
  import cronstuff from '../components/cron.vue'
  import itemList from '../components/list_items.vue';
- import PageHeader from '../components/PageHeader.vue';
- import RecentActivity from '../components/RecentActivity.vue'
+ import PageHeader from '../components/PageHeader.vue';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validDisplayName, validCron } from "../utils/validators.ts"
 
  export default {
-   components: { cronstuff, itemList, PageHeader, RecentActivity },
+   components: { cronstuff, itemList, PageHeader },
    data() {
      return {
        scheduleStore: useScheduleStore(),

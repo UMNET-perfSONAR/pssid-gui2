@@ -62,6 +62,9 @@
           </div>
           <p> Metadata </p>
           <dynamic_add_data :addedData="addedOptionalData"></dynamic_add_data>
+          <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
+            <button class="btn btn-success" :disabled="!addHostValid"> Add Host </button>
+          </div>
         </fieldset>
         </form>
       </div>
@@ -141,7 +144,6 @@
       </template>
     </div>
 
-    <RecentActivity />
   </div>
 </template>
 
@@ -156,13 +158,12 @@
  import VueMultiselect from 'vue-multiselect';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
- import RecentActivity from '../components/RecentActivity.vue';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validHostOrIp } from "../utils/validators.ts"
 
  export default defineComponent({
-   components: { itemList, dynamic_add_data, VueMultiselect, ConfirmModal, PageHeader, RecentActivity },
+   components: { itemList, dynamic_add_data, VueMultiselect, ConfirmModal, PageHeader },
    data() {
      return {
        hostname: '',
@@ -372,9 +373,9 @@
   align-items: flex-start;
   gap: 0.5rem;
   font-size: 0.82rem;
-  color: #9a3412;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
+  color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg);
+  border: 1px solid var(--warn-soft-bd);
   border-radius: var(--radius-sm);
   padding: 0.65rem 0.9rem;
   margin: 0;
@@ -396,11 +397,6 @@
   line-height: 1.5;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   white-space: pre;
-}
-:global(:root[data-theme="dark"]) .probe-config-error {
-  background: #341b0b;
-  color: #fed7aa;
-  border-color: #7c2d12;
 }
 :global(:root[data-theme="dark"]) .probe-config-sub code {
   background: #0e1626;

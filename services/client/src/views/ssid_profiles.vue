@@ -61,6 +61,9 @@
               <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
             </select>
           </div>
+          <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
+            <button class="btn btn-success" :disabled="!addSsidValid"> Add SSID Profile </button>
+          </div>
           </fieldset>
         </form>
       </div>
@@ -103,7 +106,6 @@
       </div>
     </div>
 
-    <RecentActivity />
   </div>
 </template>
 
@@ -113,13 +115,12 @@
  import { useLayerScriptsStore } from '../stores/layer_scripts_store';
  import itemList from '../components/list_items.vue';
  import PageHeader from '../components/PageHeader.vue';
- import RecentActivity from '../components/RecentActivity.vue'
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName, validSsidNetworkName } from "../utils/validators.ts"
 
  export default {
-   components: { itemList, PageHeader, RecentActivity },
+   components: { itemList, PageHeader },
    data() {
      return {
        ssidStore: useSsidStore(),

@@ -46,9 +46,9 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  background: #22c55e;
-  color: #0a0a0a;
-  border: 1px solid #16a34a;
+  background: var(--ok);
+  color: var(--ok-contrast);
+  border: 1px solid var(--ok-hover);
   border-radius: 8px;
   padding: 0.35rem 0.75rem;
   font-size: 0.85rem;
@@ -58,18 +58,12 @@ export default {
   flex-shrink: 0;
   transition: background .12s, border-color .12s, color .12s;
 }
-.page-header-add:hover:not(:disabled) { background: #16a34a; color: #fff; }
+.page-header-add:hover:not(:disabled) { background: var(--ok-hover); color: var(--ok-contrast); }
 .page-header-add:disabled {
-  background: #a7b0bc;
-  border-color: #a7b0bc;
-  color: #fff;
+  background: var(--disabled-bg);
+  border-color: var(--disabled-bg);
+  color: var(--disabled-fg);
   cursor: not-allowed;
 }
 .page-header-add .material-icons { font-size: 1.15rem; color: inherit; }
-
-:global(:root[data-theme="dark"]) .page-header-add:disabled {
-  background: #33415c;
-  border-color: #33415c;
-  color: #93a1b5;
-}
 </style>

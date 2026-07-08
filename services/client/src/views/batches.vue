@@ -97,6 +97,9 @@
             />
             <small v-if="addPriorityError" class="text-danger">{{ addPriorityError }}</small>
           </div>
+          <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
+            <button class="btn btn-success" :disabled="!addBatchValid"> Add Batch </button>
+          </div>
           </fieldset>
         </form>
       </div>
@@ -174,7 +177,6 @@
       </div>
     </div>
 
-    <RecentActivity />
   </div>
 </template>
 
@@ -184,7 +186,6 @@
  import VueMultiselect from 'vue-multiselect';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
- import RecentActivity from '../components/RecentActivity.vue'
 
  import { useSsidStore } from '../stores/ssid_profiles_stores';
  import { useJobStore } from '../stores/job_store';
@@ -195,7 +196,7 @@
  import { validName, validInterfaceName, validWholeNumber } from "../utils/validators.ts"
 
  export default {
-   components: { itemList, VueMultiselect, ConfirmModal, PageHeader, RecentActivity },
+   components: { itemList, VueMultiselect, ConfirmModal, PageHeader },
    data() {
      return {
        showAddBatch: true,

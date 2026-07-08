@@ -1,13 +1,19 @@
 <template>
   <div v-if="visible" class="confirm-overlay" @click.self="onCancel">
-    <div class="confirm-box" role="dialog" aria-modal="true">
+    <div
+      class="confirm-box"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-message"
+      @keydown.esc.prevent="onCancel"
+    >
       <div class="confirm-icon-wrap">
-        <span class="material-icons confirm-warn-icon">warning_amber</span>
+        <span class="material-icons confirm-warn-icon" aria-hidden="true">warning_amber</span>
       </div>
-      <p class="confirm-message">{{ message }}</p>
+      <p id="confirm-modal-message" class="confirm-message">{{ message }}</p>
       <div class="confirm-buttons">
         <button class="btn btn-danger btn-sm" @click="onConfirm">Delete</button>
-        <button class="btn btn-secondary btn-sm" @click="onCancel">Cancel</button>
+        <button ref="cancelBtn" class="btn btn-secondary btn-sm" @click="onCancel">Cancel</button>
       </div>
     </div>
   </div>
@@ -21,6 +27,18 @@ export default {
     message:  { type: String, default: 'Are you sure you want to delete this item? This cannot be undone.' }
   },
   emits: ['confirm', 'cancel'],
+  watch: {
+    // Move keyboard focus into the dialog when it opens so keyboard and screen
+    // reader users land on a safe default (Cancel), and Escape can close it.
+    visible(open) {
+      if (open) {
+        this.$nextTick(() => {
+          const btn = this.$refs.cancelBtn;
+          if (btn) btn.focus();
+        });
+      }
+    }
+  },
   methods: {
     onConfirm() { this.$emit('confirm') },
     onCancel()  { this.$emit('cancel') }
@@ -53,7 +71,7 @@ export default {
 }
 .confirm-warn-icon {
   font-size: 2.75rem;
-  color: #f59e0b;
+  color: var(--warn);
 }
 .confirm-message {
   font-size: 0.95rem;
