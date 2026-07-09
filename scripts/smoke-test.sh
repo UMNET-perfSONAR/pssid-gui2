@@ -8,7 +8,7 @@
 #           make smoke SMOKE_URL=https://host -k   (prod stack)
 #
 # It creates its own objects (prefixed smoke-), exercises create/read/update/
-# delete on every collection, the settings toggle, and the provision preview,
+# delete on every collection, the settings endpoint, and the config preview,
 # then removes everything it created. Exit code 0 means every check passed.
 
 set -u
@@ -135,13 +135,16 @@ check "probe config lists its group" 200 "$STATUS" '"smoke-group"' "$BODY"
 req GET /api/hosts/host-config/no-such-probe
 check "probe config for unknown host returns 404" 404 "$STATUS" '' "$BODY"
 
-# ---- Settings toggle (auto-provision on, then off) ------------------------------
+# ---- Settings endpoint (persists the server-side autoProvision flag) -------------
+# The GUI no longer exposes an auto-provision toggle, but the endpoint still
+# round-trips the flag for the server-side auto-provision service, so it stays
+# covered here.
 req PUT /api/settings '{"autoProvision":true}'
-check "enable auto-provision" 200 "$STATUS" '' "$BODY"
+check "settings write persists autoProvision=true" 200 "$STATUS" '' "$BODY"
 req GET /api/settings
-check "auto-provision reads back true" 200 "$STATUS" '"autoProvision":\s*true' "$BODY"
+check "settings read back autoProvision=true" 200 "$STATUS" '"autoProvision":\s*true' "$BODY"
 req PUT /api/settings '{"autoProvision":false}'
-check "disable auto-provision" 200 "$STATUS" '' "$BODY"
+check "settings write persists autoProvision=false" 200 "$STATUS" '' "$BODY"
 
 # ---- Validation must reject a config-breaking write -----------------------------
 req POST /api/ssid-profiles/create-ssidProfile '{"name":"smoke-bad","SSID":"x","layer2_script":"../etc/passwd","layer3_script":"dhcp_client"}'
