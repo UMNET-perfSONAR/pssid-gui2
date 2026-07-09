@@ -252,9 +252,13 @@ export default {
   position: relative;
   margin-left: 0.5rem;
 }
+/* On the always-navy navbar a near-transparent button reads as a faint
+   dark-blue lump that is easy to miss; give the resting state a clearly
+   lighter fill and border so the appearance control is visible before you
+   hover it, in every theme. */
 .theme-toggle {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   color: #fff;
   border-radius: 8px;
   width: 34px;
@@ -263,9 +267,12 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background .15s;
+  transition: background .15s, border-color .15s;
 }
-.theme-toggle:hover { background: rgba(255, 255, 255, 0.16); }
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.55);
+}
 .theme-toggle .material-icons { font-size: 1.15rem; }
 
 /* The dropdown of appearance modes. Anchored to the trigger on desktop; on the

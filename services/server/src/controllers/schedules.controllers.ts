@@ -110,7 +110,9 @@ const updateSchedule = (async (req:Request, res:Response) => {
       return res.status(400).json({message:"Schedule already exists!"});
     }
     await collection.updateOne({
-      "name": req.body.old_schedule
+      // String-coerce so an operator object can't turn this filter into a
+      // NoSQL query targeting an arbitrary document (new_schedule is checked).
+      "name": String(req.body.old_schedule)
     }, {$set:{"name": req.body.new_schedule, "repeat":req.body.repeat}
        });
     

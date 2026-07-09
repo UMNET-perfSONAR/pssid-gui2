@@ -6,7 +6,7 @@
       icon="settings"
     />
 
-    <div v-if="settingsStore.isLoading" class="loading-state">
+    <div v-if="settingsStore.isLoading" class="loading-state" role="status" aria-live="polite">
       <div class="spinner"></div>
       <span>Loading settings...</span>
     </div>
@@ -16,7 +16,7 @@
         <div class="settings-card-head">
           <span class="material-icons settings-card-icon" aria-hidden="true">fact_check</span>
           <div>
-            <h3 id="tools-title" class="settings-card-title">Configuration</h3>
+            <h2 id="tools-title" class="settings-card-title">Configuration</h2>
             <p class="settings-card-desc">
               Verify the config file generated from your current setup.
             </p>

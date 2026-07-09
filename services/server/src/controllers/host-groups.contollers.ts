@@ -157,7 +157,9 @@ const updateHostGroup = (async (req:Request, res:Response) => {
     // *_ids drifted from the names (an old fast-path bug wrote names into the
     // ids array, which silently broke rename propagation).
     await collection.updateOne({
-      "name": data.old_hostgroup
+      // String-coerce so an operator object can't turn this filter into a
+      // NoSQL query targeting an arbitrary document (new_hostgroup is checked).
+      "name": String(data.old_hostgroup)
     }, {$set:{"name": data.new_hostgroup, "hosts":data.hosts,
               "hosts_regex": data.hosts_regex,
               "batches": data.batches, "data": data.data,

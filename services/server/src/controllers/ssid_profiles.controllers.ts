@@ -175,7 +175,9 @@ const updateSSIDProfile = (async (req:Request, res:Response) => {
       return res.status(400).json({message: "Invalid method selection"});
     }
     await collection.updateOne({
-      "name": body.old_ssid_name
+      // String-coerce so an operator object can't turn this filter into a
+      // NoSQL query targeting an arbitrary document (new_ssid_name is checked).
+      "name": String(body.old_ssid_name)
     }, {$set:{
          "name": body.new_ssid_name,
          "SSID": body.SSID,

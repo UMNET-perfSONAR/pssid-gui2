@@ -24,7 +24,7 @@
       @add="startAdd"
     />
 
-    <div v-if="!loaded" class="loading-state">
+    <div v-if="!loaded" class="loading-state" role="status" aria-live="polite">
       <div class="spinner"></div>
       <span>Loading hosts…</span>
     </div>
@@ -32,7 +32,7 @@
     <div v-else class="list row">
       <!-- List out the items -->
       <div class="col-md-6">
-        <h3> Host list </h3>
+        <h2> Host list </h2>
         <item-list
           :item-array="hostStore.hosts"
           :selected-name="isDirty ? null : selectedName"
@@ -43,7 +43,7 @@
 
       <!-- One form for both modes; the heading states the mode. -->
       <div class="col-md-6">
-        <h3>{{ editing ? 'Edit host' : 'New host' }}</h3>
+        <h2>{{ editing ? 'Edit host' : 'New host' }}</h2>
         <form @submit.prevent="editing ? saveChanges() : createHost()">
           <fieldset :disabled="isDisabled">
             <div class="panel-actions">
@@ -93,13 +93,13 @@
     <!-- Effective configuration of the selected probe: the slice of
          pssid_config.json (the one file the daemon reads) this host acts on. -->
     <div v-if="editing" class="probe-config">
-      <h3 class="probe-config-title">Probe configuration</h3>
+      <h2 class="probe-config-title">Probe configuration</h2>
       <p class="probe-config-sub">
         Everything <strong>{{ selectedName }}</strong> will run, from the
         generated <code>pssid_config.json</code> the daemon receives.
       </p>
 
-      <div v-if="hostStore.probeConfigLoading" class="loading-state">
+      <div v-if="hostStore.probeConfigLoading" class="loading-state" role="status" aria-live="polite">
         <div class="spinner"></div>
         <span>Building configuration…</span>
       </div>

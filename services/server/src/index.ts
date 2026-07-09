@@ -17,7 +17,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 var bodyParser = require('body-parser');
 const app: Express = express();
-const port = 8000;
+// Defaults to 8000 (the container's published port); overridable via PORT for
+// local runs where 8000 is already taken.
+const port = Number(process.env.PORT) || 8000;
 
 // Process-level safety nets: keep a long-running unattended server alive instead
 // of letting a single stray async error tear down all in-flight connections. The

@@ -161,7 +161,9 @@ const updateJob = (async (req:Request, res:Response) => {
     // *_ids drifted from the names (an old fast-path bug wrote names into the
     // ids array, which silently broke rename propagation).
     await collection.updateOne({
-      "name": body.old_job
+      // String-coerce so an operator object can't turn this filter into a
+      // NoSQL query targeting an arbitrary document (new_job is checked).
+      "name": String(body.old_job)
     }, {$set:{"name": body.new_job, "backoff": body.backoff, "continue-if": body['continue-if'],
               "test_ids": await get_test_ids(client, body),
               "tests": body.tests

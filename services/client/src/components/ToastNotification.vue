@@ -86,9 +86,16 @@ export default {
   white-space: pre-line;
   word-break: break-word;
 }
+/* At least 24x24 so it meets WCAG 2.2 SC 2.5.8 Target Size (Minimum). */
 .snackbar-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   background: none;
   border: none;
+  border-radius: 4px;
   color: #9ca3af;
   cursor: pointer;
   padding: 0;

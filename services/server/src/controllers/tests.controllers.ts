@@ -181,7 +181,9 @@ const updateTest = (async (req:Request, res:Response) => {
       return res.status(400).json({message:"Test already exists!"});
     }
     await collection.updateOne({
-      "name": body.old_testname
+      // String-coerce so an operator object can't turn this filter into a
+      // NoSQL query targeting an arbitrary document (new_testname is checked).
+      "name": String(body.old_testname)
     }, {$set:{"name": body.new_testname, "type": body.type,
               "spec": body.spec},
        })

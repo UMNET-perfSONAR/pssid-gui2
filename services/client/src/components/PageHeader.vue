@@ -4,7 +4,7 @@
       <span class="material-icons" aria-hidden="true">{{ icon }}</span>
     </div>
     <div class="page-header-content">
-      <h2 class="page-header-title">{{ title }}</h2>
+      <h1 class="page-header-title">{{ title }}</h1>
       <p class="page-header-subtitle" v-if="subtitle">{{ subtitle }}</p>
     </div>
     <button

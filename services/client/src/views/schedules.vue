@@ -29,7 +29,7 @@
       @add="startAdd"
     />
 
-    <div v-if="!loaded" class="loading-state">
+    <div v-if="!loaded" class="loading-state" role="status" aria-live="polite">
       <div class="spinner"></div>
       <span>Loading schedules…</span>
     </div>
@@ -37,7 +37,7 @@
     <div v-else class="list row">
       <!-- schedule list and regex search bar -->
       <div class="col-md-6">
-        <h3> Schedule list </h3>
+        <h2> Schedule list </h2>
         <item-list
           :item-array="sortedSchedules"
           :selected-name="isDirty ? null : selectedName"
@@ -48,7 +48,7 @@
 
       <!-- One form for both modes; the heading states the mode. -->
       <div class="col-md-6">
-        <h3>{{ editing ? 'Edit schedule' : 'New schedule' }}</h3>
+        <h2>{{ editing ? 'Edit schedule' : 'New schedule' }}</h2>
         <form @submit.prevent="editing ? saveChanges() : createSchedule()">
           <fieldset :disabled="isDisabled">
             <div class="panel-actions">

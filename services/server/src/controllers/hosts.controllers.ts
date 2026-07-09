@@ -174,7 +174,10 @@ const updateHost = (async (req:Request, res:Response) => {
     // *_ids drifted from the names (an old fast-path bug wrote names into the
     // ids array, which silently broke rename propagation).
     await collection.updateOne({
-      "name": body.old_hostname
+      // Coerce to a string so an operator object in old_hostname (e.g.
+      // {"$ne": null}) can't turn this filter into a NoSQL query that
+      // rewrites an arbitrary document. new_hostname is already string-checked.
+      "name": String(body.old_hostname)
     }, {$set:{"name": body.new_hostname, "batches": body.batches,
               "batch_ids": await get_batch_ids(client, req.body),
               "data": body.data},

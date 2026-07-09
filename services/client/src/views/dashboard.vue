@@ -34,7 +34,7 @@
          measured between the cards and drawn with right-angle segments only
          (never diagonal), so the flow reads like an official wayfinding
          diagram. -->
-    <h3 class="anatomy-title">Configuration file anatomy</h3>
+    <h2 class="anatomy-title">Configuration file anatomy</h2>
     <div class="anatomy-wrap">
       <div class="anatomy" ref="diagram">
         <svg class="anatomy-arrows" aria-hidden="true">

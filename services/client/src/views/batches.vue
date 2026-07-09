@@ -24,7 +24,7 @@
       @add="startAdd"
     />
 
-    <div v-if="!loaded" class="loading-state">
+    <div v-if="!loaded" class="loading-state" role="status" aria-live="polite">
       <div class="spinner"></div>
       <span>Loading batches…</span>
     </div>
@@ -32,7 +32,7 @@
     <div v-else class="list row">
       <!-- batch list and regex search bar -->
       <div class="col-md-6">
-        <h3> Batch list </h3>
+        <h2> Batch list </h2>
         <itemList
           :item-array="batchStore.batches"
           :selected-name="isDirty ? null : selectedName"
@@ -43,7 +43,7 @@
 
       <!-- One form for both modes; the heading states the mode. -->
       <div class="col-md-6">
-        <h3>{{ editing ? 'Edit batch' : 'New batch' }}</h3>
+        <h2>{{ editing ? 'Edit batch' : 'New batch' }}</h2>
         <form @submit.prevent="editing ? saveChanges() : createBatch()">
           <fieldset :disabled="isDisabled">
             <div class="panel-actions">
@@ -79,8 +79,10 @@
                 placeholder="e.g. wlan0"
                 v-model="form.test_interface"
                 class="form-control"
+                :aria-invalid="interfaceError ? 'true' : 'false'"
+                :aria-describedby="interfaceError ? 'batch-interface-error' : null"
               />
-              <small v-if="interfaceError" class="text-danger">{{ interfaceError }}</small>
+              <small v-if="interfaceError" id="batch-interface-error" class="text-danger" role="alert">{{ interfaceError }}</small>
             </div>
             <div class="form-group">
               <label id="batch-ssid-label"> SSID profiles </label>
@@ -124,8 +126,10 @@
                 min="0"
                 class="form-control"
                 v-model.number="form.priority"
+                :aria-invalid="priorityError ? 'true' : 'false'"
+                :aria-describedby="priorityError ? 'batch-priority-error' : null"
               />
-              <small v-if="priorityError" class="text-danger">{{ priorityError }}</small>
+              <small v-if="priorityError" id="batch-priority-error" class="text-danger" role="alert">{{ priorityError }}</small>
             </div>
           </fieldset>
         </form>

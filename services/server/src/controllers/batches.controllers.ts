@@ -171,7 +171,9 @@ const updateBatch = (async (req:Request, res:Response) => {
     // *_ids drifted from the names (an old fast-path bug wrote names into the
     // ids array, which silently broke rename propagation).
     await collection.updateOne({
-      "name": data.old_batchname
+      // String-coerce so an operator object can't turn this filter into a
+      // NoSQL query targeting an arbitrary document (new_batchname is checked).
+      "name": String(data.old_batchname)
     }, {$set:{"name": data.new_batchname, "priority": Number(data.priority),
               "test_interface":data.test_interface,
               "ssid_profiles":data.ssid_profiles, "schedules":data.schedules,

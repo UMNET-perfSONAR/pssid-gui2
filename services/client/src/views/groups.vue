@@ -24,7 +24,7 @@
       @add="startAdd"
     />
 
-    <div v-if="!loaded" class="loading-state">
+    <div v-if="!loaded" class="loading-state" role="status" aria-live="polite">
       <div class="spinner"></div>
       <span>Loading host groups…</span>
     </div>
@@ -32,7 +32,7 @@
     <div v-else class="list row">
       <!-- Host Group List -->
       <div class="col-md-6">
-        <h3> Host group list </h3>
+        <h2> Host group list </h2>
         <item-list
           :item-array="hostGroup.host_groups"
           :selected-name="isDirty ? null : selectedName"
@@ -43,7 +43,7 @@
 
       <!-- One form for both modes; the heading states the mode. -->
       <div class="col-md-6">
-        <h3>{{ editing ? 'Edit host group' : 'New host group' }}</h3>
+        <h2>{{ editing ? 'Edit host group' : 'New host group' }}</h2>
         <form @submit.prevent="editing ? saveChanges() : createGroup()">
           <fieldset :disabled="isDisabled">
             <div class="panel-actions">

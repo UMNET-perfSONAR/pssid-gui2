@@ -30,14 +30,14 @@
       the configured layer 2 and layer 3 directories on the server.
     </div>
 
-    <div v-if="!loaded" class="loading-state">
+    <div v-if="!loaded" class="loading-state" role="status" aria-live="polite">
       <div class="spinner"></div>
       <span>Loading SSID profiles…</span>
     </div>
 
     <div v-else class="list row">
       <div class="col-md-6">
-        <h3> SSID profile list </h3>
+        <h2> SSID profile list </h2>
         <itemList
           :item-array="ssidStore.ssid_profiles"
           :selected-name="isDirty ? null : selectedName"
@@ -48,7 +48,7 @@
 
       <!-- One form for both modes; the heading states the mode. -->
       <div class="col-md-6">
-        <h3>{{ editing ? 'Edit SSID profile' : 'New SSID profile' }}</h3>
+        <h2>{{ editing ? 'Edit SSID profile' : 'New SSID profile' }}</h2>
         <form @submit.prevent="editing ? saveChanges() : createProfile()">
           <fieldset :disabled="isDisabled">
             <div class="panel-actions">
@@ -84,8 +84,10 @@
                 placeholder="Wireless network name, e.g. MWireless"
                 v-model="form.SSID"
                 class="form-control"
+                :aria-invalid="ssidNameError ? 'true' : 'false'"
+                :aria-describedby="ssidNameError ? 'ssid-network-name-error' : null"
               />
-              <small v-if="ssidNameError" class="text-danger">{{ ssidNameError }}</small>
+              <small v-if="ssidNameError" id="ssid-network-name-error" class="text-danger" role="alert">{{ ssidNameError }}</small>
             </div>
             <div class="form-group">
               <label for="ssid-layer2"> Layer 2 method </label>

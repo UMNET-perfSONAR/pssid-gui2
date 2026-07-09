@@ -24,7 +24,7 @@
       @add="startAdd"
     />
 
-    <div v-if="!loaded" class="loading-state">
+    <div v-if="!loaded" class="loading-state" role="status" aria-live="polite">
       <div class="spinner"></div>
       <span>Loading tests…</span>
     </div>
@@ -32,7 +32,7 @@
     <div v-else class="list row">
       <!-- test list -->
       <div class="col-md-6">
-        <h3> Test list </h3>
+        <h2> Test list </h2>
         <itemList
           :item-array="testStore.tests"
           :selected-name="selectedName"
@@ -43,7 +43,7 @@
 
       <!-- New test: name + type, then the type's template fields. -->
       <div class="col-md-6" v-if="!editing">
-        <h3> New test </h3>
+        <h2> New test </h2>
         <fieldset :disabled="isDisabled">
           <div class="panel-actions">
             <button type="button" class="btn btn-success" @click="submitCreateTest" :disabled="!addTestValid">
@@ -102,7 +102,7 @@
 
       <!-- Edit test -->
       <div class="col-md-6" v-else>
-        <h3> Edit test </h3>
+        <h2> Edit test </h2>
         <fieldset :disabled="isDisabled">
           <div class="panel-actions">
             <button type="button" class="btn btn-success" @click="submitEditTest" :disabled="!editTestValid"> Save changes </button>

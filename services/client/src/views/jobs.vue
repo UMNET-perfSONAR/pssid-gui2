@@ -23,7 +23,7 @@
       @add="startAdd"
     />
 
-    <div v-if="!loaded" class="loading-state">
+    <div v-if="!loaded" class="loading-state" role="status" aria-live="polite">
       <div class="spinner"></div>
       <span>Loading jobs…</span>
     </div>
@@ -31,7 +31,7 @@
     <div v-else class="list row">
       <!-- job list and regex search bar-->
       <div class="col-md-6">
-        <h3> Job list </h3>
+        <h2> Job list </h2>
         <itemList
           :item-array="jobStore.jobs"
           :selected-name="isDirty ? null : selectedName"
@@ -42,7 +42,7 @@
 
       <!-- One form for both modes; the heading states the mode. -->
       <div class="col-md-6">
-        <h3>{{ editing ? 'Edit job' : 'New job' }}</h3>
+        <h2>{{ editing ? 'Edit job' : 'New job' }}</h2>
         <form @submit.prevent="editing ? saveChanges() : createJob()">
           <fieldset :disabled="isDisabled">
             <div class="panel-actions">
@@ -91,8 +91,10 @@
                 placeholder="jq expression, e.g. true"
                 class="form-control"
                 v-model="form.continueIf"
+                :aria-invalid="continueIfError ? 'true' : 'false'"
+                :aria-describedby="continueIfError ? 'job-continue-if-error' : null"
               />
-              <small v-if="continueIfError" class="text-danger">{{ continueIfError }}</small>
+              <small v-if="continueIfError" id="job-continue-if-error" class="text-danger" role="alert">{{ continueIfError }}</small>
             </div>
 
             <div class="form-group">
@@ -103,8 +105,10 @@
                 placeholder="e.g. PT1S, PT30S, PT5M"
                 class="form-control"
                 v-model="form.backoff"
+                :aria-invalid="backoffError ? 'true' : 'false'"
+                :aria-describedby="backoffError ? 'job-backoff-error' : null"
               />
-              <small v-if="backoffError" class="text-danger">{{ backoffError }}</small>
+              <small v-if="backoffError" id="job-backoff-error" class="text-danger" role="alert">{{ backoffError }}</small>
             </div>
           </fieldset>
         </form>

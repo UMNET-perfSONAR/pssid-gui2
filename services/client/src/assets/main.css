@@ -14,9 +14,10 @@
   --accent-text:  #04222b;
   --bg:        #f0f2f5;
   --surface:   #ffffff;
-  --border:    #dde1e7;
+  --border:    #dde1e7;   /* decorative container/separator lines (non-interactive) */
+  --field-border: #767e8c; /* interactive control borders: >=3:1 on white (WCAG 1.4.11) */
   --text:      #1c2434;
-  --muted:     #6b7480;
+  --muted:     #5e6773;   /* >=4.5:1 on both --surface and --bg (WCAG 1.4.3) */
   --success:   #166534;
   --danger:    #991b1b;
   --radius:    8px;
@@ -71,6 +72,7 @@
   --bg:        #0b1220;
   --surface:   #111a2e;
   --border:    #243049;
+  --field-border: #64748b; /* >=3:1 on the dark input fill (#0e1626) (WCAG 1.4.11) */
   --text:      #e5e9f0;
   --muted:     #94a3b8;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
@@ -91,12 +93,16 @@
 }
 
 /* ── Colour-blind / high-contrast theme ─────────────────────────────
-   A bright, high-contrast light scheme whose state colours use the
-   Okabe–Ito palette. Success (blue) and danger (vermillion) differ in BOTH
-   hue and lightness, so they stay distinct under protanopia, deuteranopia,
-   tritanopia and full monochromacy, and every status is also labelled with
-   an icon and text, never colour alone (WCAG 1.4.1). Toggled via
-   data-theme="colorblind" on <html> (see src/theme.ts). Note: the edition
+   A bright, high-contrast light scheme whose state colours are drawn from the
+   Okabe–Ito colour-blind-safe family: success = blue (#0072B2), danger =
+   vermillion, caution = amber. Those hues stay mutually distinguishable under
+   protanopia, deuteranopia and tritanopia (the three dichromacies). They sit
+   at similar luminance, so hue alone would not separate them under full
+   monochromacy; the app never relies on colour alone for that reason: every
+   status also carries an icon and a text label (WCAG 1.4.1 Use of Colour), so
+   no information is lost even when all three read as the same grey. Each state
+   colour keeps >= 4.5:1 as white-on-solid and >= 3:1 as an icon on white.
+   Toggled via data-theme="colorblind" on <html> (see src/theme.ts). Note: the edition
    --primary/--accent are inline styles set by the edition layer and cannot be
    overridden here; only the neutral surfaces and semantic tokens change. */
 :root[data-theme="colorblind"] {
@@ -104,6 +110,7 @@
   --bg:        #ffffff;
   --surface:   #ffffff;
   --border:    #767e8c;   /* >= 3:1 on white, meeting 1.4.11 for UI borders  */
+  --field-border: #767e8c; /* interactive control borders, >= 3:1 on white   */
   --text:      #14181f;   /* near-black body text for AAA contrast           */
   --muted:     #3a414c;   /* still >= 7:1 on white                           */
   --shadow-sm: 0 1px 3px rgba(0,0,0,.14), 0 1px 2px rgba(0,0,0,.10);
@@ -234,8 +241,8 @@ body * {
   gap: 0;
 }
 
-/* ─── Panel section headings (h3 inside panels) ──────────────── */
-.list.row h3 {
+/* ─── Panel section headings (h2 inside panels) ──────────────── */
+.list.row h2 {
   font-size: 0.72rem !important;
   font-weight: 700 !important;
   text-transform: uppercase;
@@ -264,7 +271,7 @@ body * {
 /* ─── Form controls ──────────────────────────────────────────── */
 .form-control {
   border-radius: var(--radius-sm) !important;
-  border: 1.5px solid var(--border) !important;
+  border: 1.5px solid var(--field-border) !important;
   padding: 0.45rem 0.75rem !important;
   font-size: 0.875rem !important;
   color: var(--text) !important;
@@ -275,6 +282,11 @@ body * {
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 3px rgba(var(--primary-rgb),.1) !important;
   outline: none !important;
+}
+/* vue-multiselect ships a near-invisible light border; raise it to the same
+   accessible control-border token so the widget's boundary meets 1.4.11. */
+.multiselect__tags {
+  border: 1px solid var(--field-border) !important;
 }
 .form-group {
   margin-bottom: 1rem;
