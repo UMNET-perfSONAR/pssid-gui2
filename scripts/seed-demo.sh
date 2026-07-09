@@ -137,6 +137,45 @@ db.host_groups.insertMany([
 // ---- settings ---------------------------------------------------------------
 db.settings.updateOne({ key: 'global' }, { $set: { autoProvision: false } }, { upsert: true });
 
+// ---- scrub dangling references left by the cleanup ---------------------------
+// The deleteMany calls at the top are raw removals; unlike the GUI's delete
+// handlers they do not scrub the arrays that reference the deleted names. The
+// demo-owned documents are recreated above with clean references, but any
+// OTHER document (hand-made in the GUI) that referenced a legacy name would be
+// left pointing at nothing, which blocks config generation. Remove every
+// reference to a cleaned-up name that was not recreated, keeping the parallel
+// *_ids arrays in step.
+const dead = {};
+for (const coll of Object.keys(demoNames)) {
+  dead[coll] = demoNames[coll].filter(n => !db.getCollection(coll).findOne({ name: n }));
+}
+const scrub = (coll, field, idField, deadNames) => {
+  if (deadNames.length === 0) return;
+  db.getCollection(coll).find().forEach((doc) => {
+    const names = doc[field];
+    if (!Array.isArray(names)) return;
+    const keep = [], keepIds = [];
+    names.forEach((n, i) => {
+      if (deadNames.includes(n)) return;
+      keep.push(n);
+      if (Array.isArray(doc[idField]) && i < doc[idField].length) keepIds.push(doc[idField][i]);
+    });
+    if (keep.length !== names.length) {
+      const set = { [field]: keep };
+      if (Array.isArray(doc[idField])) set[idField] = keepIds;
+      db.getCollection(coll).updateOne({ _id: doc._id }, { $set: set });
+      print('  scrubbed ' + (names.length - keep.length) + ' dangling ' + field + ' reference(s) from ' + coll + ' "' + doc.name + '"');
+    }
+  });
+};
+scrub('hosts',       'batches',       'batch_ids',        dead.batches);
+scrub('host_groups', 'batches',       'batch_ids',        dead.batches);
+scrub('host_groups', 'hosts',         'host_ids',         dead.hosts);
+scrub('batches',     'ssid_profiles', 'ssid_profile_ids', dead.ssid_profiles);
+scrub('batches',     'schedules',     'schedule_ids',     dead.schedules);
+scrub('batches',     'jobs',          'job_ids',          dead.jobs);
+scrub('jobs',        'tests',         'test_ids',         dead.tests);
+
 // ---- summary ----------------------------------------------------------------
 print('Seeded:');
 for (const coll of ['schedules', 'ssid_profiles', 'tests', 'jobs', 'batches', 'hosts', 'host_groups']) {
