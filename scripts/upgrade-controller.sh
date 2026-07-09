@@ -34,7 +34,16 @@ fi
 echo "==> Backing up the database"
 bash "$REPO_DIR/scripts/backup.sh"
 
-echo "==> Updating the source in $REPO_DIR"
+# The pull fast-forwards whatever branch this checkout is on. Releases land on
+# main, so a checkout left on a feature branch would keep "upgrading" to stale
+# code while reporting success. Say which branch we are on, loudly if unusual.
+branch="$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD)"
+echo "==> Updating the source in $REPO_DIR (branch: $branch)"
+if [ "$branch" != "main" ]; then
+  echo "    WARNING: this checkout is on '$branch', not 'main'. If your fixes" >&2
+  echo "    were merged to main, this upgrade will NOT include them. Switch with:" >&2
+  echo "      git -C $REPO_DIR checkout main" >&2
+fi
 git -C "$REPO_DIR" pull --ff-only
 
 echo "==> Building the GUI images"

@@ -108,6 +108,12 @@ use the controller upgrade script instead:
 scripts/upgrade-controller.sh          # backup, pull, rebuild, restart, verify
 ```
 
+The script fast-forwards whatever branch the checkout is on, and releases land
+on `main`. If the checkout was ever left on a feature branch, every upgrade
+will report success while shipping stale code; the script warns when this is
+the case. Check with `git branch --show-current` and switch once with
+`git checkout main`.
+
 One-time setup: point the controller's GUI services at the locally built
 images with an override file, so playbook re-runs cannot revert it. Check the
 service names first (`grep -B4 'umnetworking/pssid-gui2'
