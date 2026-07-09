@@ -323,12 +323,9 @@
        });
        if (!ok) return;
        await this.jobStore.getJobs();
-       const fresh = this.jobStore.jobs.find((j) => j.name === newName);
-       if (fresh) {
-         this.applySelection(fresh);
-       } else {
-         this.closeToAdd();
-       }
+       // A saved edit is no longer "the originally selected item", so return to
+       // a clean state rather than re-highlighting the row.
+       this.closeToAdd();
      },
 
      async executeDelete() {

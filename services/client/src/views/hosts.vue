@@ -366,12 +366,9 @@
        });
        if (!ok) return;
        await this.hostStore.getHosts();
-       const fresh = this.hostStore.hosts.find((h) => h.name === newName);
-       if (fresh) {
-         this.applySelection(fresh);
-       } else {
-         this.closeToAdd();
-       }
+       // A saved edit is no longer "the originally selected item", so return to
+       // a clean state rather than re-highlighting the row.
+       this.closeToAdd();
      },
 
      async executeDelete() {

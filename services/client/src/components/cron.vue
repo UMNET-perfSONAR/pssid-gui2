@@ -21,13 +21,16 @@
         :aria-describedby="textError ? fieldId + '-error' : fieldId + '-hint'"
       />
       <small v-if="textError" :id="fieldId + '-error'" class="text-danger" role="alert">{{ textError }}</small>
-      <small v-else :id="fieldId + '-hint'" class="text-muted">minute · hour · day · month · weekday</small>
+      <template v-else>
+        <small :id="fieldId + '-hint'" class="cron-human">Runs {{ description }}</small>
+        <small class="text-muted cron-fields">minute · hour · day · month · weekday</small>
+      </template>
     </div>
   </div>
 </template>
 
 <script>
- import { validCron } from '../utils/validators.ts'
+ import { validCron, describeCron } from '../utils/validators.ts'
 
  let uidSeq = 0;
 
@@ -56,6 +59,11 @@
    computed: {
      textError() {
        return validCron(this.text).error;
+     },
+     // Plain-English reading of the current (valid) expression, shown live so a
+     // schedule's real behaviour is visible while it is being edited.
+     description() {
+       return describeCron(this.text);
      }
    },
 
@@ -95,5 +103,16 @@
 .cron-expression-group input {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   letter-spacing: 0.08em;
+}
+.cron-human {
+  display: block;
+  font-weight: 600;
+  color: var(--text, inherit);
+}
+.cron-human::first-letter {
+  text-transform: none;
+}
+.cron-fields {
+  display: block;
 }
 </style>

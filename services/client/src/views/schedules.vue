@@ -285,13 +285,9 @@
        });
        if (!ok) return;
        await this.scheduleStore.getSchedules();
-       // Stay on the (possibly renamed) schedule so further edits are seamless.
-       const fresh = this.scheduleStore.schedules.find((s) => s.name === newName);
-       if (fresh) {
-         this.applySelection(fresh);
-       } else {
-         this.closeToAdd();
-       }
+       // A saved edit is no longer "the originally selected item", so return to
+       // a clean state rather than re-highlighting the row.
+       this.closeToAdd();
      },
 
      async executeDelete() {

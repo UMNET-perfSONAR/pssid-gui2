@@ -2,6 +2,7 @@ import {defineStore} from 'pinia'
 import config from '../shared/config'
 import { useToastStore } from './toast.store'
 import { errorMessage } from '../utils/http'
+import { describeCron } from '../utils/validators'
 
 export const useScheduleStore = defineStore('scheduleStore', {
   state: () => ({
@@ -55,7 +56,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
           return false;
         }
         this.schedules.push(schedule);
-        useToastStore().show(`Schedule "${schedule.name}" added`, 'success');
+        useToastStore().show(`Schedule "${schedule.name}" added — runs ${describeCron(schedule.repeat)}`, 'success');
         return true;
       }
       catch(error) {
@@ -81,7 +82,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
           useToastStore().show(await errorMessage(response, 'Failed to update schedule'), 'error');
           return false;
         }
-        useToastStore().show(`Schedule "${updateScheduleObj.new_schedule}" updated`, 'success');
+        useToastStore().show(`Schedule "${updateScheduleObj.new_schedule}" updated — runs ${describeCron(updateScheduleObj.repeat)}`, 'success');
         return true;
       }
       catch(error) {

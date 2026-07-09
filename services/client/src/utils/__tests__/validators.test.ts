@@ -10,6 +10,7 @@ import {
   validIso8601Duration,
   validJqClause,
   validCron,
+  describeCron,
 } from '../validators';
 
 // Every form field validator in one place. Each case states the rule it pins.
@@ -150,4 +151,33 @@ describe('validCron (schedule repeat, 5 fields)', () => {
     ['a * * * *', 'letters'],
     ['', 'empty'],
   ])('rejects %s (%s)', (v) => expect(validCron(v).valid).toBe(false));
+});
+
+describe('describeCron (plain-English reading of a schedule)', () => {
+  it.each([
+    ['* * * * *', 'every minute'],
+    ['*/1 * * * *', 'every minute'],
+    ['*/5 * * * *', 'every 5 minutes'],
+    ['*/6 * * * *', 'every 6 minutes'],
+    ['0 * * * *', 'every hour, on the hour'],
+    ['30 * * * *', 'every hour at 30 minutes past'],
+    ['0 */4 * * *', 'every 4 hours'],
+    ['0 */6 * * *', 'every 6 hours'],
+    ['15 */6 * * *', 'every 6 hours at 15 minutes past'],
+    ['0 23 * * *', 'every day at 23:00'],
+    ['30 9 * * *', 'every day at 09:30'],
+    ['0 9 * * 1', 'every Monday at 09:00'],
+    ['0 9 * * 0', 'every Sunday at 09:00'],
+    ['0 9 * * 7', 'every Sunday at 09:00'],   // 0 and 7 are both Sunday
+    ['0 0 1 * *', 'on day 1 of every month at 00:00'],
+    ['0 0 25 12 *', 'on December 25 at 00:00'],
+  ])('%s -> %s', (expr, text) => expect(describeCron(expr)).toBe(text));
+
+  it('falls back to the raw expression for shapes it cannot phrase', () => {
+    expect(describeCron('15 8 1,15 * 1-5')).toBe('15 8 1,15 * 1-5');
+  });
+
+  it('returns an invalid expression unchanged rather than guessing', () => {
+    expect(describeCron('not a cron')).toBe('not a cron');
+  });
 });

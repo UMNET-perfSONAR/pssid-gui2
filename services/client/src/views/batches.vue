@@ -375,12 +375,9 @@
        });
        if (!ok) return;
        await this.batchStore.getBatches();
-       const fresh = this.batchStore.batches.find((b) => b.name === newName);
-       if (fresh) {
-         this.applySelection(fresh);
-       } else {
-         this.closeToAdd();
-       }
+       // A saved edit is no longer "the originally selected item", so return to
+       // a clean state rather than re-highlighting the row.
+       this.closeToAdd();
      },
 
      async executeDelete() {

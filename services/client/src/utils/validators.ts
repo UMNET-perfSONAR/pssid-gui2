@@ -193,3 +193,63 @@ export function validCron(value: string): ValidationResult {
   }
   return ok;
 }
+
+/**
+ * Turns a 5-field cron expression into a plain-English description, e.g.
+ * "every 5 minutes", "every 6 hours", "every day at 23:00", "every Monday at
+ * 09:30". This describes what the expression ACTUALLY does, so it stays correct
+ * even when a schedule's name is stale (named "every 4 hours" but set to run
+ * every 6). It covers the common shapes; anything more elaborate (comma lists,
+ * ranges, multi-field steps) falls back to the raw expression, which is always
+ * accurate. Assumes a valid expression — callers guard with validCron.
+ */
+export function describeCron(value: string): string {
+  const v = (value ?? '').trim();
+  if (!validCron(v).valid) return v || '(no schedule)';
+  const [min, hour, dom, month, dow] = v.split(/\s+/);
+
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July',
+                  'August', 'September', 'October', 'November', 'December'];
+
+  const isAny = (f: string) => f === '*';
+  const isNum = (f: string) => /^\d+$/.test(f);
+  const isStep = (f: string) => /^\*\/\d+$/.test(f);
+  const stepOf = (f: string) => Number(f.split('/')[1]);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const time = () => `${pad(Number(hour))}:${pad(Number(min))}`;
+  const pastMinute = () => (Number(min) === 0 ? '' : ` at ${pad(Number(min))} minutes past`);
+
+  const daily = isAny(dom) && isAny(month) && isAny(dow);
+
+  // every minute
+  if (isAny(min) && isAny(hour) && daily) return 'every minute';
+
+  // every N minutes
+  if (isStep(min) && isAny(hour) && daily) {
+    const n = stepOf(min);
+    return n === 1 ? 'every minute' : `every ${n} minutes`;
+  }
+
+  // once an hour, at a fixed minute
+  if (isNum(min) && isAny(hour) && daily) {
+    return Number(min) === 0 ? 'every hour, on the hour' : `every hour at ${pad(Number(min))} minutes past`;
+  }
+
+  // every N hours
+  if (isNum(min) && isStep(hour) && daily) {
+    const n = stepOf(hour);
+    return n === 1 ? `every hour${pastMinute()}` : `every ${n} hours${pastMinute()}`;
+  }
+
+  // a fixed time of day, on some recurrence
+  if (isNum(min) && isNum(hour)) {
+    if (daily) return `every day at ${time()}`;
+    if (isAny(dom) && isAny(month) && isNum(dow)) return `every ${DAYS[Number(dow) % 7]} at ${time()}`;
+    if (isNum(dom) && isAny(month) && isAny(dow)) return `on day ${Number(dom)} of every month at ${time()}`;
+    if (isNum(dom) && isNum(month) && isAny(dow)) return `on ${MONTHS[Number(month)]} ${Number(dom)} at ${time()}`;
+  }
+
+  // Anything more elaborate: the raw expression is always accurate.
+  return v;
+}

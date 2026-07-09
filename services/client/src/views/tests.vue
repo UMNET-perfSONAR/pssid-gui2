@@ -425,14 +425,9 @@
        });
        if (!ok) return;
        await this.testStore.getTests();
-
-       // Stay on the (possibly renamed) test so further edits are seamless.
-       const fresh = this.testStore.tests.find((t) => t.name === newName);
-       if (fresh) {
-         await this.applySelection(fresh);
-       } else {
-         this.closeToAdd();
-       }
+       // A saved edit is no longer "the originally selected item", so return to
+       // a clean state rather than re-highlighting the row.
+       this.closeToAdd();
      },
 
      requestDelete() {
