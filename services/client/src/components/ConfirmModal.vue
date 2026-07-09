@@ -35,7 +35,7 @@ export default {
   data() {
     return {
       // The element focused before the dialog opened, so we can restore focus to
-      // it on close (WCAG 2.4.3 Focus Order) — e.g. back to the Delete button.
+      // it on close (WCAG 2.4.3 Focus Order), e.g. back to the Delete button.
       lastFocused: null
     }
   },

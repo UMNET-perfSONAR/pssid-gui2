@@ -261,7 +261,7 @@ export function stripLegacyArchivers(batch_data: any) {
  *
  * Scope is deliberately limited to SHAPE rules we have verified the daemon cares
  * about (type/presence/cross-reference). It intentionally does NOT try to predict
- * daemon BEHAVIOR (whether an SSID connects, whether a tool runs on a probe) —
+ * daemon BEHAVIOR (whether an SSID connects, whether a tool runs on a probe);
  * that is the probe's job and only `--validate` on a real probe certifies it.
  *
  * Verified daemon-critical rules (see daemon contract):

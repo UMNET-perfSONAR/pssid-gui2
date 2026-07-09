@@ -227,8 +227,8 @@
      },
 
      onSelect(item) {
-       // A modified draft detaches the list highlight, so clicking any row —
-       // including the one being edited — reloads that row's saved values,
+       // A modified draft detaches the list highlight, so clicking any row
+       // (including the one being edited) reloads that row's saved values,
        // after confirming that unsaved changes are discarded.
        if (this.isDirty) {
          this.askDiscard('select', item);
@@ -248,7 +248,7 @@
          name: item.name,
          SSID: item.SSID ?? '',
          // Pre-fill a method default for profiles created before these fields
-         // existed — on the draft only; nothing is stored until Save.
+         // existed, on the draft only; nothing is stored until Save.
          layer2_script: item.layer2_script || this.defaultLayer2() || '',
          layer3_script: item.layer3_script || this.defaultLayer3() || ''
        };

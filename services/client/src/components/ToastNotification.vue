@@ -31,7 +31,7 @@ export default {
       return { success: 'check_circle', error: 'error', info: 'info' }[type] || 'info'
     },
     // Spoken prefix so a screen-reader user hears the toast's kind even though
-    // the visual cue is colour + icon (WCAG 1.4.1 — never colour alone).
+    // the visual cue is colour + icon (WCAG 1.4.1, never colour alone).
     labelFor(type) {
       return { success: 'Success', error: 'Error', info: 'Information' }[type] || 'Information'
     }

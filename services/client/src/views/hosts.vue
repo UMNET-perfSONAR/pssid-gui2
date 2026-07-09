@@ -89,7 +89,7 @@
                   class="btn btn-warning"
                   @click="provisionHost"
                   :disabled="isDisabled || isDirty"
-                  :title="isDirty ? 'Save or cancel your changes first — provisioning pushes the saved configuration' : 'Write the generated config and run the provision script for this probe'"
+                  :title="isDirty ? 'Save or cancel your changes first; provisioning pushes the saved configuration' : 'Write the generated config and run the provision script for this probe'"
                 >
                   Provision this host
                 </button>
@@ -216,7 +216,7 @@
      batchNames() {
        return this.batchStore.batches.map((item) => item.name);
      },
-     // The saved (store) version of the selected host — what provisioning acts on.
+     // The saved (store) version of the selected host: what provisioning acts on.
      storeItem() {
        return this.hostStore.hosts.find((h) => h.name === this.selectedName) || null;
      },
@@ -252,8 +252,8 @@
      },
 
      onSelect(item) {
-       // A modified draft detaches the list highlight, so clicking any row —
-       // including the one being edited — reloads that row's saved values,
+       // A modified draft detaches the list highlight, so clicking any row
+       // (including the one being edited) reloads that row's saved values,
        // after confirming that unsaved changes are discarded.
        if (this.isDirty) {
          this.askDiscard('select', item);
@@ -333,7 +333,7 @@
        }
      },
 
-     // Provision the selected probe (its saved configuration — the button is
+     // Provision the selected probe (its saved configuration; the button is
      // disabled while the draft is dirty), then reload its effective
      // configuration so the panel below shows exactly what was just sent.
      async provisionHost() {

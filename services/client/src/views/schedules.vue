@@ -1,6 +1,6 @@
 <!-- Schedules: when and how often batches run on the probes.
      One editor panel serves both modes. Its heading says exactly what it is
-     doing — "New schedule" or "Edit schedule" — and the buttons follow the
+     doing ("New schedule" or "Edit schedule"), and the buttons follow the
      app-wide convention: "Create schedule" when adding, "Save changes" /
      "Cancel" / "Delete" when editing. The "+ New schedule" button in the page
      header only ever opens a blank form; it never saves anything.
@@ -184,10 +184,10 @@
 
      // A list row was clicked (or chosen with the keyboard). Clicking the
      // schedule that is already open closes the editor; anything else opens
-     // that schedule — after confirming if the current draft has unsaved work.
+     // that schedule, after confirming if the current draft has unsaved work.
      onSelect(item) {
-       // A modified draft detaches the list highlight, so clicking any row —
-       // including the one being edited — reloads that row's saved values,
+       // A modified draft detaches the list highlight, so clicking any row
+       // (including the one being edited) reloads that row's saved values,
        // after confirming that unsaved changes are discarded.
        if (this.isDirty) {
          this.askDiscard('select', item);

@@ -6,9 +6,9 @@
  * (bg/surface/border/text) and the semantic state colours change.
  *
  * Three modes are supported:
- *   - 'light'      — the default bright surfaces.
- *   - 'dark'       — dark surfaces for low-light use.
- *   - 'colorblind' — a high-contrast, colour-blind-safe palette (Okabe–Ito)
+ *   - 'light':      the default bright surfaces.
+ *   - 'dark':       dark surfaces for low-light use.
+ *   - 'colorblind': a high-contrast, colour-blind-safe palette (Okabe–Ito)
  *                    where success/danger/warning are distinguished by hue
  *                    *and* lightness so they read correctly under protanopia,
  *                    deuteranopia, tritanopia and monochromacy. Meaning is never

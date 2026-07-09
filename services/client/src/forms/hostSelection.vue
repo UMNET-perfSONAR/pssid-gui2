@@ -98,7 +98,7 @@
        try {
          regex = new RegExp(this.hostSearchKey, 'uim');
        } catch {
-         return;   // partially typed pattern — keep the previous filter
+         return;   // partially typed pattern, keep the previous filter
        }
        this.filteredHostData = this.copy_of_data.filter(item => regex.test(item.name))
      },
@@ -114,7 +114,7 @@
        try {
          regex = new RegExp(this.selectedSearchKey, 'uim');
        } catch {
-         return;   // partially typed pattern — keep the previous filter
+         return;   // partially typed pattern, keep the previous filter
        }
        this.filteredSelectedData = this.selected_hosts.filter(item => regex.test(item.name))
      }

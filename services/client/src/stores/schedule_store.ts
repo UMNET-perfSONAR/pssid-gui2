@@ -56,7 +56,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
           return false;
         }
         this.schedules.push(schedule);
-        useToastStore().show(`Schedule "${schedule.name}" added — runs ${describeCron(schedule.repeat)}`, 'success');
+        useToastStore().show(`Schedule "${schedule.name}" added (runs ${describeCron(schedule.repeat)})`, 'success');
         return true;
       }
       catch(error) {
@@ -82,7 +82,7 @@ export const useScheduleStore = defineStore('scheduleStore', {
           useToastStore().show(await errorMessage(response, 'Failed to update schedule'), 'error');
           return false;
         }
-        useToastStore().show(`Schedule "${updateScheduleObj.new_schedule}" updated — runs ${describeCron(updateScheduleObj.repeat)}`, 'success');
+        useToastStore().show(`Schedule "${updateScheduleObj.new_schedule}" updated (runs ${describeCron(updateScheduleObj.repeat)})`, 'success');
         return true;
       }
       catch(error) {

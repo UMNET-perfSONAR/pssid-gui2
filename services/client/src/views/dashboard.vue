@@ -18,7 +18,7 @@
             <div class="status-value">{{ healthOk ? 'Healthy' : 'Unavailable' }}</div>
           </div>
           <span v-if="healthOk" class="hint" role="tooltip">
-            The app is connected to its server and database — the two services it needs to run.
+            The app is connected to its server and database, the two services it needs to run.
           </span>
         </div>
         <p v-if="!healthOk" class="status-note">
@@ -36,11 +36,11 @@
           </div>
           <span class="hint" role="tooltip">
             <template v-if="settingsStore.autoProvision">
-              <code>On</code> — every change you save is sent to the probes automatically,
+              <code>On</code>: every change you save is sent to the probes automatically,
               so you don't need to configure them by hand.
             </template>
             <template v-else>
-              <code>Off</code> — your changes are saved here but not sent to the probes yet.
+              <code>Off</code>: your changes are saved here but not sent to the probes yet.
               Open a host and use Configure to send them when you're ready.
             </template>
           </span>
@@ -270,7 +270,7 @@ export default {
 .status-pill.has-hint:focus-visible { outline: 2px solid rgba(var(--primary-rgb), .5); outline-offset: 2px; }
 /* Hover/focus explanation styled as a floating tooltip: a dark, slightly
    see-through bubble with a pointer arrow, so it's obviously a transient hint
-   raised by hovering — not another solid card like the pills. The same dark
+   raised by hovering, not another solid card like the pills. The same dark
    treatment reads well in light, dark and high-contrast themes. */
 .hint {
   position: absolute;

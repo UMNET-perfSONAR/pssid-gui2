@@ -29,14 +29,14 @@
      colour from these tokens rather than a hard-coded hex, so a single theme
      override (dark, colour-blind) recolours the whole app consistently. The
      light defaults below reproduce the original appearance exactly. */
-  --ok:           #16a34a;   /* positive / success / healthy — solid fill   */
+  --ok:           #16a34a;   /* positive / success / healthy, solid fill    */
   --ok-hover:     #15803d;
   --ok-contrast:  #ffffff;   /* text/icon on a solid --ok fill              */
   --ok-soft-bg:   #dcfce7;
   --ok-soft-fg:   #166534;
   --ok-soft-bd:   #bbf7d0;
 
-  --err:          #dc2626;   /* negative / danger / error — solid fill      */
+  --err:          #dc2626;   /* negative / danger / error, solid fill       */
   --err-hover:    #b91c1c;
   --err-contrast: #ffffff;
   --err-soft-bg:  #fee2e2;
@@ -45,7 +45,7 @@
   --err-tint-bg:  #fef2f2;   /* faint row highlight (table-danger)          */
   --err-note:     #b91c1c;   /* danger text on the page background          */
 
-  --warn:         #d97706;   /* caution / changed / needs-attention — solid */
+  --warn:         #d97706;   /* caution / changed / needs-attention, solid  */
   --warn-soft-bg: #fff7ed;
   --warn-soft-fg: #9a3412;
   --warn-soft-bd: #fed7aa;
@@ -94,7 +94,7 @@
    A bright, high-contrast light scheme whose state colours use the
    Okabe–Ito palette. Success (blue) and danger (vermillion) differ in BOTH
    hue and lightness, so they stay distinct under protanopia, deuteranopia,
-   tritanopia and full monochromacy — and every status is also labelled with
+   tritanopia and full monochromacy, and every status is also labelled with
    an icon and text, never colour alone (WCAG 1.4.1). Toggled via
    data-theme="colorblind" on <html> (see src/theme.ts). Note: the edition
    --primary/--accent are inline styles set by the edition layer and cannot be
@@ -147,7 +147,7 @@
   --focus-ring:   #003f7a;
 }
 /* Reuse the dark-mode icon-recolour so the deep-navy edition glyphs are not lost
-   on any coloured chip — not needed here, but keep the accent-on-white pill
+   on any coloured chip, not needed here, but keep the accent-on-white pill
    readable: recolour the accent-tinted "on" state to the safe blue. */
 :root[data-theme="colorblind"] .status-pill.on {
   border-left-color: var(--ok) !important;
@@ -659,7 +659,7 @@ summary:focus-visible,
   border-radius: var(--radius-sm);
 }
 /* The main content region gets no ring when focused programmatically via the
-   skip link — it is a scroll target, not an interactive control. */
+   skip link; it is a scroll target, not an interactive control. */
 #main-content:focus,
 #main-content:focus-visible {
   outline: none !important;

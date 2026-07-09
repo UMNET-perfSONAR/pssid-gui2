@@ -1,12 +1,12 @@
 <!-- List items dynamically with regex search bar. Used in all files.
      Implemented as an ARIA listbox: fully keyboard-operable (Up/Down/Home/End to
      move, Enter/Space to select) with a roving tabindex, so keyboard and screen
-     reader users can select an item to edit — not just mouse users.
+     reader users can select an item to edit, not just mouse users.
 
      Selection is controlled by the parent: it passes the selected item's name
      via :selected-name and reacts to the 'select' event (fired with the clicked
      item, including a click on the already-selected row, which parents treat as
-     "close the editor"). Tracking selection by name — never by list position —
+     "close the editor"). Tracking selection by name (never by list position)
      keeps the highlight and the editor in sync even while the list is filtered
      or refetched. -->
 <template>
@@ -15,7 +15,7 @@
     <p>No items yet</p>
   </div>
   <div v-else>
-    <label :for="searchId" class="sr-only">{{ label }} — filter list</label>
+    <label :for="searchId" class="sr-only">{{ label }}: filter list</label>
     <input
       :id="searchId"
       type="text"

@@ -35,7 +35,7 @@
  let uidSeq = 0;
 
  // v-model component. The typed expression is always emitted (so the parent's
- // validation and submit-button state track every keystroke — nothing waits
+ // validation and submit-button state track every keystroke; nothing waits
  // for blur), but only a valid expression is pushed into the chip builder,
  // which cannot represent malformed input.
  export default {

@@ -44,7 +44,7 @@ export const useLayerScriptsStore = defineStore('layerScripts', {
     },
     // Returns the script to pre-select given the available options. A method is
     // required on every batch, so this always pre-fills a real method whenever any
-    // exist — the operator can still change it when there's more than one.
+    // exist; the operator can still change it when there's more than one.
     // Rule: no options → blank (nothing to pick; UI shows a warning);
     //       1 option → that option (no real choice);
     //       multiple + a configured default that exists → the configured default;

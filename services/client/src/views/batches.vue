@@ -262,8 +262,8 @@
      },
 
      onSelect(item) {
-       // A modified draft detaches the list highlight, so clicking any row —
-       // including the one being edited — reloads that row's saved values,
+       // A modified draft detaches the list highlight, so clicking any row
+       // (including the one being edited) reloads that row's saved values,
        // after confirming that unsaved changes are discarded.
        if (this.isDirty) {
          this.askDiscard('select', item);

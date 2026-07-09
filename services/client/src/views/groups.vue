@@ -95,7 +95,7 @@
                   class="btn btn-warning"
                   @click="provisionGroup"
                   :disabled="isDisabled || isDirty"
-                  :title="isDirty ? 'Save or cancel your changes first — provisioning pushes the saved configuration' : 'Write the generated config and run the provision script for every probe in this group'"
+                  :title="isDirty ? 'Save or cancel your changes first; provisioning pushes the saved configuration' : 'Write the generated config and run the provision script for every probe in this group'"
                 >
                   Provision this group
                 </button>
@@ -204,7 +204,7 @@
      batchNames() {
        return this.batchStore.batches.map((item) => item.name);
      },
-     // The saved (store) version of the selected group — what provisioning acts on.
+     // The saved (store) version of the selected group: what provisioning acts on.
      storeItem() {
        return this.hostGroup.host_groups.find((g) => g.name === this.selectedName) || null;
      },
@@ -252,8 +252,8 @@
      },
 
      onSelect(item) {
-       // A modified draft detaches the list highlight, so clicking any row —
-       // including the one being edited — reloads that row's saved values,
+       // A modified draft detaches the list highlight, so clicking any row
+       // (including the one being edited) reloads that row's saved values,
        // after confirming that unsaved changes are discarded.
        if (this.isDirty) {
          this.askDiscard('select', item);
@@ -337,7 +337,7 @@
        }
      },
 
-     // Provision every probe in the selected group (its saved configuration —
+     // Provision every probe in the selected group (its saved configuration;
      // the button is disabled while the draft is dirty).
      async provisionGroup() {
        if (!this.storeItem) return;

@@ -201,7 +201,7 @@ export function validCron(value: string): ValidationResult {
  * even when a schedule's name is stale (named "every 4 hours" but set to run
  * every 6). It covers the common shapes; anything more elaborate (comma lists,
  * ranges, multi-field steps) falls back to the raw expression, which is always
- * accurate. Assumes a valid expression — callers guard with validCron.
+ * accurate. Assumes a valid expression; callers guard with validCron.
  */
 export function describeCron(value: string): string {
   const v = (value ?? '').trim();
