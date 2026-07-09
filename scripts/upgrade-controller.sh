@@ -63,13 +63,26 @@ else
   echo "    names (see docs/deployment.md), then re-run this script." >&2
 fi
 
+# Restart the reverse proxy so it re-resolves the upstream container addresses.
+# nginx caches the IPs it resolved for `server:8000` / `client:8080` at startup;
+# a recreated client/server comes back with a NEW IP, and without this nginx keeps
+# proxying to the dead old IP and returns 502 Bad Gateway to a healthy backend.
+if (cd "$CONTROLLER_DIR" && docker compose restart nginx >/dev/null 2>&1); then
+  echo "    restarted nginx to re-resolve the recreated containers"
+else
+  echo "    note: if you see 502s, restart your reverse proxy so it re-resolves the recreated containers" >&2
+fi
+
 echo "==> Waiting for the server health check"
-urls=("${PSSID_HEALTH_URL:-}" "https://localhost/api/health" "http://localhost/api/health" "http://localhost:8080/api/health")
+# Validate the actual health JSON, not just any 200: the Vite client serves the
+# SPA's index.html for every path (including /api/health), so a bare 200 check
+# against the client port would falsely report healthy while the API is 502ing.
+urls=("${PSSID_HEALTH_URL:-}" "https://localhost/api/health" "http://localhost/api/health")
 healthy=""
 for i in $(seq 1 30); do
   for url in "${urls[@]}"; do
     [ -n "$url" ] || continue
-    if curl -fsk "$url" >/dev/null 2>&1; then healthy="$url"; break 2; fi
+    if curl -fsk "$url" 2>/dev/null | grep -q '"status"'; then healthy="$url"; break 2; fi
   done
   sleep 2
 done

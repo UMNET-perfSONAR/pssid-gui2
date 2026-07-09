@@ -34,6 +34,8 @@ refresh: ## Apply pulled source to a RUNNING repo stack (rebuild + recreate clie
 	@EDITION=$(EDITION) $(PROD) build client server
 	@echo "Recreating the client and server containers..."
 	@EDITION=$(EDITION) $(PROD) up -d --no-deps --force-recreate client server
+	@echo "Restarting nginx so it re-resolves the new container addresses (avoids 502)..."
+	@$(PROD) restart nginx 2>/dev/null || true
 	@echo "Done. The new code is live. Hard-refresh the browser: Ctrl/Cmd+Shift+R."
 
 up: ## Start the production stack (HTTPS/nginx)
