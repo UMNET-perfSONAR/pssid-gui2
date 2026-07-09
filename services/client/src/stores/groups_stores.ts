@@ -1,45 +1,44 @@
 import {defineStore} from 'pinia'
-import { useHostStore } from './host_store';
 import config from '../shared/config'
 import { useToastStore } from './toast.store'
+import { errorMessage } from '../utils/http'
 
 export const useGroupStore = defineStore('groupStore', {
   state: () => ({
-    host_groups: [{
-      name:'',
-      hosts: [''],
-      batches: [''],
-      data: [{}],
-    }],
-    filteredData: [{}],
+    host_groups: [] as any[],
     isLoading: false,
-    filteredHostData: [{}],
-    hostData: [],
-    hostStore: useHostStore(),
     isError: false
   }),
+
+  // Every mutating action resolves to true on success and false on failure,
+  // so a view can keep the user's typed input when the server says no.
   actions: {
-    async getGroups() {
+    async getGroups(): Promise<boolean> {
+      this.isLoading = true;
       try {
-        this.isLoading = true;
         const res = await fetch('/api/host-groups', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
-        const data = await res.json();
-        this.host_groups = data;
-        this.filteredData = data;
-        this.isLoading = false;
+        if (!res.ok) {
+          useToastStore().show(await errorMessage(res, 'Failed to load host groups'), 'error');
+          return false;
+        }
+        this.host_groups = await res.json();
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to load host groups', 'error');
+        return false;
+      }
+      finally {
+        this.isLoading = false;
       }
     },
 
-    async addGroup(host_group:any) {
+    async addGroup(host_group: any): Promise<boolean> {
       try {
-        this.isLoading = true;
         const response = await fetch(
           '/api/host-groups/create-hostgroup',
           {
@@ -50,26 +49,23 @@ export const useGroupStore = defineStore('groupStore', {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-
-        if (response.ok) {
-          this.host_groups.push(host_group);
-          useToastStore().show(`Host group "${host_group.name}" added`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to add host group', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to add host group'), 'error');
+          return false;
         }
-
-        this.isLoading = false;
+        this.host_groups.push(host_group);
+        useToastStore().show(`Host group "${host_group.name}" added`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to add host group', 'error');
+        return false;
       }
     },
 
-    async editGroup(host_group: any) {
+    async editGroup(host_group: any): Promise<boolean> {
       try {
         const response = await fetch(
           '/api/host-groups/update-hostgroup',
@@ -81,40 +77,42 @@ export const useGroupStore = defineStore('groupStore', {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        if (response.ok) {
-          useToastStore().show(`Host group "${host_group.new_hostgroup}" updated`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to update host group', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to update host group'), 'error');
+          return false;
         }
+        useToastStore().show(`Host group "${host_group.new_hostgroup}" updated`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to update host group', 'error');
+        return false;
       }
     },
 
-    async deleteGroup(host_group:any) {
+    async deleteGroup(host_group: any): Promise<boolean> {
       try {
         const response = await fetch(
-          '/api/host-groups/' + host_group.name,
+          '/api/host-groups/' + encodeURIComponent(host_group.name),
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        if (response.ok) {
-          useToastStore().show(`Group "${host_group.name}" deleted`, 'success');
-        } else {
-          useToastStore().show('Failed to delete host group', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to delete host group'), 'error');
+          return false;
         }
+        useToastStore().show(`Group "${host_group.name}" deleted`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to delete host group', 'error');
+        return false;
       }
     },
 
@@ -125,7 +123,6 @@ export const useGroupStore = defineStore('groupStore', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
         this.host_groups = [];
-        this.filteredData = [];
       }
       catch(error) {
         console.error(error);
@@ -153,7 +150,7 @@ export const useGroupStore = defineStore('groupStore', {
         if (response.ok) {
           useToastStore().show(`Group "${currentGroup.name}" submitted for provisioning`, 'success');
         } else {
-          useToastStore().show('Provision request failed', 'error');
+          useToastStore().show(await errorMessage(response, 'Provision request failed'), 'error');
         }
       }
       catch(error) {

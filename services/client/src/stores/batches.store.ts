@@ -1,24 +1,30 @@
 import {defineStore} from 'pinia'
 import config from '../shared/config'
 import { useToastStore } from './toast.store'
+import { errorMessage } from '../utils/http'
 
 export const useBatchStore = defineStore('batchStore', {
   state: () => ({
-    batches: [{}],
+    batches: [] as any[],
     isLoading: false,
     isError: false
   }),
 
+  // Every mutating action resolves to true on success and false on failure,
+  // so a view can keep the user's typed input when the server says no.
   actions: {
     async getBatches() {
+      this.isLoading = true;
       try {
-        this.isLoading = true;
         const res = await fetch('/api/batches', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
+        if (!res.ok) {
+          useToastStore().show(await errorMessage(res, 'Failed to load batches'), 'error');
+          return;
+        }
         const data = await res.json();
         this.batches = data;
-        this.isLoading = false;
         return data;
       }
       catch(error) {
@@ -26,11 +32,13 @@ export const useBatchStore = defineStore('batchStore', {
         this.isError = true;
         useToastStore().show('Failed to load batches', 'error');
       }
+      finally {
+        this.isLoading = false;
+      }
     },
 
-    async addBatch(batch:any) {
+    async addBatch(batch: any): Promise<boolean> {
       try {
-        this.isLoading = true;
         const response = await fetch(
           '/api/batches/create-batch',
           {
@@ -40,26 +48,23 @@ export const useBatchStore = defineStore('batchStore', {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-
-        if (response.ok) {
-          this.batches.push(batch);
-          useToastStore().show(`Batch "${batch.name}" added`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to add batch', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to add batch'), 'error');
+          return false;
         }
-
-        this.isLoading = false;
+        this.batches.push(batch);
+        useToastStore().show(`Batch "${batch.name}" added`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to add batch', 'error');
+        return false;
       }
     },
 
-    async editBatch(updated_batch_obj: any) {
+    async editBatch(updated_batch_obj: any): Promise<boolean> {
       try {
         const response = await fetch(
           '/api/batches/update-batch',
@@ -71,41 +76,43 @@ export const useBatchStore = defineStore('batchStore', {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        if (response.ok) {
-          useToastStore().show(`Batch "${updated_batch_obj.new_batchname}" updated`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to update batch', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to update batch'), 'error');
+          return false;
         }
+        useToastStore().show(`Batch "${updated_batch_obj.new_batchname}" updated`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to update batch', 'error');
+        return false;
       }
     },
 
-    async deleteBatch(batch:any) {
+    async deleteBatch(batch: any): Promise<boolean> {
       try {
         const response = await fetch(
-          '/api/batches/' + batch.name,
+          '/api/batches/' + encodeURIComponent(batch.name),
           {
             method: 'DELETE',
             mode: 'cors',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        if (response.ok) {
-          useToastStore().show(`Batch "${batch.name}" deleted`, 'success');
-        } else {
-          useToastStore().show('Failed to delete batch', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to delete batch'), 'error');
+          return false;
         }
+        useToastStore().show(`Batch "${batch.name}" deleted`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to delete batch', 'error');
+        return false;
       }
     },
 

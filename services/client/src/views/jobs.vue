@@ -1,10 +1,16 @@
+<!-- Jobs: reusable bundles of tests. Same editor pattern as every section:
+     one panel headed "New job" / "Edit job", a draft buffer (the list never
+     shows half-typed edits), name-tracked selection, and the standard
+     "Create job" / "Save changes" / "Cancel" / "Delete" buttons with
+     confirmation before deleting or discarding unsaved changes. -->
 <template>
   <div>
     <ConfirmModal
-      :visible="showConfirm"
+      :visible="confirmVisible"
       :message="confirmMessage"
-      @confirm="executeDeleteJob"
-      @cancel="showConfirm = false"
+      :confirm-label="confirmButtonLabel"
+      @confirm="onConfirm"
+      @cancel="confirmVisible = false"
     />
 
     <PageHeader
@@ -12,144 +18,94 @@
       subtitle="Combine tests into reusable job configurations"
       icon="folder_copy"
       :can-add="true"
-      :add-disabled="isDisabled || (showAddJob && !addJobValid)"
-      add-label="Add Job"
-      @add="onHeaderAdd"
+      :add-disabled="isDisabled"
+      add-label="New job"
+      @add="startAdd"
     />
 
-    <div v-if="jobStore.isLoading===true" class="loading-state">
+    <div v-if="!loaded" class="loading-state">
       <div class="spinner"></div>
       <span>Loading jobs…</span>
     </div>
 
-    <div class="list row">
+    <div v-else class="list row">
       <!-- job list and regex search bar-->
       <div class="col-md-6">
-        <h3> Job List </h3>
-        <itemList v-if="mount ==true" :itemArray="jobStore.jobs" :display="showAddJob"
-          @updateActive="setActiveJob" style="cursor:pointer;"></itemList>
+        <h3> Job list </h3>
+        <itemList
+          :item-array="jobStore.jobs"
+          :selected-name="selectedName"
+          label="Jobs"
+          @select="onSelect"
+        ></itemList>
       </div>
 
-      <!-- Add Form -->
-      <div class="col-md-6" v-if="showAddJob==true">
-        <h3> Add Job </h3>
-        <form @submit.prevent="submitJob">
+      <!-- One form for both modes; the heading states the mode. -->
+      <div class="col-md-6">
+        <h3>{{ editing ? 'Edit job' : 'New job' }}</h3>
+        <form @submit.prevent="editing ? saveChanges() : createJob()">
           <fieldset :disabled="isDisabled">
-          <div class="submit-form">
             <div class="form-group">
-              <label> Job Name </label>
+              <label for="job-name"> Job name </label>
               <input
                 type="text"
+                id="job-name"
+                ref="nameInput"
                 placeholder="Enter job name"
-                required
-                id="name"
                 class="form-control"
-                v-model="jobName"
+                v-model="form.name"
+                :aria-invalid="nameError ? 'true' : 'false'"
+                :aria-describedby="nameError ? 'job-name-error' : null"
               />
+              <small v-if="nameError" id="job-name-error" class="text-danger" role="alert">{{ nameError }}</small>
             </div>
 
             <div class="form-group">
-              <label> Test Selection </label>
+              <label id="job-tests-label"> Tests (run in the listed order) </label>
               <VueMultiselect
-                v-model="selected_tests"
+                v-model="form.tests"
                 :multiple="true"
                 :close-on-select="false"
-                :options="testStore.tests"
-                track-by="name"
-                label="name"
+                :options="testNames"
+                aria-labelledby="job-tests-label"
               >
               </VueMultiselect>
             </div>
 
             <div class="form-group">
-              <label style="margin-right:1em"> Continue-If (jq):</label>
+              <label for="job-continue-if"> Continue-if (jq expression) </label>
               <input
                 type="text"
+                id="job-continue-if"
                 placeholder="jq expression, e.g. true"
-                required
                 class="form-control"
-                v-model="continue_if"
+                v-model="form.continueIf"
               />
               <small v-if="continueIfError" class="text-danger">{{ continueIfError }}</small>
             </div>
 
             <div class="form-group">
-              <label style="margin-right:1em"> Backoff (ISO 8601 duration):</label>
+              <label for="job-backoff"> Backoff (ISO 8601 duration) </label>
               <input
                 type="text"
+                id="job-backoff"
                 placeholder="e.g. PT1S, PT30S, PT5M"
-                required
                 class="form-control"
-                v-model="backoff"
+                v-model="form.backoff"
               />
               <small v-if="backoffError" class="text-danger">{{ backoffError }}</small>
             </div>
 
-            <div class="d-flex flex-wrap" style="gap: 0.5rem;">
-              <button class="btn btn-success" :disabled="!addJobValid"> Add Job </button>
+            <div class="panel-actions">
+              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
+                Create job
+              </button>
+              <template v-else>
+                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
+                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
+                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+              </template>
             </div>
-          </div>
-          </fieldset>
-        </form>
-      </div>
-
-      <!-- Edit Job Form -->
-      <div class="col-md-6" v-if="showAddJob==false">
-        <h3> Edit Job </h3>
-        <form @submit.prevent="editJob">
-          <fieldset :disabled="isDisabled">
-          <div class="submit-form">
-            <div class="form-group">
-              <label> Job Name </label>
-              <input
-                type="text"
-                placeholder="Enter job name"
-                required
-                class="form-control"
-                v-model="currentItem.name"
-              />
-            </div>
-
-            <div class="form-group">
-              <label> Test Selection </label>
-              <VueMultiselect
-                v-model="currentItem.tests"
-                :multiple="true"
-                :close-on-select="false"
-                :options="testStore.tests.map(item=>item.name)"
-              >
-              </VueMultiselect>
-            </div>
-
-            <div class="form-group">
-              <label style="margin-right:1em"> Continue-If (jq):</label>
-              <input
-                type="text"
-                placeholder="jq expression, e.g. true"
-                required
-                class="form-control"
-                v-model="currentItem['continue-if']"
-              />
-              <small v-if="editContinueIfError" class="text-danger">{{ editContinueIfError }}</small>
-            </div>
-
-            <div class="form-group">
-              <label style="margin-right:1em"> Backoff (ISO 8601 duration):</label>
-              <input
-                type="text"
-                placeholder="e.g. PT1S, PT30S, PT5M"
-                required
-                class="form-control"
-                v-model="currentItem.backoff"
-              />
-              <small v-if="editBackoffError" class="text-danger">{{ editBackoffError }}</small>
-            </div>
-
-            <div class="d-flex flex-wrap" style="gap: 0.5rem;">
-              <button class="btn btn-success" :disabled="!editJobValid"> Update </button>
-              <button class="btn btn-danger" type="button" @click="requestDeleteJob"> Delete </button>
-            </div>
-          </div>
           </fieldset>
         </form>
       </div>
@@ -166,30 +122,29 @@
  import itemList from '../components/list_items.vue';
  import ConfirmModal from '../components/ConfirmModal.vue';
  import PageHeader from '../components/PageHeader.vue';
- import { useToastStore } from '../stores/toast.store';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName, validIso8601Duration, validJqClause } from "../utils/validators.ts"
+
+ const blankForm = () => ({ name: '', tests: [], continueIf: 'true', backoff: 'PT1S' });
+ const cloneForm = (form) => ({ ...form, tests: [...form.tests] });
 
  export default {
    components: { VueMultiselect, itemList, ConfirmModal, PageHeader },
    data() {
      return {
-       jobName: '',
-       selected_tests: [],
-       continue_if: 'true',
-       backoff: "PT1S",
+       // Name of the job open in the editor; null = "New job" mode.
+       selectedName: null,
+       form: blankForm(),
+       baseline: blankForm(),
 
-       showAddJob: true,
-
-       currentItem: {},
-       currentIndex: {},
-       old_job_name: '',
-
-       mount: false,
-
-       showConfirm: false,
+       confirmVisible: false,
        confirmMessage: '',
+       confirmButtonLabel: 'Delete',
+       pendingAction: null,
+       pendingItem: null,
+
+       loaded: false,
 
        jobStore: useJobStore(),
        testStore: useTestStore(),
@@ -204,116 +159,180 @@
      }
      await this.jobStore.getJobs();
      await this.testStore.getTests();
-     this.mount = true;
+     this.loaded = true;
    },
 
    computed: {
      isDisabled() {
        return isFormDisabled();
      },
+     editing() {
+       return this.selectedName !== null;
+     },
+     isDirty() {
+       return JSON.stringify(this.form) !== JSON.stringify(this.baseline);
+     },
+     testNames() {
+       return this.testStore.tests.map((t) => t.name);
+     },
+     nameError() {
+       if (!this.form.name) return '';
+       const check = validName(this.form.name);
+       if (!check.valid) return check.error;
+       if (this.isDuplicateName) return 'A job with this name already exists.';
+       return '';
+     },
+     isDuplicateName() {
+       const name = this.form.name.trim();
+       return this.jobStore.jobs.some(
+         (j) => j.name === name && j.name !== this.selectedName
+       );
+     },
      backoffError() {
-       return this.backoff ? validIso8601Duration(this.backoff).error : '';
+       return this.form.backoff ? validIso8601Duration(this.form.backoff).error : '';
      },
      continueIfError() {
-       return this.continue_if ? validJqClause(this.continue_if).error : '';
+       return this.form.continueIf ? validJqClause(this.form.continueIf).error : '';
      },
-     addJobValid() {
-       return validName(this.jobName).valid &&
-              validIso8601Duration(this.backoff).valid &&
-              validJqClause(this.continue_if).valid;
-     },
-     editBackoffError() {
-       return this.currentItem.backoff ? validIso8601Duration(this.currentItem.backoff).error : '';
-     },
-     editContinueIfError() {
-       return this.currentItem['continue-if'] ? validJqClause(this.currentItem['continue-if']).error : '';
-     },
-     editJobValid() {
-       return validName(this.currentItem.name || '').valid &&
-              validIso8601Duration(this.currentItem.backoff || '').valid &&
-              validJqClause(this.currentItem['continue-if'] || '').valid;
+     formValid() {
+       return validName(this.form.name).valid &&
+              !this.isDuplicateName &&
+              validIso8601Duration(this.form.backoff).valid &&
+              validJqClause(this.form.continueIf).valid;
      }
    },
 
    methods: {
-     addJobForm() {
-       this.showAddJob = true;
-       this.jobName = '';
-       this.selected_tests = [];
-       this.continue_if = 'true';
-       this.backoff = "PT1S";
-     },
-
-     setActiveJob(indexArray) {
-       this.currentItem = indexArray[0];
-       this.currentIndex = indexArray[1];
-       this.showAddJob = false;
-       this.old_job_name = this.currentItem.name;
-     },
-
-     // The header "+ Add Job" button doubles as the submit control: it opens
-     // a blank form when a job is shown, and saves the new job once every
-     // field is valid.
-     onHeaderAdd() {
-       if (!this.showAddJob) {
-         this.addJobForm();
-       } else {
-         this.submitJob();
-       }
-     },
-
-     submitJob() {
-       if (!this.addJobValid) {
-         useToastStore().show('Please fix the highlighted fields', 'error');
+     startAdd() {
+       if (!this.editing) {
+         this.focusName();
          return;
        }
-       if (this.jobName.length > 0) {
-         this.jobStore.addJob({
-           name: this.jobName,
-           tests: (this.selected_tests.length == 0) ? [] : this.selected_tests.map(obj => obj.name),
-           "continue-if": this.continue_if,
-           backoff: this.backoff
-         });
-         this.addJobForm();
+       if (this.isDirty) {
+         this.askDiscard('close');
        } else {
-         useToastStore().show("Please enter a job name", 'error');
+         this.closeToAdd();
        }
      },
 
-     requestDeleteJob() {
-       this.confirmMessage = `Delete job "${this.currentItem.name}"? This cannot be undone.`;
-       this.showConfirm = true;
-     },
-
-     async executeDeleteJob() {
-       this.showConfirm = false;
-       const deleteIndex = this.currentIndex;
-       this.jobStore.jobs.splice(deleteIndex, 1);
-       await this.jobStore.deleteJob(this.currentItem);
-       if (this.jobStore.jobs.length <= deleteIndex) {
-         this.addJobForm();
-       } else {
-         this.currentIndex = deleteIndex;
-         this.currentItem = this.jobStore.jobs[deleteIndex];
-         this.setActiveJob([this.currentItem, this.currentIndex]);
-       }
-     },
-
-     async editJob() {
-       if (!this.editJobValid) {
-         useToastStore().show('Please fix the highlighted fields', 'error');
+     onSelect(item) {
+       if (this.editing && item.name === this.selectedName) {
+         this.requestClose();
          return;
        }
-       await this.jobStore.updateJob({
-         old_job: this.old_job_name,
-         new_job: this.currentItem.name,
-         "continue-if": this.currentItem['continue-if'],
-         tests: this.currentItem.tests,
-         backoff: this.currentItem.backoff
+       if (this.isDirty) {
+         this.askDiscard('select', item);
+         return;
+       }
+       this.applySelection(item);
+     },
+
+     applySelection(item) {
+       this.selectedName = item.name;
+       this.form = {
+         name: item.name,
+         tests: [...(item.tests || [])],
+         continueIf: item['continue-if'] ?? '',
+         backoff: item.backoff ?? ''
+       };
+       this.baseline = cloneForm(this.form);
+     },
+
+     requestClose() {
+       if (this.isDirty) {
+         this.askDiscard('close');
+       } else {
+         this.closeToAdd();
+       }
+     },
+
+     closeToAdd() {
+       this.selectedName = null;
+       this.form = blankForm();
+       this.baseline = blankForm();
+       this.focusName();
+     },
+
+     focusName() {
+       this.$nextTick(() => {
+         if (this.$refs.nameInput) this.$refs.nameInput.focus();
        });
+     },
+
+     askDiscard(action, item = null) {
+       const target = this.editing ? `"${this.selectedName}"` : 'the new job';
+       this.confirmMessage = `Discard your unsaved changes to ${target}?`;
+       this.confirmButtonLabel = 'Discard changes';
+       this.pendingAction = action;
+       this.pendingItem = item;
+       this.confirmVisible = true;
+     },
+
+     requestDelete() {
+       this.confirmMessage = `Delete job "${this.selectedName}"? It will also be removed ` +
+         `from any batches that use it. This cannot be undone.`;
+       this.confirmButtonLabel = 'Delete';
+       this.pendingAction = 'delete';
+       this.pendingItem = null;
+       this.confirmVisible = true;
+     },
+
+     async onConfirm() {
+       this.confirmVisible = false;
+       const action = this.pendingAction;
+       const item = this.pendingItem;
+       this.pendingAction = null;
+       this.pendingItem = null;
+
+       if (action === 'delete') {
+         await this.executeDelete();
+       } else if (action === 'select' && item) {
+         this.applySelection(item);
+       } else if (action === 'close') {
+         this.closeToAdd();
+       }
+     },
+
+     async createJob() {
+       if (!this.formValid || this.isDisabled) return;   // also guards Enter-key submission
+       const ok = await this.jobStore.addJob({
+         name: this.form.name.trim(),
+         tests: [...this.form.tests],
+         "continue-if": this.form.continueIf.trim(),
+         backoff: this.form.backoff.trim()
+       });
+       // Keep the typed values when the server rejects the job.
+       if (ok) {
+         this.closeToAdd();
+       }
+     },
+
+     async saveChanges() {
+       if (!this.formValid || this.isDisabled) return;
+       const newName = this.form.name.trim();
+       const ok = await this.jobStore.updateJob({
+         old_job: this.selectedName,
+         new_job: newName,
+         "continue-if": this.form.continueIf.trim(),
+         tests: [...this.form.tests],
+         backoff: this.form.backoff.trim()
+       });
+       if (!ok) return;
        await this.jobStore.getJobs();
-       this.currentItem = this.jobStore.jobs[this.currentIndex];
-       this.setActiveJob([this.currentItem, this.currentIndex]);
+       const fresh = this.jobStore.jobs.find((j) => j.name === newName);
+       if (fresh) {
+         this.applySelection(fresh);
+       } else {
+         this.closeToAdd();
+       }
+     },
+
+     async executeDelete() {
+       const ok = await this.jobStore.deleteJob({ name: this.selectedName });
+       await this.jobStore.getJobs();
+       if (ok) {
+         this.closeToAdd();
+       }
      }
    }
  }

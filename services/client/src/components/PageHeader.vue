@@ -3,6 +3,10 @@
     <div class="page-header-icon">
       <span class="material-icons" aria-hidden="true">{{ icon }}</span>
     </div>
+    <div class="page-header-content">
+      <h2 class="page-header-title">{{ title }}</h2>
+      <p class="page-header-subtitle" v-if="subtitle">{{ subtitle }}</p>
+    </div>
     <button
       v-if="canAdd"
       class="page-header-add"
@@ -14,10 +18,6 @@
       <span class="material-icons" aria-hidden="true">add</span>
       <span>{{ addLabel }}</span>
     </button>
-    <div class="page-header-content">
-      <h2 class="page-header-title">{{ title }}</h2>
-      <p class="page-header-subtitle" v-if="subtitle">{{ subtitle }}</p>
-    </div>
   </div>
 </template>
 
@@ -28,20 +28,23 @@ export default {
     title:    { type: String, required: true },
     subtitle: { type: String, default: '' },
     icon:     { type: String, default: 'settings' },
-    // Pages with an Add form show a permanent "+ Add ..." button between the
-    // icon and the title. It doubles as the submit control: the page keeps it
-    // grey (addDisabled) until every field of the new item is valid, and a
-    // click then saves it. When the page is showing an item instead, the
-    // click switches back to a blank Add form.
+    // Pages with an editor panel show a "+ New ..." button on the right. It
+    // does exactly one thing: open a blank "New <thing>" form (deselecting any
+    // item being edited). Saving is always done with the form's own submit
+    // button, never from here. Disabled only while writes are disabled.
     canAdd:      { type: Boolean, default: false },
     addDisabled: { type: Boolean, default: false },
-    addLabel:    { type: String, default: 'Add' }
+    addLabel:    { type: String, default: 'New' }
   },
   emits: ['add']
 }
 </script>
 
 <style scoped>
+.page-header-content {
+  flex: 1;
+  min-width: 0;
+}
 .page-header-add {
   display: inline-flex;
   align-items: center;

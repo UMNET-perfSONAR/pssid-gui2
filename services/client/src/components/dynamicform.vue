@@ -142,6 +142,9 @@
    },
    methods: {
      handleFormSubmit() {
+       // Pressing Enter in a field submits the form even while the submit
+       // button is greyed out; honour the disabled state either way.
+       if (this.submitDisabled) return;
        this.form_values.forEach((field) => {
          this.validateField(field);
        });
@@ -157,9 +160,9 @@
        // INFO: Filtering here is technically unnecessary since this.form_values
        // filters optional data out upon initialization.
        const organized_data = this.form_values.filter(item => item.type !== 'optional');
+       // The parent resets the form when (and only when) the save succeeds, so
+       // a rejected save (e.g. a duplicate name) keeps the typed values.
        this.$emit('formData', organized_data);
-       // Clear the form after submission.
-       this.setUpData();
      },
 
      handleToggleClick(index) {

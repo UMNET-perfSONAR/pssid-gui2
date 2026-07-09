@@ -1,33 +1,45 @@
 import {defineStore} from 'pinia'
 import config from '../shared/config'
 import { useToastStore } from './toast.store'
+import { errorMessage } from '../utils/http'
 
 export const useScheduleStore = defineStore('scheduleStore', {
   state: () => ({
-    schedules: [{}],
+    schedules: [] as any[],
+    // True only while the list itself is being (re)loaded. Add/update/delete
+    // report their outcome via their return value and a toast instead of
+    // flashing the page-level spinner.
     isLoading: false
   }),
 
+  // Every mutating action resolves to true on success and false on failure,
+  // so a view can keep the user's typed input when the server says no.
   actions: {
-    async getSchedules() {
+    async getSchedules(): Promise<boolean> {
+      this.isLoading = true;
       try {
-        this.isLoading = true;
         const res = await fetch('/api/schedules', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
-        const data = await res.json();
-        this.schedules = data;
-        this.isLoading = false;
+        if (!res.ok) {
+          useToastStore().show(await errorMessage(res, 'Failed to load schedules'), 'error');
+          return false;
+        }
+        this.schedules = await res.json();
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to load schedules', 'error');
+        return false;
+      }
+      finally {
+        this.isLoading = false;
       }
     },
 
-    async addSchedule(schedule:any) {
+    async addSchedule(schedule: any): Promise<boolean> {
       try {
-        this.isLoading = true;
         const response = await fetch(
           '/api/schedules/create-schedule',
           {
@@ -38,46 +50,22 @@ export const useScheduleStore = defineStore('scheduleStore', {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-
-        if (response.ok) {
-          this.schedules.push(schedule);
-          useToastStore().show(`Schedule "${schedule.name}" added`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to add schedule', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to add schedule'), 'error');
+          return false;
         }
-
-        this.isLoading = false;
+        this.schedules.push(schedule);
+        useToastStore().show(`Schedule "${schedule.name}" added`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to add schedule', 'error');
+        return false;
       }
     },
 
-    async deleteSchedule(schedule:any) {
-      try {
-        const response = await fetch(
-          '/api/schedules/' + schedule.name,
-          {
-            method: 'DELETE',
-            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-          }
-        );
-        if (response.ok) {
-          useToastStore().show(`Schedule "${schedule.name}" deleted`, 'success');
-        } else {
-          useToastStore().show('Failed to delete schedule', 'error');
-        }
-      }
-      catch(error) {
-        console.error(error);
-        useToastStore().show('Failed to delete schedule', 'error');
-      }
-    },
-
-    async updateSchedule(updateScheduleObj:any) {
+    async updateSchedule(updateScheduleObj: any): Promise<boolean> {
       try {
         const response = await fetch(
           '/api/schedules/update-schedule',
@@ -89,17 +77,40 @@ export const useScheduleStore = defineStore('scheduleStore', {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        if (response.ok) {
-          useToastStore().show(`Schedule "${updateScheduleObj.new_schedule}" updated`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to update schedule', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to update schedule'), 'error');
+          return false;
         }
+        useToastStore().show(`Schedule "${updateScheduleObj.new_schedule}" updated`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to update schedule', 'error');
+        return false;
+      }
+    },
+
+    async deleteSchedule(schedule: any): Promise<boolean> {
+      try {
+        const response = await fetch(
+          '/api/schedules/' + encodeURIComponent(schedule.name),
+          {
+            method: 'DELETE',
+            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
+          }
+        );
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to delete schedule'), 'error');
+          return false;
+        }
+        useToastStore().show(`Schedule "${schedule.name}" deleted`, 'success');
+        return true;
+      }
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to delete schedule', 'error');
+        return false;
       }
     }
   }

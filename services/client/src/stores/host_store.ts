@@ -1,10 +1,11 @@
 import {defineStore} from 'pinia'
 import config from '../shared/config'
 import { useToastStore } from './toast.store'
+import { errorMessage } from '../utils/http'
 
 export const useHostStore = defineStore('hostStore', {
   state: () => ({
-    hosts: [{}],
+    hosts: [] as any[],
     isLoading: false,
     isError: false,
     // Effective configuration of the currently selected probe (what it will
@@ -14,28 +15,36 @@ export const useHostStore = defineStore('hostStore', {
     probeConfigLoading: false
   }),
 
+  // Every mutating action resolves to true on success and false on failure,
+  // so a view can keep the user's typed input when the server says no.
   actions: {
 
-    async getHosts() {
+    async getHosts(): Promise<boolean> {
+      this.isLoading = true;
       try {
-        this.isLoading = true;
         const res = await fetch('/api/hosts', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
-        const data = await res.json();
-        this.hosts = data;
-        this.isLoading = false;
+        if (!res.ok) {
+          useToastStore().show(await errorMessage(res, 'Failed to load hosts'), 'error');
+          return false;
+        }
+        this.hosts = await res.json();
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to load hosts', 'error');
+        return false;
+      }
+      finally {
+        this.isLoading = false;
       }
     },
 
-    async addHost(host:any) {
+    async addHost(host: any): Promise<boolean> {
       try {
-        this.isLoading = true;
         const response = await fetch(
           '/api/hosts/create-host',
           {
@@ -46,48 +55,47 @@ export const useHostStore = defineStore('hostStore', {
             headers: { "Content-Type": "application/json" }
           }
         );
-
-        if (response.ok) {
-          this.hosts.push(host);
-          useToastStore().show(`Host "${host.name}" added`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to add host', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to add host'), 'error');
+          return false;
         }
-
-        this.isLoading = false;
+        this.hosts.push(host);
+        useToastStore().show(`Host "${host.name}" added`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to add host', 'error');
+        return false;
       }
     },
 
-    async deleteHost(host:any) {
+    async deleteHost(host: any): Promise<boolean> {
       try {
         const response = await fetch(
-          '/api/hosts/' + host?.name,
+          '/api/hosts/' + encodeURIComponent(host?.name),
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        if (response.ok) {
-          useToastStore().show(`Host "${host?.name}" deleted`, 'success');
-        } else {
-          useToastStore().show('Failed to delete host', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to delete host'), 'error');
+          return false;
         }
+        useToastStore().show(`Host "${host?.name}" deleted`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to delete host', 'error');
+        return false;
       }
     },
 
-    async editHost(updateHostObj:any) {
+    async editHost(updateHostObj: any): Promise<boolean> {
       try {
         const response = await fetch(
           '/api/hosts/update-host',
@@ -99,18 +107,18 @@ export const useHostStore = defineStore('hostStore', {
             headers: { "Content-Type": "application/json" }
           }
         );
-        if (response.ok) {
-          useToastStore().show(`Host "${updateHostObj.new_hostname}" updated`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to update host', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to update host'), 'error');
+          return false;
         }
+        useToastStore().show(`Host "${updateHostObj.new_hostname}" updated`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to update host', 'error');
+        return false;
       }
     },
 
@@ -128,7 +136,7 @@ export const useHostStore = defineStore('hostStore', {
     },
 
     async createConfig(currentHost: any) {
-      if (currentHost.length === 0) {
+      if (!currentHost || !currentHost.name) {
         useToastStore().show('Select a host probe to configure.', 'info');
         return;
       }
@@ -147,7 +155,7 @@ export const useHostStore = defineStore('hostStore', {
         if (response.ok) {
           useToastStore().show(`Host "${currentHost.name}" submitted for provisioning`, 'success');
         } else {
-          useToastStore().show('Provision request failed', 'error');
+          useToastStore().show(await errorMessage(response, 'Provision request failed'), 'error');
         }
       }
       catch(error) {

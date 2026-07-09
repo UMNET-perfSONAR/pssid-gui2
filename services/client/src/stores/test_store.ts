@@ -1,60 +1,93 @@
 import {defineStore} from 'pinia'
 import config from '../shared/config'
 import { useToastStore } from './toast.store'
+import { errorMessage } from '../utils/http'
 
 export const useTestStore = defineStore('test', {
   state: () => ({
-    tests: [{}],
+    tests: [] as any[],
     isLoading: false,
     isError: false,
     listOfOptions: [],
-    selectedTest:[],
-    test_options:[],
+    selectedTest: [],
+    test_options: [] as any[],
     test_category: '',
-    curr_data:[]
+    curr_data: []
   }),
 
+  // Every mutating action resolves to true on success and false on failure,
+  // so a view can keep the user's typed input when the server says no.
   actions: {
 
-    async getTests() {
+    async getTests(): Promise<boolean> {
+      this.isLoading = true;
       try {
-        this.isLoading = true;
         const res = await fetch('/api/tests', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
-        const data = await res.json();
-        this.tests = data;
-        this.isLoading = false;
+        if (!res.ok) {
+          useToastStore().show(await errorMessage(res, 'Failed to load tests'), 'error');
+          return false;
+        }
+        this.tests = await res.json();
+        return true;
       }
       catch(error) {
         console.error(error);
         this.isError = true;
         useToastStore().show('Failed to load tests', 'error');
+        return false;
+      }
+      finally {
+        this.isLoading = false;
       }
     },
 
     async getTestNames() {
       this.isLoading = true;
-      const res = await fetch('/api/tests/test-files',
-        {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
-      );
-      const data = await res.json();
-      this.listOfOptions = data;
-      this.isLoading = false;
+      try {
+        const res = await fetch('/api/tests/test-files',
+          {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
+        );
+        if (!res.ok) {
+          useToastStore().show(await errorMessage(res, 'Failed to load test types'), 'error');
+          return;
+        }
+        this.listOfOptions = await res.json();
+      }
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to load test types', 'error');
+      }
+      finally {
+        this.isLoading = false;
+      }
     },
 
     async getDesiredTest(test_name: string) {
       this.isLoading = true;
-      const res = await fetch('/api/tests/read-test/' + test_name,
-        {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
-      );
-      const data = await res.json();
-      this.test_options = data.parameters;
-      this.test_category = data.category || '';
-      this.isLoading = false;
+      try {
+        const res = await fetch('/api/tests/read-test/' + encodeURIComponent(test_name),
+          {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
+        );
+        if (!res.ok) {
+          useToastStore().show(await errorMessage(res, 'Failed to load the test template'), 'error');
+          return;
+        }
+        const data = await res.json();
+        this.test_options = data.parameters;
+        this.test_category = data.category || '';
+      }
+      catch(error) {
+        console.error(error);
+        useToastStore().show('Failed to load the test template', 'error');
+      }
+      finally {
+        this.isLoading = false;
+      }
     },
 
-    async editTest(test: any) {
+    async editTest(test: any): Promise<boolean> {
       try {
         const response = await fetch(
           '/api/tests/update-test',
@@ -66,23 +99,22 @@ export const useTestStore = defineStore('test', {
             headers: { "Content-Type": "application/json" }
           }
         );
-        if (response.ok) {
-          useToastStore().show(`Test "${test.new_testname}" updated`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to update test', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to update test'), 'error');
+          return false;
         }
+        useToastStore().show(`Test "${test.new_testname}" updated`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to update test', 'error');
+        return false;
       }
     },
 
-    async addTest(test:any) {
+    async addTest(test: any): Promise<boolean> {
       try {
-        this.isLoading = true;
         const response = await fetch(
           '/api/tests/create-test',
           {
@@ -92,42 +124,41 @@ export const useTestStore = defineStore('test', {
             headers: { "Content-Type": "application/json" }
           }
         );
-
-        if (response.ok) {
-          this.tests.push(test);
-          useToastStore().show(`Test "${test.name}" added`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to add test', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to add test'), 'error');
+          return false;
         }
-
-        this.isLoading = false;
+        this.tests.push(test);
+        useToastStore().show(`Test "${test.name}" added`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to add test', 'error');
+        return false;
       }
     },
 
-    async deleteTest(test:any) {
+    async deleteTest(test: any): Promise<boolean> {
       try {
         const response = await fetch(
-          '/api/tests/' + test.name,
+          '/api/tests/' + encodeURIComponent(test.name),
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        if (response.ok) {
-          useToastStore().show(`Test "${test.name}" deleted`, 'success');
-        } else {
-          useToastStore().show('Failed to delete test', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to delete test'), 'error');
+          return false;
         }
+        useToastStore().show(`Test "${test.name}" deleted`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to delete test', 'error');
+        return false;
       }
     },
 

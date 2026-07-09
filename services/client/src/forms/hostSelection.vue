@@ -6,18 +6,20 @@
 
       <!-- view and search all hosts-->
       <div v-if="view_host_options==true">
-        <input 
+        <input
           type="text"
           placeholder="Search hosts..."
+          aria-label="Search hosts"
           class="form-control"
           v-model="hostSearchKey"
         />
-        <ul v-if="view_host_options==true" class="list-group" style="overflow: auto; height: 175px; margin-bottom=1em">
-          <li 
+        <p class="list-hint">Click a host to add it to (or remove it from) this group's selection.</p>
+        <ul class="list-group" style="overflow: auto; height: 175px; margin-bottom: 1em;">
+          <li
             class="list-group-item"
-            v-for="(host, index) in filteredHostData"
+            v-for="host in filteredHostData"
             :class="{active: host.selected === true}"
-            :key="index"
+            :key="host.name"
             @click="host.selected = !host.selected"
           >
             <p> {{ host.name }}</p>
@@ -27,22 +29,24 @@
 
       <!-- view and search selected hosts -->
       <div v-if="view_host_options==false">
-        <input 
+        <input
           type="text"
           placeholder="Search selected hosts..."
+          aria-label="Search selected hosts"
           class="form-control"
           v-model="selectedSearchKey"
         />
-        <ul class="list-group" style="overflow: auto; height: 175px">                  
-          <li 
+        <p class="list-hint">These hosts are selected. Click a host to remove it from the selection.</p>
+        <ul class="list-group" style="overflow: auto; height: 175px">
+          <li
             class="list-group-item"
-            v-for="(host,index) in filteredSelectedData"
-            :key="index"
+            v-for="host in filteredSelectedData"
+            :key="host.name"
             @click="selectHost(host)"
-          > 
+          >
             <p> {{ host.name }}</p>
           </li>
-          
+
         </ul>
       </div>
       <!-- host buttons -->
@@ -58,7 +62,6 @@
 </template>
 
 <script>
- import { onMounted, ref, watch } from 'vue'
  export default {
    props: {
      copy_of_data: {
@@ -91,7 +94,12 @@
        this.filterSelectedData();
      },
      filterHostData() {
-       const regex = new RegExp(this.hostSearchKey, 'uim');
+       let regex;
+       try {
+         regex = new RegExp(this.hostSearchKey, 'uim');
+       } catch {
+         return;   // partially typed pattern — keep the previous filter
+       }
        this.filteredHostData = this.copy_of_data.filter(item => regex.test(item.name))
      },
      viewSelectedHosts() {
@@ -102,7 +110,12 @@
        this.view_host_options=false;
      },
      filterSelectedData() {
-       const regex = new RegExp(this.selectedSearchKey, 'uim');
+       let regex;
+       try {
+         regex = new RegExp(this.selectedSearchKey, 'uim');
+       } catch {
+         return;   // partially typed pattern — keep the previous filter
+       }
        this.filteredSelectedData = this.selected_hosts.filter(item => regex.test(item.name))
      }
    },
@@ -113,7 +126,15 @@
      selectedSearchKey() {
        this.filterSelectedData();
      },
+     // The parent swaps in a fresh array when a different group is opened (or
+     // the form switches between New and Edit); start over from the full-list
+     // view so no stale "selected hosts" snapshot from the previous group shows.
      copy_of_data() {
+       this.hostSearchKey = '';
+       this.selectedSearchKey = '';
+       this.view_host_options = true;
+       this.selected_hosts = [];
+       this.filteredSelectedData = [];
        this.filteredHostData = this.copy_of_data;
      }
    }

@@ -1,49 +1,99 @@
 <template>
-  <!-- cron schedule component -->
-  <div>
+  <!-- Cron schedule editor: the friendly sentence builder (chips) and the raw
+       5-field expression, permanently in sync in both directions. -->
+  <div class="cron-editor">
     <cron-vuetify
-      v-model="value"
+      v-model="builderValue"
       :chip-props="{ color: 'success', textColor: 'white' }"
-      @error="error=$event" />
-    
-    <!-- editable cron expression -->
-    <v-text-field
-      class="pt-3"
-      :modelValue="value"
-      @update:model-value="nextValue = $event"
-      @blur="value = nextValue"
-      label="cron expression"
-      :error-messages="error" />
-    
+    />
+
+    <div class="form-group cron-expression-group">
+      <label :for="fieldId">Cron expression</label>
+      <input
+        :id="fieldId"
+        type="text"
+        class="form-control"
+        v-model="text"
+        placeholder="* * * * *"
+        spellcheck="false"
+        autocomplete="off"
+        :aria-invalid="textError ? 'true' : 'false'"
+        :aria-describedby="textError ? fieldId + '-error' : fieldId + '-hint'"
+      />
+      <small v-if="textError" :id="fieldId + '-error'" class="text-danger" role="alert">{{ textError }}</small>
+      <small v-else :id="fieldId + '-hint'" class="text-muted">minute · hour · day · month · weekday</small>
+    </div>
   </div>
 </template>
 
 <script>
+ import { validCron } from '../utils/validators.ts'
+
+ let uidSeq = 0;
+
+ // v-model component. The typed expression is always emitted (so the parent's
+ // validation and submit-button state track every keystroke — nothing waits
+ // for blur), but only a valid expression is pushed into the chip builder,
+ // which cannot represent malformed input.
  export default {
-   emits: ['update-cron'],
    props: {
-     init: {
+     modelValue: {
        type: String,
        default: '* * * * *'
      }
    },
-   watch: {
-     value() {
-       this.$emit('update-cron', this.value);
-     },
-     init() {
-       this.value = this.init;
-       this.nextValue = this.init;
-       this.error= '';
+   emits: ['update:modelValue'],
+
+   data () {
+     const value = this.modelValue || '* * * * *';
+     return {
+       fieldId: `cron-${uidSeq++}`,
+       text: value,
+       builderValue: validCron(value).valid ? value : '* * * * *'
      }
    },
-   
-   data () {
-     return {
-       value: this.init,
-       nextValue: this.init,
-       error: ''
+
+   computed: {
+     textError() {
+       return validCron(this.text).error;
+     }
+   },
+
+   watch: {
+     // Parent changed the value (item selected / form reset).
+     modelValue(value) {
+       const v = value || '';
+       if (v !== this.text) this.text = v;
+       if (validCron(v).valid && v !== this.builderValue) this.builderValue = v;
+     },
+     // User typed in the expression field.
+     text(value) {
+       if (value !== this.modelValue) this.$emit('update:modelValue', value);
+       if (validCron(value).valid && value !== this.builderValue) this.builderValue = value;
+     },
+     // User changed a chip in the builder.
+     builderValue(value) {
+       if (value !== this.text) this.text = value;
      }
    }
  }
 </script>
+
+<style scoped>
+.cron-expression-group {
+  margin-top: 0.75rem;
+}
+.cron-expression-group label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  margin-bottom: 0.35rem;
+}
+.cron-expression-group input {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  letter-spacing: 0.08em;
+}
+</style>

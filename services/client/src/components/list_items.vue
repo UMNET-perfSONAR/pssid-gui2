@@ -1,7 +1,14 @@
 <!-- List items dynamically with regex search bar. Used in all files.
      Implemented as an ARIA listbox: fully keyboard-operable (Up/Down/Home/End to
      move, Enter/Space to select) with a roving tabindex, so keyboard and screen
-     reader users can select an item to edit — not just mouse users. -->
+     reader users can select an item to edit — not just mouse users.
+
+     Selection is controlled by the parent: it passes the selected item's name
+     via :selected-name and reacts to the 'select' event (fired with the clicked
+     item, including a click on the already-selected row, which parents treat as
+     "close the editor"). Tracking selection by name — never by list position —
+     keeps the highlight and the editor in sync even while the list is filtered
+     or refetched. -->
 <template>
   <div v-if="itemArray.length === 0" class="list-empty-state">
     <span class="material-icons list-empty-icon" aria-hidden="true">inbox</span>
@@ -17,7 +24,7 @@
       class="form-control search-input"
       :aria-describedby="hintId"
     />
-    <p class="list-hint" :id="hintId">Click an item, or use the arrow keys and Enter, to select and edit.</p>
+    <p class="list-hint" :id="hintId">Click an item (or use the arrow keys and Enter) to edit it; click it again to close the editor.</p>
 
     <ul
       v-if="filteredArray.length"
@@ -28,13 +35,13 @@
     >
       <li
         class="list-group-item"
-        :class="{ active: index == currentIndex }"
+        :class="{ active: isSelected(item) }"
         v-for="(item, index) in filteredArray"
-        :key="index"
+        :key="item.name"
         :id="optionId(index)"
         ref="options"
         role="option"
-        :aria-selected="index == currentIndex ? 'true' : 'false'"
+        :aria-selected="isSelected(item) ? 'true' : 'false'"
         :tabindex="index === focusIndex ? 0 : -1"
         @click="setActiveItem(item, index)"
         @keydown="onKeydown($event, index)"
@@ -54,14 +61,17 @@
 let uidSeq = 0;
 
 export default {
-  emits: ['updateActive'],
+  emits: ['select'],
   props: {
     itemArray: {
       type: Array,
       required: true
     },
-    display: {
-      type: Boolean
+    // Name of the item currently open in the editor, or null when the parent
+    // is showing its "New ..." form. Drives the highlighted row.
+    selectedName: {
+      type: String,
+      default: null
     },
     // Accessible name for the listbox, announced by screen readers. Defaults to
     // a generic label; pages can pass a specific one (e.g. "Hosts").
@@ -74,9 +84,9 @@ export default {
     return {
       uid: `itemlist-${uidSeq++}`,
       searchKey: '',
-      filteredArray: this.itemArray,
-      currentItem: {},
-      currentIndex: {},
+      // The last pattern that compiled; a partially typed one (e.g. an
+      // unclosed "[") keeps the previous filter until it becomes valid.
+      activePattern: '',
       // Which row currently owns the tab stop (roving tabindex). The first row is
       // reachable with a single Tab; arrows then move the tab stop between rows.
       focusIndex: 0
@@ -85,6 +95,18 @@ export default {
   computed: {
     searchId() { return `${this.uid}-search`; },
     hintId()   { return `${this.uid}-hint`; },
+    // Computed (rather than a cached copy) so items added or removed while a
+    // search is active still appear/disappear immediately.
+    filteredArray() {
+      if (!this.activePattern) return this.itemArray;
+      let regex;
+      try {
+        regex = new RegExp(this.activePattern, 'uim');
+      } catch {
+        return this.itemArray;
+      }
+      return this.itemArray.filter(item => regex.test(item.name));
+    },
     resultAnnouncement() {
       const n = this.filteredArray.length;
       if (this.searchKey === '') return '';
@@ -93,11 +115,12 @@ export default {
   },
   methods: {
     optionId(index) { return `${this.uid}-opt-${index}`; },
-    setActiveItem(item, index = 1) {
-      this.currentIndex = index;
-      this.currentItem = item;
+    isSelected(item) {
+      return this.selectedName !== null && item.name === this.selectedName;
+    },
+    setActiveItem(item, index) {
       this.focusIndex = index;
-      this.$emit('updateActive', [item, this.currentIndex]);
+      this.$emit('select', item);
     },
     // Move the roving tab stop to a row and put keyboard focus on it.
     focusAt(index) {
@@ -128,34 +151,19 @@ export default {
       }
     }
   },
-  mounted() {
-    this.filteredArray = this.itemArray;
-  },
   watch: {
-    display() {
-      if (this.display === true) {
-        this.currentIndex = {};
-        this.currentItem = {};
-        this.focusIndex = 0;
-      }
-    },
-    searchKey() {
+    searchKey(value) {
       try {
-        const regex = new RegExp(this.searchKey, 'uim');
-        this.filteredArray = this.itemArray.filter(item => regex.test(item.name));
+        new RegExp(value, 'uim');
+        this.activePattern = value;
       } catch {
-        // A partially typed pattern (e.g. an unclosed "[") is not an error;
-        // keep the previous filter until the expression becomes valid.
-      }
-      // Keep the roving tab stop within the (possibly shorter) filtered list.
-      if (this.focusIndex > this.filteredArray.length - 1) {
-        this.focusIndex = Math.max(0, this.filteredArray.length - 1);
+        // Keep the previous (valid) pattern while the user is mid-typing.
       }
     },
-    itemArray() {
-      this.filteredArray = this.itemArray;
-      if (this.focusIndex > this.filteredArray.length - 1) {
-        this.focusIndex = Math.max(0, this.filteredArray.length - 1);
+    // Keep the roving tab stop within the (possibly shorter) filtered list.
+    filteredArray(list) {
+      if (this.focusIndex > list.length - 1) {
+        this.focusIndex = Math.max(0, list.length - 1);
       }
     }
   }

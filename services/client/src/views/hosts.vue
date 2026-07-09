@@ -1,10 +1,19 @@
+<!-- Hosts: the network probes and their batch assignments. Same editor
+     pattern as every section: one panel headed "New host" / "Edit host", a
+     draft buffer (the list never shows half-typed edits), name-tracked
+     selection, and the standard "Create host" / "Save changes" / "Cancel" /
+     "Delete" buttons with confirmation before deleting or discarding unsaved
+     changes. Provisioning the selected probe lives in the editor too, and is
+     disabled while the draft has unsaved changes so it always pushes exactly
+     what is saved. -->
 <template>
   <div>
     <ConfirmModal
-      :visible="showConfirm"
+      :visible="confirmVisible"
       :message="confirmMessage"
-      @confirm="executeDeleteHost"
-      @cancel="showConfirm = false"
+      :confirm-label="confirmButtonLabel"
+      @confirm="onConfirm"
+      @cancel="confirmVisible = false"
     />
 
     <PageHeader
@@ -12,115 +21,92 @@
       subtitle="Manage network probe hosts and their batch assignments"
       icon="computer"
       :can-add="true"
-      :add-disabled="isDisabled || (showAddHost && !addHostValid)"
-      add-label="Add Host"
-      @add="onHeaderAdd"
+      :add-disabled="isDisabled"
+      add-label="New host"
+      @add="startAdd"
     />
 
-    <!-- buttons -->
-    <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
-      <button class="btn btn-warning" @click="configureHost" :disabled="isDisabled || showAddHost">
-        Configure selected host
-      </button>
+    <div v-if="!loaded" class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading hosts…</span>
     </div>
-    <div class="list row">
+
+    <div v-else class="list row">
       <!-- List out the items -->
       <div class="col-md-6">
         <h3> Host list </h3>
-        <item-list v-if="mounted==true" :itemArray="hostStore.hosts" :display="showAddHost"
-          label="Hosts" @updateActive="updateActiveHost" style="cursor: pointer;"></item-list>
-      </div>
-      <!--Add Host Form -->
-      <div v-if="showAddHost===true" class="col-md-6">
-        <form @submit.prevent="submitHost()">
-          <h3> Add Host </h3>
-          <fieldset :disabled="isDisabled">
-          <div class="form-group">
-            <label for="add-host-name"> Hostname </label>
-            <input
-              type="text"
-              placeholder="Hostname or IP address"
-              v-model="hostname"
-              required
-              id="add-host-name"
-              name="host-name"
-              class="form-control"
-              :aria-invalid="hostnameError ? 'true' : 'false'"
-              :aria-describedby="hostnameError ? 'add-host-name-error' : null"
-            >
-            <small v-if="hostnameError" id="add-host-name-error" class="text-danger" role="alert">{{ hostnameError }}</small>
-          </div>
-          <div class="form-group">
-            <label for="add-host-batches"> Batches </label>
-            <VueMultiselect
-              id="add-host-batches"
-              :multiple="true"
-              :close-on-select="false"
-              :options="batchStore.batches"
-              v-model="selectedBatches"
-              track-by="name"
-              label="name"
-              aria-label="Batches"
-            >
-            </VueMultiselect>
-          </div>
-          <p> Metadata </p>
-          <dynamic_add_data :addedData="addedOptionalData"></dynamic_add_data>
-          <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
-            <button class="btn btn-success" :disabled="!addHostValid"> Add Host </button>
-          </div>
-        </fieldset>
-        </form>
+        <item-list
+          :item-array="hostStore.hosts"
+          :selected-name="selectedName"
+          label="Hosts"
+          @select="onSelect"
+        ></item-list>
       </div>
 
-      <!-- Edit selected host form -->
-      <div v-if="showAddHost===false" class="col-md-6">
-        <form @submit.prevent="editHost">
-          <h3> Edit Host </h3>
+      <!-- One form for both modes; the heading states the mode. -->
+      <div class="col-md-6">
+        <h3>{{ editing ? 'Edit host' : 'New host' }}</h3>
+        <form @submit.prevent="editing ? saveChanges() : createHost()">
           <fieldset :disabled="isDisabled">
-          <div class="form-group">
-            <label for="edit-host-name"> Hostname </label>
-            <input
-              type="text"
-              placeholder="Hostname or IP address"
-              v-model="this.currentItem.name"
-              required
-              id="edit-host-name"
-              name="host-name"
-              class="form-control"
-              :aria-invalid="editHostnameError ? 'true' : 'false'"
-              :aria-describedby="editHostnameError ? 'edit-host-name-error' : null"
-            >
-            <small v-if="editHostnameError" id="edit-host-name-error" class="text-danger" role="alert">{{ editHostnameError }}</small>
-          </div>
-          <div class="form-group">
-            <label for="edit-host-batches"> Batches </label>
-            <VueMultiselect
-              id="edit-host-batches"
-              :multiple="true"
-              :close-on-select="false"
-              :options="batchStore.batches.map(item=> item.name)"
-              v-model="currentItem.batches"
-              aria-label="Batches"
-            >
-            </VueMultiselect>
-          </div>
-          <dynamic_add_data :addedData="currOptionalData"></dynamic_add_data>
-          <div class="d-flex flex-wrap mt-2" style="gap: 0.5rem;">
-            <button class="btn btn-success" :disabled="!editHostValid"> Update </button>
-            <button class="btn btn-danger" type="button" @click="requestDeleteHost"> Delete </button>
-          </div>
-        </fieldset>
+            <div class="form-group">
+              <label for="host-name"> Hostname </label>
+              <input
+                type="text"
+                id="host-name"
+                ref="nameInput"
+                placeholder="Hostname or IP address"
+                v-model="form.name"
+                name="host-name"
+                class="form-control"
+                :aria-invalid="nameError ? 'true' : 'false'"
+                :aria-describedby="nameError ? 'host-name-error' : null"
+              >
+              <small v-if="nameError" id="host-name-error" class="text-danger" role="alert">{{ nameError }}</small>
+            </div>
+            <div class="form-group">
+              <label id="host-batches-label"> Batches </label>
+              <VueMultiselect
+                :multiple="true"
+                :close-on-select="false"
+                :options="batchNames"
+                v-model="form.batches"
+                aria-labelledby="host-batches-label"
+              >
+              </VueMultiselect>
+            </div>
+            <label class="form-group-label"> Metadata </label>
+            <dynamic_add_data :addedData="form.meta"></dynamic_add_data>
+
+            <div class="panel-actions">
+              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
+                Create host
+              </button>
+              <template v-else>
+                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
+                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
+                <button
+                  type="button"
+                  class="btn btn-warning"
+                  @click="provisionHost"
+                  :disabled="isDisabled || isDirty"
+                  :title="isDirty ? 'Save or cancel your changes first — provisioning pushes the saved configuration' : 'Write the generated config and run the provision script for this probe'"
+                >
+                  Provision this host
+                </button>
+                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+              </template>
+            </div>
+          </fieldset>
         </form>
       </div>
     </div>
 
     <!-- Effective configuration of the selected probe: the slice of
          pssid_config.json (the one file the daemon reads) this host acts on. -->
-    <div v-if="showAddHost===false && currentItem && currentItem.name" class="probe-config">
+    <div v-if="editing" class="probe-config">
       <h3 class="probe-config-title">Probe configuration</h3>
       <p class="probe-config-sub">
-        Everything <strong>{{ currentItem.name }}</strong> will run, from the
+        Everything <strong>{{ selectedName }}</strong> will run, from the
         generated <code>pssid_config.json</code> the daemon receives.
       </p>
 
@@ -157,7 +143,6 @@
 
 <script>
  import { useHostStore } from '/src/stores/host_store';
- import { useGroupStore } from '/src/stores/groups_stores';
  import { useBatchStore } from '../stores/batches.store';
  import { useUserStore } from '/src/stores/user.store';
  import { defineComponent } from 'vue';
@@ -170,29 +155,40 @@
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validHostOrIp } from "../utils/validators.ts"
 
+ const blankForm = () => ({ name: '', batches: [], meta: [] });
+ const cloneForm = (form) => ({
+   name: form.name,
+   batches: [...form.batches],
+   meta: form.meta.map((row) => ({ ...row }))
+ });
+ // Metadata rows the user added but left completely empty carry no
+ // information; drop them instead of writing "": "" pairs into the host.
+ const metaToObject = (meta) => meta
+   .filter((row) => (row.key ?? '') !== '' || (row.value ?? '') !== '')
+   .reduce((result, row) => {
+     result[row.key] = row.value;
+     return result;
+   }, {});
+
  export default defineComponent({
    components: { itemList, dynamic_add_data, VueMultiselect, ConfirmModal, PageHeader },
    data() {
      return {
-       hostname: '',
-       selectedBatches: [],
-       addedOptionalData: [],
+       // Name of the host open in the editor; null = "New host" mode.
+       selectedName: null,
+       form: blankForm(),
+       baseline: blankForm(),
 
-       showAddHost: true,
-
-       currentItem: [],
-       currentIndex: {},
-       old_hostname: '',
-       currOptionalData: [],
-
-       showConfirm: false,
+       confirmVisible: false,
        confirmMessage: '',
+       confirmButtonLabel: 'Delete',
+       pendingAction: null,
+       pendingItem: null,
 
-       mounted: false,
+       loaded: false,
 
        batchStore: useBatchStore(),
        hostStore: useHostStore(),
-       groupStore: useGroupStore(),
        userStore: useUserStore(),
        enable_sso: config.ENABLE_SSO
      }
@@ -204,116 +200,181 @@
      if (this.enable_sso) {
        await this.userStore.fetchUser();
      }
-     this.mounted = true;
+     this.loaded = true;
    },
 
    computed: {
      isDisabled() {
        return isFormDisabled();
      },
-     hostnameError() {
-       return this.hostname ? validHostOrIp(this.hostname).error : '';
+     editing() {
+       return this.selectedName !== null;
      },
-     addHostValid() {
-       return validHostOrIp(this.hostname).valid;
+     isDirty() {
+       return JSON.stringify(this.form) !== JSON.stringify(this.baseline);
      },
-     editHostnameError() {
-       return this.currentItem && this.currentItem.name ? validHostOrIp(this.currentItem.name).error : '';
+     batchNames() {
+       return this.batchStore.batches.map((item) => item.name);
      },
-     editHostValid() {
-       return validHostOrIp((this.currentItem && this.currentItem.name) || '').valid;
+     // The saved (store) version of the selected host — what provisioning acts on.
+     storeItem() {
+       return this.hostStore.hosts.find((h) => h.name === this.selectedName) || null;
+     },
+     nameError() {
+       if (!this.form.name) return '';
+       const check = validHostOrIp(this.form.name);
+       if (!check.valid) return check.error;
+       if (this.isDuplicateName) return 'A host with this name already exists.';
+       return '';
+     },
+     isDuplicateName() {
+       const name = this.form.name.trim();
+       return this.hostStore.hosts.some(
+         (h) => h.name === name && h.name !== this.selectedName
+       );
+     },
+     formValid() {
+       return validHostOrIp(this.form.name).valid && !this.isDuplicateName;
      }
    },
 
    methods: {
-     updateActiveHost(indexArray) {
-       this.currentItem = indexArray[0];
-       this.currentIndex = indexArray[1];
-       this.showAddHost = false;
-       this.old_hostname = this.currentItem.name;
-       this.currOptionalData = Object.entries(this.currentItem.data).map(([key, value]) => ({
-         key,
-         value
-       }));
-       this.hostStore.getHostConfig(this.currentItem.name);
-     },
-
-     // Provision the selected probe, then reload its effective configuration
-     // so the panel below shows exactly what was just sent.
-     async configureHost() {
-       await this.hostStore.createConfig(this.currentItem);
-       if (this.currentItem && this.currentItem.name) {
-         await this.hostStore.getHostConfig(this.currentItem.name);
+     startAdd() {
+       if (!this.editing) {
+         this.focusName();
+         return;
+       }
+       if (this.isDirty) {
+         this.askDiscard('close');
+       } else {
+         this.closeToAdd();
        }
      },
 
-     async editHost() {
-       const new_host_obj = {
-         "old_hostname": this.old_hostname,
-         "new_hostname": this.currentItem.name,
-         "batches": this.currentItem.batches,
-         "data": this.currOptionalData.reduce((result, item) => {
-           result[item.key] = item.value;
-           return result;
-         }, {})
+     onSelect(item) {
+       if (this.editing && item.name === this.selectedName) {
+         this.requestClose();
+         return;
+       }
+       if (this.isDirty) {
+         this.askDiscard('select', item);
+         return;
+       }
+       this.applySelection(item);
+     },
+
+     applySelection(item) {
+       this.selectedName = item.name;
+       this.form = {
+         name: item.name,
+         batches: [...(item.batches || [])],
+         meta: Object.entries(item.data || {}).map(([key, value]) => ({ key, value }))
        };
-       await this.hostStore.editHost(new_host_obj);
-       await this.hostStore.getHosts();
-       this.currentItem = this.hostStore.hosts[this.currentIndex];
-       this.updateActiveHost([this.currentItem, this.currentIndex]);
+       this.baseline = cloneForm(this.form);
+       this.hostStore.getHostConfig(item.name);
      },
 
-     // The header "+ Add Host" button doubles as the submit control: it opens
-     // a blank form when an item is shown, and saves the new host once every
-     // field is valid.
-     onHeaderAdd() {
-       if (!this.showAddHost) {
-         this.addHostComp();
+     requestClose() {
+       if (this.isDirty) {
+         this.askDiscard('close');
        } else {
-         this.submitHost();
+         this.closeToAdd();
        }
      },
 
-     async submitHost() {
-       if (!this.addHostValid) return;   // also guards Enter-key submission
-       const spec_object = this.addedOptionalData.reduce((result, item) => {
-         result[item.key] = item.value;
-         return result;
-       }, {});
-       await this.hostStore.addHost({
-         name: this.hostname,
-         batches: (this.selectedBatches.length == 0) ? [] :
-           this.selectedBatches.map((item) => item.name),
-         data: spec_object
+     closeToAdd() {
+       this.selectedName = null;
+       this.form = blankForm();
+       this.baseline = blankForm();
+       this.focusName();
+     },
+
+     focusName() {
+       this.$nextTick(() => {
+         if (this.$refs.nameInput) this.$refs.nameInput.focus();
        });
-       this.hostname = '';
-       this.selectedBatches = [];
-       this.addedOptionalData = [];
      },
 
-     addHostComp() {
-       this.showAddHost = true;
-       this.currentItem = [];
-       this.currentIndex = {};
+     askDiscard(action, item = null) {
+       const target = this.editing ? `"${this.selectedName}"` : 'the new host';
+       this.confirmMessage = `Discard your unsaved changes to ${target}?`;
+       this.confirmButtonLabel = 'Discard changes';
+       this.pendingAction = action;
+       this.pendingItem = item;
+       this.confirmVisible = true;
      },
 
-     requestDeleteHost() {
-       this.confirmMessage = `Delete host "${this.currentItem.name}"? This cannot be undone.`;
-       this.showConfirm = true;
+     requestDelete() {
+       this.confirmMessage = `Delete host "${this.selectedName}"? It will also be removed ` +
+         `from any host groups that include it. This cannot be undone.`;
+       this.confirmButtonLabel = 'Delete';
+       this.pendingAction = 'delete';
+       this.pendingItem = null;
+       this.confirmVisible = true;
      },
 
-     async executeDeleteHost() {
-       this.showConfirm = false;
-       const deleteIndex = this.currentIndex;
-       this.hostStore.hosts.splice(deleteIndex, 1);
-       await this.hostStore.deleteHost(this.currentItem);
-       if (this.hostStore.hosts.length <= deleteIndex) {
-         this.currOptionalData = [];
-         this.addHostComp();
+     async onConfirm() {
+       this.confirmVisible = false;
+       const action = this.pendingAction;
+       const item = this.pendingItem;
+       this.pendingAction = null;
+       this.pendingItem = null;
+
+       if (action === 'delete') {
+         await this.executeDelete();
+       } else if (action === 'select' && item) {
+         this.applySelection(item);
+       } else if (action === 'close') {
+         this.closeToAdd();
+       }
+     },
+
+     // Provision the selected probe (its saved configuration — the button is
+     // disabled while the draft is dirty), then reload its effective
+     // configuration so the panel below shows exactly what was just sent.
+     async provisionHost() {
+       if (!this.storeItem) return;
+       await this.hostStore.createConfig(this.storeItem);
+       await this.hostStore.getHostConfig(this.storeItem.name);
+     },
+
+     async createHost() {
+       if (!this.formValid || this.isDisabled) return;   // also guards Enter-key submission
+       const ok = await this.hostStore.addHost({
+         name: this.form.name.trim(),
+         batches: [...this.form.batches],
+         data: metaToObject(this.form.meta)
+       });
+       // Keep the typed values when the server rejects the host.
+       if (ok) {
+         this.closeToAdd();
+       }
+     },
+
+     async saveChanges() {
+       if (!this.formValid || this.isDisabled) return;
+       const newName = this.form.name.trim();
+       const ok = await this.hostStore.editHost({
+         "old_hostname": this.selectedName,
+         "new_hostname": newName,
+         "batches": [...this.form.batches],
+         "data": metaToObject(this.form.meta)
+       });
+       if (!ok) return;
+       await this.hostStore.getHosts();
+       const fresh = this.hostStore.hosts.find((h) => h.name === newName);
+       if (fresh) {
+         this.applySelection(fresh);
        } else {
-         this.currentIndex = deleteIndex;
-         this.currentItem = this.hostStore.hosts[deleteIndex];
-         this.updateActiveHost([this.currentItem, this.currentIndex]);
+         this.closeToAdd();
+       }
+     },
+
+     async executeDelete() {
+       const ok = await this.hostStore.deleteHost({ name: this.selectedName });
+       await this.hostStore.getHosts();
+       if (ok) {
+         this.closeToAdd();
        }
      }
    }

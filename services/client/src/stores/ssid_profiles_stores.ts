@@ -1,33 +1,42 @@
 import {defineStore} from 'pinia'
 import config from '../shared/config'
 import { useToastStore } from './toast.store'
+import { errorMessage } from '../utils/http'
 
 export const useSsidStore = defineStore('ssidStore', {
   state: () => ({
-    ssid_profiles: [{}],
+    ssid_profiles: [] as any[],
     isLoading: false
   }),
 
+  // Every mutating action resolves to true on success and false on failure,
+  // so a view can keep the user's typed input when the server says no.
   actions: {
-    async getSsidProfiles() {
+    async getSsidProfiles(): Promise<boolean> {
+      this.isLoading = true;
       try {
-        this.isLoading = true;
         const res = await fetch('/api/ssid-profiles', {
           ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
         });
-        const data = await res.json();
-        this.ssid_profiles = data;
-        this.isLoading = false;
+        if (!res.ok) {
+          useToastStore().show(await errorMessage(res, 'Failed to load SSID profiles'), 'error');
+          return false;
+        }
+        this.ssid_profiles = await res.json();
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to load SSID profiles', 'error');
+        return false;
+      }
+      finally {
+        this.isLoading = false;
       }
     },
 
-    async addSsidProfile(ssid_profile:any) {
+    async addSsidProfile(ssid_profile: any): Promise<boolean> {
       try {
-        this.isLoading = true;
         const response = await fetch(
           '/api/ssid-profiles/create-ssidProfile',
           {
@@ -37,46 +46,45 @@ export const useSsidStore = defineStore('ssidStore', {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-
-        if (response.ok) {
-          this.ssid_profiles.push(ssid_profile);
-          useToastStore().show(`SSID profile "${ssid_profile.name}" added`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to add SSID profile', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to add SSID profile'), 'error');
+          return false;
         }
-
-        this.isLoading = false;
+        this.ssid_profiles.push(ssid_profile);
+        useToastStore().show(`SSID profile "${ssid_profile.name}" added`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to add SSID profile', 'error');
+        return false;
       }
     },
 
-    async deleteSsidProfile(ssid_profile:any) {
+    async deleteSsidProfile(ssid_profile: any): Promise<boolean> {
       try {
         const response = await fetch(
-          '/api/ssid-profiles/' + ssid_profile.name,
+          '/api/ssid-profiles/' + encodeURIComponent(ssid_profile.name),
           {
             method: 'DELETE',
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        if (response.ok) {
-          useToastStore().show(`SSID profile "${ssid_profile.name}" deleted`, 'success');
-        } else {
-          useToastStore().show('Failed to delete SSID profile', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to delete SSID profile'), 'error');
+          return false;
         }
+        useToastStore().show(`SSID profile "${ssid_profile.name}" deleted`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to delete SSID profile', 'error');
+        return false;
       }
     },
 
-    async editSsidProfile(ssid_profile:any) {
+    async editSsidProfile(ssid_profile: any): Promise<boolean> {
       try {
         const response = await fetch(
           '/api/ssid-profiles/update-ssidProfile',
@@ -88,17 +96,17 @@ export const useSsidStore = defineStore('ssidStore', {
             ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
           }
         );
-        if (response.ok) {
-          useToastStore().show(`SSID profile "${ssid_profile.new_ssid_name}" updated`, 'success');
-        } else {
-          const text = await response.text();
-          const errorData = text ? JSON.parse(text) : {};
-          useToastStore().show(errorData.message || 'Failed to update SSID profile', 'error');
+        if (!response.ok) {
+          useToastStore().show(await errorMessage(response, 'Failed to update SSID profile'), 'error');
+          return false;
         }
+        useToastStore().show(`SSID profile "${ssid_profile.new_ssid_name}" updated`, 'success');
+        return true;
       }
       catch(error) {
         console.error(error);
         useToastStore().show('Failed to update SSID profile', 'error');
+        return false;
       }
     },
 

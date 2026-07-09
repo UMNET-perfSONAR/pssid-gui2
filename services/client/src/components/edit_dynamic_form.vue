@@ -71,10 +71,10 @@
     <dynamic_add_data :addedData="dynamic_options"></dynamic_add_data>
   </div> <!-- end of optional -->
 
-  <div>
-    <button class="btn btn-success" @click="editCurItem"
-      style="margin-right: 1em;" :disabled="submitDisabled"> {{ submitLabel }} </button>
-    <button class="btn btn-danger" @click.prevent="deleteCurItem"> Delete </button>
+  <div class="panel-actions">
+    <button class="btn btn-success" @click="editCurItem" :disabled="submitDisabled"> {{ submitLabel }} </button>
+    <button type="button" class="btn btn-secondary" @click.prevent="cancelEdit"> Cancel </button>
+    <button type="button" class="btn btn-danger push-right" @click.prevent="deleteCurItem"> Delete </button>
   </div>
 </template>
 
@@ -83,7 +83,7 @@
  import dynamic_add_data from './dynamic_add_data.vue';
 
  export default {
-   emits: ['deleteItem', 'editItem'],
+   emits: ['deleteItem', 'editItem', 'cancel'],
    components: { VueMultiselect, dynamic_add_data },
    data() {
      return {
@@ -101,6 +101,10 @@
    methods: {
      deleteCurItem() {
        this.$emit('deleteItem')
+     },
+
+     cancelEdit() {
+       this.$emit('cancel')
      },
 
      editCurItem() {

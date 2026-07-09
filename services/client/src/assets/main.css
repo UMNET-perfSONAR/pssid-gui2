@@ -551,6 +551,23 @@ fieldset[disabled] .form-control {
   margin-bottom: 1.25rem;
 }
 
+/* ─── Editor panel actions ───────────────────────────────────────
+   The one row of buttons at the bottom of every New/Edit form, in a fixed
+   order everywhere: primary save action first (Create <thing> / Save
+   changes), then Cancel, with Delete pushed to the far side so a destructive
+   click is never a near-miss of Save. */
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+.panel-actions .push-right {
+  margin-left: auto;
+}
+
 /* ─── Legacy / compatibility classes ─────────────────────────── */
 .new-form { display: flex; }
 .add_to_col { display: flex; flex-direction: column; }

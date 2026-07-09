@@ -1,128 +1,161 @@
+<!-- Tests: the performance tests each job runs. Fields come from the test
+     type's template, so the editor is built dynamically (dynamicform /
+     editFormComp); apart from that it follows the same pattern as every
+     section: "New test" / "Edit test" heading, name-tracked selection,
+     "Create test" / "Save changes" / "Cancel" / "Delete" buttons, and a
+     confirmation before deleting. The "+ New test" button in the page header
+     only ever opens a blank form; it never saves anything. -->
 <template>
   <div>
+    <ConfirmModal
+      :visible="confirmVisible"
+      :message="confirmMessage"
+      @confirm="onConfirm"
+      @cancel="confirmVisible = false"
+    />
+
     <PageHeader
       title="Tests"
       subtitle="Define the performance tests run by each job"
       icon="science"
       :can-add="true"
-      :add-disabled="isDisabled || (showAddTest && !addTestValid)"
-      add-label="Add Test"
-      @add="onHeaderAdd"
+      :add-disabled="isDisabled"
+      add-label="New test"
+      @add="startAdd"
     />
 
-    <div v-if="testStore.isLoading===true" class="loading-state">
+    <div v-if="!loaded" class="loading-state">
       <div class="spinner"></div>
       <span>Loading tests…</span>
     </div>
 
-    <div class="list row">
+    <div v-else class="list row">
       <!-- test list -->
       <div class="col-md-6">
-        <h3> Test List </h3>
-        <itemList v-if="mount == true" :item-array="testStore.tests" :display="showAddTest"
-          @updateActive="updateActiveTest" style="cursor:pointer;"
+        <h3> Test list </h3>
+        <itemList
+          :item-array="testStore.tests"
+          :selected-name="selectedName"
+          label="Tests"
+          @select="onSelect"
         ></itemList>
       </div>
 
-      <div class="col-md-6" v-if="showAddTest==true">
-        <h3> Add Test </h3>
-        <fieldset :disabled="isDisabled" :title="!enable_sso ? 'Please sign in to edit this form' : ''">
-        <form>
-          <!-- Non-dynamic components -->
-          <div style="margin-bottom: 1em;">
-            <label> Test Name </label>
+      <!-- New test: name + type, then the type's template fields. -->
+      <div class="col-md-6" v-if="!editing">
+        <h3> New test </h3>
+        <fieldset :disabled="isDisabled">
+          <div class="form-group">
+            <label for="test-name"> Test name </label>
             <input
               type="text"
-              placeholder="Enter here"
-              required
-              id="name"
+              placeholder="Enter test name"
+              id="test-name"
+              ref="nameInput"
               class="form-control"
-              v-model="test_name"/>
+              v-model="test_name"
+              :aria-invalid="addNameError ? 'true' : 'false'"
+              :aria-describedby="addNameError ? 'test-name-error' : null"
+            />
+            <small v-if="addNameError" id="test-name-error" class="text-danger" role="alert">{{ addNameError }}</small>
           </div>
 
-          <div style="margin-bottom: 1em;">
-            <label> Type Selection </label>
+          <div class="form-group">
+            <label id="test-type-label"> Test type </label>
             <VueMultiselect
               v-model="selected_test"
               :multiple="false"
               :close-on-select="true"
               :options="testStore.listOfOptions"
               :searchable="false"
-              @select="renderForm(selected_test)"
+              aria-labelledby="test-type-label"
+              @select="renderForm($event)"
             >
             </VueMultiselect>
             <small v-if="testStore.test_category" class="text-muted" style="text-transform: capitalize;">
               Category: {{ testStore.test_category }}
             </small>
           </div>
-          <!-- dynamic componnent-->
+
+          <!-- Template-driven fields for the chosen type; the form's own
+               "Create test" button is the only way to save. -->
           <div v-if="showForm===true">
             <dynamicform
-              ref="addDynForm"
-              @formData="handleSubmit"
+              @formData="createTest"
               :form_layout="allTestOptions"
               :current_item="selected_test"
               :optional_data="addedOptionalData"
-              submit-label="Add Test"
+              submit-label="Create test"
               :submit-disabled="!addTestValid"
             >
             </dynamicform>
           </div>
-        </form>
         </fieldset>
       </div>
 
-      <div class = 'col-md-6' v-if="showAddTest==false">
-        <h3> Edit Test </h3>
-        <fieldset :disabled="isDisabled" :title="!enable_sso ? 'Please sign in to edit this form' : ''">
-        <!-- Non-dynamic components -->
-        <div style="margin-bottom: 1em;">
-          <label> Test Name </label>
-          <input
-            type="text"
-            placeholder="Enter here"
-            required
-            id="name"
-            class="form-control"
-            v-model="currentItem.name"/>
-        </div>
+      <!-- Edit test -->
+      <div class="col-md-6" v-else>
+        <h3> Edit test </h3>
+        <fieldset :disabled="isDisabled">
+          <div class="form-group">
+            <label for="edit-test-name"> Test name </label>
+            <input
+              type="text"
+              placeholder="Enter test name"
+              id="edit-test-name"
+              class="form-control"
+              v-model="currentItem.name"
+              :aria-invalid="editNameError ? 'true' : 'false'"
+              :aria-describedby="editNameError ? 'edit-test-name-error' : null"
+            />
+            <small v-if="editNameError" id="edit-test-name-error" class="text-danger" role="alert">{{ editNameError }}</small>
+          </div>
 
-        <div style="margin-bottom: 1em;">
-          <label> Type Selection </label>
-          <VueMultiselect
-            v-model="currentItem.type"
-            :multiple="false"
-            :close-on-select="true"
-            :options="testStore.listOfOptions"
-            :searchable="false"
-            @select="renderForm(currentItem.type)"
-          >
-          </VueMultiselect>
-          <small v-if="testStore.test_category" class="text-muted" style="text-transform: capitalize;">
-            Category: {{ testStore.test_category }}
-          </small>
-        </div>
-        <!-- dynamic components -->
-        <div v-if="viewType===test">
-          <editFormComp
-            :current_item="currentItem"
-            @editItem="editTest"
-            @deleteItem="deleteTest"
-            :dynamic_options="currOptionalData"
-            submit-label="Update Test"
-            :submit-disabled="!editTestValid"
-          > </editFormComp>
-        </div>
-        <div v-else>
-          <dynamicform :form_layout="allTestOptions"
-            @formData="editTest"
-            :optional_data="currOptionalData"
-            submit-label="Update Test"
-            :submit-disabled="!editTestValid"
-          >
-          </dynamicform>
-        </div>
-      </fieldset>
+          <div class="form-group">
+            <label id="edit-test-type-label"> Test type </label>
+            <VueMultiselect
+              v-model="currentItem.type"
+              :multiple="false"
+              :close-on-select="true"
+              :options="testStore.listOfOptions"
+              :searchable="false"
+              aria-labelledby="edit-test-type-label"
+              @select="renderForm($event)"
+            >
+            </VueMultiselect>
+            <small v-if="testStore.test_category" class="text-muted" style="text-transform: capitalize;">
+              Category: {{ testStore.test_category }}
+            </small>
+          </div>
+
+          <!-- Same type as saved: edit the saved field values. -->
+          <div v-if="viewType===origType">
+            <editFormComp
+              :current_item="currentItem"
+              @editItem="saveChanges"
+              @deleteItem="requestDelete"
+              @cancel="closeToAdd"
+              :dynamic_options="currOptionalData"
+              submit-label="Save changes"
+              :submit-disabled="!editTestValid"
+            > </editFormComp>
+          </div>
+          <!-- Type changed: fill in the new type's fields from its template. -->
+          <div v-else>
+            <dynamicform
+              :form_layout="allTestOptions"
+              @formData="saveChanges"
+              :optional_data="currOptionalData"
+              submit-label="Save changes"
+              :submit-disabled="!editTestValid"
+            >
+            </dynamicform>
+            <div class="panel-actions">
+              <button type="button" class="btn btn-secondary" @click="closeToAdd"> Cancel </button>
+              <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+            </div>
+          </div>
+        </fieldset>
       </div>
     </div>
 
@@ -137,44 +170,43 @@
  import editFormComp from '../components/edit_dynamic_form.vue';
  import itemList from '../components/list_items.vue'
  import PageHeader from '../components/PageHeader.vue'
+ import ConfirmModal from '../components/ConfirmModal.vue'
  import { useToastStore } from '../stores/toast.store'
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validDisplayName } from "../utils/validators.ts"
 
  export default {
-   components: { dynamicform, VueMultiselect, editFormComp, itemList, PageHeader },
+   components: { dynamicform, VueMultiselect, editFormComp, itemList, PageHeader, ConfirmModal },
    data() {
      return {
-       mount: false,
+       loaded: false,
 
        /*
-        * Variables for the Add Test form
+        * Variables for the New Test form
         */
        test_name: '',
        selected_test: '',
-       viewType: {},
        // Test options for the currently selected test type.
        allTestOptions: [],
        addedOptionalData: [],
-
-       /*
-        * Variables that control which form is displayed,
-        * Add Test or Edit Test.
-        */
-       showAddTest: true,
        // Whether or not to render a dynamic form. Becomes true
        // when a test type is selected.
        showForm: false,
 
        /*
-        * Variables for the Edit Test form
+        * Variables for the Edit Test form. selectedName is the saved name of
+        * the test being edited (null = New Test mode); currentItem is a
+        * deep-copied draft, so typing never changes the list.
         */
+       selectedName: null,
        currentItem: {},
-       currentIndex: {},
-       test: {},
-       old_test_name: '',
-       currOptionalData:[],
+       origType: null,
+       viewType: null,
+       currOptionalData: [],
+
+       confirmVisible: false,
+       confirmMessage: '',
 
        // Method(s) to access the store
        testStore: useTestStore(),
@@ -185,142 +217,165 @@
 
    async mounted() {
      await this.testStore.getTests();
-     await this.testStore.getTestNames();   
+     await this.testStore.getTestNames();
      if (this.enable_sso) {
       await this.userStore.fetchUser();
-     }  
-     this.mount = true;
+     }
+     this.loaded = true;
    },
 
    computed: {
       isDisabled() {
         return isFormDisabled();
       },
+      editing() {
+        return this.selectedName !== null;
+      },
+      addNameError() {
+        if (!this.test_name) return '';
+        const check = validDisplayName(this.test_name);
+        if (!check.valid) return check.error;
+        if (this.isDuplicate(this.test_name)) return 'A test with this name already exists.';
+        return '';
+      },
+      editNameError() {
+        if (!this.currentItem.name) return '';
+        const check = validDisplayName(this.currentItem.name);
+        if (!check.valid) return check.error;
+        if (this.isDuplicate(this.currentItem.name)) return 'A test with this name already exists.';
+        return '';
+      },
       // The submit buttons stay grey until every field this view owns is
       // valid; the dynamic form validates its template fields on submit.
       addTestValid() {
-        return validDisplayName(this.test_name).valid && !!this.selected_test;
+        return validDisplayName(this.test_name).valid &&
+               !this.isDuplicate(this.test_name) &&
+               !!this.selected_test;
       },
       editTestValid() {
-        return validDisplayName(this.currentItem.name || '').valid;
+        return validDisplayName(this.currentItem.name || '').valid &&
+               !this.isDuplicate(this.currentItem.name || '');
       }
     },
 
    methods: {
-     // The header "+ Add Test" button doubles as the submit control: it opens
-     // a blank form when a test is shown, and submits the dynamic form (which
-     // validates its template fields) once the name and type are in place.
-     onHeaderAdd() {
-       if (!this.showAddTest) {
-         this.addTestForm();
-       } else if (this.$refs.addDynForm) {
-         this.$refs.addDynForm.handleFormSubmit();
+     isDuplicate(name) {
+       const trimmed = (name || '').trim();
+       return this.testStore.tests.some(
+         (t) => t.name === trimmed && t.name !== this.selectedName
+       );
+     },
+
+     // "+ New test" in the page header: open a blank form. If the blank form
+     // is already showing, just put the cursor in it.
+     startAdd() {
+       if (this.editing) {
+         this.closeToAdd();
+       } else {
+         this.focusName();
        }
      },
 
-     addTestForm() {
-       // Set control variables.
-       this.showAddTest = true;
-       this.showForm = false;
+     closeToAdd() {
+       // Reset edit state.
+       this.selectedName = null;
+       this.currentItem = {};
+       this.origType = null;
+       this.viewType = null;
+       this.currOptionalData = [];
 
-       // Set variables related to the Add Test form.
+       // Reset the New Test form to blank.
        this.test_name = '';
        this.selected_test = '';
-       this.viewType = {};
+       this.showForm = false;
        this.allTestOptions = [];
        this.addedOptionalData = [];
-
-       // Variables related to the Edit Test form are irrelevant
-       // since they will be immediately updated when a test is selected
-       // in method `updateActiveTest`.
+       this.testStore.test_category = '';
+       this.focusName();
      },
 
-     async updateActiveTest(itemArray) {
-        const test = itemArray[0];
-        const index = itemArray[1];
+     focusName() {
+       this.$nextTick(() => {
+         if (this.$refs.nameInput) this.$refs.nameInput.focus();
+       });
+     },
 
-        // Check if user clicked the already-selected test
-        if (
-          this.currentItem &&
-          this.currentItem.name === test.name &&
-          this.currentIndex === index
-        ) {
-          // Deselect
-          this.currentItem = {};
-          this.currentIndex = {};
-          this.old_test_name = null;
-          this.viewType = null;
-          this.currOptionalData = [];
-          this.test = null;
-          this.showAddTest = true; // Show the Add Test form again
-          return;
-        }
+     // A list row was clicked (or chosen with the keyboard). Clicking the test
+     // that is already open closes the editor; anything else opens that test.
+     async onSelect(item) {
+       if (this.editing && item.name === this.selectedName) {
+         this.closeToAdd();
+         return;
+       }
+       await this.applySelection(item);
+     },
 
-        // Proceed as usual with selecting a test
+     async applySelection(test) {
+        // Deep-copy the saved spec so edits never touch the list until saved.
         const data = JSON.parse(JSON.stringify(test.spec));
         this.viewType = test.type;
         await this.testStore.getDesiredTest(test.type);
 
-        const myJson = '{}';
-        let json_object = JSON.parse(myJson);
         this.currOptionalData = [];
 
         // First slice the required fields from the data array.
         const spec = data.slice(0, this.testStore.test_options.length);
 
         // Then add optional data, if any.
-        let ind = this.testStore.test_options.length;
-        for (; ind < Object.keys(data).length; ind++) {
-          const itemKey = data[ind].key;
-          const itemValue = data[ind].value;
-          this.currOptionalData.push({ key: itemKey, value: itemValue });
+        for (let ind = this.testStore.test_options.length; ind < data.length; ind++) {
+          this.currOptionalData.push({ key: data[ind].key, value: data[ind].value });
         }
 
-        // Update control variables.
-        this.currentIndex = index;
+        this.selectedName = test.name;
         this.currentItem = {
           name: test.name,
           spec: spec,
           type: test.type
         };
-        this.old_test_name = test.name;
-        this.test = test.type;
-        this.showAddTest = false;
+        this.origType = test.type;
      },
 
      async renderForm(form_type) {
        this.viewType = form_type;
-       await this.testStore.getDesiredTest(form_type); 
-       this.allTestOptions = this.testStore.test_options;
-       this.allTestOptions.push({'type':'optional', 'name': 'Optional Data'});
+       await this.testStore.getDesiredTest(form_type);
+       // Copy, don't mutate, the store's template array.
+       this.allTestOptions = [
+         ...this.testStore.test_options,
+         { 'type': 'optional', 'name': 'Optional Data' }
+       ];
        this.showForm = true;
      },
 
-     // Creates a new test.
-     async handleSubmit (form_data) {
+     // Creates a new test (from the dynamic form's "Create test" button).
+     async createTest(form_data) {
        const nameCheck = validDisplayName(this.test_name);
-       if (nameCheck.valid) {
-         const obj = this.testStore.formatPostData(form_data, this.addedOptionalData);
-         await this.testStore.addTest({
-           name: this.test_name,
-           type: this.selected_test,
-           spec: obj
-         });
-         // Reset the form and allow users to add another test.
-         this.addTestForm();
-       }
-       else {
+       if (!nameCheck.valid) {
          useToastStore().show('Test name: ' + nameCheck.error, 'error');
+         return;
+       }
+       const obj = this.testStore.formatPostData(form_data, this.addedOptionalData);
+       const ok = await this.testStore.addTest({
+         name: this.test_name.trim(),
+         type: this.selected_test,
+         spec: obj
+       });
+       // Keep the typed values when the server rejects the test; reset to a
+       // blank form only on success.
+       if (ok) {
+         this.closeToAdd();
        }
      },
 
      async validateTest(data) {
        await this.testStore.getDesiredTest(this.currentItem.type);
-       this.allTestOptions = this.testStore.test_options;
+       this.allTestOptions = [...this.testStore.test_options];
 
        let errorMessage = '';
        Object.entries(data).forEach(([key, value]) => {
          const testOption = this.allTestOptions.find(option => option.name === key);
+         // A field the current template no longer declares has nothing to
+         // validate against; skip it rather than crash.
+         if (!testOption) return;
          const validatorStr = testOption.hasOwnProperty('validator') ?
            testOption.validator : 'return true;';
          const description = testOption.hasOwnProperty('description') ?
@@ -335,12 +390,12 @@
      },
 
      /**
-      * Updates the current test item using put request
-      * 
+      * Updates the selected test using a put request.
+      *
       * @param {*} editFormInputs - an array where each entry is
       * an input field and its metadata (validation, etc.)
       */
-     async editTest(editFormInputs) {
+     async saveChanges(editFormInputs) {
        const nameCheck = validDisplayName(this.currentItem.name);
        if (!nameCheck.valid) {
          useToastStore().show('Test name: ' + nameCheck.error, 'error');
@@ -357,46 +412,45 @@
        if (errorMessage.length > 0) {
          errorMessage = 'Please fix the following errors:\n' + errorMessage;
          useToastStore().show(errorMessage, 'error');
-
-         // Reselect the same item to allow users to edit it again.
-         await this.testStore.getTests();
-         this.currentItem = this.testStore.tests[this.currentIndex];
-         this.updateActiveTest([this.currentItem, this.currentIndex]);
-
+         // The draft keeps the typed values so they can be corrected in place.
          return;
        }
 
-       const object = {
-         "old_testname" : this.old_test_name,
-         "new_testname" : this.currentItem.name,
+       const newName = this.currentItem.name.trim();
+       const ok = await this.testStore.editTest({
+         "old_testname" : this.selectedName,
+         "new_testname" : newName,
          "type" : this.currentItem.type,
          "spec" : editFormInputs.concat(this.currOptionalData),
-       }
-       this.old_test_name = this.currentItem.name
-       await this.testStore.editTest(object);
+       });
+       if (!ok) return;
        await this.testStore.getTests();
 
-       // Reselect the same item to allow users to edit it again.
-       this.currentItem = this.testStore.tests[this.currentIndex];
-       this.updateActiveTest([this.currentItem, this.currentIndex]);
+       // Stay on the (possibly renamed) test so further edits are seamless.
+       const fresh = this.testStore.tests.find((t) => t.name === newName);
+       if (fresh) {
+         await this.applySelection(fresh);
+       } else {
+         this.closeToAdd();
+       }
      },
 
-     /**
-      * Deletes a test specified by currentItem.
-      */
-     async deleteTest() {
-       const deleteIndex = this.currentIndex;
-       this.testStore.tests.splice(deleteIndex, 1);
-       await this.testStore.deleteTest(this.currentItem);
-       if (this.testStore.tests.length <= deleteIndex) {
-         this.addTestForm();
-       }
-       else {
-         this.currentIndex = deleteIndex;
-         this.currentItem = this.testStore.tests[deleteIndex];
-         this.updateActiveTest([this.testStore.tests[deleteIndex], deleteIndex]);
+     requestDelete() {
+       this.confirmMessage = `Delete test "${this.selectedName}"? It will also be removed ` +
+         `from any jobs that use it. This cannot be undone.`;
+       this.confirmVisible = true;
+     },
+
+     async onConfirm() {
+       this.confirmVisible = false;
+       const ok = await this.testStore.deleteTest({ name: this.selectedName });
+       await this.testStore.getTests();
+       if (ok) {
+         this.closeToAdd();
        }
      }
    }
  }
 </script>
+
+<style src="vue-multiselect/dist/vue-multiselect.css"></style>

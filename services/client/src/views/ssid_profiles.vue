@@ -1,106 +1,106 @@
+<!-- SSID profiles: a wireless network plus the layer 2/3 methods used to join
+     it. Same editor pattern as every section: one panel headed "New SSID
+     profile" / "Edit SSID profile", a draft buffer (the list never shows
+     half-typed edits), name-tracked selection, and the standard "Create SSID
+     profile" / "Save changes" / "Cancel" / "Delete" buttons with confirmation
+     before deleting or discarding unsaved changes. -->
 <template>
   <div>
+    <ConfirmModal
+      :visible="confirmVisible"
+      :message="confirmMessage"
+      :confirm-label="confirmButtonLabel"
+      @confirm="onConfirm"
+      @cancel="confirmVisible = false"
+    />
+
     <PageHeader
       title="SSID Profiles"
       subtitle="A wireless network plus the layer 2 and layer 3 methods used to connect to it"
       icon="wifi"
       :can-add="true"
-      :add-disabled="isDisabled || (showAddSSID && !addSsidValid)"
-      add-label="Add SSID Profile"
-      @add="onHeaderAdd"
+      :add-disabled="isDisabled"
+      add-label="New SSID profile"
+      @add="startAdd"
     />
 
-    <div v-if="mount && noLayerScripts" class="alert alert-warning" role="alert">
+    <div v-if="loaded && noLayerScripts" class="alert alert-warning" role="alert">
       No layer 2 / layer 3 methods are available to select. A method is required on
       every SSID profile, so profiles cannot be saved until scripts are present in
       the configured layer 2 and layer 3 directories on the server.
     </div>
 
-    <div v-if="ssidStore.isLoading===true" class="loading-state">
+    <div v-if="!loaded" class="loading-state">
       <div class="spinner"></div>
       <span>Loading SSID profiles…</span>
     </div>
 
-    <div class="list row">
-      <div class="col-md-6" v-if="ssidStore.ssid_profiles.length === 0">
-        <h3> SSID Profile List </h3>
-        <p> SSID profile list is empty </p>
-      </div>
-      <div class="col-md-6" v-else>
-        <h3> SSID Profile List </h3>
-        <itemList v-if="mount == true" :item-array="ssidStore.ssid_profiles" :display="showAddSSID"
-          @updateActive="updateActiveSSID" style="cursor:pointer;"></itemList>
-      </div>
-
-      <!-- Add SSID profile form -->
-      <div class="col-md-6" v-if="showAddSSID==true">
-        <h3> Add SSID Profile </h3>
-        <form @submit.prevent="addSsid">
-          <fieldset :disabled="isDisabled">
-          <div class="form-group">
-            <label> Profile Name </label>
-            <input type="text" placeholder="Enter profile name here" v-model="add_name" class="form-control" required />
-            <small v-if="addProfileNameError" class="text-danger">{{ addProfileNameError }}</small>
-          </div>
-          <div class="form-group">
-            <label> SSID </label>
-            <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="add_SSID" class="form-control" required />
-            <small v-if="addSsidNameError" class="text-danger">{{ addSsidNameError }}</small>
-          </div>
-          <div class="form-group">
-            <label> Layer 2 Method </label>
-            <select v-model="add_layer2_script" class="form-control" required>
-              <option value="" disabled>-- Select Layer 2 Method --</option>
-              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label> Layer 3 Method </label>
-            <select v-model="add_layer3_script" class="form-control" required>
-              <option value="" disabled>-- Select Layer 3 Method --</option>
-              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
-            <button class="btn btn-success" :disabled="!addSsidValid"> Add SSID Profile </button>
-          </div>
-          </fieldset>
-        </form>
+    <div v-else class="list row">
+      <div class="col-md-6">
+        <h3> SSID profile list </h3>
+        <itemList
+          :item-array="ssidStore.ssid_profiles"
+          :selected-name="selectedName"
+          label="SSID profiles"
+          @select="onSelect"
+        ></itemList>
       </div>
 
-      <!-- Edit SSID profile form -->
-      <div class="col-md-6" v-if="showAddSSID==false">
-        <h3> Edit SSID Profile </h3>
-        <form @submit.prevent="editCurItem">
+      <!-- One form for both modes; the heading states the mode. -->
+      <div class="col-md-6">
+        <h3>{{ editing ? 'Edit SSID profile' : 'New SSID profile' }}</h3>
+        <form @submit.prevent="editing ? saveChanges() : createProfile()">
           <fieldset :disabled="isDisabled">
-          <div class="form-group">
-            <label> Profile Name </label>
-            <input type="text" placeholder="Enter profile name here" v-model="currentItem.name" class="form-control" required />
-            <small v-if="editProfileNameError" class="text-danger">{{ editProfileNameError }}</small>
-          </div>
-          <div class="form-group">
-            <label> SSID </label>
-            <input type="text" placeholder="Wireless network name, e.g. MWireless" v-model="currentItem.SSID" class="form-control" required />
-            <small v-if="editSsidNameError" class="text-danger">{{ editSsidNameError }}</small>
-          </div>
-          <div class="form-group">
-            <label> Layer 2 Method </label>
-            <select v-model="currentItem.layer2_script" class="form-control" required>
-              <option value="" disabled>-- Select Layer 2 Method --</option>
-              <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label> Layer 3 Method </label>
-            <select v-model="currentItem.layer3_script" class="form-control" required>
-              <option value="" disabled>-- Select Layer 3 Method --</option>
-              <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
-            </select>
-          </div>
-          <div class="d-flex flex-wrap mb-3" style="gap: 0.5rem;">
-            <button class="btn btn-success" :disabled="!editSsidValid"> Update </button>
-            <button class="btn btn-danger" type="button" @click="deleteCurItem"> Delete </button>
-          </div>
+            <div class="form-group">
+              <label for="ssid-profile-name"> Profile name </label>
+              <input
+                type="text"
+                id="ssid-profile-name"
+                ref="nameInput"
+                placeholder="Enter profile name here"
+                v-model="form.name"
+                class="form-control"
+                :aria-invalid="nameError ? 'true' : 'false'"
+                :aria-describedby="nameError ? 'ssid-profile-name-error' : null"
+              />
+              <small v-if="nameError" id="ssid-profile-name-error" class="text-danger" role="alert">{{ nameError }}</small>
+            </div>
+            <div class="form-group">
+              <label for="ssid-network-name"> SSID </label>
+              <input
+                type="text"
+                id="ssid-network-name"
+                placeholder="Wireless network name, e.g. MWireless"
+                v-model="form.SSID"
+                class="form-control"
+              />
+              <small v-if="ssidNameError" class="text-danger">{{ ssidNameError }}</small>
+            </div>
+            <div class="form-group">
+              <label for="ssid-layer2"> Layer 2 method </label>
+              <select id="ssid-layer2" v-model="form.layer2_script" class="form-control">
+                <option value="" disabled>-- Select Layer 2 Method --</option>
+                <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="ssid-layer3"> Layer 3 method </label>
+              <select id="ssid-layer3" v-model="form.layer3_script" class="form-control">
+                <option value="" disabled>-- Select Layer 3 Method --</option>
+                <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
+              </select>
+            </div>
+
+            <div class="panel-actions">
+              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
+                Create SSID profile
+              </button>
+              <template v-else>
+                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
+                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
+                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+              </template>
+            </div>
           </fieldset>
         </form>
       </div>
@@ -115,31 +115,31 @@
  import { useLayerScriptsStore } from '../stores/layer_scripts_store';
  import itemList from '../components/list_items.vue';
  import PageHeader from '../components/PageHeader.vue';
+ import ConfirmModal from '../components/ConfirmModal.vue';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName, validSsidNetworkName } from "../utils/validators.ts"
 
  export default {
-   components: { itemList, PageHeader },
+   components: { itemList, PageHeader, ConfirmModal },
    data() {
      return {
        ssidStore: useSsidStore(),
        userStore: useUserStore(),
        layerScriptsStore: useLayerScriptsStore(),
 
-       currentIndex: {},
-       currentItem: {},
-       old_ssidName: '',
+       // Name of the profile open in the editor; null = "New SSID profile" mode.
+       selectedName: null,
+       form: { name: '', SSID: '', layer2_script: '', layer3_script: '' },
+       baseline: { name: '', SSID: '', layer2_script: '', layer3_script: '' },
 
-       showAddSSID: true,
+       confirmVisible: false,
+       confirmMessage: '',
+       confirmButtonLabel: 'Delete',
+       pendingAction: null,
+       pendingItem: null,
 
-       // Add SSID profile form fields.
-       add_name: '',
-       add_SSID: '',
-       add_layer2_script: '',
-       add_layer3_script: '',
-
-       mount: false,
+       loaded: false,
        enable_sso: config.ENABLE_SSO,
      }
    },
@@ -149,17 +149,24 @@
      await this.layerScriptsStore.getLayer2Scripts();
      await this.layerScriptsStore.getLayer3Scripts();
      await this.layerScriptsStore.getDefaults();
-     this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
-     this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
      if (this.enable_sso) {
        await this.userStore.fetchUser();
      }
-     this.mount = true;
+     // Blank form starts from the configured default methods.
+     this.form = this.blankForm();
+     this.baseline = this.blankForm();
+     this.loaded = true;
    },
 
    computed: {
       isDisabled() {
         return isFormDisabled();
+      },
+      editing() {
+        return this.selectedName !== null;
+      },
+      isDirty() {
+        return JSON.stringify(this.form) !== JSON.stringify(this.baseline);
       },
       // A layer2/layer3 method is required on every SSID profile; saving is
       // impossible when either directory has no scripts to choose from.
@@ -167,111 +174,177 @@
         return this.layerScriptsStore.layer2_scripts.length === 0 ||
                this.layerScriptsStore.layer3_scripts.length === 0;
       },
-      addProfileNameError() {
-        return this.add_name ? validName(this.add_name).error : '';
+      nameError() {
+        if (!this.form.name) return '';
+        const check = validName(this.form.name);
+        if (!check.valid) return check.error;
+        if (this.isDuplicateName) return 'An SSID profile with this name already exists.';
+        return '';
       },
-      addSsidNameError() {
-        return this.add_SSID ? validSsidNetworkName(this.add_SSID).error : '';
+      isDuplicateName() {
+        const name = this.form.name.trim();
+        return this.ssidStore.ssid_profiles.some(
+          (p) => p.name === name && p.name !== this.selectedName
+        );
       },
-      addSsidValid() {
-        return validName(this.add_name).valid &&
-               validSsidNetworkName(this.add_SSID).valid &&
-               !!this.add_layer2_script && !!this.add_layer3_script;
+      ssidNameError() {
+        return this.form.SSID ? validSsidNetworkName(this.form.SSID).error : '';
       },
-      editProfileNameError() {
-        return this.currentItem.name ? validName(this.currentItem.name).error : '';
-      },
-      editSsidNameError() {
-        return this.currentItem.SSID ? validSsidNetworkName(this.currentItem.SSID).error : '';
-      },
-      editSsidValid() {
-        return validName(this.currentItem.name || '').valid &&
-               validSsidNetworkName(this.currentItem.SSID || '').valid &&
-               !!this.currentItem.layer2_script && !!this.currentItem.layer3_script;
+      formValid() {
+        return validName(this.form.name).valid &&
+               !this.isDuplicateName &&
+               validSsidNetworkName(this.form.SSID).valid &&
+               !!this.form.layer2_script && !!this.form.layer3_script;
       }
     },
 
    methods: {
-     addSsidForm() {
-       this.showAddSSID = true;
-       this.currentIndex = {};
-       this.currentItem = {};
+     defaultLayer2() {
+       return this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
+     },
+     defaultLayer3() {
+       return this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
+     },
+     blankForm() {
+       return {
+         name: '',
+         SSID: '',
+         layer2_script: this.defaultLayer2() || '',
+         layer3_script: this.defaultLayer3() || ''
+       };
      },
 
-     updateActiveSSID(indexArray) {
-      const [newItem, newIndex] = indexArray;
-      if (
-        this.currentItem &&
-        this.currentItem.name === newItem.name &&
-        this.currentIndex === newIndex
-      ) {
-        this.currentItem = {};
-        this.currentIndex = {};
-        this.showAddSSID = true;
-      } else {
-        this.currentItem = newItem;
-        this.currentIndex = newIndex;
-        this.old_ssidName = newItem.name;
-        // Pre-fill a method default for profiles created before these fields existed.
-        if (!this.currentItem.layer2_script) {
-          this.currentItem.layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
-        }
-        if (!this.currentItem.layer3_script) {
-          this.currentItem.layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
-        }
-        this.showAddSSID = false;
-     }
-    },
-
-     // The header "+ Add SSID Profile" button doubles as the submit control:
-     // it opens a blank form when a profile is shown, and saves the new
-     // profile once every field is valid.
-     onHeaderAdd() {
-       if (!this.showAddSSID) {
-         this.addSsidForm();
+     startAdd() {
+       if (!this.editing) {
+         this.focusName();
+         return;
+       }
+       if (this.isDirty) {
+         this.askDiscard('close');
        } else {
-         this.addSsid();
+         this.closeToAdd();
        }
      },
 
-     async addSsid() {
-       if (!this.addSsidValid) return;   // also guards Enter-key submission
-       await this.ssidStore.addSsidProfile({
-         name: this.add_name,
-         SSID: this.add_SSID,
-         layer2_script: this.add_layer2_script,
-         layer3_script: this.add_layer3_script,
-       });
-       this.add_name = '';
-       this.add_SSID = '';
-       this.add_layer2_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer2_scripts, 'default_layer2');
-       this.add_layer3_script = this.layerScriptsStore.resolveDefault(this.layerScriptsStore.layer3_scripts, 'default_layer3');
-       this.addSsidForm();
+     onSelect(item) {
+       if (this.editing && item.name === this.selectedName) {
+         this.requestClose();
+         return;
+       }
+       if (this.isDirty) {
+         this.askDiscard('select', item);
+         return;
+       }
+       this.applySelection(item);
      },
 
-     async editCurItem() {
-       await this.ssidStore.editSsidProfile({
-         old_ssid_name: this.old_ssidName,
-         new_ssid_name: this.currentItem.name,
-         SSID: this.currentItem.SSID || '',
-         layer2_script: this.currentItem.layer2_script || '',
-         layer3_script: this.currentItem.layer3_script || '',
-       });
-       await this.ssidStore.getSsidProfiles();
-       this.currentItem = this.ssidStore.ssid_profiles[this.currentIndex];
-       this.updateActiveSSID([this.currentItem, this.currentIndex]);
+     applySelection(item) {
+       this.selectedName = item.name;
+       this.form = {
+         name: item.name,
+         SSID: item.SSID ?? '',
+         // Pre-fill a method default for profiles created before these fields
+         // existed — on the draft only; nothing is stored until Save.
+         layer2_script: item.layer2_script || this.defaultLayer2() || '',
+         layer3_script: item.layer3_script || this.defaultLayer3() || ''
+       };
+       this.baseline = { ...this.form };
      },
 
-     async deleteCurItem() {
-       const deleteIndex = this.currentIndex;
-       this.ssidStore.ssid_profiles.splice(deleteIndex, 1);
-       await this.ssidStore.deleteSsidProfile(this.currentItem);
-       if (this.ssidStore.ssid_profiles.length <= deleteIndex) {
-         this.addSsidForm();
+     requestClose() {
+       if (this.isDirty) {
+         this.askDiscard('close');
        } else {
-         this.currentIndex = deleteIndex;
-         this.currentItem = this.ssidStore.ssid_profiles[deleteIndex];
-         this.updateActiveSSID([this.currentItem, this.currentIndex]);
+         this.closeToAdd();
+       }
+     },
+
+     closeToAdd() {
+       this.selectedName = null;
+       this.form = this.blankForm();
+       this.baseline = this.blankForm();
+       this.focusName();
+     },
+
+     focusName() {
+       this.$nextTick(() => {
+         if (this.$refs.nameInput) this.$refs.nameInput.focus();
+       });
+     },
+
+     askDiscard(action, item = null) {
+       const target = this.editing ? `"${this.selectedName}"` : 'the new SSID profile';
+       this.confirmMessage = `Discard your unsaved changes to ${target}?`;
+       this.confirmButtonLabel = 'Discard changes';
+       this.pendingAction = action;
+       this.pendingItem = item;
+       this.confirmVisible = true;
+     },
+
+     requestDelete() {
+       this.confirmMessage = `Delete SSID profile "${this.selectedName}"? It will also be ` +
+         `removed from any batches that use it. This cannot be undone.`;
+       this.confirmButtonLabel = 'Delete';
+       this.pendingAction = 'delete';
+       this.pendingItem = null;
+       this.confirmVisible = true;
+     },
+
+     async onConfirm() {
+       this.confirmVisible = false;
+       const action = this.pendingAction;
+       const item = this.pendingItem;
+       this.pendingAction = null;
+       this.pendingItem = null;
+
+       if (action === 'delete') {
+         await this.executeDelete();
+       } else if (action === 'select' && item) {
+         this.applySelection(item);
+       } else if (action === 'close') {
+         this.closeToAdd();
+       }
+     },
+
+     async createProfile() {
+       if (!this.formValid || this.isDisabled) return;   // also guards Enter-key submission
+       const ok = await this.ssidStore.addSsidProfile({
+         name: this.form.name.trim(),
+         SSID: this.form.SSID,
+         layer2_script: this.form.layer2_script,
+         layer3_script: this.form.layer3_script,
+       });
+       // Keep the typed values when the server rejects the profile.
+       if (ok) {
+         this.closeToAdd();
+       }
+     },
+
+     async saveChanges() {
+       if (!this.formValid || this.isDisabled) return;
+       const newName = this.form.name.trim();
+       const ok = await this.ssidStore.editSsidProfile({
+         old_ssid_name: this.selectedName,
+         new_ssid_name: newName,
+         SSID: this.form.SSID || '',
+         layer2_script: this.form.layer2_script || '',
+         layer3_script: this.form.layer3_script || '',
+       });
+       if (!ok) return;
+       await this.ssidStore.getSsidProfiles();
+       const fresh = this.ssidStore.ssid_profiles.find((p) => p.name === newName);
+       if (fresh) {
+         this.applySelection(fresh);
+       } else {
+         this.closeToAdd();
+       }
+     },
+
+     async executeDelete() {
+       const ok = await this.ssidStore.deleteSsidProfile({ name: this.selectedName });
+       await this.ssidStore.getSsidProfiles();
+       if (ok) {
+         this.closeToAdd();
        }
      },
    }

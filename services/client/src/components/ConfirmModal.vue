@@ -14,7 +14,7 @@
       </div>
       <p id="confirm-modal-message" class="confirm-message">{{ message }}</p>
       <div class="confirm-buttons">
-        <button class="btn btn-danger btn-sm" @click="onConfirm">Delete</button>
+        <button class="btn btn-danger btn-sm" @click="onConfirm">{{ confirmLabel }}</button>
         <button ref="cancelBtn" class="btn btn-secondary btn-sm" @click="onCancel">Cancel</button>
       </div>
     </div>
@@ -26,7 +26,10 @@ export default {
   name: 'ConfirmModal',
   props: {
     visible:  { type: Boolean, required: true },
-    message:  { type: String, default: 'Are you sure you want to delete this item? This cannot be undone.' }
+    message:  { type: String, default: 'Are you sure you want to delete this item? This cannot be undone.' },
+    // Label of the destructive (confirm) button; the same dialog confirms both
+    // deletions ("Delete") and discarding unsaved edits ("Discard changes").
+    confirmLabel: { type: String, default: 'Delete' }
   },
   emits: ['confirm', 'cancel'],
   data() {
