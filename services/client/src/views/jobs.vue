@@ -34,7 +34,7 @@
         <h3> Job list </h3>
         <itemList
           :item-array="jobStore.jobs"
-          :selected-name="selectedName"
+          :selected-name="isDirty ? null : selectedName"
           label="Jobs"
           @select="onSelect"
         ></itemList>
@@ -216,12 +216,16 @@
      },
 
      onSelect(item) {
-       if (this.editing && item.name === this.selectedName) {
-         this.requestClose();
-         return;
-       }
+       // A modified draft detaches the list highlight, so clicking any row —
+       // including the one being edited — reloads that row's saved values,
+       // after confirming that unsaved changes are discarded.
        if (this.isDirty) {
          this.askDiscard('select', item);
+         return;
+       }
+       // Nothing unsaved: clicking the highlighted row again closes the editor.
+       if (this.editing && item.name === this.selectedName) {
+         this.closeToAdd();
          return;
        }
        this.applySelection(item);
