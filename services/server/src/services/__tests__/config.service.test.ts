@@ -20,6 +20,19 @@ describe('formatTestSpec', () => {
     expect(formatTestSpec(spec)).toEqual({ mode: 'fast' });
   });
 
+  it('throws a named, prefixed error on a singleselect with no value selected', () => {
+    const spec = [{ type: 'singleselect', name: 'protocol', selected: null }];
+    expect(() => formatTestSpec(spec, 'rtt-check')).toThrow(
+      'Config validation failed: test "rtt-check" field "protocol" has no value selected'
+    );
+  });
+
+  it('throws the same way when selected is a malformed array instead of an object', () => {
+    // The shape a stale/untouched form default used to produce (see dynamicform.vue).
+    const spec = [{ type: 'singleselect', name: 'protocol', selected: [{ name: 'TCP' }] }];
+    expect(() => formatTestSpec(spec, 'rtt-check')).toThrow(/Config validation failed/);
+  });
+
   it('maps user-defined optional key/value pairs', () => {
     const spec = [{ key: 'custom', value: '42' }];
     expect(formatTestSpec(spec)).toEqual({ custom: '42' });
@@ -27,12 +40,12 @@ describe('formatTestSpec', () => {
 
   it('throws on multiselect (not allowed in test specs)', () => {
     const spec = [{ type: 'multiselect', name: 'bad', selected: [] }];
-    expect(() => formatTestSpec(spec)).toThrow();
+    expect(() => formatTestSpec(spec)).toThrow(/Config validation failed/);
   });
 
   it('throws on an optional entry missing key/value', () => {
     const spec = [{ foo: 'bar' }];
-    expect(() => formatTestSpec(spec)).toThrow();
+    expect(() => formatTestSpec(spec)).toThrow(/Config validation failed/);
   });
 
   it('returns an empty object for an empty spec', () => {

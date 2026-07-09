@@ -212,7 +212,8 @@ export default {
 <style scoped>
 .status-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 320px));
+  justify-content: start;
   gap: 1rem;
   margin-bottom: 1.5rem;
 }

@@ -101,8 +101,15 @@ function get_paths() {
  *
  * See comments below for formatTestData for the format of a test spec
  * and the role of this function.
+ *
+ * Every throw here is prefixed "Config validation failed" so callers building
+ * the full config (build_config_payload -> assertDaemonValid's 422 path) treat
+ * a malformed test the same as any other daemon-invalidating data: a clear,
+ * named message instead of an uncaught exception surfacing as a raw 500.
+ *
+ * @param testName - the owning test's name, only for error messages.
  */
-export function formatTestSpec(spec: Array<any>) {
+export function formatTestSpec(spec: Array<any>, testName: string = '') {
   const result_spec: any = {};
   spec.forEach((element) => {
     if (element.type === "text" || element.type === "number" ||
@@ -110,13 +117,20 @@ export function formatTestSpec(spec: Array<any>) {
       result_spec[element.name] = element.value;
     }
     else if (element.type === "singleselect") {
+      // Reachable through normal use: vue-multiselect allows deselecting a
+      // singleselect back to null by clicking the selected option again.
+      if (!element.selected || typeof element.selected.name === 'undefined') {
+        throw new Error(
+          `Config validation failed: test "${testName}" field "${element.name}" has no value selected`
+        );
+      }
       result_spec[element.name] = element.selected.name;
     }
 
     // multiselect is not allowed in test specs.
     else if (element.type === "multiselect") {
       throw new Error(
-	"Multiselect is not allowed in test specs: ${JSON.stringify(element)}"
+        `Config validation failed: test "${testName}" field "${element.name}" is a multiselect, which is not allowed in test specs`
       );
     }
 
@@ -124,7 +138,9 @@ export function formatTestSpec(spec: Array<any>) {
     // be a key-value pair without other fields.
     else if (!element.hasOwnProperty('type')) {
       if (!element.hasOwnProperty('key') || !element.hasOwnProperty('value')) {
-	throw new Error(`Invalid test specs found: ${JSON.stringify(element)}`);
+        throw new Error(
+          `Config validation failed: test "${testName}" has an invalid optional data entry: ${JSON.stringify(element)}`
+        );
       }
       result_spec[element.key] = element.value;
     }
@@ -161,7 +177,7 @@ export async function formatTestData(test_data: Array<any>) {
     const formatted_test: any = {};
     formatted_test['name'] = test.name;
     formatted_test['type'] = test.type;
-    formatted_test['spec'] = formatTestSpec(test.spec);
+    formatted_test['spec'] = formatTestSpec(test.spec, test.name);
     formatted_data_array.push(formatted_test);
   });
   const formatted_data = {"tests": formatted_data_array};

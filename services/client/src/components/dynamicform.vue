@@ -57,6 +57,7 @@
           v-model="form_values[index].selected"
           :multiple="false"
           :close-on-select="true"
+          :allow-empty="false"
           :options="item.options"
           :searchable="false"
           track-by="name"
@@ -192,7 +193,14 @@
            type: item.type,
            options: item.options,
            value: item.default,
-           selected: item.hasOwnProperty('default') ? [item.default] : [],
+           // VueMultiselect's v-model shape depends on :multiple - an array for
+           // multiselect, a plain object (or null) for singleselect. Wrapping a
+           // singleselect default in an array (the old behaviour) doesn't match
+           // what the component emits once a user actually picks an option, so
+           // an untouched default silently produced the wrong spec value.
+           selected: item.type === 'singleselect'
+             ? (item.hasOwnProperty('default') ? item.default : null)
+             : (item.hasOwnProperty('default') ? [item.default] : []),
            trueValue: item.trueValue,
            falseValue: item.falseValue,
            validator: item.hasOwnProperty('validator') ? item.validator : 'return true;',

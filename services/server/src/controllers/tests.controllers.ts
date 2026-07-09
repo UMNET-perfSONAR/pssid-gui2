@@ -40,6 +40,30 @@ const isValidTestType = (value: unknown): boolean => {
 };
 
 /**
+ * A single spec field entry, checked against the same shapes
+ * `formatTestSpec` (config.service.ts) accepts when the config file is
+ * generated - so a bad shape is rejected here, at save time, rather than
+ * surfacing later as a config-generation error.
+ */
+const specElementError = (element: any): string | null => {
+  if (element.type === 'singleselect') {
+    if (!element.selected || typeof element.selected.name === 'undefined') {
+      return `Field "${element.name}" has no value selected`;
+    }
+    return null;
+  }
+  if (element.type === 'multiselect') {
+    return `Field "${element.name}" is a multiselect, which is not allowed in test specs`;
+  }
+  if (!element.hasOwnProperty('type')) {
+    if (!element.hasOwnProperty('key') || !element.hasOwnProperty('value')) {
+      return "Optional data entries must have a key and a value";
+    }
+  }
+  return null;
+};
+
+/**
  * Field rules for a test payload beyond the name: a known template type and
  * a spec in the shape the dynamic form produces (an array of field entries).
  */
@@ -49,6 +73,10 @@ const testFieldError = (body: any): string | null => {
   }
   if (!Array.isArray(body.spec)) {
     return "Test options must be a list of fields";
+  }
+  for (const element of body.spec) {
+    const error = specElementError(element);
+    if (error) return error;
   }
   return null;
 };

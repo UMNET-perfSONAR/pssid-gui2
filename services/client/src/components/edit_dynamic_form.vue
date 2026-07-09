@@ -56,6 +56,7 @@
         v-model="input_fields[index].selected"
         :multiple="false"
         :close-on-select="true"
+        :allow-empty="false"
         :options="item.options"
         :searchable="false"
         track-by="name"
