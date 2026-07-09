@@ -43,7 +43,13 @@ const demoNames = {
   // old demo stacks do not keep a dead collection around.
   archivers:     ['rabbitmq-archive'],
   jobs:          ['connectivity-suite', 'throughput-suite'],
-  batches:       ['edge-batch', 'core-batch'],
+  batches:       [
+    'edge-batch', 'core-batch',
+    // Legacy leftover from the 'campus-wifi' era; the profile it references is
+    // deleted by the cleanup above, so leaving this batch behind strands a
+    // dangling reference that blocks config generation.
+    'main-batch'
+  ],
   hosts:         [
     'probe-library-01', 'probe-labs-02', 'probe-union-03', 'probe-dorms-04', 'probe-annex-05',
     // Legacy demo names from older seed scripts; clean them up on re-run.
