@@ -3,9 +3,7 @@
      draft buffer (the list never shows half-typed edits), name-tracked
      selection, and the standard "Create host" / "Save changes" / "Cancel" /
      "Delete" buttons with confirmation before deleting or discarding unsaved
-     changes. Provisioning the selected probe lives in the editor too, and is
-     disabled while the draft has unsaved changes so it always pushes exactly
-     what is saved. -->
+     changes. -->
 <template>
   <div>
     <ConfirmModal
@@ -84,15 +82,6 @@
               <template v-else>
                 <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
                 <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
-                <button
-                  type="button"
-                  class="btn btn-warning"
-                  @click="provisionHost"
-                  :disabled="isDisabled || isDirty"
-                  :title="isDirty ? 'Save or cancel your changes first; provisioning pushes the saved configuration' : 'Write the generated config and run the provision script for this probe'"
-                >
-                  Provision this host
-                </button>
                 <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
               </template>
             </div>
@@ -216,10 +205,6 @@
      batchNames() {
        return this.batchStore.batches.map((item) => item.name);
      },
-     // The saved (store) version of the selected host: what provisioning acts on.
-     storeItem() {
-       return this.hostStore.hosts.find((h) => h.name === this.selectedName) || null;
-     },
      nameError() {
        if (!this.form.name) return '';
        const check = validHostOrIp(this.form.name);
@@ -331,15 +316,6 @@
        } else if (action === 'close') {
          this.closeToAdd();
        }
-     },
-
-     // Provision the selected probe (its saved configuration; the button is
-     // disabled while the draft is dirty), then reload its effective
-     // configuration so the panel below shows exactly what was just sent.
-     async provisionHost() {
-       if (!this.storeItem) return;
-       await this.hostStore.createConfig(this.storeItem);
-       await this.hostStore.getHostConfig(this.storeItem.name);
      },
 
      async createHost() {

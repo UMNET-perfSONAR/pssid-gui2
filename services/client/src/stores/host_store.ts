@@ -135,36 +135,6 @@ export const useHostStore = defineStore('hostStore', {
       }
     },
 
-    async createConfig(currentHost: any) {
-      if (!currentHost || !currentHost.name) {
-        useToastStore().show('Select a host probe to configure.', 'info');
-        return;
-      }
-      try {
-        useToastStore().show('Provisioning…', 'info');
-        const response = await fetch(
-          '/api/hosts/config',
-          {
-            method: 'POST',
-            body: JSON.stringify(currentHost),
-            mode: 'cors',
-            headers: { "Content-Type": "application/json" },
-            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-          }
-        );
-        if (response.ok) {
-          useToastStore().show(`Host "${currentHost.name}" submitted for provisioning`, 'success');
-        } else {
-          useToastStore().show(await errorMessage(response, 'Provision request failed'), 'error');
-        }
-      }
-      catch(error) {
-        console.error(error);
-        this.isError = true;
-        useToastStore().show('Provision request failed', 'error');
-      }
-    },
-
     /**
      * The effective configuration of one probe: metadata, groups, and the
      * fully expanded batches it runs, sliced from the same payload the

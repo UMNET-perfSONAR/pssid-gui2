@@ -26,30 +26,44 @@
     />
     <p class="list-hint" :id="hintId">Click an item (or use the arrow keys and Enter) to edit it; click it again to close the editor.</p>
 
-    <ul
+    <div
       v-if="filteredArray.length"
-      class="list-group item-list"
-      role="listbox"
-      :aria-label="label"
-      style="overflow-y: auto; max-height: min(450px, 55vh);"
+      class="list-scroll-wrap"
+      :class="{ 'is-scrollable': isScrollable, 'at-bottom': isAtBottom }"
     >
-      <li
-        class="list-group-item"
-        :class="{ active: isSelected(item) }"
-        v-for="(item, index) in filteredArray"
-        :key="item.name"
-        :id="optionId(index)"
-        ref="options"
-        role="option"
-        :aria-selected="isSelected(item) ? 'true' : 'false'"
-        :tabindex="index === focusIndex ? 0 : -1"
-        @click="setActiveItem(item, index)"
-        @keydown="onKeydown($event, index)"
+      <ul
+        ref="listEl"
+        class="list-group item-list"
+        role="listbox"
+        :aria-label="label"
+        @scroll="checkScrollState"
       >
-        <span>{{ item.name }}</span>
-        <span class="material-icons list-chevron" aria-hidden="true">chevron_right</span>
-      </li>
-    </ul>
+        <li
+          class="list-group-item"
+          :class="{ active: isSelected(item) }"
+          v-for="(item, index) in filteredArray"
+          :key="item.name"
+          :id="optionId(index)"
+          ref="options"
+          role="option"
+          :aria-selected="isSelected(item) ? 'true' : 'false'"
+          :tabindex="index === focusIndex ? 0 : -1"
+          @click="setActiveItem(item, index)"
+          @keydown="onKeydown($event, index)"
+        >
+          <span>{{ item.name }}</span>
+          <span class="material-icons list-chevron" aria-hidden="true">chevron_right</span>
+        </li>
+      </ul>
+      <!-- Visible only while there is unseen content below the fold; fades out
+           once scrolled to the bottom, so the affordance never lingers once
+           it's no longer true. Purely visual: aria-hidden, decorative only. -->
+      <div class="list-scroll-fade" aria-hidden="true"></div>
+      <div class="list-scroll-more" aria-hidden="true">
+        <span class="material-icons" aria-hidden="true">expand_more</span>
+        Scroll for more
+      </div>
+    </div>
     <p v-else class="list-hint" role="status">No items match your search.</p>
 
     <!-- Screen-reader-only running count of the filtered results. -->
@@ -89,7 +103,12 @@ export default {
       activePattern: '',
       // Which row currently owns the tab stop (roving tabindex). The first row is
       // reachable with a single Tab; arrows then move the tab stop between rows.
-      focusIndex: 0
+      focusIndex: 0,
+      // Whether the list is currently taller than its scroll box (drives the
+      // "Scroll for more" affordance), and whether it's scrolled to the bottom
+      // (hides that affordance once there's nothing further to see).
+      isScrollable: false,
+      isAtBottom: true
     }
   },
   computed: {
@@ -113,8 +132,25 @@ export default {
       return `${n} ${n === 1 ? 'item' : 'items'} found`;
     }
   },
+  mounted() {
+    this.$nextTick(this.checkScrollState);
+    window.addEventListener('resize', this.checkScrollState);
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.checkScrollState);
+  },
   methods: {
     optionId(index) { return `${this.uid}-opt-${index}`; },
+    // Recomputes whether the list overflows its box and whether it's scrolled
+    // to the bottom, driving the scroll affordance. Called on scroll, on
+    // mount, whenever the filtered list changes size, and on window resize
+    // (the box height is a viewport-relative max-height).
+    checkScrollState() {
+      const el = this.$refs.listEl;
+      if (!el) return;
+      this.isScrollable = el.scrollHeight > el.clientHeight + 1;
+      this.isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 4;
+    },
     isSelected(item) {
       return this.selectedName !== null && item.name === this.selectedName;
     },
@@ -165,6 +201,9 @@ export default {
       if (this.focusIndex > list.length - 1) {
         this.focusIndex = Math.max(0, list.length - 1);
       }
+      // The list just changed size (search filter, add/remove, refetch): the
+      // scroll box may now overflow when it didn't before, or vice versa.
+      this.$nextTick(this.checkScrollState);
     }
   }
 }

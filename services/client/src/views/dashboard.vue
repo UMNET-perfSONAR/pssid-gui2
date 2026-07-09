@@ -26,26 +26,6 @@
           saved. Make sure the containers are running, then reload the page.
         </p>
       </div>
-
-      <div class="status-cell">
-        <div class="status-pill has-hint" :class="settingsStore.autoProvision ? 'on' : 'off'" tabindex="0">
-          <span class="material-icons" aria-hidden="true">{{ settingsStore.autoProvision ? 'bolt' : 'pause_circle' }}</span>
-          <div>
-            <div class="status-label">Auto-provision</div>
-            <div class="status-value">{{ settingsStore.autoProvision ? 'On' : 'Off' }}</div>
-          </div>
-          <span class="hint" role="tooltip">
-            <template v-if="settingsStore.autoProvision">
-              <code>On</code>: every change you save is sent to the probes automatically,
-              so you don't need to configure them by hand.
-            </template>
-            <template v-else>
-              <code>Off</code>: your changes are saved here but not sent to the probes yet.
-              Open a host and use Configure to send them when you're ready.
-            </template>
-          </span>
-        </div>
-      </div>
     </div>
 
     <!-- Configuration anatomy: each block is its own card, laid out left to
@@ -141,7 +121,6 @@
 <script>
 import PageHeader from '../components/PageHeader.vue'
 import config from '../shared/config'
-import { useSettingsStore } from '../stores/settings.store'
 
 // The config relationships, as source -> target. "sources" is the grouped box
 // holding jobs, schedules, and SSID profiles, which together form a batch.
@@ -157,7 +136,6 @@ export default {
   components: { PageHeader },
   data() {
     return {
-      settingsStore: useSettingsStore(),
       healthOk: false,
       arrowPaths: [],
       resizeObserver: null,
@@ -174,12 +152,7 @@ export default {
       document.fonts.ready.then(this.measureArrows);
     }
 
-    // Load what the status strip needs, in parallel; a failure in either one
-    // doesn't block the rest.
-    await Promise.allSettled([
-      this.settingsStore.getSettings(),
-      this.checkHealth(),
-    ]);
+    await this.checkHealth();
     this.$nextTick(this.measureArrows);
   },
   beforeUnmount() {
@@ -259,8 +232,6 @@ export default {
 .status-value { font-size: 1rem; font-weight: 600; color: var(--text); }
 .status-pill.ok      { border-left-color: var(--ok); }      .status-pill.ok .material-icons { color: var(--ok); }
 .status-pill.bad     { border-left-color: var(--err); }     .status-pill.bad .material-icons { color: var(--err); }
-.status-pill.on      { border-left-color: var(--accent); }  .status-pill.on .material-icons { color: var(--accent); }
-.status-pill.off     { border-left-color: var(--neutral); } .status-pill.off .material-icons { color: var(--neutral); }
 
 /* Each pill is its own cell so a persistent note can sit under it. */
 .status-cell { display: flex; flex-direction: column; }

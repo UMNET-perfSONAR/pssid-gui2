@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="Settings"
-      subtitle="Control how configuration changes reach the probes"
+      subtitle="Inspect the configuration generated from your current setup"
       icon="settings"
     />
 
@@ -12,48 +12,13 @@
     </div>
 
     <template v-else>
-      <p v-if="isDisabled" class="readonly-banner">
-        <span class="material-icons" aria-hidden="true">lock</span>
-        You have read-only access. Sign in with a write-enabled account to change provisioning settings.
-      </p>
-
-      <section class="settings-card" aria-labelledby="automation-title">
-        <div class="settings-card-head">
-          <span class="material-icons settings-card-icon" aria-hidden="true">bolt</span>
-          <div>
-            <h3 id="automation-title" class="settings-card-title">Automation</h3>
-            <p class="settings-card-desc">How saved changes reach the probes.</p>
-          </div>
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-text">
-            <div class="setting-name">Auto-provision on change</div>
-            <div class="setting-sub">
-              When on, saved edits to hosts, groups, schedules, SSID profiles, tests,
-              jobs, or batches are bundled and pushed to the probes automatically.
-              When off, changes stay in the database until you provision manually.
-            </div>
-          </div>
-          <label class="switch" :class="{ disabled: isDisabled || settingsStore.isSaving }" aria-label="Auto-provision on change">
-            <input
-              type="checkbox"
-              :checked="settingsStore.autoProvision"
-              :disabled="isDisabled || settingsStore.isSaving"
-              @change="onToggle($event)"
-            />
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
-        </div>
-      </section>
-
       <section class="settings-card" aria-labelledby="tools-title">
         <div class="settings-card-head">
           <span class="material-icons settings-card-icon" aria-hidden="true">cloud_upload</span>
           <div>
             <h3 id="tools-title" class="settings-card-title">Provisioning</h3>
             <p class="settings-card-desc">
-              Inspect or push the current generated configuration.
+              Inspect the current generated configuration.
             </p>
           </div>
         </div>
@@ -74,25 +39,6 @@
           >
             <span class="material-icons btn-icon" aria-hidden="true">visibility</span>
             {{ settingsStore.previewLoading ? 'Building...' : 'Preview' }}
-          </button>
-        </div>
-
-        <div class="setting-row with-divider">
-          <div class="setting-text">
-            <div class="setting-name">Provision all probes now</div>
-            <div class="setting-sub">
-              Writes the generated config and inventory, then starts the provision script
-              for all hosts.
-            </div>
-          </div>
-          <button
-            type="button"
-            class="btn btn-primary"
-            :disabled="isDisabled || settingsStore.provisionLoading"
-            @click="provisionNow"
-          >
-            <span class="material-icons btn-icon" aria-hidden="true">play_arrow</span>
-            {{ settingsStore.provisionLoading ? 'Starting...' : 'Provision now' }}
           </button>
         </div>
 
@@ -135,7 +81,6 @@ import PageHeader from '../components/PageHeader.vue'
 import { useSettingsStore } from '../stores/settings.store'
 import { useUserStore } from '../stores/user.store'
 import config from '../shared/config'
-import { isFormDisabled } from '../utils/formControl.ts'
 
 export default {
   name: 'Settings',
@@ -149,9 +94,6 @@ export default {
     }
   },
   computed: {
-    isDisabled() {
-      return isFormDisabled();
-    },
     previewText() {
       if (!this.settingsStore.preview) return '';
       return this.previewTab === 'config'
@@ -179,14 +121,8 @@ export default {
     await this.settingsStore.getSettings();
   },
   methods: {
-    onToggle(e) {
-      this.settingsStore.setAutoProvision(e.target.checked);
-    },
     previewConfig() {
       this.settingsStore.previewConfig();
-    },
-    provisionNow() {
-      this.settingsStore.provisionNow();
     },
   },
 }
@@ -242,11 +178,6 @@ export default {
   gap: 1.5rem;
   padding: 0.85rem 0 0.35rem;
 }
-.setting-row.with-divider {
-  border-top: 1px solid var(--border);
-  margin-top: 0.75rem;
-  padding-top: 1.1rem;
-}
 .setting-text {
   flex: 1;
   min-width: 0;
@@ -269,63 +200,6 @@ export default {
   border-radius: 4px;
   font-size: 0.78rem;
   color: var(--text);
-}
-.switch {
-  position: relative;
-  display: inline-flex;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-.switch.disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.switch input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.switch-track {
-  width: 46px;
-  height: 26px;
-  border-radius: 13px;
-  background: var(--track-off);
-  transition: background .18s ease;
-  display: inline-block;
-  position: relative;
-}
-.switch-thumb {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.25);
-  transition: transform .18s ease;
-}
-.switch input:checked + .switch-track {
-  background: var(--accent);
-}
-.switch input:checked + .switch-track .switch-thumb {
-  transform: translateX(20px);
-}
-.readonly-banner {
-  font-size: 0.82rem;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.75rem 0.9rem;
-  margin-bottom: 1rem;
-}
-.readonly-banner .material-icons {
-  font-size: 1rem;
 }
 .btn-icon {
   font-size: 1rem;

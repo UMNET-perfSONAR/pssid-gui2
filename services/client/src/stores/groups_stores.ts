@@ -129,35 +129,5 @@ export const useGroupStore = defineStore('groupStore', {
         this.isError = true;
       }
     },
-
-    async createConfig(currentGroup: any) {
-      if (!currentGroup || !currentGroup.name) {
-        useToastStore().show('Select a host group to configure.', 'info');
-        return;
-      }
-      try {
-        useToastStore().show('Provisioning…', 'info');
-        const response = await fetch(
-          '/api/host-groups/config',
-          {
-            method: 'POST',
-            body: JSON.stringify(currentGroup),
-            mode: 'cors',
-            headers: { "Content-Type": "application/json" },
-            ...(config.ENABLE_SSO ? { credentials: 'include' } : {})
-          }
-        );
-        if (response.ok) {
-          useToastStore().show(`Group "${currentGroup.name}" submitted for provisioning`, 'success');
-        } else {
-          useToastStore().show(await errorMessage(response, 'Provision request failed'), 'error');
-        }
-      }
-      catch(error) {
-        console.error(error);
-        this.isError = true;
-        useToastStore().show('Provision request failed', 'error');
-      }
-    },
   }
 })

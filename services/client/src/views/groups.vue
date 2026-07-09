@@ -3,9 +3,7 @@
      group", a draft buffer (the list never shows half-typed edits),
      name-tracked selection, and the standard "Create host group" / "Save
      changes" / "Cancel" / "Delete" buttons with confirmation before deleting
-     or discarding unsaved changes. Provisioning the selected group lives in
-     the editor too, and is disabled while the draft has unsaved changes so it
-     always pushes exactly what is saved. -->
+     or discarding unsaved changes. -->
 <template>
   <div>
     <ConfirmModal
@@ -90,15 +88,6 @@
               <template v-else>
                 <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
                 <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
-                <button
-                  type="button"
-                  class="btn btn-warning"
-                  @click="provisionGroup"
-                  :disabled="isDisabled || isDirty"
-                  :title="isDirty ? 'Save or cancel your changes first; provisioning pushes the saved configuration' : 'Write the generated config and run the provision script for every probe in this group'"
-                >
-                  Provision this group
-                </button>
                 <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
               </template>
             </div>
@@ -203,10 +192,6 @@
      },
      batchNames() {
        return this.batchStore.batches.map((item) => item.name);
-     },
-     // The saved (store) version of the selected group: what provisioning acts on.
-     storeItem() {
-       return this.hostGroup.host_groups.find((g) => g.name === this.selectedName) || null;
      },
      nameError() {
        if (!this.form.name) return '';
@@ -335,13 +320,6 @@
        } else if (action === 'close') {
          this.closeToAdd();
        }
-     },
-
-     // Provision every probe in the selected group (its saved configuration;
-     // the button is disabled while the draft is dirty).
-     async provisionGroup() {
-       if (!this.storeItem) return;
-       await this.hostGroup.createConfig(this.storeItem);
      },
 
      async createGroup() {

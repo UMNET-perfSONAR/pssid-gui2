@@ -11,6 +11,7 @@ import {
   validJqClause,
   validCron,
   describeCron,
+  cronPeriodMinutes,
 } from '../validators';
 
 // Every form field validator in one place. Each case states the rule it pins.
@@ -179,5 +180,42 @@ describe('describeCron (plain-English reading of a schedule)', () => {
 
   it('returns an invalid expression unchanged rather than guessing', () => {
     expect(describeCron('not a cron')).toBe('not a cron');
+  });
+});
+
+describe('cronPeriodMinutes (frequency ranking for schedule sort order)', () => {
+  it.each([
+    ['* * * * *', 1],
+    ['*/5 * * * *', 5],
+    ['*/6 * * * *', 6],
+    ['0 * * * *', 60],
+    ['30 * * * *', 60],
+    ['0 */4 * * *', 240],
+    ['0 */6 * * *', 360],
+    ['0 23 * * *', 1440],
+    ['0 9 * * 1', 1440 * 7],
+    ['0 0 1 * *', 1440 * 30],
+    ['0 0 25 12 *', 1440 * 365],
+  ])('%s -> %d minutes', (expr, minutes) => expect(cronPeriodMinutes(expr)).toBe(minutes));
+
+  it('sorts an unordered list from most to least frequent', () => {
+    const schedules = [
+      { name: 'yearly', repeat: '0 0 25 12 *' },
+      { name: 'every minute', repeat: '* * * * *' },
+      { name: 'daily', repeat: '0 23 * * *' },
+      { name: 'every 5 minutes', repeat: '*/5 * * * *' },
+      { name: 'every 6 hours', repeat: '0 */6 * * *' },
+      { name: 'weekly', repeat: '0 9 * * 1' },
+    ];
+    const sorted = [...schedules].sort(
+      (a, b) => cronPeriodMinutes(a.repeat) - cronPeriodMinutes(b.repeat)
+    );
+    expect(sorted.map((s) => s.name)).toEqual([
+      'every minute', 'every 5 minutes', 'every 6 hours', 'daily', 'weekly', 'yearly',
+    ]);
+  });
+
+  it('sorts an invalid expression to the end', () => {
+    expect(cronPeriodMinutes('not a cron')).toBe(Infinity);
   });
 });

@@ -39,7 +39,7 @@
       <div class="col-md-6">
         <h3> Schedule list </h3>
         <item-list
-          :item-array="scheduleStore.schedules"
+          :item-array="sortedSchedules"
           :selected-name="isDirty ? null : selectedName"
           label="Schedules"
           @select="onSelect"
@@ -95,7 +95,7 @@
  import ConfirmModal from '../components/ConfirmModal.vue';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
- import { validDisplayName, validCron } from "../utils/validators.ts"
+ import { validDisplayName, validCron, cronPeriodMinutes } from "../utils/validators.ts"
 
  const DEFAULT_CRON = '* * * * *';
  const blankForm = () => ({ name: '', repeat: DEFAULT_CRON });
@@ -158,6 +158,16 @@
        return this.scheduleStore.schedules.some(
          (s) => s.name === name && s.name !== this.selectedName
        );
+     },
+     // Most to least frequent (every minute first, yearly last), so the list
+     // reads in a predictable order instead of arbitrary insertion order. Ties
+     // (equal frequency) fall back to name, so the order stays stable and
+     // searchable rather than jumping around between loads.
+     sortedSchedules() {
+       return [...this.scheduleStore.schedules].sort((a, b) => {
+         const diff = cronPeriodMinutes(a.repeat) - cronPeriodMinutes(b.repeat);
+         return diff !== 0 ? diff : a.name.localeCompare(b.name);
+       });
      },
      formValid() {
        return validDisplayName(this.form.name).valid &&

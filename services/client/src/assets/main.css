@@ -146,15 +146,6 @@
 
   --focus-ring:   #003f7a;
 }
-/* Reuse the dark-mode icon-recolour so the deep-navy edition glyphs are not lost
-   on any coloured chip, not needed here, but keep the accent-on-white pill
-   readable: recolour the accent-tinted "on" state to the safe blue. */
-:root[data-theme="colorblind"] .status-pill.on {
-  border-left-color: var(--ok) !important;
-}
-:root[data-theme="colorblind"] .status-pill.on .material-icons {
-  color: var(--ok) !important;
-}
 /* Lighten a few hardcoded light fills so dark mode reads correctly. */
 :root[data-theme="dark"] .table thead th { background: #0e1626; color: var(--muted); }
 :root[data-theme="dark"] fieldset[disabled] .form-control { background: #0e1626 !important; }
@@ -399,11 +390,84 @@ fieldset[disabled] .form-control {
 .search-input {
   margin-bottom: 0.75rem !important;
 }
+.list-scroll-wrap {
+  position: relative;
+}
 .item-list {
   border-radius: 6px !important;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: min(450px, 55vh);
   box-shadow: none !important;
   border: 1px solid var(--border) !important;
+  /* A always-visible, styled scrollbar instead of the OS default: on macOS
+     and touch trackpads the default scrollbar is invisible until you're
+     already scrolling, which is exactly what made this list's overflow easy
+     to miss. Firefox: */
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}
+/* Chromium/WebKit: styling ::-webkit-scrollbar switches the browser from an
+   overlay (invisible-until-scrolled) scrollbar to a classic, always-present
+   one for this element. */
+.item-list::-webkit-scrollbar {
+  width: 10px;
+}
+.item-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.item-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+.item-list::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+/* Bottom fade + "Scroll for more" chip: only shown while the list actually
+   overflows its box (.is-scrollable) and there's more below the visible
+   area (not .at-bottom). Both float over the list's own rounded bottom
+   corner without adding to its layout height. */
+.list-scroll-fade,
+.list-scroll-more {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+.list-scroll-wrap.is-scrollable:not(.at-bottom) .list-scroll-fade,
+.list-scroll-wrap.is-scrollable:not(.at-bottom) .list-scroll-more {
+  opacity: 1;
+}
+.list-scroll-fade {
+  height: 36px;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(to bottom, transparent, var(--surface));
+}
+.list-scroll-more {
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.list-scroll-more .material-icons {
+  font-size: 0.95rem;
+  animation: list-scroll-more-bounce 1.6s ease-in-out infinite;
+}
+@keyframes list-scroll-more-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .list-scroll-more .material-icons { animation: none; }
 }
 .item-list .list-group-item {
   display: flex !important;

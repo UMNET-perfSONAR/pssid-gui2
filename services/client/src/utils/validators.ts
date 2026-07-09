@@ -253,3 +253,38 @@ export function describeCron(value: string): string {
   // Anything more elaborate: the raw expression is always accurate.
   return v;
 }
+
+/**
+ * Approximate recurrence period of a cron expression, in minutes, for sorting
+ * schedules from most to least frequent (every minute first, yearly last).
+ * Uses the same field-shape recognition as describeCron. An invalid expression
+ * sorts last (+Infinity) rather than crashing the sort.
+ */
+export function cronPeriodMinutes(value: string): number {
+  const v = (value ?? '').trim();
+  if (!validCron(v).valid) return Number.POSITIVE_INFINITY;
+  const [min, hour, dom, month, dow] = v.split(/\s+/);
+
+  const isAny = (f: string) => f === '*';
+  const isNum = (f: string) => /^\d+$/.test(f);
+  const isStep = (f: string) => /^\*\/\d+$/.test(f);
+  const stepOf = (f: string) => Number(f.split('/')[1]);
+
+  const daily = isAny(dom) && isAny(month) && isAny(dow);
+
+  if (isAny(min) && isAny(hour) && daily) return 1;                    // every minute
+  if (isStep(min) && isAny(hour) && daily) return stepOf(min);         // every N minutes
+  if (isNum(min) && isAny(hour) && daily) return 60;                   // once an hour
+  if (isNum(min) && isStep(hour) && daily) return stepOf(hour) * 60;   // every N hours
+  if (isNum(min) && isNum(hour) && daily) return 1440;                 // once a day
+  if (isNum(min) && isNum(hour) && isAny(dom) && isAny(month) && isNum(dow)) return 1440 * 7;    // weekly
+  if (isNum(min) && isNum(hour) && isNum(dom) && isAny(month) && isAny(dow)) return 1440 * 30;   // monthly
+  if (isNum(min) && isNum(hour) && isNum(dom) && isNum(month) && isAny(dow)) return 1440 * 365;  // yearly
+
+  // Anything more elaborate (comma lists, ranges, steps on other fields): use
+  // the finest-grained step present as a reasonable proxy, else treat it as
+  // roughly daily so it still sorts among the mid-frequency schedules.
+  if (isStep(min)) return stepOf(min);
+  if (isStep(hour)) return stepOf(hour) * 60;
+  return 1440;
+}
