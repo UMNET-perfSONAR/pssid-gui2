@@ -72,10 +72,8 @@
     <dynamic_add_data :addedData="dynamic_options"></dynamic_add_data>
   </div> <!-- end of optional -->
 
-  <div class="panel-actions">
+  <div v-if="showSubmit" class="panel-actions">
     <button class="btn btn-success" @click="editCurItem" :disabled="submitDisabled"> {{ submitLabel }} </button>
-    <button type="button" class="btn btn-secondary" @click.prevent="cancelEdit"> Cancel </button>
-    <button type="button" class="btn btn-danger push-right" @click.prevent="deleteCurItem"> Delete </button>
   </div>
 </template>
 
@@ -84,13 +82,13 @@
  import dynamic_add_data from './dynamic_add_data.vue';
 
  export default {
-   emits: ['deleteItem', 'editItem', 'cancel'],
+   emits: ['editItem'],
    components: { VueMultiselect, dynamic_add_data },
    data() {
      return {
        input_fields: [],
      }
-   },   
+   },
    watch: {
      current_item() {
        this.setUpData();
@@ -98,16 +96,8 @@
    },
    mounted() {
      this.setUpData();
-   }, 
+   },
    methods: {
-     deleteCurItem() {
-       this.$emit('deleteItem')
-     },
-
-     cancelEdit() {
-       this.$emit('cancel')
-     },
-
      editCurItem() {
        this.$emit('editItem', this.input_fields)
      },
@@ -115,7 +105,7 @@
      setUpData() {
        this.input_fields = this.current_item.spec;
      },
-   }, 
+   },
    props: {
      current_item: {
        required: true
@@ -133,9 +123,16 @@
      submitDisabled: {
        type: Boolean,
        default: false
+     },
+     // Hidden when the parent provides its own submit control (a top-of-panel
+     // button calls editCurItem through a ref instead), mirroring
+     // dynamicform.vue's showSubmit.
+     showSubmit: {
+       type: Boolean,
+       default: true
      }
    }
-   
-   
+
+
  }
 </script>

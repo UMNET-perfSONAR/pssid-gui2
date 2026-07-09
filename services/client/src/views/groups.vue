@@ -46,6 +46,17 @@
         <h3>{{ editing ? 'Edit host group' : 'New host group' }}</h3>
         <form @submit.prevent="editing ? saveChanges() : createGroup()">
           <fieldset :disabled="isDisabled">
+            <div class="panel-actions">
+              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
+                Create host group
+              </button>
+              <template v-else>
+                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
+                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
+                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+              </template>
+            </div>
+
             <div class="form-group">
               <label for="group-name"> Group name </label>
               <input
@@ -80,17 +91,6 @@
             </div>
             <label class="form-group-label"> Metadata </label>
             <dynamic_add_data :addedData="form.meta"></dynamic_add_data>
-
-            <div class="panel-actions">
-              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
-                Create host group
-              </button>
-              <template v-else>
-                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
-                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
-                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
-              </template>
-            </div>
           </fieldset>
         </form>
       </div>

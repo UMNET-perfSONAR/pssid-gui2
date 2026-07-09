@@ -46,6 +46,17 @@
         <h3>{{ editing ? 'Edit batch' : 'New batch' }}</h3>
         <form @submit.prevent="editing ? saveChanges() : createBatch()">
           <fieldset :disabled="isDisabled">
+            <div class="panel-actions">
+              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
+                Create batch
+              </button>
+              <template v-else>
+                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
+                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
+                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+              </template>
+            </div>
+
             <div class="form-group">
               <label for="batch-name"> Batch name </label>
               <input
@@ -115,17 +126,6 @@
                 v-model.number="form.priority"
               />
               <small v-if="priorityError" class="text-danger">{{ priorityError }}</small>
-            </div>
-
-            <div class="panel-actions">
-              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
-                Create batch
-              </button>
-              <template v-else>
-                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
-                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
-                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
-              </template>
             </div>
           </fieldset>
         </form>

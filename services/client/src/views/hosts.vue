@@ -46,6 +46,17 @@
         <h3>{{ editing ? 'Edit host' : 'New host' }}</h3>
         <form @submit.prevent="editing ? saveChanges() : createHost()">
           <fieldset :disabled="isDisabled">
+            <div class="panel-actions">
+              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
+                Create host
+              </button>
+              <template v-else>
+                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
+                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
+                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+              </template>
+            </div>
+
             <div class="form-group">
               <label for="host-name"> Hostname </label>
               <input
@@ -74,17 +85,6 @@
             </div>
             <label class="form-group-label"> Metadata </label>
             <dynamic_add_data :addedData="form.meta"></dynamic_add_data>
-
-            <div class="panel-actions">
-              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
-                Create host
-              </button>
-              <template v-else>
-                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
-                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
-                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
-              </template>
-            </div>
           </fieldset>
         </form>
       </div>

@@ -45,6 +45,17 @@
         <h3>{{ editing ? 'Edit job' : 'New job' }}</h3>
         <form @submit.prevent="editing ? saveChanges() : createJob()">
           <fieldset :disabled="isDisabled">
+            <div class="panel-actions">
+              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
+                Create job
+              </button>
+              <template v-else>
+                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
+                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
+                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+              </template>
+            </div>
+
             <div class="form-group">
               <label for="job-name"> Job name </label>
               <input
@@ -94,17 +105,6 @@
                 v-model="form.backoff"
               />
               <small v-if="backoffError" class="text-danger">{{ backoffError }}</small>
-            </div>
-
-            <div class="panel-actions">
-              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
-                Create job
-              </button>
-              <template v-else>
-                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
-                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
-                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
-              </template>
             </div>
           </fieldset>
         </form>

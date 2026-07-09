@@ -45,6 +45,12 @@
       <div class="col-md-6" v-if="!editing">
         <h3> New test </h3>
         <fieldset :disabled="isDisabled">
+          <div class="panel-actions">
+            <button type="button" class="btn btn-success" @click="submitCreateTest" :disabled="!addTestValid">
+              Create test
+            </button>
+          </div>
+
           <div class="form-group">
             <label for="test-name"> Test name </label>
             <input
@@ -77,16 +83,17 @@
             </small>
           </div>
 
-          <!-- Template-driven fields for the chosen type; the form's own
-               "Create test" button is the only way to save. -->
+          <!-- Template-driven fields for the chosen type; the "Create test"
+               button above triggers this form's validation/submit via ref. -->
           <div v-if="showForm===true">
             <dynamicform
+              ref="createTestFormRef"
               @formData="createTest"
               :form_layout="allTestOptions"
               :current_item="selected_test"
               :optional_data="addedOptionalData"
-              submit-label="Create test"
               :submit-disabled="!addTestValid"
+              :show-submit="false"
             >
             </dynamicform>
           </div>
@@ -97,6 +104,12 @@
       <div class="col-md-6" v-else>
         <h3> Edit test </h3>
         <fieldset :disabled="isDisabled">
+          <div class="panel-actions">
+            <button type="button" class="btn btn-success" @click="submitEditTest" :disabled="!editTestValid"> Save changes </button>
+            <button type="button" class="btn btn-secondary" @click="closeToAdd"> Cancel </button>
+            <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+          </div>
+
           <div class="form-group">
             <label for="edit-test-name"> Test name </label>
             <input
@@ -131,29 +144,25 @@
           <!-- Same type as saved: edit the saved field values. -->
           <div v-if="viewType===origType">
             <editFormComp
+              ref="editFormRef"
               :current_item="currentItem"
               @editItem="saveChanges"
-              @deleteItem="requestDelete"
-              @cancel="closeToAdd"
               :dynamic_options="currOptionalData"
-              submit-label="Save changes"
               :submit-disabled="!editTestValid"
+              :show-submit="false"
             > </editFormComp>
           </div>
           <!-- Type changed: fill in the new type's fields from its template. -->
           <div v-else>
             <dynamicform
+              ref="editTypeChangedFormRef"
               :form_layout="allTestOptions"
               @formData="saveChanges"
               :optional_data="currOptionalData"
-              submit-label="Save changes"
               :submit-disabled="!editTestValid"
+              :show-submit="false"
             >
             </dynamicform>
-            <div class="panel-actions">
-              <button type="button" class="btn btn-secondary" @click="closeToAdd"> Cancel </button>
-              <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
-            </div>
           </div>
         </fieldset>
       </div>
@@ -264,6 +273,25 @@
        return this.testStore.tests.some(
          (t) => t.name === trimmed && t.name !== this.selectedName
        );
+     },
+
+     // The top "Create test" button triggers the dynamic form's own
+     // validation/submit through a ref, since the fields (and what counts as
+     // valid) are only known once a test type's template is loaded.
+     submitCreateTest() {
+       if (!this.addTestValid) return;
+       this.$refs.createTestFormRef?.handleFormSubmit();
+     },
+
+     // The top "Save changes" button triggers whichever child form is active:
+     // the saved type's own editor, or the dynamic form for a newly chosen type.
+     submitEditTest() {
+       if (!this.editTestValid) return;
+       if (this.viewType === this.origType) {
+         this.$refs.editFormRef?.editCurItem();
+       } else {
+         this.$refs.editTypeChangedFormRef?.handleFormSubmit();
+       }
      },
 
      // "+ New test" in the page header: open a blank form. If the blank form

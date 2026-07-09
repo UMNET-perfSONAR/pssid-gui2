@@ -51,6 +51,17 @@
         <h3>{{ editing ? 'Edit SSID profile' : 'New SSID profile' }}</h3>
         <form @submit.prevent="editing ? saveChanges() : createProfile()">
           <fieldset :disabled="isDisabled">
+            <div class="panel-actions">
+              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
+                Create SSID profile
+              </button>
+              <template v-else>
+                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
+                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
+                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
+              </template>
+            </div>
+
             <div class="form-group">
               <label for="ssid-profile-name"> Profile name </label>
               <input
@@ -89,17 +100,6 @@
                 <option value="" disabled>-- Select Layer 3 Method --</option>
                 <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
               </select>
-            </div>
-
-            <div class="panel-actions">
-              <button v-if="!editing" type="submit" class="btn btn-success" :disabled="!formValid">
-                Create SSID profile
-              </button>
-              <template v-else>
-                <button type="submit" class="btn btn-success" :disabled="!formValid"> Save changes </button>
-                <button type="button" class="btn btn-secondary" @click="requestClose"> Cancel </button>
-                <button type="button" class="btn btn-danger push-right" @click="requestDelete"> Delete </button>
-              </template>
             </div>
           </fieldset>
         </form>
