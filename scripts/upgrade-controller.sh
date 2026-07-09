@@ -43,6 +43,26 @@ echo "==> Building the GUI images"
 echo "==> Restarting changed containers in $CONTROLLER_DIR"
 (cd "$CONTROLLER_DIR" && docker compose up -d)
 
+# Force the GUI containers to pick up the freshly built images. A plain `up -d`
+# only recreates a container when compose notices the image changed, and the
+# client serves its source through Vite, which does not reliably notice a
+# rebuild without a fresh container. Recreate exactly the services that use our
+# locally built pssid-gui2_*:latest images, so other controller services (the
+# daemon, etc.) are left untouched.
+gui_services="$(cd "$CONTROLLER_DIR" && docker compose config 2>/dev/null \
+  | awk '/^services:/{s=1;next} s&&/^  [^[:space:]]/{svc=$1;sub(/:$/,"",svc)} s&&/image:[[:space:]]*pssid-gui2_/{print svc}')"
+if [ -n "$gui_services" ]; then
+  # shellcheck disable=SC2086
+  echo "    recreating GUI services: $gui_services"
+  (cd "$CONTROLLER_DIR" && docker compose up -d --force-recreate $gui_services)
+else
+  echo "    WARNING: could not confirm $CONTROLLER_DIR uses the locally built" >&2
+  echo "    pssid-gui2_*:latest images. If the site did not change, the controller" >&2
+  echo "    compose is still pointing at the published images: add a" >&2
+  echo "    docker-compose.override.yml that maps its GUI services to those image" >&2
+  echo "    names (see docs/deployment.md), then re-run this script." >&2
+fi
+
 echo "==> Waiting for the server health check"
 urls=("${PSSID_HEALTH_URL:-}" "https://localhost/api/health" "http://localhost/api/health" "http://localhost:8080/api/health")
 healthy=""

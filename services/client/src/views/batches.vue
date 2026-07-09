@@ -96,6 +96,20 @@
               </VueMultiselect>
             </div>
             <div class="form-group">
+              <label for="batch-priority"> Priority </label>
+              <input
+                type="number"
+                id="batch-priority"
+                placeholder="0"
+                min="0"
+                class="form-control"
+                v-model.number="form.priority"
+                :aria-invalid="priorityError ? 'true' : 'false'"
+                :aria-describedby="priorityError ? 'batch-priority-error' : null"
+              />
+              <small v-if="priorityError" id="batch-priority-error" class="text-danger" role="alert">{{ priorityError }}</small>
+            </div>
+            <div class="form-group">
               <label id="batch-jobs-label"> Jobs (run in the listed order) </label>
               <VueMultiselect
                 v-model="form.jobs"
@@ -116,20 +130,6 @@
                 aria-labelledby="batch-schedules-label"
               >
               </VueMultiselect>
-            </div>
-            <div class="form-group">
-              <label for="batch-priority"> Priority </label>
-              <input
-                type="number"
-                id="batch-priority"
-                placeholder="0"
-                min="0"
-                class="form-control"
-                v-model.number="form.priority"
-                :aria-invalid="priorityError ? 'true' : 'false'"
-                :aria-describedby="priorityError ? 'batch-priority-error' : null"
-              />
-              <small v-if="priorityError" id="batch-priority-error" class="text-danger" role="alert">{{ priorityError }}</small>
             </div>
           </fieldset>
         </form>

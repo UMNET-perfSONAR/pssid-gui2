@@ -147,6 +147,25 @@ ok "compose command: $COMPOSE"
 command -v openssl >/dev/null 2>&1 || die "openssl is required (for cert/secret generation)."
 ok "openssl found"
 
+# Disk space: building the images pulls several base images (node, mongo, nginx,
+# certbot) and runs two npm installs, which needs several GB free on Docker's
+# storage. Without this check a small or full disk fails deep in the build with a
+# cryptic "no space left on device" (containerd) error, so check up front.
+DOCKER_ROOT="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+[ -n "$DOCKER_ROOT" ] && [ -d "$DOCKER_ROOT" ] || DOCKER_ROOT="/var/lib/docker"
+[ -d "$DOCKER_ROOT" ] || DOCKER_ROOT="/"
+FREE_KB="$(df -Pk "$DOCKER_ROOT" 2>/dev/null | awk 'NR==2{print $4}')"
+if [ -n "${FREE_KB:-}" ]; then
+  FREE_GB=$(( FREE_KB / 1024 / 1024 ))
+  if [ "$FREE_KB" -lt 6291456 ]; then          # < 6 GiB: the build will almost certainly fail
+    die "Only ${FREE_GB} GB free on ${DOCKER_ROOT} (Docker storage). The image build needs about 8-10 GB. Free space with 'docker system prune -af' or grow the disk, then re-run."
+  elif [ "$FREE_KB" -lt 12582912 ]; then       # < 12 GiB: tight, warn but continue
+    warn "Only ${FREE_GB} GB free on ${DOCKER_ROOT}; the image build is tight on space. If it fails with 'no space left on device', free space ('docker system prune -af') or grow the disk."
+  else
+    ok "disk space: ${FREE_GB} GB free on ${DOCKER_ROOT}"
+  fi
+fi
+
 # Warn (do not fail) on busy ports. Only nginx publishes ports to the host
 # (80/443); everything else stays on the internal Docker network.
 check_port() {

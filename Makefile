@@ -11,7 +11,7 @@ EDITION ?= $(shell [ -f .env ] && sed -n 's/^EDITION=//p' .env || echo default)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install deploy upgrade up down restart logs ps build dev dev-down \
+.PHONY: help install deploy upgrade refresh up down restart logs ps build dev dev-down \
         seed-demo seed-defaults edition-umich edition-default backup restore \
         doctor clean test smoke
 
@@ -28,6 +28,13 @@ deploy: ## Full automated deployment via Ansible (Docker, certs, stack, backups)
 
 upgrade: ## Upgrade in place: backup, pull latest, rebuild, verify
 	@cd ansible && ansible-playbook upgrade.yml
+
+refresh: ## Apply pulled source to a RUNNING repo stack (rebuild + recreate client & server, keeps DB up)
+	@echo "Rebuilding client and server images (edition: $(EDITION))..."
+	@EDITION=$(EDITION) $(PROD) build client server
+	@echo "Recreating the client and server containers..."
+	@EDITION=$(EDITION) $(PROD) up -d --no-deps --force-recreate client server
+	@echo "Done. The new code is live. Hard-refresh the browser: Ctrl/Cmd+Shift+R."
 
 up: ## Start the production stack (HTTPS/nginx)
 	@EDITION=$(EDITION) $(PROD) up -d
@@ -100,6 +107,13 @@ doctor: ## Check prerequisites and port availability
 		if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$$p "; then \
 			echo "  !   port $$p in use"; else echo "  ok  port $$p free"; fi; \
 	done
+	@root=$$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker); \
+	 free=$$(df -Pk "$$root" 2>/dev/null | awk 'NR==2{print int($$4/1024/1024)}'); \
+	 if [ -n "$$free" ]; then \
+		if [ "$$free" -lt 6 ]; then echo "  ERR disk: only $${free} GB free on $$root (build needs ~8-10 GB)"; \
+		elif [ "$$free" -lt 12 ]; then echo "  !   disk: $${free} GB free on $$root (tight for the build)"; \
+		else echo "  ok  disk: $${free} GB free on $$root"; fi; \
+	 fi
 
 clean: ## Stop stack and remove volumes (DANGER: deletes data)
 	@$(PROD) down -v

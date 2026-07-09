@@ -212,7 +212,7 @@ The Makefile wraps the common commands:
 validator. `make smoke` runs `scripts/smoke-test.sh` against a live stack
 (default `http://localhost:8888`; pass `SMOKE_URL=https://host` for another):
 it creates its own objects, exercises create/read/update/delete on every
-collection, the settings toggle, the provision preview, and reference cleanup
+collection, the settings endpoint, the config preview, and reference cleanup
 on delete, then removes everything it created. The smoke test needs a
 writable stack; it aborts with instructions when the target is read-only.
 
@@ -229,7 +229,7 @@ This loads the canonical sample dataset through
 GUI forms and config generator: SSID profiles include their layer 2 and layer 3
 methods, tests use the dynamic-form `spec` array shape, jobs use the daemon's
 string fields, host metadata is stored as objects, and host regexes are arrays.
-After seeding, use Settings > Provisioning tools to preview or provision the
+After seeding, use Settings > Configuration > Preview to inspect and validate the
 generated files.
 
 The old [`scripts/seed-config-demo.sh`](../scripts/seed-config-demo.sh) command
@@ -380,31 +380,29 @@ so treat the placeholder convention above as provisional.
 ## Provisioning and automation
 
 Everything you create in the GUI (hosts, host groups, schedules, SSID profiles,
-tests, jobs, and batches) is stored in MongoDB. Provisioning turns that into the
-files the probes use and sends them out: it writes `hosts.ini` (the Ansible
-inventory) and `pssid_config.json` (the merged daemon configuration), then runs
-`bin/provision`, which uses Ansible to copy the config to the probes and restart
-the daemon. This is implemented in
-[`create_config_file()`](../services/server/src/services/config.service.ts).
+tests, jobs, and batches) is stored in MongoDB. The server turns that into the
+files the probes use: `pssid_config.json` (the merged daemon configuration) and
+`hosts.ini` (the Ansible inventory), built by
+[`build_config_payload()`](../services/server/src/services/config.service.ts) and
+validated against the daemon's rules before they are emitted.
 
-By default this is manual: use Configure selected host or Configure selected group
-on the Hosts or Groups page, or Provision now on the Settings page. You can also
-turn on Auto-provision on change in Settings, after which a successful edit to any
-collection that affects the daemon regenerates the config and pushes it without a
-manual step.
+You can inspect the generated files in the GUI under **Settings > Configuration >
+Preview**, which builds and validates them from the current database state without
+writing anything to disk. This is the guarantee the GUI can make: that the config
+file it generates is well-formed and passes the same checks the daemon enforces.
 
-When automatic provisioning is on:
+Delivering those files to real probes is a separate step performed by
+`bin/provision` (an Ansible-based script that copies the config out and restarts
+the daemon). The copy shipped in this repository,
+`services/server/starters/provision`, is a placeholder that only logs; a
+deployment must drop a real provision script at the path in `paths_config.json`
+(`/usr/lib/exec/pssid/provision`) for provisioning to reach the probes. Until
+then the GUI's job ends at generating and validating a correct config file.
 
-- It stays off until someone enables it.
-- Rapid edits are grouped into a single run using a short window of about five
-  seconds, so a burst of changes does not start a series of Ansible runs. If a run
-  is already in progress, the next one waits rather than overlapping.
-- Automatic runs follow the same path as manual ones, including the on-disk
-  re-check of each SSID profile's layer 2 and layer 3 methods.
-- Turning the setting on or off requires write access.
-
-The setting is stored in the Mongo `settings` collection and served at `GET` and
-`PUT /api/settings`.
+The generation entry point (`create_config_file()`) and the `settings`
+collection's `autoProvision` flag (served at `GET`/`PUT /api/settings`) remain in
+the server for when a real provision script is in place, but the GUI no longer
+exposes per-item provision buttons or an auto-provision toggle.
 
 For working on the code itself, the development stack reloads the client and
 server as you edit:
