@@ -14,11 +14,11 @@
     <template v-else>
       <section class="settings-card" aria-labelledby="tools-title">
         <div class="settings-card-head">
-          <span class="material-icons settings-card-icon" aria-hidden="true">cloud_upload</span>
+          <span class="material-icons settings-card-icon" aria-hidden="true">fact_check</span>
           <div>
-            <h3 id="tools-title" class="settings-card-title">Provisioning</h3>
+            <h3 id="tools-title" class="settings-card-title">Configuration</h3>
             <p class="settings-card-desc">
-              Inspect the current generated configuration.
+              Verify the config file generated from your current setup.
             </p>
           </div>
         </div>
@@ -28,7 +28,8 @@
             <div class="setting-name">Preview generated files</div>
             <div class="setting-sub">
               Builds <code>pssid_config.json</code> and <code>hosts.ini</code> from the
-              current database state without writing files or running the provision script.
+              current database state and checks them against the same rules the daemon
+              enforces, without writing anything to disk.
             </div>
           </div>
           <button
@@ -42,10 +43,15 @@
           </button>
         </div>
 
+        <p v-if="settingsStore.previewError" class="preview-error" role="alert">
+          <span class="material-icons" aria-hidden="true">error</span>
+          {{ settingsStore.previewError }}
+        </p>
+
         <div v-if="settingsStore.preview" class="preview-result" aria-live="polite">
-          <div class="preview-status" :class="settingsStore.preview.changed ? 'changed' : 'unchanged'">
-            <span class="material-icons" aria-hidden="true">{{ settingsStore.preview.changed ? 'sync_problem' : 'check_circle' }}</span>
-            <span>{{ previewStatusText }}</span>
+          <div class="preview-status valid">
+            <span class="material-icons" aria-hidden="true">check_circle</span>
+            <span>This configuration is valid: it passes the same checks the daemon enforces.</span>
           </div>
 
           <div class="preview-tabs" role="tablist" aria-label="Preview file">
@@ -99,19 +105,6 @@ export default {
       return this.previewTab === 'config'
         ? this.settingsStore.preview.proposed.config
         : this.settingsStore.preview.proposed.inventory;
-    },
-    previewStatusText() {
-      const preview = this.settingsStore.preview;
-      if (!preview) return '';
-      const hasCurrent = !!preview.current.config || !!preview.current.inventory;
-
-      if (!hasCurrent) {
-        return 'No deployed config was found. This preview shows what the first provision will write.';
-      }
-
-      return preview.changed
-        ? 'The generated files differ from what is currently deployed.'
-        : 'The generated files match what is currently deployed.';
     },
   },
   async mounted() {
@@ -222,15 +215,27 @@ export default {
   font-size: 1.15rem;
   flex-shrink: 0;
 }
-.preview-status.changed {
-  background: var(--warn-soft-bg);
-  color: var(--warn-soft-fg);
-  border: 1px solid var(--warn-soft-bd);
-}
-.preview-status.unchanged {
+.preview-status.valid {
   background: var(--ok-soft-bg);
   color: var(--ok-soft-fg);
   border: 1px solid var(--ok-soft-bd);
+}
+.preview-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg);
+  border: 1px solid var(--warn-soft-bd);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.9rem;
+  margin: 0.75rem 0 0;
+  white-space: pre-line;
+}
+.preview-error .material-icons {
+  font-size: 1.1rem;
+  flex-shrink: 0;
 }
 .preview-tabs {
   display: flex;

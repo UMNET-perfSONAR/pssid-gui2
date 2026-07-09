@@ -241,7 +241,7 @@ body * {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--muted) !important;
-  margin-bottom: 0.875rem !important;
+  margin-bottom: 0.4375rem !important;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border);
 }
@@ -616,8 +616,8 @@ fieldset[disabled] .form-control {
 }
 
 /* ─── Editor panel actions ───────────────────────────────────────
-   The one row of buttons at the bottom of every New/Edit form, in a fixed
-   order everywhere: primary save action first (Create <thing> / Save
+   The one row of buttons right under the heading of every New/Edit form, in a
+   fixed order everywhere: primary save action first (Create <thing> / Save
    changes), then Cancel, with Delete pushed to the far side so a destructive
    click is never a near-miss of Save. */
 .panel-actions {
@@ -625,7 +625,7 @@ fieldset[disabled] .form-control {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
   margin-bottom: 1rem;
 }
 .panel-actions .push-right {

@@ -4,8 +4,6 @@ import { useToastStore } from './toast.store'
 
 interface ConfigPreview {
   proposed: { config: string; inventory: string };
-  current: { config: string | null; inventory: string | null };
-  changed: boolean;
 }
 
 function authOptions(): RequestInit {
@@ -29,6 +27,10 @@ export const useSettingsStore = defineStore('settings', {
     isLoading: false,
     preview: null as ConfigPreview | null,
     previewLoading: false,
+    // Set when the current database state would generate an invalid config
+    // (the specific daemon-validation problem), instead of a toast that
+    // disappears - this is the one thing the GUI can tell you for certain.
+    previewError: '',
   }),
 
   actions: {
@@ -54,17 +56,18 @@ export const useSettingsStore = defineStore('settings', {
       try {
         this.previewLoading = true;
         this.preview = null;
+        this.previewError = '';
         const res = await fetch('/api/provision/preview', authOptions());
         if (!res.ok) {
-          throw new Error(await responseMessage(res, 'Failed to build preview'));
+          // A validation failure (422) is a real, specific answer, not an
+          // error to toast and forget - show it inline so it stays visible.
+          this.previewError = await responseMessage(res, 'Failed to build preview');
+          return;
         }
         this.preview = await res.json();
       } catch (err) {
         console.error(err);
-        useToastStore().show(
-          err instanceof Error ? err.message : 'Failed to build preview',
-          'error'
-        );
+        this.previewError = 'Failed to build preview';
       } finally {
         this.previewLoading = false;
       }
