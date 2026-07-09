@@ -110,20 +110,51 @@
       </p>
 
       <template v-else-if="hostStore.probeConfig">
-        <p class="probe-config-summary">
-          Groups: <strong>{{ hostStore.probeConfig.groups.join(', ') || 'none' }}</strong>
-          &nbsp;·&nbsp; Batches: <strong>{{ hostStore.probeConfig.batches.map(b => b.name).join(', ') || 'none' }}</strong>
-          &nbsp;·&nbsp; Config version {{ hostStore.probeConfig.config_version }}
+        <!-- Problems scoped to THIS host only: references in its own batches
+             that do not resolve. Unrelated broken data elsewhere is not shown. -->
+        <div
+          v-if="hostStore.probeConfig.problems && hostStore.probeConfig.problems.length"
+          class="probe-config-warning"
+          role="alert"
+        >
+          <p class="probe-config-warning-head">
+            <span class="material-icons" aria-hidden="true">warning</span>
+            Fix {{ hostStore.probeConfig.problems.length }}
+            {{ hostStore.probeConfig.problems.length === 1 ? 'issue' : 'issues' }}
+            before <strong>{{ selectedName }}</strong> can be provisioned:
+          </p>
+          <ul class="probe-config-warning-list">
+            <li v-for="(problem, i) in hostStore.probeConfig.problems" :key="i">{{ problem }}</li>
+          </ul>
+        </div>
+
+        <p
+          v-if="!hostStore.probeConfig.batches.length && !(hostStore.probeConfig.problems && hostStore.probeConfig.problems.length)"
+          class="probe-config-empty"
+        >
+          {{ selectedName }} is not assigned to any batch yet, so it will not run any tests.
+          Assign a batch above to give it work.
         </p>
-        <ul class="probe-batch-list">
-          <li v-for="b in hostStore.probeConfig.batches" :key="b.name">
-            <strong>{{ b.name }}</strong> (priority {{ b.priority }}) runs
-            <template v-for="(j, i) in b.jobs" :key="j.name">
-              <span class="probe-job">{{ i + 1 }}. {{ j.name }}</span><template v-if="i < b.jobs.length - 1">, then </template>
-            </template>
-          </li>
-        </ul>
-        <pre class="probe-config-pre">{{ JSON.stringify(hostStore.probeConfig, null, 2) }}</pre>
+
+        <template v-else>
+          <p class="probe-config-summary">
+            Groups: <strong>{{ hostStore.probeConfig.groups.join(', ') || 'none' }}</strong>
+            &nbsp;·&nbsp; Batches: <strong>{{ hostStore.probeConfig.batches.map(b => b.name).join(', ') || 'none' }}</strong>
+            &nbsp;·&nbsp; Config version {{ hostStore.probeConfig.config_version }}
+          </p>
+          <ul class="probe-batch-list">
+            <li v-for="b in hostStore.probeConfig.batches" :key="b.name">
+              <strong>{{ b.name }}</strong> (priority {{ b.priority }}) runs
+              <template v-if="b.jobs.length">
+                <template v-for="(j, i) in b.jobs" :key="j.name">
+                  <span class="probe-job">{{ i + 1 }}. {{ j.name }}</span><template v-if="i < b.jobs.length - 1">, then </template>
+                </template>
+              </template>
+              <span v-else class="probe-job-none">no jobs</span>
+            </li>
+          </ul>
+          <pre class="probe-config-pre">{{ JSON.stringify(probeConfigForDisplay, null, 2) }}</pre>
+        </template>
       </template>
     </div>
 
@@ -220,6 +251,14 @@
      },
      formValid() {
        return validHostOrIp(this.form.name).valid && !this.isDuplicateName;
+     },
+     // The JSON dump should mirror the slice of pssid_config.json this host acts
+     // on, so drop `problems` - it is a GUI-only annotation, not part of the
+     // config the daemon receives. Those are already shown in the warning banner.
+     probeConfigForDisplay() {
+       if (!this.hostStore.probeConfig) return null;
+       const { problems, ...config } = this.hostStore.probeConfig;
+       return config;
      }
    },
 
@@ -430,6 +469,44 @@
 .probe-config-error .material-icons {
   font-size: 1.1rem;
   flex-shrink: 0;
+}
+/* Per-host warning: this host's own batches have unresolved references. Same
+   amber palette as the error banner, but it sits ABOVE a config that still
+   renders, rather than replacing it. */
+.probe-config-warning {
+  font-size: 0.82rem;
+  color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg);
+  border: 1px solid var(--warn-soft-bd);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.9rem;
+  margin: 0 0 0.85rem;
+}
+.probe-config-warning-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  font-weight: 600;
+}
+.probe-config-warning-head .material-icons {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.probe-config-warning-list {
+  margin: 0.4rem 0 0;
+  padding-left: 2.05rem;
+}
+.probe-config-warning-list li {
+  padding: 0.05rem 0;
+}
+.probe-config-empty {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0;
+}
+.probe-job-none {
+  font-style: italic;
 }
 .probe-config-pre {
   margin: 0;

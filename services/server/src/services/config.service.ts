@@ -171,13 +171,23 @@ export function formatTestSpec(spec: Array<any>, testName: string = '') {
  * This function extracts the name and type of a test and calls formatTestSpec to
  * extract the spec field.
  */
-export async function formatTestData(test_data: Array<any>) {
+export async function formatTestData(test_data: Array<any>, lenient = false) {
   const formatted_data_array: any = [];
   test_data.forEach((test) => {
     const formatted_test: any = {};
     formatted_test['name'] = test.name;
     formatted_test['type'] = test.type;
-    formatted_test['spec'] = formatTestSpec(test.spec, test.name);
+    try {
+      formatted_test['spec'] = formatTestSpec(test.spec, test.name);
+    } catch (err) {
+      // The strict provision path (lenient=false, the default) rejects a
+      // malformed spec so a broken test never ships to a probe. The read-only
+      // per-host view passes lenient=true so ONE broken test elsewhere cannot
+      // blank out the config view of a host that does not even use it; the raw
+      // spec is kept as-is for display.
+      if (!lenient) throw err;
+      formatted_test['spec'] = test.spec;
+    }
     formatted_data_array.push(formatted_test);
   });
   const formatted_data = {"tests": formatted_data_array};
@@ -467,15 +477,21 @@ export function applyMetadata(host_data: any, host_group_data: any) {
 }
 
 /**
- * Builds the daemon config (pssid_config.json) and ansible inventory (hosts.ini)
- * from the current database state, WITHOUT writing them or running provision.
- * Shared by create_config_file (the real provision) and the dry-run preview.
+ * Assembles the full config object from the current database state, WITHOUT the
+ * global daemon validation (assertDaemonValid) and without serializing. Both the
+ * real provision (build_config_payload) and the read-only per-host view
+ * (build_host_view) build on this; they differ only in how strictly they then
+ * validate. Passing `lenientTests` keeps a malformed test spec best-effort
+ * instead of throwing, so one broken test cannot blank out the view of a host
+ * that does not even use it.
+ *
  * @param meta - caller/caller_role recorded in the config's pssid_metadata block.
- * @returns the proposed config + inventory as strings
+ * @param opts.lenientTests - do not throw on a malformed test spec (read-only views).
  */
-export async function build_config_payload(
-  meta: { caller?: string; caller_role?: string } = {}
-): Promise<{ config: string; inventory: string }> {
+async function assemble_config_object(
+  meta: { caller?: string; caller_role?: string } = {},
+  opts: { lenientTests?: boolean } = {}
+): Promise<any> {
   get_paths();
   const client = await connectToMongoDB();
   const host_data = await get_collection(client, "hosts");
@@ -488,19 +504,34 @@ export async function build_config_payload(
   sanitizeSsidMethods(ssid_data);
   applyMetadata(host_data, host_group_data);
   const test_data = await get_collection(client, "tests");
-  const formatted_test_data = await formatTestData(test_data.tests);
+  const formatted_test_data = await formatTestData(test_data.tests, opts.lenientTests);
   // pssid_metadata first so it heads the generated file as a provenance header,
   // sitting at the same level as the array collections below it.
-  const obj = Object.assign({},
-                            buildMetadata(meta),
-                            host_data,
-                            host_group_data,
-                            schedule_data,
-                            ssid_data, formatted_test_data,
-                            job_data, batch_data);
+  return Object.assign({},
+                       buildMetadata(meta),
+                       host_data,
+                       host_group_data,
+                       schedule_data,
+                       ssid_data, formatted_test_data,
+                       job_data, batch_data);
+}
+
+/**
+ * Builds the daemon config (pssid_config.json) and ansible inventory (hosts.ini)
+ * from the current database state, WITHOUT writing them or running provision.
+ * Shared by create_config_file (the real provision) and the dry-run preview.
+ * @param meta - caller/caller_role recorded in the config's pssid_metadata block.
+ * @returns the proposed config + inventory as strings
+ */
+export async function build_config_payload(
+  meta: { caller?: string; caller_role?: string } = {}
+): Promise<{ config: string; inventory: string }> {
+  const obj = await assemble_config_object(meta);
 
   // Read-only pre-flight: throws on data that would crash/reject at the daemon.
-  // No-op (and config bytes unchanged) when the data is valid.
+  // No-op (and config bytes unchanged) when the data is valid. This validates
+  // the WHOLE config on purpose: the daemon receives one file, so a single
+  // broken batch anywhere makes the entire provision invalid.
   assertDaemonValid(obj);
 
   const inventory = buildIniContent(obj);
@@ -532,11 +563,29 @@ export function matchesHostPattern(pattern: string, hostname: string): boolean {
  * SSID profiles expanded in place. The daemon receives the whole
  * pssid_config.json; this is a read-only view of what this host does with it.
  * Returns null when the host does not exist.
+ *
+ * This deliberately does NOT run the whole-config validation (assertDaemonValid).
+ * That check spans every batch in the database, so a batch broken elsewhere - one
+ * this host is not even assigned to - would otherwise blank out this host's view
+ * with an error about unrelated data. Instead we assemble leniently and validate
+ * ONLY the references this host's own batches pull in, returning them as a
+ * `problems` list so the UI can flag this host specifically. Whole-config
+ * validity is still enforced on the provision / preview path (build_config_payload).
  */
 export async function build_host_view(hostname: string): Promise<any | null> {
-  const { config } = await build_config_payload();
-  const obj = JSON.parse(config);
+  const obj = await assemble_config_object({}, { lenientTests: true });
+  // Strip the internal *_ids reference arrays so the view mirrors the deployed
+  // config shape (build_config_payload does the same before serializing).
+  removeIdsProperties(obj);
+  return sliceHostView(obj, hostname);
+}
 
+/**
+ * Pure host-scoping step of build_host_view: given an already-assembled config
+ * object, produce the single host's view + its own `problems` list. Split out
+ * from the database plumbing so the scoping/validation logic is unit-testable.
+ */
+export function sliceHostView(obj: any, hostname: string): any | null {
   const host = (obj.hosts ?? []).find((h: any) => h.name === hostname);
   if (!host) return null;
 
@@ -545,6 +594,7 @@ export async function build_host_view(hostname: string): Promise<any | null> {
     (g.hosts_regex ?? []).some((p: string) => matchesHostPattern(p, hostname))
   );
 
+  // Batches this host runs: its own, plus any from the groups it belongs to.
   const batchNames = new Set<string>(host.batches ?? []);
   for (const g of groups) {
     for (const b of g.batches ?? []) batchNames.add(b);
@@ -556,27 +606,62 @@ export async function build_host_view(hostname: string): Promise<any | null> {
   const jobs = byName(obj.jobs);
   const tests = byName(obj.tests);
   const profiles = byName(obj.ssid_profiles);
+  const definedBatches = byName(obj.batches);
 
-  const batches = (obj.batches ?? [])
-    .filter((b: any) => batchNames.has(b.name))
-    .map((b: any) => ({
-      ...b,
-      schedules: (b.schedules ?? []).map((n: string) => schedules.get(n) ?? { name: n }),
-      ssid_profiles: (b.ssid_profiles ?? []).map((n: string) => profiles.get(n) ?? { name: n }),
-      jobs: (b.jobs ?? []).map((n: string) => {
-        const job = jobs.get(n) ?? { name: n };
-        return {
-          ...job,
-          tests: (job.tests ?? []).map((t: string) => tests.get(t) ?? { name: t }),
-        };
-      }),
-    }));
+  // Host-scoped validation: collect only problems inside the batches THIS host
+  // runs. Anything broken elsewhere in the database is intentionally left out -
+  // it surfaces on the host that actually uses it, and on the whole-config
+  // Preview / provision path. An unresolved reference still renders (as a
+  // name-only placeholder) so the operator can see exactly what is missing.
+  const problems: string[] = [];
+
+  const batches = [...batchNames]
+    .map((name) => {
+      const b = definedBatches.get(name);
+      if (!b) {
+        problems.push(`references batch "${name}", which no longer exists`);
+        return null;
+      }
+      if (!Array.isArray(b.ssid_profiles) || b.ssid_profiles.length === 0) {
+        problems.push(`batch "${b.name}" has no SSID profiles assigned`);
+      }
+      return {
+        ...b,
+        schedules: (b.schedules ?? []).map((n: string) => {
+          const s = schedules.get(n);
+          if (!s) problems.push(`batch "${b.name}" references unknown schedule "${n}"`);
+          return s ?? { name: n };
+        }),
+        ssid_profiles: (b.ssid_profiles ?? []).map((n: string) => {
+          const p = profiles.get(n);
+          if (!p) problems.push(`batch "${b.name}" references unknown SSID profile "${n}"`);
+          return p ?? { name: n };
+        }),
+        jobs: (b.jobs ?? []).map((n: string) => {
+          const job = jobs.get(n);
+          if (!job) {
+            problems.push(`batch "${b.name}" references unknown job "${n}"`);
+            return { name: n };
+          }
+          return {
+            ...job,
+            tests: (job.tests ?? []).map((t: string) => {
+              const test = tests.get(t);
+              if (!test) problems.push(`job "${job.name}" references unknown test "${t}"`);
+              return test ?? { name: t };
+            }),
+          };
+        }),
+      };
+    })
+    .filter((b: any) => b !== null);
 
   return {
     host: host.name,
     metadata: host.metadata ?? {},
     groups: groups.map((g: any) => g.name),
     batches,
+    problems,
     config_version: obj.pssid_metadata?.config_version,
     generated_at: obj.pssid_metadata?.generated_at,
   };

@@ -11,6 +11,7 @@ import {
   sanitizeSsidMethods,
   stripConfigMetadata,
   matchesHostPattern,
+  sliceHostView,
 } from '../config.service';
 
 /**
@@ -333,5 +334,79 @@ describe('matchesHostPattern (pSSID host patterns in hosts_regex)', () => {
   it('rejects empty and non-string patterns', () => {
     expect(matchesHostPattern('', 'x')).toBe(false);
     expect(matchesHostPattern(undefined as any, 'x')).toBe(false);
+  });
+});
+
+describe('sliceHostView (per-host Probe configuration view)', () => {
+  it('returns null for a host that does not exist', () => {
+    expect(sliceHostView(validConfig(), 'ghost')).toBe(null);
+  });
+
+  it('expands the batches a host runs, with no problems when its own data is valid', () => {
+    const view = sliceHostView(validConfig(), 'probe-1');
+    expect(view.host).toBe('probe-1');
+    expect(view.problems).toEqual([]);
+    expect(view.batches.map((b: any) => b.name)).toEqual(['batch-1']);
+    // References are expanded in place, not left as bare names.
+    expect(view.batches[0].ssid_profiles[0].name).toBe('campus');
+    expect(view.batches[0].jobs[0].tests[0].name).toBe('ping-test');
+  });
+
+  it('does NOT report a batch broken elsewhere that this host is not assigned to', () => {
+    // The reported bug: an unrelated broken batch made EVERY host's Probe
+    // configuration fail with a global "Config validation failed" error.
+    const cfg = validConfig();
+    cfg.batches.push({
+      name: 'main-batch',
+      priority: 0,
+      test_interface: 'wlan0',
+      ssid_profiles: ['campus-wifi'], // does not exist
+      jobs: [],
+      schedules: [],
+    } as any);
+    // probe-1 only runs batch-1 (valid); main-batch belongs to no host here.
+    const view = sliceHostView(cfg, 'probe-1');
+    expect(view.problems).toEqual([]);
+    expect(view.batches.map((b: any) => b.name)).toEqual(['batch-1']);
+  });
+
+  it("reports a host's OWN unresolved references as scoped problems, still rendering the slice", () => {
+    const cfg = validConfig();
+    (cfg.batches[0] as any).ssid_profiles = ['campus-wifi']; // unknown profile
+    (cfg.batches[0] as any).jobs = ['nope-job'];             // unknown job
+    const view = sliceHostView(cfg, 'probe-1');
+    expect(view.problems).toEqual([
+      'batch "batch-1" references unknown SSID profile "campus-wifi"',
+      'batch "batch-1" references unknown job "nope-job"',
+    ]);
+    // The batch still renders (name-only placeholders) so the operator sees it.
+    expect(view.batches[0].ssid_profiles[0]).toEqual({ name: 'campus-wifi' });
+    expect(view.batches[0].jobs[0]).toEqual({ name: 'nope-job' });
+  });
+
+  it('flags a batch the host references that no longer exists', () => {
+    const cfg = validConfig();
+    (cfg.hosts[0] as any).batches = ['batch-1', 'deleted-batch'];
+    const view = sliceHostView(cfg, 'probe-1');
+    expect(view.problems).toContain('references batch "deleted-batch", which no longer exists');
+    // The missing batch is dropped from the rendered list; the valid one stays.
+    expect(view.batches.map((b: any) => b.name)).toEqual(['batch-1']);
+  });
+
+  it('pulls in batches from the host groups a host belongs to (by name and by pattern)', () => {
+    const cfg = validConfig();
+    cfg.batches.push({
+      name: 'group-batch',
+      priority: 1,
+      test_interface: 'wlan0',
+      ssid_profiles: ['campus'],
+      jobs: ['job-1'],
+      schedules: ['Every 1 hour'],
+    } as any);
+    (cfg.host_groups[0] as any).batches = ['group-batch'];
+    const view = sliceHostView(cfg, 'probe-1');
+    expect(view.groups).toEqual(['all']);
+    expect(view.batches.map((b: any) => b.name).sort()).toEqual(['batch-1', 'group-batch']);
+    expect(view.problems).toEqual([]);
   });
 });
