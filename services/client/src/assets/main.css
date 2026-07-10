@@ -585,7 +585,10 @@ fieldset[disabled] .form-control {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--muted);
-  background: #f8f9fb;
+  /* Page-background shade, not a hardcoded light grey: a fixed #f8f9fb reads
+     as a glaring light band on dark-mode tables. var(--bg) gives the same
+     subtle header tint in light mode and follows every theme. */
+  background: var(--bg);
   border-bottom: 2px solid var(--border) !important;
   white-space: nowrap;
 }

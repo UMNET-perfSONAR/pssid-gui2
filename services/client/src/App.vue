@@ -252,14 +252,14 @@ export default {
   position: relative;
   margin-left: 0.5rem;
 }
-/* On the always-navy navbar a near-transparent button reads as a faint
-   dark-blue lump that is easy to miss; give the resting state a clearly
-   lighter fill and border so the appearance control is visible before you
-   hover it, in every theme. */
+/* On the always-navy navbar any translucent white fill still composites to a
+   dark slate lump that is easy to miss. Use a SOLID near-white fill with the
+   navy glyph on top, so the appearance control is unmistakable at rest in
+   every theme (~13:1 against the navbar, glyph ~12:1 against the fill). */
 .theme-toggle {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  color: #fff;
+  background: #eef2f7;
+  border: 1px solid #eef2f7;
+  color: var(--primary);
   border-radius: 8px;
   width: 34px;
   height: 34px;
@@ -270,8 +270,8 @@ export default {
   transition: background .15s, border-color .15s;
 }
 .theme-toggle:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.55);
+  background: #ffffff;
+  border-color: #ffffff;
 }
 .theme-toggle .material-icons { font-size: 1.15rem; }
 
