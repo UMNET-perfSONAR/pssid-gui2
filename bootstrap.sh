@@ -80,6 +80,24 @@ install_pkgs() { # install_pkgs pkg...
 }
 
 step "Checking prerequisites"
+
+# Disk space, FIRST: the most common fresh-VM failure. Checking here gives a
+# clean one-line error before any packages are installed or Ansible runs
+# (install.sh checks again later, but by then the failure surfaces wrapped in
+# an Ansible fatal blob). Docker may not be installed yet, so fall back from
+# its storage root to /var/lib (where /var/lib/docker will live).
+DISK_TARGET="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+[ -n "$DISK_TARGET" ] && [ -d "$DISK_TARGET" ] || DISK_TARGET="/var/lib"
+[ -d "$DISK_TARGET" ] || DISK_TARGET="/"
+FREE_KB="$(df -Pk "$DISK_TARGET" 2>/dev/null | awk 'NR==2{print $4}')"
+if [ -n "${FREE_KB:-}" ]; then
+  FREE_GB=$(( FREE_KB / 1024 / 1024 ))
+  if [ "$FREE_KB" -lt 6291456 ]; then
+    die "Only ${FREE_GB} GB free on ${DISK_TARGET}. The deployment needs about 8-10 GB for Docker images. Grow the disk (or free space, e.g. 'docker system prune -af' if Docker is installed), then re-run this command."
+  fi
+  ok "disk space: ${FREE_GB} GB free on ${DISK_TARGET}"
+fi
+
 command -v git >/dev/null 2>&1 || { step "Installing git"; install_pkgs git; }
 ok "git: $(git --version | cut -d' ' -f3)"
 

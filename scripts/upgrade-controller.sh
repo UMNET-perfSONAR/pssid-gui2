@@ -31,6 +31,22 @@ if [ ! -f "$CONTROLLER_DIR/docker-compose.yml" ]; then
   exit 1
 fi
 
+# Disk preflight BEFORE anything runs (the backup below also writes an
+# archive): the rebuild pulls base images and adds build layers, and a tight
+# disk otherwise fails mid-build with a cryptic containerd "no space left on
+# device" after the backup and git pull already happened.
+DOCKER_ROOT="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)"
+[ -d "$DOCKER_ROOT" ] || DOCKER_ROOT="/"
+FREE_KB="$(df -Pk "$DOCKER_ROOT" 2>/dev/null | awk 'NR==2{print $4}')"
+if [ -n "${FREE_KB:-}" ]; then
+  FREE_GB=$(( FREE_KB / 1024 / 1024 ))
+  if [ "$FREE_KB" -lt 6291456 ]; then
+    echo "error: only ${FREE_GB} GB free on ${DOCKER_ROOT}. The rebuild needs several GB;" >&2
+    echo "free space with 'docker system prune -af' or grow the disk, then re-run." >&2
+    exit 1
+  fi
+fi
+
 echo "==> Backing up the database"
 bash "$REPO_DIR/scripts/backup.sh"
 
