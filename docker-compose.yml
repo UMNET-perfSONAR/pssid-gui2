@@ -47,8 +47,12 @@ services:
       test: ["CMD", "node", "-e", "fetch('http://localhost:8080').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
-      retries: 5
-      start_period: 40s
+      # The container compiles the production bundle at start (vue-tsc + vite
+      # build), during which nothing listens on 8080. start_period must cover
+      # the whole build on a small VM, or compose marks the client unhealthy
+      # and nginx (depends_on: service_healthy) never starts.
+      retries: 10
+      start_period: 300s
     networks:
       internal:
         aliases:

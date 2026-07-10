@@ -222,6 +222,26 @@ collection, the settings endpoint, the config preview, and reference cleanup
 on delete, then removes everything it created. The smoke test needs a
 writable stack; it aborts with instructions when the target is read-only.
 
+### How the client is served
+
+In production the client container compiles the interface (`vue-tsc && vite
+build`) **when the container starts**, then serves the resulting static bundle
+on the internal port 8080 with an SPA fallback (deep links like `/hosts`
+return the app shell). The build runs at container start rather than image
+build because two of its inputs only exist at runtime: the repo-root
+`shared/` directory (bind-mounted into the container) and the `EDITION`
+setting (inlined into the bundle by Vite).
+
+Practical consequences:
+
+- The first start, and every recreate, takes a few minutes before the site
+  answers; nginx waits for the client's health check. `make ps` shows the
+  client's health state.
+- After a `git pull`, run `make refresh` (unchanged) to apply the new code.
+  The GUI is briefly down while the bundle recompiles; the API keeps serving.
+- `make dev` is unchanged: the development stack overrides the container
+  command back to the Vite dev server for hot reload.
+
 ## Demo data
 
 Use one command for demos:
@@ -308,7 +328,8 @@ colors, product name, and logo. Two editions ship today: `default`, a neutral na
 and cyan, and `umich`, UMich navy and maize. The active edition is chosen by the
 `EDITION` value, which the installer writes to the root `.env`. You can change it
 later with `make edition-default` or `make edition-umich`, which recreate the
-client container.
+client container; the client recompiles its bundle with the new edition on
+start, so allow a few minutes before reloading the browser.
 
 To add an organization, add an entry to
 [`services/client/src/edition/editions.ts`](../services/client/src/edition/editions.ts),
@@ -396,6 +417,22 @@ You can inspect the generated files in the GUI under **Settings > Configuration 
 Preview**, which builds and validates them from the current database state without
 writing anything to disk. This is the guarantee the GUI can make: that the config
 file it generates is well-formed and passes the same checks the daemon enforces.
+Preview validates the WHOLE database at once, because the daemon receives one
+file: a single broken batch anywhere blocks Preview, even if it belongs to a
+host you are not looking at.
+
+Each host's own edit page (**Hosts > select a host > Probe configuration**)
+shows a different, narrower view: the slice of the config that ONE host
+actually runs (via
+[`build_host_view()`](../services/server/src/services/config.service.ts)),
+validated against only that host's own batches. A problem elsewhere in the
+database (a different host's broken batch) does not appear here; a problem in
+this host's own batches does, as a scoped warning, and the rest of its
+(otherwise valid) configuration still renders. This is why a host can show a
+clean Probe configuration while Preview still reports an error elsewhere in
+the database, and it is intentional: fix the flagged host to clear its own
+warning, and clear every host's warnings (or check Preview directly) before
+relying on the whole file being valid.
 
 Delivering those files to real probes is a separate step performed by
 `bin/provision` (an Ansible-based script that copies the config out and restarts
@@ -477,3 +514,18 @@ A few common issues:
 - For an SSO redirect loop, check that `BASE_URL` and `COOKIE_DOMAIN` in
   `services/server/.env` match the hostname in the browser, and that the
   provider's redirect URI is exactly `https://<host>/callback`.
+- **Client stuck restarting / nginx never starts.** The client compiles its
+  bundle at container start; if that build fails (a type error in pulled
+  source, or a missing `shared/` mount reported as
+  `Cannot find module '../shared/config'`), the container exits and restarts
+  in a loop, and on a cold start compose reports
+  `dependency failed to start: client is unhealthy`. `make logs` (or
+  `docker compose logs client`) shows the exact compiler error. Immediate
+  mitigation without changing the repo: create a `docker-compose.override.yml`
+  next to `docker-compose.yml` containing
+  `services: { client: { command: npm run dev } }` and run
+  `docker compose up -d client` (the image keeps the full toolchain precisely
+  so this works); then fix the underlying error and remove the override. On a
+  very slow machine the build can also simply outlast the health-check window,
+  aborting nginx: the client keeps building anyway, so once `make ps` shows it
+  healthy, rerun `make up`.

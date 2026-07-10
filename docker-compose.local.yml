@@ -9,6 +9,9 @@ services:
     image: pssid-gui2_client:latest
     build: ./services/client
     logging: *default-logging
+    # Development stack: run the Vite dev server (hot reload) instead of the
+    # image's default production command (build once, serve dist/ statically).
+    command: npm run dev
     environment:
       # Selects the edition (see services/client/src/edition). Override with
       # EDITION=umich in the root .env, or `make edition-umich`.
@@ -24,7 +27,8 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-      start_period: 40s
+      # The entrypoint reconciles node_modules (npm install) before Vite starts.
+      start_period: 60s
     networks:
       internal:
         aliases:

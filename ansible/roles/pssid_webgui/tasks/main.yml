@@ -131,13 +131,16 @@
       {{ 'http://localhost:8888/api/health' if pssid_gui_mode == 'dev'
          else (('http' if pssid_gui_tls == 'none' else 'https') ~ '://localhost/api/health') }}
 
+# The client compiles its production bundle at container start, so the first
+# start after a deploy/upgrade takes a few minutes before nginx comes up.
+# 160 x 3s = 8 minutes; the loop stops at the first success.
 - name: Wait for the application to become healthy
   ansible.builtin.uri:
     url: "{{ pssid_gui_health_url }}"
     validate_certs: false
     status_code: 200
   register: pssid_gui_health
-  retries: 30
+  retries: 160
   delay: 3
   until: pssid_gui_health.status == 200
 

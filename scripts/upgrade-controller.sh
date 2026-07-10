@@ -44,6 +44,21 @@ if [ "$branch" != "main" ]; then
   echo "    were merged to main, this upgrade will NOT include them. Switch with:" >&2
   echo "      git -C $REPO_DIR checkout main" >&2
 fi
+# shared/config.ts is a git-tracked file (ENABLE_SSO, BASE_URL) that controller-
+# integrated deployments edit in place by hand or via install.sh, rather than
+# through git. That is expected and fine on its own -- but if a future commit
+# on main ever touches this same file, a plain `git pull --ff-only` refuses to
+# overwrite the local edit and aborts with a raw, unexplained git error. Detect
+# that state up front so the failure (if it happens) is not a mystery.
+if ! git -C "$REPO_DIR" diff --quiet -- shared/config.ts 2>/dev/null; then
+  echo "    note: shared/config.ts has local edits (expected -- ENABLE_SSO/BASE_URL"
+  echo "    are set per-deployment, not through git). If the pull below fails with"
+  echo "    'local changes ... would be overwritten', preserve them across the pull:"
+  echo "      git -C $REPO_DIR stash push -- shared/config.ts"
+  echo "      git -C $REPO_DIR pull --ff-only"
+  echo "      git -C $REPO_DIR stash pop"
+  echo "    then re-run this script."
+fi
 git -C "$REPO_DIR" pull --ff-only
 
 echo "==> Building the GUI images"
@@ -82,13 +97,15 @@ else
   echo "    note: if you see 502s, restart your reverse proxy so it re-resolves the recreated containers" >&2
 fi
 
-echo "==> Waiting for the server health check"
-# Validate the actual health JSON, not just any 200: the Vite client serves the
+echo "==> Waiting for the health check (the client compiles its bundle on start; allow a few minutes)"
+# Validate the actual health JSON, not just any 200: the client serves the
 # SPA's index.html for every path (including /api/health), so a bare 200 check
 # against the client port would falsely report healthy while the API is 502ing.
+# Budget 240 x 2s = 8 min to cover the client's compile-on-start build on a
+# small VM; the loop exits on the first success.
 urls=("${PSSID_HEALTH_URL:-}" "https://localhost/api/health" "http://localhost/api/health")
 healthy=""
-for i in $(seq 1 30); do
+for i in $(seq 1 240); do
   for url in "${urls[@]}"; do
     [ -n "$url" ] || continue
     if curl -fsk "$url" 2>/dev/null | grep -q '"status"'; then healthy="$url"; break 2; fi
@@ -99,7 +116,7 @@ if [ -n "$healthy" ]; then
   echo "    healthy ($healthy)"
 else
   echo "error: health check did not pass; inspect with:" >&2
-  echo "  cd $CONTROLLER_DIR && docker compose logs --tail=100 server" >&2
+  echo "  cd $CONTROLLER_DIR && docker compose logs --tail=100 client server" >&2
   exit 1
 fi
 

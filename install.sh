@@ -209,6 +209,14 @@ case "$TLS" in
 esac
 ok "TLS mode: $TLS"
 
+# SSO's session cookie is always set with Secure (services/server/src/index.ts),
+# which browsers never send back over plain HTTP. --sso=true --tls=none would
+# still deploy, but sign-in would silently loop (the session cookie never
+# round-trips) instead of failing with a clear cause. Reject the combination now.
+if [ "$SSO" = "true" ] && [ "$TLS" = "none" ]; then
+  die "--sso=true requires HTTPS (the session cookie is Secure-only). Use --tls=self-signed or --tls=letsencrypt, or disable SSO."
+fi
+
 SCHEME="https"; [ "$TLS" = "none" ] && SCHEME="http"
 BASE_URL="${SCHEME}://${HOSTNAME_INPUT}"
 
@@ -429,28 +437,31 @@ EDITION="$EDITION" $COMPOSE -f docker-compose.yml $COMPOSE_ARGS up -d $BUILD_FLA
 ok "Containers started"
 
 # ─── 9. Health check ─────────────────────────────────────────────────────────
-step "Waiting for the server to become healthy"
+step "Waiting for the stack to become healthy"
+info "The client compiles its production bundle on start; this takes a few minutes."
 # Poll through nginx: it is the only published entry point (the server's port
 # 8000 stays on the internal Docker network), and nginx itself only starts
 # once the client and server containers report healthy, so a passing check
 # here means the whole chain is up. -k accepts the self-signed certificate.
+# The budget (240 x 2s = 8 min) covers the client's compile-on-start build on
+# a small VM; the loop exits on the first success.
 if [ "$TLS" = "none" ]; then
   HEALTH_URL="http://localhost/api/health"
 else
   HEALTH_URL="https://localhost/api/health"
 fi
 HEALTHY="false"
-for i in $(seq 1 45); do
+for i in $(seq 1 240); do
   if curl -fsSk "$HEALTH_URL" >/dev/null 2>&1; then HEALTHY="true"; break; fi
   sleep 2
-  printf "  ${C_DIM}…still starting (%s/45)${C_RESET}\r" "$i"
+  printf "  ${C_DIM}…still starting (%s/240)${C_RESET}\r" "$i"
 done
 echo
 if [ "$HEALTHY" = "true" ]; then
   ok "Server is healthy"
 else
-  warn "Health check did not pass in time. Recent server logs:"
-  $COMPOSE -f docker-compose.yml logs --tail=40 server || true
+  warn "Health check did not pass in time. Recent client and server logs:"
+  $COMPOSE -f docker-compose.yml logs --tail=40 client server || true
 fi
 
 # ─── Done ────────────────────────────────────────────────────────────────────

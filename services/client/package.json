@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
+    "serve:prod": "npm run build && http-server dist -a 0.0.0.0 -p 8080 -c-1 -d false --proxy 'http://127.0.0.1:8080?'",
     "test": "vitest run"
   },
   "dependencies": {
