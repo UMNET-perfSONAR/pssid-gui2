@@ -527,3 +527,25 @@ A few common issues:
   up. Fix the reported error in `services/client/src` (or, on a controller box,
   the deployment's `shared/config.ts`), then re-run the build or upgrade.
   Nothing on the running stack needs to be undone.
+- **`no space left on device` partway through a build, even after moving Docker
+  to a bigger disk.** Modern Docker Engine extracts image layers through
+  **containerd's own snapshotter**, which has its own storage root (default
+  `/var/lib/containerd`) that is completely separate from Docker's own
+  `data-root` (default `/var/lib/docker`, set in `/etc/docker/daemon.json`).
+  On a VM with a small root disk and a large secondary volume, redirecting
+  only `daemon.json`'s `data-root` is not enough: `docker info` and this
+  project's disk preflight (`make doctor`, `scripts/lib/preflight.sh`,
+  `bootstrap.sh`) will report the roomy volume as free and healthy, while
+  containerd keeps writing to the cramped default path and the build still
+  dies mid-layer-extraction. Point containerd at the same volume with a bind
+  mount:
+  ```bash
+  sudo systemctl stop docker containerd
+  sudo mkdir -p /path/to/big/volume/containerd
+  sudo rsync -a /var/lib/containerd/ /path/to/big/volume/containerd/  # keep anything already there
+  sudo mount --bind /path/to/big/volume/containerd /var/lib/containerd
+  echo '/path/to/big/volume/containerd /var/lib/containerd none bind 0 0' | sudo tee -a /etc/fstab
+  sudo systemctl start containerd docker
+  ```
+  `make doctor` and `scripts/lib/preflight.sh`'s `check_disk` check both
+  Docker's and containerd's storage roots for exactly this reason.

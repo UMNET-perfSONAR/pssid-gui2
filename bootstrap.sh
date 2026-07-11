@@ -88,7 +88,28 @@ step "Checking prerequisites"
 # check_disk, kept inline because bootstrap runs before the repo is cloned.
 # Docker is not installed yet, so fall back from its storage root to /var/lib
 # (where /var/lib/docker will live), then / -- keep the tiers/threshold in sync
-# with scripts/lib/preflight.sh.
+# with scripts/lib/preflight.sh. Checks BOTH Docker's storage root and
+# containerd's storage root: modern Docker Engine extracts image layers
+# through containerd's own snapshotter (default /var/lib/containerd), which is
+# a SEPARATE directory from Docker's "data-root" -- redirecting only one of
+# the two still dies mid-build with "no space left on device" while the other
+# stays cramped (seen on a VM with a small root disk and a large secondary
+# volume: pointing daemon.json's data-root at the big volume was not enough,
+# containerd also needed its own root redirected).
+check_disk_target() { # check_disk_target <label> <path>
+  local label="$1" path="$2" free_kb free_gb
+  [ -d "$path" ] || return 0
+  free_kb="$(df -Pk "$path" 2>/dev/null | awk 'NR==2{print $4}')"
+  [ -n "$free_kb" ] || return 0
+  free_gb=$(( free_kb / 1024 / 1024 ))
+  if [ "$free_kb" -lt 6291456 ]; then          # < 6 GiB
+    die "Only ${free_gb} GB free on ${path} (${label} storage). The deployment needs about 8-10 GB for Docker images. Grow the disk (or free space, e.g. 'docker system prune -af' if Docker is installed), then re-run this command."
+  elif [ "$free_kb" -lt 12582912 ]; then       # < 12 GiB: tight, warn and continue
+    printf "  ${C_R}!${C_N} only %s GB free on %s (%s storage); the image build is tight on space.\n" "$free_gb" "$path" "$label" >&2
+  else
+    ok "disk space: ${free_gb} GB free on ${path} (${label} storage)"
+  fi
+}
 DISK_TARGET="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
 # Docker isn't installed yet at this point in a fresh bootstrap, so it can't
 # report its storage root. If an operator pre-staged /etc/docker/daemon.json
@@ -99,16 +120,15 @@ if [ -z "$DISK_TARGET" ] && [ -r /etc/docker/daemon.json ]; then
 fi
 [ -n "$DISK_TARGET" ] && [ -d "$DISK_TARGET" ] || DISK_TARGET="/var/lib"
 [ -d "$DISK_TARGET" ] || DISK_TARGET="/"
-FREE_KB="$(df -Pk "$DISK_TARGET" 2>/dev/null | awk 'NR==2{print $4}')"
-if [ -n "${FREE_KB:-}" ]; then
-  FREE_GB=$(( FREE_KB / 1024 / 1024 ))
-  if [ "$FREE_KB" -lt 6291456 ]; then          # < 6 GiB
-    die "Only ${FREE_GB} GB free on ${DISK_TARGET}. The deployment needs about 8-10 GB for Docker images. Grow the disk (or free space, e.g. 'docker system prune -af' if Docker is installed), then re-run this command."
-  elif [ "$FREE_KB" -lt 12582912 ]; then       # < 12 GiB: tight, warn and continue
-    printf "  ${C_R}!${C_N} only %s GB free on %s; the image build is tight on space.\n" "$FREE_GB" "$DISK_TARGET" >&2
-  else
-    ok "disk space: ${FREE_GB} GB free on ${DISK_TARGET}"
-  fi
+check_disk_target "Docker" "$DISK_TARGET"
+
+CONTAINERD_TARGET="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+[ -z "$CONTAINERD_TARGET" ] && [ -r /etc/containerd/config.toml ] && \
+  CONTAINERD_TARGET="$(sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' /etc/containerd/config.toml | head -n1)"
+[ -n "$CONTAINERD_TARGET" ] && [ -d "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/var/lib/containerd"
+[ -d "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/"
+if [ "$CONTAINERD_TARGET" != "$DISK_TARGET" ]; then
+  check_disk_target "containerd" "$CONTAINERD_TARGET"
 fi
 
 command -v git >/dev/null 2>&1 || { step "Installing git"; install_pkgs git; }
