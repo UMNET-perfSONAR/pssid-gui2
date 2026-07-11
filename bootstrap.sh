@@ -83,19 +83,25 @@ step "Checking prerequisites"
 
 # Disk space, FIRST: the most common fresh-VM failure. Checking here gives a
 # clean one-line error before any packages are installed or Ansible runs
-# (install.sh checks again later, but by then the failure surfaces wrapped in
-# an Ansible fatal blob). Docker may not be installed yet, so fall back from
-# its storage root to /var/lib (where /var/lib/docker will live).
+# (install.sh checks again later via scripts/lib/preflight.sh, but by then the
+# failure surfaces wrapped in an Ansible fatal blob). This mirrors that shared
+# check_disk, kept inline because bootstrap runs before the repo is cloned.
+# Docker is not installed yet, so fall back from its storage root to /var/lib
+# (where /var/lib/docker will live), then / -- keep the tiers/threshold in sync
+# with scripts/lib/preflight.sh.
 DISK_TARGET="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
 [ -n "$DISK_TARGET" ] && [ -d "$DISK_TARGET" ] || DISK_TARGET="/var/lib"
 [ -d "$DISK_TARGET" ] || DISK_TARGET="/"
 FREE_KB="$(df -Pk "$DISK_TARGET" 2>/dev/null | awk 'NR==2{print $4}')"
 if [ -n "${FREE_KB:-}" ]; then
   FREE_GB=$(( FREE_KB / 1024 / 1024 ))
-  if [ "$FREE_KB" -lt 6291456 ]; then
+  if [ "$FREE_KB" -lt 6291456 ]; then          # < 6 GiB
     die "Only ${FREE_GB} GB free on ${DISK_TARGET}. The deployment needs about 8-10 GB for Docker images. Grow the disk (or free space, e.g. 'docker system prune -af' if Docker is installed), then re-run this command."
+  elif [ "$FREE_KB" -lt 12582912 ]; then       # < 12 GiB: tight, warn and continue
+    printf "  ${C_R}!${C_N} only %s GB free on %s; the image build is tight on space.\n" "$FREE_GB" "$DISK_TARGET" >&2
+  else
+    ok "disk space: ${FREE_GB} GB free on ${DISK_TARGET}"
   fi
-  ok "disk space: ${FREE_GB} GB free on ${DISK_TARGET}"
 fi
 
 command -v git >/dev/null 2>&1 || { step "Installing git"; install_pkgs git; }

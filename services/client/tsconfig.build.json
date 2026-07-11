@@ -1,0 +1,14 @@
+{
+  // Production build type-check. Extends the base config but excludes test files
+  // so the shippable bundle never fails to build over a type error that lives
+  // only in a *.test.ts (tests are still fully type-checked by `npm run
+  // typecheck` and in CI). `exclude` replaces the parent's, so it must also
+  // re-list the server-only shared file the base config excludes.
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "src/shared/accessControl.ts",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "src/**/__tests__/**"
+  ]
+}

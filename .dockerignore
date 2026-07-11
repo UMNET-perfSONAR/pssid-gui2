@@ -1,0 +1,21 @@
+# This .dockerignore governs the CLIENT image build only: its build context is
+# the repository root (see docker-compose*.yml build.context: .) so the Dockerfile
+# can COPY both services/client and the repo-root shared/ at build time. The
+# server and mongo images build from their own contexts with their own rules.
+#
+# Strategy: exclude everything, re-include only the client app and shared/, then
+# strip dependency trees, build output, and secrets so none ride into a layer.
+*
+!services
+!shared
+services/server
+
+**/node_modules
+**/dist
+**/build
+**/.env
+**/*.env
+**/*.pem
+**/*.key
+**/*.crt
+**/certs

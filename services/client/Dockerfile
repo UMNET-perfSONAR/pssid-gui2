@@ -1,36 +1,34 @@
-FROM node:22
+# Build context is the repository ROOT (see docker-compose*.yml: build.context: .),
+# so this image can COPY both the client app and the repo-root shared/ directory
+# at IMAGE-BUILD time. That lets the production bundle be compiled once, here,
+# instead of on every container start - a broken build then fails visibly at
+# `docker compose build` (before any container starts or nginx is affected),
+# and the running container starts in seconds serving a static bundle.
+FROM node:22 AS build
 
-# Set working directory
 WORKDIR /usr/src/app/client
 
-# Static file server for the production build (used by `npm run serve:prod`).
-# Pinned so image rebuilds are reproducible.
-RUN npm install -g http-server@14.1.1
+# Install dependencies first so this layer caches across source-only changes.
+COPY services/client/package*.json ./
+RUN npm ci
 
-# Copy both 'package.json' and 'package-lock.json' (if available)
-COPY package*.json ./
+# The client app, plus the shared/ config the app imports as ../shared/*.
+COPY services/client/ ./
+COPY shared/ ./src/shared/
 
-# Install project dependencies
-RUN npm install
+# Edition (brand) is inlined into the bundle by Vite at build time. Pass it as a
+# build arg; docker-compose sets it from the EDITION value in the root .env.
+ARG VITE_EDITION=default
+ENV VITE_EDITION=$VITE_EDITION
 
-# Copy project files and folders to the current working directory (i.e. 'client' folder)
-COPY . .
-
-# Ensure that entrypoint.sh is executable
-RUN chmod +x entrypoint.sh
+# Type-check (production tsconfig, tests excluded) + produce the static bundle.
+RUN npm run build
 
 EXPOSE 8080
 
-# entrypoint.sh reconciles node_modules with package.json (the compose files
-# mount a named volume over it), then runs the command. It is the ENTRYPOINT
-# (not CMD) so that step still runs when a deployment overrides the container
-# command, e.g. the local dev stack's `command: npm run dev`.
-ENTRYPOINT ["./entrypoint.sh"]
-
-# Default command: compile the production bundle at container START, then serve
-# it statically. The build cannot run at image-build time because two of its
-# inputs only exist at runtime: the repo-root shared/ directory (bind-mounted
-# to src/shared by the compose files) and VITE_EDITION (inlined by Vite at
-# build time, passed as a container environment variable). Override with
-# `npm run dev` for the hot-reload development stack.
-CMD ["npm", "run", "serve:prod"]
+# Serve the pre-built bundle. http-server is the sole PID 1 (exec form), so it
+# receives SIGTERM directly for a clean, prompt shutdown. --proxy makes any
+# unmatched path fall back to index.html (SPA deep links); -d false disables
+# directory listings; -c-1 disables the max-age header so a redeploy is never
+# masked by a stale cached index.html.
+CMD ["node_modules/.bin/http-server", "dist", "-a", "0.0.0.0", "-p", "8080", "-c-1", "-d", "false", "--proxy", "http://127.0.0.1:8080?"]

@@ -30,15 +30,14 @@ upgrade: ## Upgrade in place: backup, pull latest, rebuild, verify
 	@cd ansible && ansible-playbook upgrade.yml
 
 refresh: ## Apply pulled source to a RUNNING repo stack (rebuild + recreate client & server, keeps DB up)
-	@echo "Rebuilding client and server images (edition: $(EDITION))..."
+	@echo "Rebuilding client and server images (edition: $(EDITION)); the client bundle compiles here..."
 	@EDITION=$(EDITION) $(PROD) build client server
-	@echo "Recreating the client and server containers..."
+	@echo "Recreating the client and server containers (they start in seconds)..."
 	@EDITION=$(EDITION) $(PROD) up -d --no-deps --force-recreate client server
 	@echo "Restarting nginx so it re-resolves the new container addresses (avoids 502)..."
 	@$(PROD) restart nginx 2>/dev/null || true
-	@echo "Done. The client is compiling its production bundle; the GUI returns in a"
-	@echo "few minutes (watch 'make ps' until client is healthy). Hard-refresh the"
-	@echo "browser afterwards: Ctrl/Cmd+Shift+R."
+	@echo "Done. The new code is live once 'make ps' shows client healthy. Hard-refresh"
+	@echo "the browser: Ctrl/Cmd+Shift+R."
 
 up: ## Start the production stack (HTTPS/nginx)
 	@EDITION=$(EDITION) $(PROD) up -d
@@ -92,9 +91,11 @@ _set-edition:
 	@touch .env
 	@grep -q '^EDITION=' .env && sed -i.bak -E 's/^EDITION=.*/EDITION=$(EDITION)/' .env || echo "EDITION=$(EDITION)" >> .env
 	@rm -f .env.bak
-	@echo "Edition set to '$(EDITION)'. Recreating client (it recompiles its bundle"
-	@echo "with the new edition; allow a few minutes)..."
-	@EDITION=$(EDITION) $(PROD) up -d --force-recreate client
+	@echo "Edition set to '$(EDITION)'. The edition is baked into the bundle at build"
+	@echo "time, so rebuild the client image (a bare recreate would keep the old edition)..."
+	@EDITION=$(EDITION) $(PROD) build client
+	@echo "Recreating the client container..."
+	@EDITION=$(EDITION) $(PROD) up -d --no-deps --force-recreate client
 	@echo "Done. When 'make ps' shows client healthy, reload the browser to see the $(EDITION) edition."
 
 backup: ## Back up the MongoDB database
@@ -113,6 +114,7 @@ doctor: ## Check prerequisites and port availability
 			echo "  !   port $$p in use"; else echo "  ok  port $$p free"; fi; \
 	done
 	@root=$$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker); \
+	 [ -d "$$root" ] || root=/; \
 	 free=$$(df -Pk "$$root" 2>/dev/null | awk 'NR==2{print int($$4/1024/1024)}'); \
 	 if [ -n "$$free" ]; then \
 		if [ "$$free" -lt 6 ]; then echo "  ERR disk: only $${free} GB free on $$root (build needs ~8-10 GB)"; \

@@ -7,10 +7,15 @@ x-logging: &default-logging
 services:
   client:
     image: pssid-gui2_client:latest
-    build: ./services/client
+    build:
+      context: .
+      dockerfile: services/client/Dockerfile
+      args:
+        VITE_EDITION: ${EDITION:-default}
     logging: *default-logging
-    # Development stack: run the Vite dev server (hot reload) instead of the
-    # image's default production command (build once, serve dist/ statically).
+    # Development stack: run the Vite dev server (hot reload) against the mounted
+    # source, instead of the image's default static serving of the pre-built
+    # bundle. node_modules comes from the image (built via npm ci), so no volume.
     command: npm run dev
     environment:
       # Selects the edition (see services/client/src/edition). Override with
@@ -18,7 +23,6 @@ services:
       - VITE_EDITION=${EDITION:-default}
     volumes:
       - ./services/client/src:/usr/src/app/client/src
-      - client_node_modules:/usr/src/app/client/node_modules
       - ./shared:/usr/src/app/client/src/shared:ro
     expose:
       - "8080"
@@ -27,8 +31,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-      # The entrypoint reconciles node_modules (npm install) before Vite starts.
-      start_period: 60s
+      start_period: 40s
     networks:
       internal:
         aliases:
@@ -93,7 +96,6 @@ services:
       - internal
 
 volumes:
-  client_node_modules:
   server_node_modules:
   mongo_db:
 

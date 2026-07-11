@@ -31,21 +31,13 @@ if [ ! -f "$CONTROLLER_DIR/docker-compose.yml" ]; then
   exit 1
 fi
 
-# Disk preflight BEFORE anything runs (the backup below also writes an
-# archive): the rebuild pulls base images and adds build layers, and a tight
-# disk otherwise fails mid-build with a cryptic containerd "no space left on
-# device" after the backup and git pull already happened.
-DOCKER_ROOT="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)"
-[ -d "$DOCKER_ROOT" ] || DOCKER_ROOT="/"
-FREE_KB="$(df -Pk "$DOCKER_ROOT" 2>/dev/null | awk 'NR==2{print $4}')"
-if [ -n "${FREE_KB:-}" ]; then
-  FREE_GB=$(( FREE_KB / 1024 / 1024 ))
-  if [ "$FREE_KB" -lt 6291456 ]; then
-    echo "error: only ${FREE_GB} GB free on ${DOCKER_ROOT}. The rebuild needs several GB;" >&2
-    echo "free space with 'docker system prune -af' or grow the disk, then re-run." >&2
-    exit 1
-  fi
-fi
+# Disk preflight BEFORE anything runs (the backup below also writes an archive):
+# the rebuild pulls base images and adds build layers, and a tight disk otherwise
+# fails mid-build with a cryptic containerd "no space left on device" after the
+# backup and git pull already happened. Shared with install.sh.
+# shellcheck source=lib/preflight.sh
+. "$REPO_DIR/scripts/lib/preflight.sh"
+check_disk || exit 1
 
 echo "==> Backing up the database"
 bash "$REPO_DIR/scripts/backup.sh"
@@ -66,7 +58,9 @@ fi
 # on main ever touches this same file, a plain `git pull --ff-only` refuses to
 # overwrite the local edit and aborts with a raw, unexplained git error. Detect
 # that state up front so the failure (if it happens) is not a mystery.
-if ! git -C "$REPO_DIR" diff --quiet -- shared/config.ts 2>/dev/null; then
+# `status --porcelain` reports staged AND unstaged edits (a bare `git diff`
+# would miss an edit that was `git add`ed or committed locally).
+if [ -n "$(git -C "$REPO_DIR" status --porcelain -- shared/config.ts 2>/dev/null)" ]; then
   echo "    note: shared/config.ts has local edits (expected -- ENABLE_SSO/BASE_URL"
   echo "    are set per-deployment, not through git). If the pull below fails with"
   echo "    'local changes ... would be overwritten', preserve them across the pull:"
@@ -77,18 +71,23 @@ if ! git -C "$REPO_DIR" diff --quiet -- shared/config.ts 2>/dev/null; then
 fi
 git -C "$REPO_DIR" pull --ff-only
 
-echo "==> Building the GUI images"
+echo "==> Building the GUI images (compiles the client bundle; a few minutes)"
+# The client bundle is compiled here, inside `docker compose build`. Because of
+# `set -e`, a broken build aborts the script HERE -- before any container is
+# recreated -- so the currently-running site keeps serving the old images and a
+# bad pull can never take the site down. This is the key safety property of
+# building at image time rather than at container start.
 (cd "$REPO_DIR" && docker compose build)
 
 echo "==> Restarting changed containers in $CONTROLLER_DIR"
 (cd "$CONTROLLER_DIR" && docker compose up -d)
 
 # Force the GUI containers to pick up the freshly built images. A plain `up -d`
-# only recreates a container when compose notices the image changed, and the
-# client serves its source through Vite, which does not reliably notice a
-# rebuild without a fresh container. Recreate exactly the services that use our
-# locally built pssid-gui2_*:latest images, so other controller services (the
-# daemon, etc.) are left untouched.
+# only recreates a container when compose notices the image changed, but the
+# locally built images keep the same `:latest` tag across rebuilds, so compose
+# may not notice the new content without a forced recreate. Recreate exactly the
+# services that use our locally built pssid-gui2_*:latest images, so other
+# controller services (the daemon, etc.) are left untouched.
 gui_services="$(cd "$CONTROLLER_DIR" && docker compose config 2>/dev/null \
   | awk '/^services:/{s=1;next} s&&/^  [^[:space:]]/{svc=$1;sub(/:$/,"",svc)} s&&/image:[[:space:]]*pssid-gui2_/{print svc}')"
 if [ -n "$gui_services" ]; then
@@ -113,15 +112,15 @@ else
   echo "    note: if you see 502s, restart your reverse proxy so it re-resolves the recreated containers" >&2
 fi
 
-echo "==> Waiting for the health check (the client compiles its bundle on start; allow a few minutes)"
+echo "==> Waiting for the health check"
 # Validate the actual health JSON, not just any 200: the client serves the
 # SPA's index.html for every path (including /api/health), so a bare 200 check
 # against the client port would falsely report healthy while the API is 502ing.
-# Budget 240 x 2s = 8 min to cover the client's compile-on-start build on a
-# small VM; the loop exits on the first success.
+# The images are already built, so containers start in seconds; budget
+# 150 x 2s = 5 min to cover server + database startup, exiting on first success.
 urls=("${PSSID_HEALTH_URL:-}" "https://localhost/api/health" "http://localhost/api/health")
 healthy=""
-for i in $(seq 1 240); do
+for i in $(seq 1 150); do
   for url in "${urls[@]}"; do
     [ -n "$url" ] || continue
     if curl -fsk "$url" 2>/dev/null | grep -q '"status"'; then healthy="$url"; break 2; fi

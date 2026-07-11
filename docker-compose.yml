@@ -30,29 +30,29 @@ services:
       - internal
   client:
     image: pssid-gui2_client:latest
-    build: ./services/client
+    # Built from the repo ROOT so the image can bundle both the client app and
+    # the shared/ config at build time (see services/client/Dockerfile). The
+    # production bundle is compiled once here, not per container start, so the
+    # container starts in seconds and a broken build fails at `compose build`
+    # (before any container starts) instead of on a live VM.
+    build:
+      context: .
+      dockerfile: services/client/Dockerfile
+      args:
+        # Edition (brand) is inlined into the bundle at build time. Set EDITION
+        # in the root .env; the installer and Makefile manage this.
+        VITE_EDITION: ${EDITION:-default}
     restart: unless-stopped
     logging: *default-logging
-    environment:
-      # Selects the edition (see services/client/src/edition). Set EDITION in the
-      # root .env; the installer and Makefile manage this.
-      - VITE_EDITION=${EDITION:-default}
-    volumes:
-      - ./services/client/src:/usr/src/app/client/src
-      - client_node_modules:/usr/src/app/client/node_modules
-      - ./shared:/usr/src/app/client/src/shared:ro
     expose:
       - "8080"
     healthcheck:
+      # The image serves a pre-built static bundle, so it is ready in seconds.
       test: ["CMD", "node", "-e", "fetch('http://localhost:8080').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
-      # The container compiles the production bundle at start (vue-tsc + vite
-      # build), during which nothing listens on 8080. start_period must cover
-      # the whole build on a small VM, or compose marks the client unhealthy
-      # and nginx (depends_on: service_healthy) never starts.
-      retries: 10
-      start_period: 300s
+      retries: 5
+      start_period: 20s
     networks:
       internal:
         aliases:
@@ -184,7 +184,6 @@ services:
       - internal
 
 volumes:
-  client_node_modules:
   server_node_modules:
   mongo_db:
   redis_data:

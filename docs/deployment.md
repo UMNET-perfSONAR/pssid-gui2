@@ -224,23 +224,28 @@ writable stack; it aborts with instructions when the target is read-only.
 
 ### How the client is served
 
-In production the client container compiles the interface (`vue-tsc && vite
-build`) **when the container starts**, then serves the resulting static bundle
-on the internal port 8080 with an SPA fallback (deep links like `/hosts`
-return the app shell). The build runs at container start rather than image
-build because two of its inputs only exist at runtime: the repo-root
-`shared/` directory (bind-mounted into the container) and the `EDITION`
-setting (inlined into the bundle by Vite).
+In production the client is compiled to a static bundle **when its image is
+built**: `docker compose build` runs `vue-tsc && vite build` inside the image,
+and the container then serves that finished bundle on the internal port 8080
+with an SPA fallback (deep links like `/hosts` return the app shell). The image
+build context is the repository root, so the build can bundle both the client
+app and the repo-root `shared/` config; the edition is passed as a build
+argument (from `EDITION` in the root `.env`) and inlined by Vite.
 
 Practical consequences:
 
-- The first start, and every recreate, takes a few minutes before the site
-  answers; nginx waits for the client's health check. `make ps` shows the
-  client's health state.
-- After a `git pull`, run `make refresh` (unchanged) to apply the new code.
-  The GUI is briefly down while the bundle recompiles; the API keeps serving.
-- `make dev` is unchanged: the development stack overrides the container
-  command back to the Vite dev server for hot reload.
+- Containers start in seconds (they serve a pre-built bundle), so deploys and
+  recreates are fast.
+- A broken build (for example a TypeScript error in pulled source) fails at
+  `docker compose build`, visibly, **before any container is recreated** - so a
+  bad change cannot take a running site down. Both `make refresh` and
+  `scripts/upgrade-controller.sh` build before they recreate.
+- After a `git pull`, run `make refresh` (unchanged) to rebuild and apply the
+  new code.
+- Switching editions (`make edition-umich` / `edition-default`) rebuilds the
+  client image, because the edition is baked into the bundle at build time.
+- `make dev` is unchanged: the development stack overrides the container command
+  back to the Vite dev server for hot reload against the mounted source.
 
 ## Demo data
 
@@ -327,9 +332,9 @@ The interface can be shown with a different appearance for each organization: it
 colors, product name, and logo. Two editions ship today: `default`, a neutral navy
 and cyan, and `umich`, UMich navy and maize. The active edition is chosen by the
 `EDITION` value, which the installer writes to the root `.env`. You can change it
-later with `make edition-default` or `make edition-umich`, which recreate the
-client container; the client recompiles its bundle with the new edition on
-start, so allow a few minutes before reloading the browser.
+later with `make edition-default` or `make edition-umich`, which rebuild the
+client image with the new edition (it is baked into the bundle at build time)
+and recreate the container.
 
 To add an organization, add an entry to
 [`services/client/src/edition/editions.ts`](../services/client/src/edition/editions.ts),
@@ -514,18 +519,11 @@ A few common issues:
 - For an SSO redirect loop, check that `BASE_URL` and `COOKIE_DOMAIN` in
   `services/server/.env` match the hostname in the browser, and that the
   provider's redirect URI is exactly `https://<host>/callback`.
-- **Client stuck restarting / nginx never starts.** The client compiles its
-  bundle at container start; if that build fails (a type error in pulled
-  source, or a missing `shared/` mount reported as
-  `Cannot find module '../shared/config'`), the container exits and restarts
-  in a loop, and on a cold start compose reports
-  `dependency failed to start: client is unhealthy`. `make logs` (or
-  `docker compose logs client`) shows the exact compiler error. Immediate
-  mitigation without changing the repo: create a `docker-compose.override.yml`
-  next to `docker-compose.yml` containing
-  `services: { client: { command: npm run dev } }` and run
-  `docker compose up -d client` (the image keeps the full toolchain precisely
-  so this works); then fix the underlying error and remove the override. On a
-  very slow machine the build can also simply outlast the health-check window,
-  aborting nginx: the client keeps building anyway, so once `make ps` shows it
-  healthy, rerun `make up`.
+- **The client image fails to build** (for example a TypeScript error in pulled
+  source). `docker compose build` stops with the exact compiler error and a
+  non-zero exit. Because `make refresh` and `scripts/upgrade-controller.sh` both
+  build *before* they recreate anything, this happens before any container is
+  touched: a currently-running site keeps serving the previous image and stays
+  up. Fix the reported error in `services/client/src` (or, on a controller box,
+  the deployment's `shared/config.ts`), then re-run the build or upgrade.
+  Nothing on the running stack needs to be undone.

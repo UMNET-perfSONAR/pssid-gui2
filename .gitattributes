@@ -3,3 +3,8 @@
 # autocrlf enabled would otherwise break the automation.
 *.sh text eol=lf
 Makefile text eol=lf
+
+# Dockerfiles and dockerignores build on Linux VMs regardless of the checkout
+# platform; keep them LF so image builds behave identically everywhere.
+Dockerfile text eol=lf
+.dockerignore text eol=lf

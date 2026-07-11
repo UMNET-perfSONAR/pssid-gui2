@@ -97,10 +97,13 @@ jobs:
       - name: Stage shared config
         run: mkdir -p src/shared && cp ../../shared/* src/shared/
       - run: npm ci
-      - name: Production build
-        run: npx vite build
-      - name: Type check (advisory)
-        run: npx vue-tsc --noEmit || true
+      # Gating, not advisory: the production image compiles the bundle at build
+      # time (`npm run build` = vue-tsc + vite build), so a type error fails the
+      # image build. Catch it here first, on every PR, instead of on a VM.
+      - name: Type check (strict, all sources incl. tests)
+        run: npm run typecheck
+      - name: Production build (same as the image)
+        run: npm run build
       - name: Unit tests
         run: npm test
       - name: Dependency audit (advisory)

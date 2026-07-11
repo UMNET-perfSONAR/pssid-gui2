@@ -1,9 +1,0 @@
-node_modules
-build
-dist
-.vscode
-certs/*
-**/certs/*
-*.crt
-*.key
-*.pem

@@ -148,23 +148,13 @@ command -v openssl >/dev/null 2>&1 || die "openssl is required (for cert/secret 
 ok "openssl found"
 
 # Disk space: building the images pulls several base images (node, mongo, nginx,
-# certbot) and runs two npm installs, which needs several GB free on Docker's
-# storage. Without this check a small or full disk fails deep in the build with a
-# cryptic "no space left on device" (containerd) error, so check up front.
-DOCKER_ROOT="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
-[ -n "$DOCKER_ROOT" ] && [ -d "$DOCKER_ROOT" ] || DOCKER_ROOT="/var/lib/docker"
-[ -d "$DOCKER_ROOT" ] || DOCKER_ROOT="/"
-FREE_KB="$(df -Pk "$DOCKER_ROOT" 2>/dev/null | awk 'NR==2{print $4}')"
-if [ -n "${FREE_KB:-}" ]; then
-  FREE_GB=$(( FREE_KB / 1024 / 1024 ))
-  if [ "$FREE_KB" -lt 6291456 ]; then          # < 6 GiB: the build will almost certainly fail
-    die "Only ${FREE_GB} GB free on ${DOCKER_ROOT} (Docker storage). The image build needs about 8-10 GB. Free space with 'docker system prune -af' or grow the disk, then re-run."
-  elif [ "$FREE_KB" -lt 12582912 ]; then       # < 12 GiB: tight, warn but continue
-    warn "Only ${FREE_GB} GB free on ${DOCKER_ROOT}; the image build is tight on space. If it fails with 'no space left on device', free space ('docker system prune -af') or grow the disk."
-  else
-    ok "disk space: ${FREE_GB} GB free on ${DOCKER_ROOT}"
-  fi
-fi
+# certbot) and runs npm installs, needing several GB free on Docker's storage.
+# Without this check a small or full disk fails deep in the build with a cryptic
+# "no space left on device" (containerd) error, so check up front. The check
+# itself lives in scripts/lib/preflight.sh, shared with the controller upgrade.
+# shellcheck source=scripts/lib/preflight.sh
+. "$SCRIPT_DIR/scripts/lib/preflight.sh"
+check_disk || die "Not enough disk space for the image build (see the message above)."
 
 # Warn (do not fail) on busy ports. Only nginx publishes ports to the host
 # (80/443); everything else stays on the internal Docker network.
@@ -428,7 +418,8 @@ else
 fi
 
 # ─── 8. Bring the stack up ───────────────────────────────────────────────────
-step "Starting the stack"
+step "Building images and starting the stack"
+[ "$DO_BUILD" = "true" ] && info "Compiling the client bundle (vue-tsc + vite build); this takes a few minutes on first run."
 COMPOSE_ARGS=""
 [ "$SSO" = "true" ] && COMPOSE_ARGS="--profile sso"
 BUILD_FLAG=""; [ "$DO_BUILD" = "true" ] && BUILD_FLAG="--build"
@@ -438,23 +429,23 @@ ok "Containers started"
 
 # ─── 9. Health check ─────────────────────────────────────────────────────────
 step "Waiting for the stack to become healthy"
-info "The client compiles its production bundle on start; this takes a few minutes."
 # Poll through nginx: it is the only published entry point (the server's port
 # 8000 stays on the internal Docker network), and nginx itself only starts
 # once the client and server containers report healthy, so a passing check
 # here means the whole chain is up. -k accepts the self-signed certificate.
-# The budget (240 x 2s = 8 min) covers the client's compile-on-start build on
-# a small VM; the loop exits on the first success.
+# The client image is pre-built (the bundle was compiled during the build step
+# above), so containers start in seconds; this budget (150 x 2s = 5 min) covers
+# server + database startup on a small VM and exits on the first success.
 if [ "$TLS" = "none" ]; then
   HEALTH_URL="http://localhost/api/health"
 else
   HEALTH_URL="https://localhost/api/health"
 fi
 HEALTHY="false"
-for i in $(seq 1 240); do
+for i in $(seq 1 150); do
   if curl -fsSk "$HEALTH_URL" >/dev/null 2>&1; then HEALTHY="true"; break; fi
   sleep 2
-  printf "  ${C_DIM}…still starting (%s/240)${C_RESET}\r" "$i"
+  printf "  ${C_DIM}…still starting (%s/150)${C_RESET}\r" "$i"
 done
 echo
 if [ "$HEALTHY" = "true" ]; then
