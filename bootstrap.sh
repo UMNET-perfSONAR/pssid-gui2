@@ -90,6 +90,13 @@ step "Checking prerequisites"
 # (where /var/lib/docker will live), then / -- keep the tiers/threshold in sync
 # with scripts/lib/preflight.sh.
 DISK_TARGET="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+# Docker isn't installed yet at this point in a fresh bootstrap, so it can't
+# report its storage root. If an operator pre-staged /etc/docker/daemon.json
+# with a "data-root" (e.g. to point Docker at a roomier volume before install),
+# honor that instead of assuming the default /var/lib/docker location.
+if [ -z "$DISK_TARGET" ] && [ -r /etc/docker/daemon.json ]; then
+  DISK_TARGET="$(sed -n 's/.*"data-root"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/docker/daemon.json | head -n1)"
+fi
 [ -n "$DISK_TARGET" ] && [ -d "$DISK_TARGET" ] || DISK_TARGET="/var/lib"
 [ -d "$DISK_TARGET" ] || DISK_TARGET="/"
 FREE_KB="$(df -Pk "$DISK_TARGET" 2>/dev/null | awk 'NR==2{print $4}')"
