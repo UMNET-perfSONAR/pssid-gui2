@@ -67,7 +67,14 @@ fi
 # nothing and, crucially, do NOT stop Docker. This runs on every deploy and
 # upgrade (whenever pssid_gui_docker_data_root is set), so a needless restart
 # here would bounce a healthy running stack each time.
-cur_docker_root="$(sed -n 's/.*"data-root"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/docker/daemon.json 2>/dev/null | head -n1)"
+#
+# Read daemon.json only when it exists: on a fresh VM it does not, and `sed` on a
+# missing file exits 2, which under `set -o pipefail` would abort the whole
+# script (empty output, rc 2) before it ever relocates anything.
+cur_docker_root=""
+if [ -f /etc/docker/daemon.json ]; then
+  cur_docker_root="$(sed -n 's/.*"data-root"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/docker/daemon.json 2>/dev/null | head -n1 || true)"
+fi
 if [ "$cur_docker_root" = "$DOCKER_ROOT" ] && mountpoint -q /var/lib/containerd 2>/dev/null; then
   echo "==> Docker + containerd storage already on $DOCKER_ROOT; nothing to change."
   exit 0
