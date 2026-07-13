@@ -63,6 +63,16 @@ if [ -n "${FREE_KB:-}" ] && [ "$FREE_KB" -lt 12582912 ]; then   # < 12 GiB
   err "the volume holding $DOCKER_ROOT has only ${FREE_GB} GB free; pick a location on a volume with at least ~12 GB (the build needs ~8-10 GB)."
 fi
 
+# Idempotency short-circuit: if both stores already point at the target, do
+# nothing and, crucially, do NOT stop Docker. This runs on every deploy and
+# upgrade (whenever pssid_gui_docker_data_root is set), so a needless restart
+# here would bounce a healthy running stack each time.
+cur_docker_root="$(sed -n 's/.*"data-root"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/docker/daemon.json 2>/dev/null | head -n1)"
+if [ "$cur_docker_root" = "$DOCKER_ROOT" ] && mountpoint -q /var/lib/containerd 2>/dev/null; then
+  echo "==> Docker + containerd storage already on $DOCKER_ROOT; nothing to change."
+  exit 0
+fi
+
 echo "==> Relocating Docker + containerd storage"
 echo "    Docker data-root : $DOCKER_ROOT"
 echo "    containerd root  : $CONTAINERD_ROOT  (bind-mounted onto /var/lib/containerd)"

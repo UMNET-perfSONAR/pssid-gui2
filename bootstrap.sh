@@ -29,6 +29,9 @@
 #     PSSID_GUI_DIR=/opt/pssid-gui       Where to clone when not run from a checkout
 #     PSSID_GUI_REPO=<git url>           Alternate repository to clone
 #     PSSID_GUI_VERSION=main             Branch or tag to deploy
+#     PSSID_DOCKER_DATA_ROOT=/data/docker  Put Docker + containerd storage on a
+#                                        roomier volume (for VMs whose /var/lib is
+#                                        a small partition; see docs/deployment.md)
 #
 #   Example:
 #
@@ -60,7 +63,7 @@ if [ "$(id -u)" -ne 0 ]; then
   if [ -f "${BASH_SOURCE[0]:-}" ] && command -v sudo >/dev/null 2>&1; then
     step "Re-running with sudo (root is required to install packages and Docker)"
     # Preserve the PSSID_* settings across the sudo boundary.
-    exec sudo --preserve-env=PSSID_HOSTNAME,PSSID_EDITION,PSSID_TLS,PSSID_LE_EMAIL,PSSID_SSO,PSSID_OIDC_ISSUER,PSSID_OIDC_CLIENT_ID,PSSID_OIDC_CLIENT_SECRET,PSSID_GUI_DIR,PSSID_GUI_REPO,PSSID_GUI_VERSION bash "${BASH_SOURCE[0]}" "$@"
+    exec sudo --preserve-env=PSSID_HOSTNAME,PSSID_EDITION,PSSID_TLS,PSSID_LE_EMAIL,PSSID_SSO,PSSID_OIDC_ISSUER,PSSID_OIDC_CLIENT_ID,PSSID_OIDC_CLIENT_SECRET,PSSID_GUI_DIR,PSSID_GUI_REPO,PSSID_GUI_VERSION,PSSID_DOCKER_DATA_ROOT bash "${BASH_SOURCE[0]}" "$@"
   fi
   die "Run as root (for the piped form: sudo -i, then re-run the command)."
 fi
@@ -84,51 +87,92 @@ step "Checking prerequisites"
 # Disk space, FIRST: the most common fresh-VM failure. Checking here gives a
 # clean one-line error before any packages are installed or Ansible runs
 # (install.sh checks again later via scripts/lib/preflight.sh, but by then the
-# failure surfaces wrapped in an Ansible fatal blob). This mirrors that shared
-# check_disk, kept inline because bootstrap runs before the repo is cloned.
-# Docker is not installed yet, so fall back from its storage root to /var/lib
-# (where /var/lib/docker will live), then / -- keep the tiers/threshold in sync
-# with scripts/lib/preflight.sh. Checks BOTH Docker's storage root and
-# containerd's storage root: modern Docker Engine extracts image layers
-# through containerd's own snapshotter (default /var/lib/containerd), which is
-# a SEPARATE directory from Docker's "data-root" -- redirecting only one of
-# the two still dies mid-build with "no space left on device" while the other
-# stays cramped (seen on a VM with a small root disk and a large secondary
-# volume: pointing daemon.json's data-root at the big volume was not enough,
-# containerd also needed its own root redirected).
-check_disk_target() { # check_disk_target <label> <path>
+# failure surfaces wrapped in an Ansible fatal blob). Kept inline because
+# bootstrap runs before the repo is cloned; keep the tiers/threshold in sync
+# with scripts/lib/preflight.sh.
+#
+# Checks BOTH Docker's storage root and containerd's storage root: modern
+# Docker Engine extracts image layers through containerd's own snapshotter
+# (default /var/lib/containerd), a SEPARATE directory from Docker's "data-root"
+# -- redirecting only one still dies mid-build with "no space left on device".
+#
+# On these managed VMs the default /var/lib is a small partition while a large
+# data volume sits elsewhere. Setting PSSID_DOCKER_DATA_ROOT points both stores
+# at that volume (the Ansible role runs scripts/setup-docker-storage.sh); when
+# it is not set and space is tight, we suggest the roomiest volume we can find
+# so the operator can re-run in one step.
+
+# check_disk_target <label> <path>: 0 if ok/tight (prints status), 1 if too small.
+check_disk_target() {
   local label="$1" path="$2" free_kb free_gb
   [ -d "$path" ] || return 0
   free_kb="$(df -Pk "$path" 2>/dev/null | awk 'NR==2{print $4}')"
   [ -n "$free_kb" ] || return 0
   free_gb=$(( free_kb / 1024 / 1024 ))
   if [ "$free_kb" -lt 6291456 ]; then          # < 6 GiB
-    die "Only ${free_gb} GB free on ${path} (${label} storage). The deployment needs about 8-10 GB for Docker images. Grow the disk (or free space, e.g. 'docker system prune -af' if Docker is installed), then re-run this command."
+    return 1
   elif [ "$free_kb" -lt 12582912 ]; then       # < 12 GiB: tight, warn and continue
     printf "  ${C_R}!${C_N} only %s GB free on %s (%s storage); the image build is tight on space.\n" "$free_gb" "$path" "$label" >&2
   else
     ok "disk space: ${free_gb} GB free on ${path} (${label} storage)"
   fi
+  return 0
 }
-DISK_TARGET="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
-# Docker isn't installed yet at this point in a fresh bootstrap, so it can't
-# report its storage root. If an operator pre-staged /etc/docker/daemon.json
-# with a "data-root" (e.g. to point Docker at a roomier volume before install),
-# honor that instead of assuming the default /var/lib/docker location.
-if [ -z "$DISK_TARGET" ] && [ -r /etc/docker/daemon.json ]; then
-  DISK_TARGET="$(sed -n 's/.*"data-root"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/docker/daemon.json | head -n1)"
-fi
-[ -n "$DISK_TARGET" ] && [ -d "$DISK_TARGET" ] || DISK_TARGET="/var/lib"
-[ -d "$DISK_TARGET" ] || DISK_TARGET="/"
-check_disk_target "Docker" "$DISK_TARGET"
 
-CONTAINERD_TARGET="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
-[ -z "$CONTAINERD_TARGET" ] && [ -r /etc/containerd/config.toml ] && \
-  CONTAINERD_TARGET="$(sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' /etc/containerd/config.toml | head -n1)"
-[ -n "$CONTAINERD_TARGET" ] && [ -d "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/var/lib/containerd"
-[ -d "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/"
-if [ "$CONTAINERD_TARGET" != "$DISK_TARGET" ]; then
-  check_disk_target "containerd" "$CONTAINERD_TARGET"
+# suggest_volume: print "<free_gb> <mountpoint>" of the roomiest real
+# (non-pseudo) filesystem, to point a tight-disk error somewhere better.
+suggest_volume() {
+  df -PTk 2>/dev/null | awk '
+    NR>1 && $2 !~ /^(tmpfs|devtmpfs|overlay|squashfs|iso9660)$/ && $5 ~ /^[0-9]+$/ {
+      print int($5/1024/1024), $7
+    }' | sort -rn | head -n1
+}
+
+# disk_die <path>: fail with a "not enough space" message, appending a concrete
+# PSSID_DOCKER_DATA_ROOT suggestion when a roomier volume exists.
+disk_die() {
+  local path="$1" sugg sugg_gb sugg_mp
+  sugg="$(suggest_volume)"
+  sugg_gb="${sugg%% *}"; sugg_mp="${sugg#* }"
+  if [ -n "$sugg" ] && [ "${sugg_gb:-0}" -ge 15 ] && [ "$sugg_mp" != "/" ] && [ "$sugg_mp" != "$path" ]; then
+    die "Not enough disk space on ${path} for the image build (needs ~8-10 GB).
+  A larger volume was found at ${sugg_mp} (${sugg_gb} GB free). Point Docker there and re-run:
+
+      PSSID_DOCKER_DATA_ROOT=${sugg_mp%/}/docker  <re-run your bootstrap command>
+
+  (or configure it once by hand first:  sudo scripts/setup-docker-storage.sh ${sugg_mp%/}/docker )
+  See docs/deployment.md -> \"Deploying to a new VM\"."
+  else
+    die "Not enough disk space on ${path} for the image build (needs ~8-10 GB). Grow the disk (or free space with 'docker system prune -af' if Docker is installed), then re-run. See docs/deployment.md -> \"Deploying to a new VM\"."
+  fi
+}
+
+if [ -n "${PSSID_DOCKER_DATA_ROOT:-}" ]; then
+  # Operator chose where Docker + containerd storage will live. Both stores go
+  # on this one volume (the Ansible role runs setup-docker-storage.sh), so a
+  # single check on it covers the build.
+  mkdir -p "$PSSID_DOCKER_DATA_ROOT" 2>/dev/null || true
+  check_disk_target "Docker (PSSID_DOCKER_DATA_ROOT)" "$PSSID_DOCKER_DATA_ROOT" \
+    || die "PSSID_DOCKER_DATA_ROOT=$PSSID_DOCKER_DATA_ROOT is on a volume with too little free space (needs ~8-10 GB). Pick a bigger volume."
+else
+  # Docker not installed yet in a fresh bootstrap; honor a pre-staged
+  # daemon.json data-root, else fall back to where /var/lib/docker will live.
+  DISK_TARGET="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+  if [ -z "$DISK_TARGET" ] && [ -r /etc/docker/daemon.json ]; then
+    DISK_TARGET="$(sed -n 's/.*"data-root"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/docker/daemon.json | head -n1)"
+  fi
+  [ -n "$DISK_TARGET" ] && [ -d "$DISK_TARGET" ] || DISK_TARGET="/var/lib"
+  [ -d "$DISK_TARGET" ] || DISK_TARGET="/"
+  check_disk_target "Docker" "$DISK_TARGET" || disk_die "$DISK_TARGET"
+
+  CONTAINERD_TARGET="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+  [ -z "$CONTAINERD_TARGET" ] && [ -r /etc/containerd/config.toml ] && \
+    CONTAINERD_TARGET="$(sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' /etc/containerd/config.toml | head -n1)"
+  [ -n "$CONTAINERD_TARGET" ] && [ -d "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/var/lib/containerd"
+  [ -d "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/"
+  if [ "$CONTAINERD_TARGET" != "$DISK_TARGET" ]; then
+    check_disk_target "containerd" "$CONTAINERD_TARGET" || disk_die "$CONTAINERD_TARGET"
+  fi
 fi
 
 command -v git >/dev/null 2>&1 || { step "Installing git"; install_pkgs git; }
@@ -172,6 +216,7 @@ EXTRA=()
 [ -n "${PSSID_OIDC_ISSUER:-}" ]        && EXTRA+=(-e "pssid_gui_oidc_issuer=${PSSID_OIDC_ISSUER}")
 [ -n "${PSSID_OIDC_CLIENT_ID:-}" ]     && EXTRA+=(-e "pssid_gui_oidc_client_id=${PSSID_OIDC_CLIENT_ID}")
 [ -n "${PSSID_OIDC_CLIENT_SECRET:-}" ] && EXTRA+=(-e "pssid_gui_oidc_client_secret=${PSSID_OIDC_CLIENT_SECRET}")
+[ -n "${PSSID_DOCKER_DATA_ROOT:-}" ]   && EXTRA+=(-e "pssid_gui_docker_data_root=${PSSID_DOCKER_DATA_ROOT}")
 
 # ─── Deploy ───────────────────────────────────────────────────────────────────
 step "Deploying (Ansible: docker + pssid_webgui roles)"

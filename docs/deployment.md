@@ -7,6 +7,7 @@ and published images) are gathered in their own section near the end.
 ## Contents
 
 - [One-command bootstrap](#one-command-bootstrap)
+- [Deploying to a new VM](#deploying-to-a-new-vm)
 - [Prerequisites](#prerequisites)
 - [Deploying with Ansible](#deploying-with-ansible)
 - [Upgrades and backups](#upgrades-and-backups)
@@ -38,6 +39,70 @@ schedule. Settings are environment variables (`PSSID_HOSTNAME`,
 `PSSID_EDITION`, `PSSID_TLS`, `PSSID_SSO`, `PSSID_OIDC_*`; the script header
 documents them all). Everything below describes what that one command does, so
 each stage can be run or repaired by hand.
+
+## Deploying to a new VM
+
+The bootstrap above "just works" on a box with a single large disk. Some VMs
+split storage across several small partitions plus one large data volume, which
+can stop the image build part way through with `no space left on device`. Check
+the disk layout once per new VM and the one command goes through cleanly.
+
+Networking (DNS, host or perimeter firewalls, and which client networks may
+reach the site) is the operator's responsibility and outside the scope of this
+deployment: it never changes firewall rules or opens ports. The stack listens on
+80 and 443 through nginx; make sure your environment allows the clients you
+expect to reach those ports.
+
+### Check the disk layout
+
+The build needs about 8-10 GB free where Docker stores images. On some VMs
+`/var/lib` is a small partition (a few GB) while the real space is a separate
+large volume. Look before you deploy:
+
+```bash
+df -hT            # free space per filesystem
+lsblk             # disks, partitions, and where they are mounted
+```
+
+- If the filesystem holding `/var/lib` already has ~12 GB+ free, nothing to do;
+  run the plain bootstrap.
+- If there is a **large mounted volume elsewhere** (a dedicated data volume with
+  tens of GB free), point Docker at it (below).
+- If there is a **large unmounted/raw disk** (shows in `lsblk` with no
+  mountpoint), or an LVM volume group with free extents, grow Docker's
+  filesystem onto it (LVM: `pvcreate`/`vgextend`/`lvextend`/`resize2fs`); no
+  further steps needed.
+
+### Point Docker at the roomy volume
+
+Set `PSSID_DOCKER_DATA_ROOT` to a directory on the large volume. The deployment
+relocates **both** Docker's data-root and containerd's storage root there before
+the build (they are separate directories; see the note below), so nothing runs
+out of space part way through:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh \
+  | PSSID_HOSTNAME=pssid-new.example.edu \
+    PSSID_DOCKER_DATA_ROOT=/data/docker \
+    bash
+```
+
+You can also configure storage by hand first (idempotent, safe to re-run), then
+run the plain bootstrap:
+
+```bash
+sudo scripts/setup-docker-storage.sh /data/docker
+```
+
+> **Why both stores move.** Modern Docker Engine extracts image layers through
+> containerd's own snapshotter, whose root (`/var/lib/containerd`) is a separate
+> directory from Docker's data-root (`/var/lib/docker`, set in
+> `/etc/docker/daemon.json`). Relocating only one still dies mid-build with
+> `no space left on device`, and `docker info` looks healthy the whole time.
+> `scripts/setup-docker-storage.sh`, `make doctor`, and the bootstrap preflight
+> all account for both. If you forget to set the variable, the bootstrap
+> preflight detects the cramped disk, finds the roomiest volume, and prints the
+> exact `PSSID_DOCKER_DATA_ROOT=...` line to re-run with.
 
 ## Prerequisites
 

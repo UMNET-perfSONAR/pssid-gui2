@@ -52,10 +52,14 @@ else
     # How much room is there where /var/lib/docker would live by default?
     varlib_free="$(df -Pk /var/lib 2>/dev/null | awk 'NR==2{print int($4/1024/1024)}')"
     # Roomiest real (non-pseudo) filesystem on the box.
+    # `|| true`: if no suitable volume is found, read hits EOF and returns
+    # non-zero; without this, `set -e` would abort instead of falling through
+    # to the "no larger volume" branch below.
+    big_gb=""; big_mp=""
     read -r big_gb big_mp < <(df -PTk 2>/dev/null | awk '
       NR>1 && $2 !~ /^(tmpfs|devtmpfs|overlay|squashfs|iso9660)$/ && $5 ~ /^[0-9]+$/ {
         print int($5/1024/1024), $7
-      }' | sort -rn | head -n1)
+      }' | sort -rn | head -n1) || true
     if [ "${varlib_free:-0}" -lt 12 ] && [ "${big_gb:-0}" -ge 15 ] \
        && [ "$big_mp" != "/" ] && [ "$big_mp" != "/var" ]; then
       export PSSID_DOCKER_DATA_ROOT="${big_mp%/}/docker"

@@ -37,6 +37,14 @@ pssid_gui_install_dir: /opt/pssid-gui
 # Skip the docker image build and reuse existing local images.
 pssid_gui_no_build: false
 
+# Put Docker's data-root AND containerd's storage root on a roomier volume,
+# before the image build. Leave empty to use the system defaults
+# (/var/lib/docker and /var/lib/containerd). Set to a directory on a large
+# volume (e.g. /usr/local/miserver/docker) on VMs whose /var/lib is a small
+# partition; the role runs scripts/setup-docker-storage.sh to relocate both
+# stores. See docs/deployment.md ("Deploying to a new VM").
+pssid_gui_docker_data_root: ""
+
 # Load the reusable starter defaults (schedules, SSID profiles, a metadata test,
 # the "all" host group) into MongoDB the FIRST time this host is deployed. A
 # marker file ({{ pssid_gui_state_dir }}/.defaults-seeded) guarantees re-runs

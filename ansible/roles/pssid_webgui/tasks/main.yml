@@ -48,6 +48,21 @@
       ansible.builtin.set_fact:
         pssid_gui_src: "{{ pssid_gui_install_dir }}"
 
+# ---- Storage relocation (optional) ------------------------------------------
+# When pssid_gui_docker_data_root is set, move BOTH Docker's data-root and
+# containerd's storage root onto that volume BEFORE the image build, so a VM
+# whose /var/lib is a small partition does not run out of space mid-build.
+# Idempotent; a freshly installed engine has almost nothing to migrate.
+
+- name: Relocate Docker and containerd storage to a roomy volume
+  ansible.builtin.command:
+    argv:
+      - bash
+      - "{{ pssid_gui_src }}/scripts/setup-docker-storage.sh"
+      - "{{ pssid_gui_docker_data_root }}"
+  when: (pssid_gui_docker_data_root | default('')) | length > 0
+  changed_when: true
+
 # ---- Upgrade support ---------------------------------------------------------
 # Both tasks are inert on a normal deploy; upgrade.yml switches them on.
 

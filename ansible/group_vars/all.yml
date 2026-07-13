@@ -34,6 +34,10 @@
 # Reuse existing local images instead of building.
 # pssid_gui_no_build: false
 
+# Put Docker + containerd storage on a roomier volume before the build, for VMs
+# whose /var/lib is a small partition. Empty = system defaults. Example:
+# pssid_gui_docker_data_root: /usr/local/miserver/docker
+
 # Load the starter defaults (schedules, SSID profiles, a metadata test, the
 # "all" host group) on the FIRST install only. A marker file under
 # /var/lib/pssid makes re-runs and upgrades leave data alone.
