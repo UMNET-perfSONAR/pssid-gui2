@@ -272,7 +272,8 @@ The Makefile wraps the common commands:
 | `make build` | Rebuild the images |
 | `make dev` | Local development stack on `http://localhost:8888` |
 | `make backup` / `make restore` | Back up or restore MongoDB |
-| `make seed-defaults` | Load the reusable starter defaults |
+| `make seed-defaults` | Load the pre-load starter data (fresh installs) |
+| `make seed-qa` | Load the QA dataset (pre-load + probes, MWireless, BatchMW) |
 | `make doctor` | Check prerequisites and ports |
 | `make test` | Run every unit test (server and client; no stack needed) |
 | `make smoke` | Walk every user action against a running stack |
@@ -330,9 +331,36 @@ generated files.
 
 The old [`scripts/seed-config-demo.sh`](../scripts/seed-config-demo.sh) command
 is kept only as a compatibility wrapper around `seed-demo.sh`, so running it will
-load the same current dataset. [`scripts/seed-defaults.sh`](../scripts/seed-defaults.sh)
-is not a demo loader; it inserts reusable starter schedules, SSID profiles, a
-metadata-based test, and an `all` host group for a fresh site.
+load the same current dataset.
+
+### Pre-load and QA data
+
+[`scripts/seed-defaults.sh`](../scripts/seed-defaults.sh) is the **pre-load**: the
+starter data every fresh site begins with (the Ansible role runs it once on first
+install). It loads the four standard schedules, the eduroam SSID profile, the
+`test-http-to-google` and `test-rtt-to-google` tests, `job-comprehensive`,
+`batch-comprehensive` (priority 0, hourly, test interface `$ifacename`), and two
+host groups: `all` (host regex `.*`, nothing else attached) and `rpi4` (empty,
+group metadata `ifacename=wlan0`). No hosts are pre-loaded, and the retired
+`example_script` test type is removed.
+
+[`scripts/seed-qa.sh`](../scripts/seed-qa.sh) (or `make seed-qa`) loads the QA
+dataset: the pre-load plus the MWireless profile, `test-http-to-MWireless`
+(url `$dest`), the `job-MWagree` (captive portal) and `job-MWireless` jobs,
+`BatchMW` (priority 1, MWireless, hourly + every 5 minutes), and two Raspberry Pi
+probe hosts. It wires the four assignment paths QA exercises: a group batch via
+the `all` regex, group hosts by name in `rpi4` (which delivers the group
+metadata `ifacename=wlan0`), a host-level batch (`BatchMW` on probe 1), and
+host-level metadata (`dest` on probe 1). Override the probe host names and
+destination with `PSSID_QA_PROBE1`, `PSSID_QA_PROBE2`, and `PSSID_QA_MW_DEST`;
+the probe names must match the probes' real hostnames.
+
+A batch's **test interface** may be a literal interface (`wlan0`) or a metadata
+reference (`$ifacename`), resolved per host by the daemon from that host's
+effective metadata. Metadata can be assigned in two places: on the host and on a
+host group. Group metadata reaches the hosts a group lists **by name** (host
+keys win on collision); regex membership assigns the group's batches but not its
+metadata.
 
 ## Single sign-on
 
@@ -467,12 +495,15 @@ even on the same OS) or a per-group test destination.
   therefore **indeterminate** by contract; avoid defining the same key on
   overlapping groups.
 - **Where it is used:** the generated `pssid_config.json` carries each host's
-  effective metadata under a `metadata` key, so the daemon can resolve references
-  per host. The shipped `throughput-by-metadata` test shows the pattern: its
-  destination is `{{throughput_dest}}`, resolved from the host's metadata.
-
-Metadata is an early feature and the reference syntax is still being finalized,
-so treat the placeholder convention above as provisional.
+  effective metadata under a `metadata` key, and the daemon substitutes `$key`
+  references from it per host (an unresolved `$key` invalidates the batch on
+  that host). The pre-load and QA data show the pattern: `batch-comprehensive`
+  and `BatchMW` set the test interface to `$ifacename` (supplied by the `rpi4`
+  group as `ifacename=wlan0`), and `test-http-to-MWireless` targets `$dest`
+  (supplied by the probe's own host metadata).
+- **Group metadata reaches named hosts only:** a group's metadata applies to
+  the hosts the group lists by name. A host matched only by the group's regex
+  still receives the group's **batches**, but not its metadata.
 
 ## Provisioning and automation
 

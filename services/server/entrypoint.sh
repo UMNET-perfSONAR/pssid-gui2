@@ -20,6 +20,12 @@ if [ -d starters/layer3 ]; then
   cp -r starters/layer3 plugins/
 fi
 
+# Retire starter files that were removed from the repo. In production plugins/
+# is a persistent bind mount and the copies above only add or update, so a
+# template dropped from starters/ (like the old example_script test type) keeps
+# showing up as a selectable test type until it is deleted here.
+rm -f plugins/tests/example_script.json
+
 # Reconcile dependencies with package.json before starting. node_modules is a
 # named volume in the compose files, which shadows the image's modules, so a
 # rebuilt image alone will not pick up newly added packages. Installing here

@@ -57,9 +57,14 @@ export const isValidHostEntry = (name: unknown): boolean => {
   return isValidRfc1123Name(name);
 };
 
-/** Network interface name, e.g. wlan0: letters and digits only. */
+/**
+ * Network interface name, e.g. wlan0: letters and digits only. A metadata
+ * reference like $ifacename is also accepted: the daemon substitutes it per
+ * host from that host's effective metadata, so one batch can address a
+ * different interface on each probe.
+ */
 export const isValidInterfaceName = (v: unknown): boolean =>
-  typeof v === 'string' && /^[A-Za-z0-9]{1,64}$/.test(v);
+  typeof v === 'string' && /^([A-Za-z0-9]{1,64}|\$[A-Za-z0-9_]{1,64})$/.test(v);
 
 /** Priority: a whole number (0 or greater), sent as a number or numeric string. */
 export const isWholeNumber = (v: unknown): boolean =>

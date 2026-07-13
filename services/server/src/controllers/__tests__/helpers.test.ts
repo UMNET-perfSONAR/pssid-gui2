@@ -44,11 +44,11 @@ describe('isValidHostEntry (host names or IP addresses)', () => {
     'rejects %j', (v) => expect(isValidHostEntry(v)).toBe(false));
 });
 
-describe('isValidInterfaceName (strictly alphanumeric)', () => {
-  it.each(['wlan0', 'eth1', 'WLAN0'])('accepts %s', (v) => {
+describe('isValidInterfaceName (alphanumeric or $metadata reference)', () => {
+  it.each(['wlan0', 'eth1', 'WLAN0', '$ifacename', '$iface_name'])('accepts %s', (v) => {
     expect(isValidInterfaceName(v)).toBe(true);
   });
-  it.each(['', 'eth0.100', 'wl an0', 'eth-0', 'x'.repeat(65)])(
+  it.each(['', 'eth0.100', 'wl an0', 'eth-0', 'x'.repeat(65), '$', '$ iface', 'wlan$0', '$iface.name'])(
     'rejects %j', (v) => expect(isValidInterfaceName(v)).toBe(false));
 });
 

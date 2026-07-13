@@ -76,7 +76,7 @@
               <input
                 type="text"
                 id="batch-interface"
-                placeholder="e.g. wlan0"
+                placeholder="e.g. wlan0 or $ifacename"
                 v-model="form.test_interface"
                 class="form-control"
                 :aria-invalid="interfaceError ? 'true' : 'false'"

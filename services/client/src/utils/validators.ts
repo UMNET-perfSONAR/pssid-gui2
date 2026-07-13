@@ -13,7 +13,9 @@
 //     rather than embed a full jq parser.
 //   - cron is validated as a standard 5-field expression.
 //   - a network interface name is treated as strictly alphanumeric per the spec
-//     (so VLAN dot-notation like eth0.100 is intentionally rejected).
+//     (so VLAN dot-notation like eth0.100 is intentionally rejected), with one
+//     addition: a $metadata reference (e.g. $ifacename) is allowed, resolved
+//     per host by the daemon from that host's effective metadata.
 
 export interface ValidationResult {
   valid: boolean;
@@ -116,11 +118,23 @@ export function validSingleToken(value: string): ValidationResult {
   return ok;
 }
 
-/** Network interface name: strictly alphanumeric. */
+/**
+ * Network interface name: strictly alphanumeric (e.g. wlan0), or a metadata
+ * reference such as $ifacename that the daemon resolves per host from that
+ * host's effective metadata.
+ */
 export function validInterfaceName(value: string): ValidationResult {
   const v = (value ?? '').trim();
   if (!v) return fail('Required.');
-  if (!/^[A-Za-z0-9]+$/.test(v)) return fail('Use letters and numbers only, e.g. wlan0.');
+  if (v.startsWith('$')) {
+    if (!/^\$[A-Za-z0-9_]+$/.test(v)) {
+      return fail('A metadata reference is $ followed by a key, e.g. $ifacename.');
+    }
+    return ok;
+  }
+  if (!/^[A-Za-z0-9]+$/.test(v)) {
+    return fail('Use letters and numbers only (e.g. wlan0), or a metadata reference like $ifacename.');
+  }
   return ok;
 }
 

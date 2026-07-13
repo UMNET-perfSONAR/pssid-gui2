@@ -101,10 +101,10 @@ describe('validSingleToken (layer 2/3 method names)', () => {
 });
 
 describe('validInterfaceName (batch test interface)', () => {
-  it.each(['wlan0', 'eth1', 'WLAN2'])(
+  it.each(['wlan0', 'eth1', 'WLAN2', '$ifacename', '$iface_name'])(
     'accepts %s', (v) => expect(validInterfaceName(v).valid).toBe(true));
 
-  it.each(['wlan 0', 'eth0.100', 'wl-an', ''])(
+  it.each(['wlan 0', 'eth0.100', 'wl-an', '', '$', '$ iface', 'wlan$0', '$iface.name'])(
     'rejects %s', (v) => expect(validInterfaceName(v).valid).toBe(false));
 });
 

@@ -12,7 +12,7 @@ EDITION ?= $(shell [ -f .env ] && sed -n 's/^EDITION=//p' .env || echo default)
 .DEFAULT_GOAL := help
 
 .PHONY: help install deploy upgrade refresh up down restart logs ps build dev dev-down \
-        seed-demo seed-defaults edition-umich edition-default backup restore \
+        seed-demo seed-defaults seed-qa edition-umich edition-default backup restore \
         doctor clean test smoke
 
 help: ## Show this help
@@ -69,8 +69,11 @@ dev-down: ## Stop the local dev stack
 seed-demo: ## Load the canonical demo dataset into the running MongoDB container
 	@bash scripts/seed-demo.sh
 
-seed-defaults: ## Load the reusable starter defaults (fresh installs)
+seed-defaults: ## Load the pre-load starter data (fresh installs)
 	@bash scripts/seed-defaults.sh
+
+seed-qa: ## Load the QA dataset (pre-load + probes, MWireless, BatchMW)
+	@bash scripts/seed-qa.sh
 
 test: ## Run all unit tests (server + client, no stack needed)
 	@echo "== server unit tests =="

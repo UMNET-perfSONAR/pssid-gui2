@@ -96,8 +96,20 @@ That target runs [`scripts/seed-demo.sh`](scripts/seed-demo.sh), the canonical
 demo seeder. It populates the current GUI data model and produces data that can
 be previewed through Settings > Provisioning tools. The older
 `scripts/seed-config-demo.sh` command is kept as a compatibility wrapper around
-the same seeder. `scripts/seed-defaults.sh` is different: it loads reusable
-starter building blocks for a fresh install, not a full demo.
+the same seeder.
+
+Two other seeders serve different purposes:
+
+- `make seed-defaults` ([`scripts/seed-defaults.sh`](scripts/seed-defaults.sh))
+  loads the pre-load starter data for a fresh site: the standard schedules, the
+  eduroam profile, the google http/rtt tests, `job-comprehensive`,
+  `batch-comprehensive`, and the `all` (regex `.*`) and `rpi4`
+  (metadata `ifacename=wlan0`) host groups. No hosts are pre-loaded.
+- `make seed-qa` ([`scripts/seed-qa.sh`](scripts/seed-qa.sh)) loads the QA
+  dataset: everything in the pre-load plus the MWireless profile, `BatchMW`,
+  the captive-portal and MWireless jobs, and the two Raspberry Pi probes wired
+  to exercise batch and metadata assignment at both the host and group level
+  (override the probe names with `PSSID_QA_PROBE1`/`PSSID_QA_PROBE2`).
 
 ## Documentation
 
