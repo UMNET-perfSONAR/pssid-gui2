@@ -362,6 +362,51 @@ host group. Group metadata reaches the hosts a group lists **by name** (host
 keys win on collision); regex membership assigns the group's batches but not its
 metadata.
 
+### Running the seeders with bootstrap
+
+The pre-load is already wired into the playbook: `scripts/seed-defaults.sh` runs
+automatically on first install (guarded by `pssid_gui_seed_defaults: true`, the
+default, and a marker file under `/var/lib/pssid` so later playbook runs never
+re-seed). So a plain bootstrap already leaves you with the pre-load data:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh | \
+  PSSID_HOSTNAME=pssid.example.edu bash
+```
+
+`scripts/seed-qa.sh` is intentionally not wired in, since it needs real probe
+hostnames. Run it by hand on the VM after bootstrap finishes:
+
+```bash
+cd /opt/pssid-gui   # or wherever bootstrap deployed to; see below
+PSSID_QA_PROBE1=<real-pi-hostname-1> \
+PSSID_QA_PROBE2=<real-pi-hostname-2> \
+PSSID_QA_MW_DEST=www.umich.edu \
+bash scripts/seed-qa.sh
+```
+
+The probe names must exactly match the Pis' hostnames, or the daemon exits on
+them; running seed-qa over an already pre-loaded database is the expected path
+and replaces its own objects cleanly (`make seed-qa` also works, but only with
+the placeholder probe names). Where to `cd`: the piped bootstrap clones to
+`/opt/pssid-gui` (`$PSSID_GUI_DIR` to override); running `./bootstrap.sh` from a
+checkout deploys that checkout instead, so run the seeder from there. Both
+seeders `docker exec` into the running mongo container, so they must run on the
+VM itself, after the stack is up.
+
+To skip the pre-load and go straight to seed-qa, pass the playbook variable
+through bootstrap (extra arguments are forwarded to `ansible-playbook`):
+
+```bash
+./bootstrap.sh -e pssid_gui_seed_defaults=false
+```
+
+then run `seed-qa.sh` as above; it contains the whole pre-load, so the end state
+is the same either way. Re-running `seed-defaults.sh` on a QA box **resets** the
+objects it owns (for example it detaches `batch-comprehensive` from `all` and
+empties `rpi4`), so on a QA deployment always reseed with `seed-qa.sh`, not
+`seed-defaults.sh`.
+
 ## Single sign-on
 
 The server uses generic OIDC (`express-openid-connect`), so any compliant provider
