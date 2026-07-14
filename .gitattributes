@@ -4,6 +4,12 @@
 *.sh text eol=lf
 Makefile text eol=lf
 
+# The provision starter is a shell script WITHOUT a .sh extension, so the rule
+# above misses it. Force LF: it is copied into the Linux server container and
+# executed, and a CRLF shebang becomes "#!/bin/bash\r" (interpreter not found),
+# failing with "spawn ./bin/provision ENOENT" and silently skipping provisioning.
+services/server/starters/provision text eol=lf
+
 # Dockerfiles and dockerignores build on Linux VMs regardless of the checkout
 # platform; keep them LF so image builds behave identically everywhere.
 Dockerfile text eol=lf
