@@ -3,7 +3,7 @@
 pSSID GUI is a web application for building and managing pSSID configuration
 through a browser. You define hosts, host groups, schedules, SSID profiles,
 tests, jobs, and batches, and the application produces the files the pSSID daemon
-needs and sends them to your probes.
+needs, ready for a provision script to deliver to your probes.
 
 The same codebase can be themed for different organizations, and the included
 installer brings the stack up in one step while keeping the existing security
@@ -94,7 +94,7 @@ make seed-demo
 
 That target runs [`scripts/seed-demo.sh`](scripts/seed-demo.sh), the canonical
 demo seeder. It populates the current GUI data model and produces data that can
-be previewed through Settings > Provisioning tools. The older
+be previewed and generated through Settings > Configuration. The older
 `scripts/seed-config-demo.sh` command is kept as a compatibility wrapper around
 the same seeder.
 
@@ -137,8 +137,12 @@ The application produces two files:
 - `pssid_config.json`, the pSSID daemon configuration, which lists the batches to
   run.
 
-The provision script uses Ansible to copy the daemon config onto the probes in
-`hosts.ini` and restart the daemon on each one. The deployment guide describes the
+You build these in the GUI and write them to the controller with **Settings >
+Configuration > Generate**, which validates them against the daemon's rules
+first. A provision script (`bin/provision`) then uses Ansible to copy the daemon
+config onto the probes in `hosts.ini` and restart the daemon on each one; the
+copy shipped in this repository is a placeholder that only logs, so a deployment
+supplies its own. The deployment guide describes the
 [full pipeline](docs/deployment.md#provisioning-and-automation).
 
 ## Configuration file anatomy

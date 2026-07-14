@@ -512,18 +512,41 @@ way.
 
 ## Host groups, regex, and metadata
 
-### Host regex uses a custom library, not standard regex
+### Host regex is a standard regular expression, anchored at the start
 
-A host group can select its members by name with a regex, but it is **not**
-standard regex. It uses the pSSID matching library, where:
+A host group can select its members by name with a regular expression. The
+daemon on the probe matches it with **Python's `re.match`** (the
+`find_matching_regex` function in `pssid-daemon.py`), so the rules are exactly
+`re.match`'s:
 
-- `.` matches any single character
-- `*` means zero or more occurrences of the preceding character
+- It is a **full regular expression**. `.` is any character; `*`, `+`, `?` are
+  quantifiers; `[...]` is a character class; `(...)` groups; `|` alternates;
+  `\d`, `\w` and the rest all work. They are **not** treated as literal
+  characters.
+- It is anchored at the **start** of the hostname but **not** the end (`re.match`
+  matches a prefix). So `probe-01` also matches `probe-011` and
+  `probe-01.example.edu`. To match a name **exactly**, end the pattern with `$`
+  (for example `probe-01$`).
+- `*` (and `+`, `?`) must follow something. A bare `*` is an invalid pattern:
+  the daemon logs it and the group matches no host. Use `.*` to mean
+  "everything", not `*`. The shipped `all` group uses `.*` for exactly this
+  reason.
+- Matching is case-sensitive, and a group may hold several patterns (the "Add
+  Host Regex Specifier" button); a host joins the group if **any one** matches.
 
-So the pattern that matches every host is `.*` (not `*`). For example, `rp.*`
-matches every host whose name starts with `rp`. If you type `*` expecting "match
-everything" you will get the wrong result; use `.*`. The shipped `all` group uses
-`.*` for exactly this reason.
+Examples:
+
+| Pattern | Matches | Does not match |
+|---|---|---|
+| `.*` | every host | — |
+| `rp.*` | `rp4-01`, `rpi-lab` | `sensor-1` |
+| `probe-0[12]` | `probe-01`, `probe-02` | `probe-03` |
+| `probe-01$` | `probe-01` only | `probe-011` |
+| `probe` | `probe`, `probe-01`, `probeXYZ` | `sensor` |
+
+The GUI's Preview and each host's "Probe configuration" panel evaluate the same
+`re.match` semantics, so the group membership they show matches what the daemon
+computes on the probe.
 
 ### Metadata
 
@@ -559,13 +582,21 @@ files the probes use: `pssid_config.json` (the merged daemon configuration) and
 [`build_config_payload()`](../services/server/src/services/config.service.ts) and
 validated against the daemon's rules before they are emitted.
 
-You can inspect the generated files in the GUI under **Settings > Configuration >
-Preview**, which builds and validates them from the current database state without
-writing anything to disk. This is the guarantee the GUI can make: that the config
-file it generates is well-formed and passes the same checks the daemon enforces.
-Preview validates the WHOLE database at once, because the daemon receives one
-file: a single broken batch anywhere blocks Preview, even if it belongs to a
-host you are not looking at.
+**Settings > Configuration** has two actions:
+
+- **Preview** builds and validates the files from the current database state and
+  shows them in the browser **without writing anything to disk**. This is the
+  guarantee the GUI can make: that the config it generates is well-formed and
+  passes the same checks the daemon enforces.
+- **Generate** runs the same build and validation and then **writes**
+  `pssid_config.json` and `hosts.ini` to the controller (the server's output
+  directory, `/var/lib/pssid/output` on a standard deploy), so they exist as real
+  files, for example to run the daemon's own `--validate` check against them.
+
+Both validate the WHOLE database at once, because the daemon receives one file:
+a single broken batch anywhere blocks them (with the specific problem), even if
+it belongs to a host you are not looking at. Neither delivers anything to the
+probes; that is the separate step described below.
 
 Each host's own edit page (**Hosts > select a host > Probe configuration**)
 shows a different, narrower view: the slice of the config that ONE host
@@ -588,10 +619,12 @@ deployment must drop a real provision script at the path in `paths_config.json`
 (`/usr/lib/exec/pssid/provision`) for provisioning to reach the probes. Until
 then the GUI's job ends at generating and validating a correct config file.
 
-The generation entry point (`create_config_file()`) and the `settings`
-collection's `autoProvision` flag (served at `GET`/`PUT /api/settings`) remain in
-the server for when a real provision script is in place, but the GUI no longer
-exposes per-item provision buttons or an auto-provision toggle.
+**Generate** writes the files and stops there: it runs `bin/provision`, which
+today is the placeholder above, so nothing reaches a probe yet. The `settings`
+collection's `autoProvision` flag (served at `GET`/`PUT /api/settings`) and the
+per-host/per-group provision endpoints remain in the server for when a real
+provision script is in place, but the GUI exposes only the single **Generate**
+action, not per-item provision buttons or an auto-provision toggle.
 
 For working on the code itself, the development stack reloads the client and
 server as you edit:

@@ -14,6 +14,6 @@ echo ""
 bash "$SCRIPT_DIR/seed-demo.sh"
 
 echo ""
-echo "To preview the generated config after seeding, use Settings > Provisioning tools,"
+echo "To preview or generate the config after seeding, use Settings > Configuration,"
 echo "or run:"
 echo "  curl -sk https://localhost:8888/api/provision/preview | jq -r '.proposed.config' > pssid_config.json"

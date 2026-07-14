@@ -184,4 +184,4 @@ for (const coll of ['schedules', 'ssid_profiles', 'tests', 'jobs', 'batches', 'h
 EOF
 
 echo ""
-echo "Done. Refresh the GUI, then open Settings > Provisioning tools to preview the generated config."
+echo "Done. Refresh the GUI, then open Settings > Configuration to preview or generate the config."

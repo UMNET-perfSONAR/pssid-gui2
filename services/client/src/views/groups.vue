@@ -75,8 +75,16 @@
             <hostSelection :copy_of_data="hostChoices"></hostSelection>
 
             <div class="form-group">
-              <label> Host regex input </label>
-              <hostRegex :regex_array="form.regex"></hostRegex>
+              <label id="group-regex-label"> Host regex input </label>
+              <small id="group-regex-help" class="text-muted" style="display:block; margin:0.15rem 0 0.5rem;">
+                A regular expression matched from the start of the hostname (the
+                daemon uses Python <code>re.match</code>). Use <code>.*</code> to
+                match every host, and end with <code>$</code> for an exact match
+                (e.g. <code>probe-01$</code>). Metacharacters work:
+                <code>probe-0[12]</code> matches <code>probe-01</code> and
+                <code>probe-02</code>.
+              </small>
+              <hostRegex :regex_array="form.regex" aria-describedby="group-regex-help"></hostRegex>
             </div>
             <div class="form-group">
               <label id="group-batches-label"> Batch selection </label>

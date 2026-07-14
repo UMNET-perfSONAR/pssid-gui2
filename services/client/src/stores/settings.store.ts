@@ -31,6 +31,12 @@ export const useSettingsStore = defineStore('settings', {
     // (the specific daemon-validation problem), instead of a toast that
     // disappears - this is the one thing the GUI can tell you for certain.
     previewError: '',
+    // Generate = write the validated config files to disk on the controller.
+    generateLoading: false,
+    generated: false,
+    // A daemon-validation failure on generate is shown inline (same reasoning
+    // as previewError): a specific, fixable problem, not a transient toast.
+    generateError: '',
   }),
 
   actions: {
@@ -70,6 +76,42 @@ export const useSettingsStore = defineStore('settings', {
         this.previewError = 'Failed to build preview';
       } finally {
         this.previewLoading = false;
+      }
+    },
+
+    /**
+     * Generate the config files: build and validate them from the current
+     * database state and WRITE them to disk on the controller
+     * (pssid_config.json + hosts.ini under the server's output directory,
+     * /var/lib/pssid/output on a standard deploy). This is generation only -
+     * it does not deliver anything to the probes; that is a separate step a
+     * real bin/provision script performs. The empty-array body tells the
+     * server to build the whole config ('*'), which is what the daemon
+     * consumes regardless of which host prompted it.
+     */
+    async generateConfig() {
+      if (this.generateLoading) return;
+      try {
+        this.generateLoading = true;
+        this.generated = false;
+        this.generateError = '';
+        const res = await fetch('/api/hosts/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify([]),
+          ...authOptions(),
+        });
+        if (!res.ok) {
+          // 422 carries the specific daemon-validation problem; keep it visible.
+          this.generateError = await responseMessage(res, 'Failed to generate config files');
+          return;
+        }
+        this.generated = true;
+      } catch (err) {
+        console.error(err);
+        this.generateError = 'Failed to generate config files';
+      } finally {
+        this.generateLoading = false;
       }
     },
   }

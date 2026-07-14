@@ -461,4 +461,18 @@ printf "  ${C_BOLD}URL:${C_RESET}   %s\n" "$BASE_URL"
 printf "  ${C_BOLD}Edition:${C_RESET} %s\n" "$EDITION"
 printf "  ${C_BOLD}SSO:${C_RESET}   %s\n" "$SSO"
 [ "$TLS" = "self-signed" ] && printf "  ${C_DIM}(self-signed cert; your browser will warn. Choose Advanced, then Proceed.)${C_RESET}\n"
+
+# Security posture: with SSO off, write access is governed by OPEN_WRITE in
+# shared/config.ts. The shipped default is OPEN_WRITE=true, so ANYONE who can
+# reach this site can change the probe configuration. Make that unmistakable so
+# running without SSO is a deliberate choice, not a silent open door.
+if [ "$SSO" = "false" ]; then
+  OPEN_WRITE_VAL="$(sed -n -E 's/.*OPEN_WRITE:[[:space:]]*(true|false).*/\1/p' "$CONFIG_TS" 2>/dev/null | head -n1)"
+  if [ "${OPEN_WRITE_VAL:-true}" != "false" ]; then
+    printf "\n  ${C_YELLOW}${C_BOLD}! Security:${C_RESET} ${C_YELLOW}SSO is off and writes are open (OPEN_WRITE=true).${C_RESET}\n"
+    printf "  ${C_YELLOW}  Anyone who can reach %s can change the probe configuration.${C_RESET}\n" "$BASE_URL"
+    printf "  ${C_YELLOW}  Restrict access at the network layer, or enable SSO, before relying on this.${C_RESET}\n"
+    printf "  ${C_DIM}  (For a read-only deployment, set OPEN_WRITE: false in shared/config.ts and run 'make up'.)${C_RESET}\n"
+  fi
+fi
 printf "\n  Manage with: ${C_CYAN}make up${C_RESET} | ${C_CYAN}make down${C_RESET} | ${C_CYAN}make logs${C_RESET} | ${C_CYAN}make doctor${C_RESET}\n\n"

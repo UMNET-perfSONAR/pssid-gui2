@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="Settings"
-      subtitle="Inspect the configuration generated from your current setup"
+      subtitle="Inspect and generate the configuration from your current setup"
       icon="settings"
     />
 
@@ -18,7 +18,7 @@
           <div>
             <h2 id="tools-title" class="settings-card-title">Configuration</h2>
             <p class="settings-card-desc">
-              Verify the config file generated from your current setup.
+              Verify and generate the config files from your current setup.
             </p>
           </div>
         </div>
@@ -76,6 +76,40 @@
           </div>
           <pre class="preview-pre">{{ previewText }}</pre>
         </div>
+
+        <div class="setting-divider" role="separator"></div>
+
+        <div class="setting-row">
+          <div class="setting-text">
+            <div class="setting-name">Generate config files</div>
+            <div class="setting-sub">
+              Validates the configuration, then writes <code>pssid_config.json</code>
+              and <code>hosts.ini</code> to the controller (the server's output
+              directory, <code>/var/lib/pssid/output</code> on a standard deploy).
+              This generates the files only; delivering them to the probes is a
+              separate step.
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="settingsStore.generateLoading"
+            @click="generateConfig"
+          >
+            <span class="material-icons btn-icon" aria-hidden="true">description</span>
+            {{ settingsStore.generateLoading ? 'Generating...' : 'Generate' }}
+          </button>
+        </div>
+
+        <p v-if="settingsStore.generateError" class="preview-error" role="alert">
+          <span class="material-icons" aria-hidden="true">error</span>
+          {{ settingsStore.generateError }}
+        </p>
+
+        <div v-if="settingsStore.generated" class="preview-status valid" role="status" aria-live="polite">
+          <span class="material-icons" aria-hidden="true">check_circle</span>
+          <span>Config files generated on the controller: <code>pssid_config.json</code> and <code>hosts.ini</code>.</span>
+        </div>
       </section>
     </template>
 
@@ -116,6 +150,9 @@ export default {
   methods: {
     previewConfig() {
       this.settingsStore.previewConfig();
+    },
+    generateConfig() {
+      this.settingsStore.generateConfig();
     },
   },
 }
@@ -170,6 +207,11 @@ export default {
   justify-content: space-between;
   gap: 1.5rem;
   padding: 0.85rem 0 0.35rem;
+}
+.setting-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 1rem 0 0.25rem;
 }
 .setting-text {
   flex: 1;

@@ -121,7 +121,7 @@
             <span class="material-icons" aria-hidden="true">warning</span>
             Fix {{ hostStore.probeConfig.problems.length }}
             {{ hostStore.probeConfig.problems.length === 1 ? 'issue' : 'issues' }}
-            before <strong>{{ selectedName }}</strong> can be provisioned:
+            before <strong>{{ selectedName }}</strong>'s configuration is valid:
           </p>
           <ul class="probe-config-warning-list">
             <li v-for="(problem, i) in hostStore.probeConfig.problems" :key="i">{{ problem }}</li>

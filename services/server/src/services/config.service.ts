@@ -14,9 +14,7 @@ let shellscript_path: string | null = null;
 
 // Schema version of the generated pssid_config.json. Bump this when the SHAPE of
 // the generated config changes in a way a consumer (daemon/tooling) should notice.
-// 1.1: batches no longer carry an `archivers` array (feature removed; the daemon
-//      never read it).
-const CONFIG_VERSION = '1.1';
+const CONFIG_VERSION = '1';
 
 /**
  * Get specified collection data - flexible for all collections
@@ -541,16 +539,29 @@ export async function build_config_payload(
 }
 
 /**
- * pSSID host patterns (hosts_regex) use '.' = any character and '*' = zero or
- * more of the preceding character. That is a subset of real regular
- * expressions, so a pattern compiles by escaping every other special
- * character and anchoring both ends.
+ * Host patterns (hosts_regex) are matched on the probe by the pSSID daemon with
+ * Python's `re.match` (see `find_matching_regex` in pssid-daemon.py). That means
+ * a hosts_regex entry is a FULL regular expression, anchored at the START of the
+ * hostname but NOT the end (re.match matches a prefix), and an invalid pattern is
+ * skipped rather than fatal.
+ *
+ * We mirror that here so the GUI's Preview and per-host view show the same group
+ * membership the daemon will compute:
+ *  - prepend '^' (re.match anchors the start) and do NOT append '$' (re.match
+ *    does not anchor the end, so a bare prefix like "probe" matches
+ *    "probe-01"); end a pattern with '$' for an exact match.
+ *  - compile the pattern as-is: '.', '*', '+', '?', '[...]', '(...)', '|', '\d'
+ *    etc. are all honored, exactly like Python re (they are not treated as
+ *    literal characters).
+ *  - an invalid pattern (e.g. a bare '*') throws in RegExp and is treated as no
+ *    match, the same way the daemon's caught re.error skips it.
+ * JavaScript and Python regex agree for the character classes and quantifiers
+ * hostnames use.
  */
 export function matchesHostPattern(pattern: string, hostname: string): boolean {
   if (typeof pattern !== 'string' || pattern.length === 0) return false;
-  const escaped = pattern.replace(/[+?^$(){}[\]|\\]/g, '\\$&');
   try {
-    return new RegExp('^' + escaped + '$').test(hostname);
+    return new RegExp('^' + pattern).test(hostname);
   } catch {
     return false;
   }

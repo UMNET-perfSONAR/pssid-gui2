@@ -125,6 +125,13 @@ check "preview: ssid profile carries layer 2 method"       200 "$STATUS" 'wpa_su
 check "preview: inventory carries the group section"       200 "$STATUS" 'smoke-group' "$BODY"
 check "preview: metadata provenance block present"         200 "$STATUS" 'pssid_metadata' "$BODY"
 
+# ---- Generate: write the validated files to disk (Settings > Configuration) -------
+# Same build + daemon validation as preview, but this actually writes
+# pssid_config.json + hosts.ini to the controller. The smoke objects are valid
+# here, so the empty-array body (provision all, '*') must succeed with 200.
+req POST /api/hosts/config '[]'
+check "generate writes the config files" 200 "$STATUS" '' "$BODY"
+
 # ---- Per-probe effective configuration -------------------------------------------
 # The Hosts page shows what one probe will run, sliced from the same generated
 # payload the daemon receives (batches via direct assignment and group

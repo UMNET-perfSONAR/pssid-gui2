@@ -227,6 +227,13 @@ const createConfig = (async (req: Request, res: Response) =>{
     res.send('Config file created');
   }
   catch(error) {
+    // A daemon-validation failure is a real, specific answer (the current data
+    // would generate a config the daemon rejects), not a server fault: surface
+    // the exact problem as a 422 the same way getHostConfig and the preview do,
+    // so the operator sees what to fix instead of a generic 500.
+    if (error instanceof Error && error.message.startsWith('Config validation failed')) {
+      return res.status(422).json({message: error.message});
+    }
     console.error(error);
     res.status(500).json({message:"Server Error"});
   }

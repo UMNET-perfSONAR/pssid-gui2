@@ -311,24 +311,34 @@ describe('stripConfigMetadata', () => {
   });
 });
 
-describe('matchesHostPattern (pSSID host patterns in hosts_regex)', () => {
-  it('treats "." as any character and "*" as zero-or-more of the preceding', () => {
+// hosts_regex is matched on the probe by the daemon with Python's re.match
+// (find_matching_regex in pssid-daemon.py): a full regular expression, anchored
+// at the START only. These cases pin matchesHostPattern to that behavior so the
+// GUI preview agrees with the daemon.
+describe('matchesHostPattern (mirrors the daemon re.match on hosts_regex)', () => {
+  it('evaluates the pattern as a full regular expression', () => {
     expect(matchesHostPattern('.*', 'anything-at-all')).toBe(true);
     expect(matchesHostPattern('probe-.*', 'probe-library-01')).toBe(true);
     expect(matchesHostPattern('probe-.*', 'sensor-library-01')).toBe(false);
     expect(matchesHostPattern('probe-0.', 'probe-01')).toBe(true);
+    // metacharacters are honored, not literal (unlike a restricted matcher)
+    expect(matchesHostPattern('a+b', 'aab')).toBe(true);
+    expect(matchesHostPattern('probe-0[12]', 'probe-02')).toBe(true);
+    expect(matchesHostPattern('probe-0[12]', 'probe-03')).toBe(false);
   });
 
-  it('treats other regex specials as literal characters', () => {
-    expect(matchesHostPattern('a+b', 'a+b')).toBe(true);
-    expect(matchesHostPattern('a+b', 'aab')).toBe(false);
-    expect(matchesHostPattern('p(1)', 'p(1)')).toBe(true);
-    expect(matchesHostPattern('p(1)', 'p1')).toBe(false);
-  });
-
-  it('anchors the whole name (no substring matches)', () => {
-    expect(matchesHostPattern('probe', 'probe-01')).toBe(false);
+  it('anchors at the START only, so a prefix matches (like re.match)', () => {
+    expect(matchesHostPattern('probe', 'probe-01')).toBe(true);
+    expect(matchesHostPattern('probe', 'sensor-01')).toBe(false);
     expect(matchesHostPattern('probe', 'probe')).toBe(true);
+    // end-anchor explicitly for an exact match
+    expect(matchesHostPattern('probe-01$', 'probe-01')).toBe(true);
+    expect(matchesHostPattern('probe-01$', 'probe-011')).toBe(false);
+  });
+
+  it('treats an invalid pattern as no match (daemon catches re.error)', () => {
+    expect(matchesHostPattern('*', 'x')).toBe(false);   // nothing to repeat
+    expect(matchesHostPattern('[', 'x')).toBe(false);   // unterminated class
   });
 
   it('rejects empty and non-string patterns', () => {

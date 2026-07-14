@@ -185,11 +185,17 @@ const createConfig = (async (req: Request, res: Response) =>{
     res.send('Config file created');
   }
   catch(error) {
+    // Surface a daemon-validation failure as a specific 422 (matching the hosts
+    // createConfig and the preview), not a generic 500: it tells the operator
+    // exactly which data would generate a config the daemon rejects.
+    if (error instanceof Error && error.message.startsWith('Config validation failed')) {
+      return res.status(422).json({message: error.message});
+    }
     console.error(error);
     res.status(500).json({message:"Server Error"});
   }
 })
-module.exports = {getHostGroups, 
+module.exports = {getHostGroups,
                   getOneHostGroup, 
                   deleteHostGroup, 
                   postHostGroup, 
