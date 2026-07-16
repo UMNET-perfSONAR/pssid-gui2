@@ -5,7 +5,7 @@
   "main": "build/index.js",
   "scripts": {
     "start:build": "tsc -w",
-    "start:run": "nodemon build/index.js",
+    "start:run": "nodemon --ignore output --ignore plugins --ignore bin build/index.js",
     "dev": "concurrently npm:start:*",
     "start": "node build/index.js",
     "test": "vitest run",
