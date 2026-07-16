@@ -41,7 +41,10 @@ check_disk() {
   docker_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
   [ -n "$docker_root" ] && [ -d "$docker_root" ] || docker_root="/var/lib/docker"
   [ -d "$docker_root" ] || docker_root="/"
-  containerd_root="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+  # `|| true`: the containerd CLI may be absent (fresh box, or Docker installs
+  # that do not expose it); callers source this under `set -e -o pipefail`,
+  # where an unguarded command-not-found would silently kill the installer.
+  containerd_root="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1 || true)"
   [ -n "$containerd_root" ] && [ -d "$containerd_root" ] || containerd_root="/var/lib/containerd"
   [ -d "$containerd_root" ] || containerd_root="/"
   _check_disk_path "Docker" "$docker_root" || rc=1

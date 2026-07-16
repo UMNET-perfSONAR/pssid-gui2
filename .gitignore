@@ -28,3 +28,5 @@ www/
 
 # Site-specific Ansible inventories (copied from remote.example.ini)
 ansible/inventories/remote.ini
+# macOS folder metadata, never commit
+.DS_Store

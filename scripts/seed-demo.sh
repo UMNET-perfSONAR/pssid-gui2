@@ -21,9 +21,22 @@ if [ -z "$MONGO_CONTAINER" ]; then
   exit 1
 fi
 
+# Use credentials from .env when database authentication is enabled (the
+# production installer generates them; the dev stack runs without auth). Same
+# pattern as scripts/backup.sh.
+AUTH=""
+if [ -f .env ] && grep -q '^MONGO_PASSWORD=' .env; then
+  MONGO_USERNAME="$(sed -n 's/^MONGO_USERNAME=//p' .env)"
+  MONGO_PASSWORD="$(sed -n 's/^MONGO_PASSWORD=//p' .env)"
+  if [ -n "$MONGO_PASSWORD" ]; then
+    AUTH="-u $MONGO_USERNAME -p $MONGO_PASSWORD --authenticationDatabase admin"
+  fi
+fi
+
 echo "Seeding demo data into '$DB_NAME' via container '$MONGO_CONTAINER'..."
 
-docker exec -i "$MONGO_CONTAINER" mongosh --quiet "$DB_NAME" <<'EOF'
+# shellcheck disable=SC2086
+docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" <<'EOF'
 // ---- idempotent cleanup of previous demo data -------------------------------
 const demoNames = {
   schedules:     [

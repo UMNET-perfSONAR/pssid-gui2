@@ -38,9 +38,25 @@ if [ -z "$MONGO_CONTAINER" ]; then
   exit 1
 fi
 
+# Use credentials from .env when database authentication is enabled (the
+# production installer generates them; the dev stack runs without auth). Same
+# pattern as scripts/backup.sh. Without this, every write below is silently
+# rejected on an authenticated database: mongosh reading a script from stdin
+# prints the per-statement errors but still exits 0, so the seeding "succeeds"
+# while the site starts empty.
+AUTH=""
+if [ -f .env ] && grep -q '^MONGO_PASSWORD=' .env; then
+  MONGO_USERNAME="$(sed -n 's/^MONGO_USERNAME=//p' .env)"
+  MONGO_PASSWORD="$(sed -n 's/^MONGO_PASSWORD=//p' .env)"
+  if [ -n "$MONGO_PASSWORD" ]; then
+    AUTH="-u $MONGO_USERNAME -p $MONGO_PASSWORD --authenticationDatabase admin"
+  fi
+fi
+
 echo "Loading pre-load data into '$DB_NAME' via container '$MONGO_CONTAINER'..."
 
-docker exec -i "$MONGO_CONTAINER" mongosh --quiet "$DB_NAME" <<'EOF'
+# shellcheck disable=SC2086
+docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" <<'EOF'
 // ---- idempotent cleanup of the docs this script owns -------------------------
 const ownedNames = {
   schedules:     [
@@ -175,6 +191,19 @@ for (const coll of ['schedules', 'ssid_profiles', 'tests', 'jobs', 'batches', 'h
   print('  ' + coll.padEnd(15) + db.getCollection(coll).countDocuments());
 }
 EOF
+
+# ---- verify the writes actually landed -------------------------------------------
+# mongosh reading stdin exits 0 even when every statement failed (for example,
+# unauthenticated writes against an authenticated database), so check the net
+# effect and fail loudly instead of letting an empty site look "seeded". The
+# Ansible role only writes its once-only marker when this script succeeds.
+# shellcheck disable=SC2086
+SCHEDULE_COUNT="$(docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" --eval 'db.schedules.countDocuments()' | tail -n1 | tr -dc '0-9')"
+if [ "${SCHEDULE_COUNT:-0}" -lt 1 ]; then
+  echo "error: seeding wrote nothing (schedules=0). If database authentication is" >&2
+  echo "enabled, credentials must be present in .env (MONGO_USERNAME/MONGO_PASSWORD)." >&2
+  exit 1
+fi
 
 # ---- retire the example_script test TYPE (template file) -------------------------
 # The GUI lists test types from the server container's plugins/tests directory,

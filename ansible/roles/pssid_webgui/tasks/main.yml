@@ -76,6 +76,17 @@
   # A missing mongo container just means there is nothing to back up yet.
   failed_when: false
 
+# install.sh rewrites nginx.conf and shared/config.ts in place at deploy time.
+# Those edits would abort the pull whenever upstream also touched either file,
+# so discard them first; the installer run below regenerates both from the
+# playbook variables.
+- name: Discard deploy-time edits that would conflict with the pull
+  ansible.builtin.command:
+    argv: [git, -C, "{{ pssid_gui_src }}", checkout, --, nginx.conf, shared/config.ts]
+  when: pssid_gui_git_update | bool
+  changed_when: false
+  failed_when: false
+
 - name: Fast-forward the source checkout
   ansible.builtin.command:
     argv: [git, -C, "{{ pssid_gui_src }}", pull, --ff-only]

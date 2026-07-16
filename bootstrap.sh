@@ -165,7 +165,10 @@ else
   [ -d "$DISK_TARGET" ] || DISK_TARGET="/"
   check_disk_target "Docker" "$DISK_TARGET" || disk_die "$DISK_TARGET"
 
-  CONTAINERD_TARGET="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+  # `|| true`: containerd is absent on a fresh box (command not found = 127);
+  # under `set -e -o pipefail` an unguarded failure here would silently kill
+  # the whole bootstrap right after the first disk-check line.
+  CONTAINERD_TARGET="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1 || true)"
   [ -z "$CONTAINERD_TARGET" ] && [ -r /etc/containerd/config.toml ] && \
     CONTAINERD_TARGET="$(sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' /etc/containerd/config.toml | head -n1)"
   [ -n "$CONTAINERD_TARGET" ] && [ -d "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/var/lib/containerd"
@@ -221,6 +224,10 @@ EXTRA=()
 # ─── Deploy ───────────────────────────────────────────────────────────────────
 step "Deploying (Ansible: docker + pssid_webgui roles)"
 cd "$SRC/ansible"
+# -i is passed explicitly rather than relying on ansible.cfg: Ansible ignores
+# the cfg when the directory is world-writable (and the caller's environment
+# can override it), and a lost inventory makes the play match no hosts and
+# exit 0 -- a silent no-op deploy. Bootstrap always targets this machine.
 # ${EXTRA[@]+...} keeps `set -u` happy when no settings were provided (older
 # bash treats expanding an empty array as an unbound variable).
-ansible-playbook site.yml ${EXTRA[@]+"${EXTRA[@]}"} "$@"
+ansible-playbook -i inventories/local.ini site.yml ${EXTRA[@]+"${EXTRA[@]}"} "$@"
