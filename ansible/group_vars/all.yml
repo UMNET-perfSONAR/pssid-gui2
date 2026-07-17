@@ -34,9 +34,16 @@
 # Reuse existing local images instead of building.
 # pssid_gui_no_build: false
 
+# Pull prebuilt images from the registry instead of building on this host
+# (~4 GB of Docker storage instead of ~8-10 GB; falls back to building if the
+# pull fails). Recommended for VMs with a small /var partition.
+# pssid_gui_pull: true
+
 # Put Docker + containerd storage on a roomier volume before the build, for VMs
 # whose /var/lib is a small partition. Empty = system defaults. Example:
 # pssid_gui_docker_data_root: /usr/local/miserver/docker
+# A dedicated local mount at /var/lib/docker is detected automatically. Do not
+# use NFS/CIFS/other network storage for Docker or containerd data.
 
 # Load the starter defaults (schedules, SSID profiles, a metadata test, the
 # "all" host group) on the FIRST install only. A marker file under

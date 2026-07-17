@@ -116,23 +116,7 @@ doctor: ## Check prerequisites and port availability
 		if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$$p "; then \
 			echo "  !   port $$p in use"; else echo "  ok  port $$p free"; fi; \
 	done
-	@root=$$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker); \
-	 [ -d "$$root" ] || root=/; \
-	 free=$$(df -Pk "$$root" 2>/dev/null | awk 'NR==2{print int($$4/1024/1024)}'); \
-	 if [ -n "$$free" ]; then \
-		if [ "$$free" -lt 6 ]; then echo "  ERR disk (docker): only $${free} GB free on $$root (build needs ~8-10 GB)"; \
-		elif [ "$$free" -lt 12 ]; then echo "  !   disk (docker): $${free} GB free on $$root (tight for the build)"; \
-		else echo "  ok  disk (docker): $${free} GB free on $$root"; fi; \
-	 fi
-	@croot=$$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1); \
-	 [ -n "$$croot" ] || croot=/var/lib/containerd; \
-	 [ -d "$$croot" ] || croot=/; \
-	 free=$$(df -Pk "$$croot" 2>/dev/null | awk 'NR==2{print int($$4/1024/1024)}'); \
-	 if [ -n "$$free" ]; then \
-		if [ "$$free" -lt 6 ]; then echo "  ERR disk (containerd): only $${free} GB free on $$croot (build needs ~8-10 GB)"; \
-		elif [ "$$free" -lt 12 ]; then echo "  !   disk (containerd): $${free} GB free on $$croot (tight for the build)"; \
-		else echo "  ok  disk (containerd): $${free} GB free on $$croot"; fi; \
-	 fi
+	@bash -c '. scripts/lib/preflight.sh; check_disk'
 
 clean: ## Stop stack and remove volumes (DANGER: deletes data)
 	@$(PROD) down -v

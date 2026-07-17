@@ -19,9 +19,11 @@
 #   sudo scripts/setup-docker-storage.sh /usr/local/miserver/docker
 #   sudo PSSID_DOCKER_DATA_ROOT=/usr/local/miserver/docker scripts/setup-docker-storage.sh
 #
-# The Docker data-root goes at the path you give; containerd's root goes at a
-# "containerd" directory beside it (so /usr/local/miserver/docker pairs with
-# /usr/local/miserver/containerd).
+# The Docker data-root goes at the path you give; containerd's root normally
+# goes at a "containerd" directory beside it (so /data/docker pairs with
+# /data/containerd). A dedicated filesystem mounted directly at
+# /var/lib/docker is a special, common layout: Docker stays at that mount point
+# and containerd is stored in /var/lib/docker/.containerd on the same volume.
 #
 # Idempotent and safe to re-run. Works before Docker is installed (the settings
 # take effect on first start) or after (existing data is migrated). Persists
@@ -33,15 +35,67 @@ TARGET="${1:-${PSSID_DOCKER_DATA_ROOT:-}}"
 
 err() { printf 'error: %s\n' "$1" >&2; exit 1; }
 
+existing_path() {
+  local path="$1"
+  while [ ! -e "$path" ] && [ "$path" != "/" ]; do
+    path="$(dirname "$path")"
+  done
+  printf '%s\n' "$path"
+}
+
+filesystem_type() {
+  local path
+  path="$(existing_path "$1")"
+  if command -v findmnt >/dev/null 2>&1; then
+    findmnt -n -o FSTYPE -T "$path" 2>/dev/null | head -n1
+  else
+    df -PT "$path" 2>/dev/null | awk 'NR==2{print $2}'
+  fi
+}
+
+is_network_filesystem() {
+  case "$1" in
+    nfs|nfs4|cifs|smb3|9p|ceph|glusterfs|fuse.sshfs) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 [ "$(id -u)" -eq 0 ] || err "run as root (use sudo)."
 [ -n "$TARGET" ] || err "usage: setup-docker-storage.sh <absolute-dir-on-a-roomy-volume>"
 case "$TARGET" in
   /*) ;;
   *)  err "the target must be an absolute path (got: $TARGET).";;
 esac
+case "$TARGET" in
+  *[[:space:]]*) err "the target path must not contain whitespace (got: $TARGET).";;
+esac
 
 DOCKER_ROOT="${TARGET%/}"
-CONTAINERD_ROOT="$(dirname "$DOCKER_ROOT")/containerd"
+[ -n "$DOCKER_ROOT" ] || DOCKER_ROOT="/"
+if command -v realpath >/dev/null 2>&1; then
+  DOCKER_ROOT="$(realpath -m "$DOCKER_ROOT")"
+fi
+[ "$DOCKER_ROOT" != "/" ] || err "refusing to use / as Docker's data-root."
+
+case "$DOCKER_ROOT" in
+  /var/lib/docker)
+    # Some managed VMs provide a large LV mounted exactly here. A sibling
+    # /var/lib/containerd would still be on the small /var filesystem, so put
+    # containerd inside the dedicated Docker mount instead.
+    CONTAINERD_ROOT="$DOCKER_ROOT/.containerd"
+    ;;
+  /var/lib/docker/*)
+    err "do not choose a directory inside /var/lib/docker; use /var/lib/docker itself for a dedicated Docker mount."
+    ;;
+  *)
+    CONTAINERD_ROOT="$(dirname "$DOCKER_ROOT")/containerd"
+    ;;
+esac
+
+TARGET_FSTYPE="$(filesystem_type "$DOCKER_ROOT")"
+if is_network_filesystem "$TARGET_FSTYPE"; then
+  err "$DOCKER_ROOT is on a ${TARGET_FSTYPE} network filesystem. Docker and containerd storage must use a local filesystem (for example ext4 or xfs)."
+fi
 
 # Copy a directory tree, preferring rsync when present (handles xattrs/sparse
 # files cleanly) and falling back to cp so a minimal box still works.
@@ -53,14 +107,21 @@ migrate() { # migrate SRC DST
   fi
 }
 
-mkdir -p "$DOCKER_ROOT" "$CONTAINERD_ROOT"
+mkdir -p "$DOCKER_ROOT" "$CONTAINERD_ROOT" \
+  || err "cannot create storage directories under $DOCKER_ROOT; choose a writable local filesystem."
 
 # Make sure the chosen volume actually has room, and is not the same cramped
 # filesystem we are trying to escape.
+MIN_GIB="${PSSID_STORAGE_MIN_GIB:-6}"
+WARN_GIB="${PSSID_STORAGE_WARN_GIB:-12}"
+NEED_TEXT="${PSSID_STORAGE_NEED_TEXT:-the image build needs about 8-10 GB}"
 FREE_KB="$(df -Pk "$DOCKER_ROOT" 2>/dev/null | awk 'NR==2{print $4}')"
-if [ -n "${FREE_KB:-}" ] && [ "$FREE_KB" -lt 12582912 ]; then   # < 12 GiB
+if [ -n "${FREE_KB:-}" ] && [ "$FREE_KB" -lt $(( MIN_GIB * 1048576 )) ]; then
   FREE_GB=$(( FREE_KB / 1024 / 1024 ))
-  err "the volume holding $DOCKER_ROOT has only ${FREE_GB} GB free; pick a location on a volume with at least ~12 GB (the build needs ~8-10 GB)."
+  err "the volume holding $DOCKER_ROOT has only ${FREE_GB} GB free; ${NEED_TEXT}."
+elif [ -n "${FREE_KB:-}" ] && [ "$FREE_KB" -lt $(( WARN_GIB * 1048576 )) ]; then
+  FREE_GB=$(( FREE_KB / 1024 / 1024 ))
+  echo "warning: only ${FREE_GB} GB free on $DOCKER_ROOT; ${NEED_TEXT} and storage is tight." >&2
 fi
 
 # Idempotency short-circuit: if both stores already point at the target, do
@@ -71,11 +132,13 @@ fi
 # Read daemon.json only when it exists: on a fresh VM it does not, and `sed` on a
 # missing file exits 2, which under `set -o pipefail` would abort the whole
 # script (empty output, rc 2) before it ever relocates anything.
-cur_docker_root=""
-if [ -f /etc/docker/daemon.json ]; then
+cur_docker_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+if [ -z "$cur_docker_root" ] && [ -f /etc/docker/daemon.json ]; then
   cur_docker_root="$(sed -n 's/.*"data-root"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/docker/daemon.json 2>/dev/null | head -n1 || true)"
 fi
-if [ "$cur_docker_root" = "$DOCKER_ROOT" ] && mountpoint -q /var/lib/containerd 2>/dev/null; then
+if [ "$cur_docker_root" = "$DOCKER_ROOT" ] \
+   && mountpoint -q /var/lib/containerd 2>/dev/null \
+   && grep -Fqs "$CONTAINERD_ROOT /var/lib/containerd " /etc/fstab; then
   echo "==> Docker + containerd storage already on $DOCKER_ROOT; nothing to change."
   exit 0
 fi
@@ -116,7 +179,8 @@ else
 fi
 
 # Migrate any existing Docker data (a freshly installed engine has almost none).
-if [ -d /var/lib/docker ] && [ -n "$(ls -A /var/lib/docker 2>/dev/null)" ] \
+if [ "$DOCKER_ROOT" != "/var/lib/docker" ] \
+   && [ -d /var/lib/docker ] && [ -n "$(ls -A /var/lib/docker 2>/dev/null)" ] \
    && [ -z "$(ls -A "$DOCKER_ROOT" 2>/dev/null)" ]; then
   echo "    migrating existing /var/lib/docker -> $DOCKER_ROOT"
   migrate /var/lib/docker "$DOCKER_ROOT"
@@ -127,19 +191,28 @@ fi
 # relocates it without editing containerd's own config (robust across versions)
 # and persists via /etc/fstab.
 if mountpoint -q /var/lib/containerd; then
-  echo "    /var/lib/containerd is already a mount point; leaving it as-is"
-else
-  mkdir -p /var/lib/containerd
   if [ -n "$(ls -A /var/lib/containerd 2>/dev/null)" ] \
      && [ -z "$(ls -A "$CONTAINERD_ROOT" 2>/dev/null)" ]; then
-    echo "    migrating existing /var/lib/containerd -> $CONTAINERD_ROOT"
+    echo "    migrating mounted /var/lib/containerd -> $CONTAINERD_ROOT"
     migrate /var/lib/containerd "$CONTAINERD_ROOT"
   fi
-  mount --bind "$CONTAINERD_ROOT" /var/lib/containerd
+  echo "    replacing the existing /var/lib/containerd mount"
+  umount /var/lib/containerd \
+    || err "could not unmount /var/lib/containerd after stopping Docker and containerd."
 fi
-if ! grep -qsE "[[:space:]]/var/lib/containerd[[:space:]]" /etc/fstab; then
-  echo "$CONTAINERD_ROOT /var/lib/containerd none bind 0 0" >> /etc/fstab
+mkdir -p /var/lib/containerd
+if [ -n "$(ls -A /var/lib/containerd 2>/dev/null)" ] \
+   && [ -z "$(ls -A "$CONTAINERD_ROOT" 2>/dev/null)" ]; then
+  echo "    migrating existing /var/lib/containerd -> $CONTAINERD_ROOT"
+  migrate /var/lib/containerd "$CONTAINERD_ROOT"
 fi
+mount --bind "$CONTAINERD_ROOT" /var/lib/containerd \
+  || err "could not bind-mount $CONTAINERD_ROOT onto /var/lib/containerd."
+
+# Replace an obsolete or incorrect entry (including the old self-bind
+# /var/lib/containerd -> /var/lib/containerd layout) with the requested source.
+sed -i '\|[[:space:]]/var/lib/containerd[[:space:]]|d' /etc/fstab
+echo "$CONTAINERD_ROOT /var/lib/containerd none bind,x-systemd.requires-mounts-for=$CONTAINERD_ROOT 0 0" >> /etc/fstab
 
 # ── Restart (only when Docker is actually installed) ─────────────────────────
 if command -v dockerd >/dev/null 2>&1 || command -v docker >/dev/null 2>&1; then

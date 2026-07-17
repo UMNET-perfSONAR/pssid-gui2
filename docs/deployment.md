@@ -47,6 +47,28 @@ split storage across several small partitions plus one large data volume, which
 can stop the image build part way through with `no space left on device`. Check
 the disk layout once per new VM and the one command goes through cleanly.
 
+### Small VMs: pull prebuilt images instead of building
+
+Building the images from source needs ~8-10 GB of Docker storage. On VMs whose
+`/var` is a small partition (common on managed VMs), skip the build entirely
+and pull the images CI publishes to GitHub Container Registry — that needs only
+~4 GB:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh \
+  | PSSID_PULL=true PSSID_HOSTNAME=pssid.example.edu PSSID_EDITION=umich bash
+```
+
+or `./install.sh --pull ...` from a checkout, or `-e pssid_gui_pull=true` with
+the playbook. The client image is published per edition (`:latest` = default,
+`:umich` = umich) and the installer picks the right one from `--edition`. If
+the pull fails (registry unreachable, images not yet published), the installer
+falls back to building from source automatically — with the larger disk
+requirement that implies. The images are published by
+`.github/workflows/publish.yml` on every push to `main`; make sure the three
+`pssid-gui2_*` packages are set to **public** in the GitHub organization's
+package settings so VMs can pull anonymously.
+
 Networking (DNS, host or perimeter firewalls, and which client networks may
 reach the site) is the operator's responsibility and outside the scope of this
 deployment: it never changes firewall rules or opens ports. The stack listens on
@@ -55,23 +77,47 @@ expect to reach those ports.
 
 ### Check the disk layout
 
-The build needs about 8-10 GB free where Docker stores images. On some VMs
-`/var/lib` is a small partition (a few GB) while the real space is a separate
-large volume. Look before you deploy:
+The build needs about 8-10 GB free on the local filesystem(s) holding Docker
+and containerd data. On some VMs `/var` is a small partition while
+`/var/lib/docker` is already a separate large logical volume; on others, the
+only large path is an unrelated data mount. Look before you deploy:
 
 ```bash
 df -hT            # free space per filesystem
 lsblk             # disks, partitions, and where they are mounted
+findmnt -T /var/lib/docker -o TARGET,SOURCE,FSTYPE,OPTIONS
 ```
 
-- If the filesystem holding `/var/lib` already has ~12 GB+ free, nothing to do;
-  run the plain bootstrap.
+Plan for these amounts:
+
+| Location | Required headroom |
+|---|---|
+| Docker + containerd storage, source build | ~12 GB recommended; deployment refuses below 6 GB |
+| Docker + containerd storage, prebuilt-image pull | ~8 GB recommended; deployment refuses below 4 GB |
+| `/opt/pssid-gui` checkout | Keep at least ~1 GB free, plus room for database backups stored under `mongo-backups/` |
+
+Docker and containerd may share one roomy filesystem; the space is not additive
+when they do. If they are on separate filesystems, both are checked because
+either can stop the deployment during image extraction.
+
+- If `/var/lib/docker` is itself a roomy **local** mount (for example the 49 GB
+  ext4 LV commonly supplied on managed VMs), run the plain bootstrap. It
+  detects that mount automatically, keeps Docker there, and bind-mounts
+  containerd storage from `/var/lib/docker/.containerd`.
+- If the filesystem(s) holding both `/var/lib/docker` and
+  `/var/lib/containerd` already have ~12 GB+ free, run the plain bootstrap.
 - If there is a **large mounted volume elsewhere** (a dedicated data volume with
   tens of GB free), point Docker at it (below).
 - If there is a **large unmounted/raw disk** (shows in `lsblk` with no
   mountpoint), or an LVM volume group with free extents, grow Docker's
   filesystem onto it (LVM: `pvcreate`/`vgextend`/`lvextend`/`resize2fs`); no
   further steps needed.
+
+Do not use NFS, CIFS/SMB, or another shared/network filesystem for Docker or
+containerd storage. Besides filesystem-semantics and locking problems, managed
+NFS exports commonly root-squash the VM's root user. The bootstrap excludes
+network mounts from automatic suggestions and rejects an explicitly selected
+network path with a clear error.
 
 ### Point Docker at the roomy volume
 
@@ -94,6 +140,18 @@ run the plain bootstrap:
 sudo scripts/setup-docker-storage.sh /data/docker
 ```
 
+When a large filesystem is mounted directly at `/var/lib/docker`, pass that
+exact path (or let bootstrap detect it):
+
+```bash
+sudo scripts/setup-docker-storage.sh /var/lib/docker
+```
+
+In this special layout Docker remains at `/var/lib/docker`, while containerd
+is stored at `/var/lib/docker/.containerd` and bind-mounted onto
+`/var/lib/containerd`. This matters because `/var/lib/containerd` by itself
+would still reside on the smaller `/var` filesystem.
+
 > **Why both stores move.** Modern Docker Engine extracts image layers through
 > containerd's own snapshotter, whose root (`/var/lib/containerd`) is a separate
 > directory from Docker's data-root (`/var/lib/docker`, set in
@@ -101,7 +159,8 @@ sudo scripts/setup-docker-storage.sh /data/docker
 > `no space left on device`, and `docker info` looks healthy the whole time.
 > `scripts/setup-docker-storage.sh`, `make doctor`, and the bootstrap preflight
 > all account for both. If you forget to set the variable, the bootstrap
-> preflight detects the cramped disk, finds the roomiest volume, and prints the
+> preflight first recognizes a dedicated local `/var/lib/docker` mount. If one
+> is not present, it finds the roomiest writable local volume and prints the
 > exact `PSSID_DOCKER_DATA_ROOT=...` line to re-run with.
 
 ## Prerequisites
@@ -161,6 +220,12 @@ It backs up the database, fast-forwards the checkout, rebuilds the images,
 restarts the stack with the existing settings, and waits for the health check.
 MongoDB lives in a named volume that survives rebuilds, and starter defaults
 only load on first installs, so upgrades never modify data.
+
+The installer edits `nginx.conf` and `shared/config.ts` in place at deploy time
+(hostname, SSO flag, base URL). The upgrade discards those two local edits
+before pulling — they would otherwise block the pull whenever upstream also
+changed either file — and the installer run that follows regenerates both from
+the deployment's settings, so nothing is lost.
 
 ### Controller-integrated installs
 
@@ -320,6 +385,13 @@ Use one command for demos:
 ```bash
 make seed-demo
 ```
+
+All seeders run `mongosh` inside the database container and, on a production
+deployment (where the installer enabled database authentication), read the
+MongoDB credentials from the root `.env` automatically — so run them from the
+repository root, the same place the Makefile does. `seed-defaults.sh` also
+verifies its writes actually landed and fails loudly instead of leaving a
+silently empty site.
 
 This loads the canonical sample dataset through
 [`scripts/seed-demo.sh`](../scripts/seed-demo.sh). The data matches the current

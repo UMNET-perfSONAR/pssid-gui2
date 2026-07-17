@@ -54,12 +54,44 @@
 # whose /var/lib is a small partition does not run out of space mid-build.
 # Idempotent; a freshly installed engine has almost nothing to migrate.
 
+- name: Check for a dedicated filesystem mounted at /var/lib/docker
+  ansible.builtin.command:
+    argv: [mountpoint, -q, /var/lib/docker]
+  register: pssid_gui_dedicated_docker_mount
+  when: (pssid_gui_docker_data_root | default('')) | length == 0
+  changed_when: false
+  failed_when: false
+
+- name: Read the dedicated Docker filesystem type
+  ansible.builtin.command:
+    argv: [findmnt, -n, -o, FSTYPE, -T, /var/lib/docker]
+  register: pssid_gui_dedicated_docker_fstype
+  when:
+    - (pssid_gui_docker_data_root | default('')) | length == 0
+    - (pssid_gui_dedicated_docker_mount.rc | default(1)) == 0
+  changed_when: false
+  failed_when: false
+
+- name: Automatically use the dedicated local Docker filesystem
+  ansible.builtin.set_fact:
+    pssid_gui_docker_data_root: /var/lib/docker
+  when:
+    - (pssid_gui_docker_data_root | default('')) | length == 0
+    - (pssid_gui_dedicated_docker_mount.rc | default(1)) == 0
+    - (pssid_gui_dedicated_docker_fstype.stdout | default('')) not in ['nfs', 'nfs4', 'cifs', 'smb3', '9p', 'ceph', 'glusterfs', 'fuse.sshfs']
+
 - name: Relocate Docker and containerd storage to a roomy volume
   ansible.builtin.command:
     argv:
       - bash
       - "{{ pssid_gui_src }}/scripts/setup-docker-storage.sh"
       - "{{ pssid_gui_docker_data_root }}"
+  environment:
+    PSSID_STORAGE_MIN_GIB: "{{ '4' if (pssid_gui_pull | bool) else '6' }}"
+    PSSID_STORAGE_NEED_TEXT: >-
+      {{ 'pulling the prebuilt images needs about 4 GB'
+         if (pssid_gui_pull | bool)
+         else 'the image build needs about 8-10 GB' }}
   when: (pssid_gui_docker_data_root | default('')) | length > 0
   changed_when: true
 
@@ -111,7 +143,8 @@
                '--client-secret=' ~ pssid_gui_oidc_client_secret], []))
          + ((pssid_gui_tls == 'letsencrypt' and (pssid_gui_letsencrypt_email | length > 0)) | ternary(
               ['--email=' ~ pssid_gui_letsencrypt_email], []))
-         + ((pssid_gui_no_build | bool) | ternary(['--no-build'], [])) }}
+         + ((pssid_gui_no_build | bool) | ternary(['--no-build'], []))
+         + ((pssid_gui_pull | bool) | ternary(['--pull'], [])) }}
   when: pssid_gui_mode == 'prod'
   no_log: "{{ pssid_gui_sso | bool }}"
 

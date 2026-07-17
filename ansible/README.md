@@ -72,7 +72,9 @@ cd /opt/pssid-gui/ansible
 ansible-playbook upgrade.yml          # or: make upgrade (from the repo root)
 ```
 
-The upgrade backs up the database first, fast-forwards the checkout, rebuilds
+The upgrade backs up the database first, discards the installer's deploy-time
+edits to `nginx.conf` and `shared/config.ts` (so they can never block the
+pull; the installer run regenerates both), fast-forwards the checkout, rebuilds
 the images, restarts the stack with the existing settings, and waits for the
 health check. Data is never touched: the starter defaults only load on a first
 install (a marker file under `/var/lib/pssid` records that), and MongoDB lives
@@ -134,6 +136,8 @@ The most common:
 | `pssid_gui_tls` | `self-signed` | `self-signed`, `letsencrypt`, or `none` |
 | `pssid_gui_sso` | `false` | Enable OIDC single sign-on |
 | `pssid_gui_version` | `main` | Branch or tag to deploy when cloning |
+| `pssid_gui_docker_data_root` | auto | Roomy local filesystem for Docker + containerd; a dedicated `/var/lib/docker` mount is detected automatically |
+| `pssid_gui_pull` | `false` | Pull prebuilt images (~4 GB minimum) instead of building (~6 GB minimum, ~12 GB recommended) |
 | `pssid_gui_seed_defaults` | `true` | Load starter defaults on the first install |
 | `pssid_gui_backup_cron` | `true` | Nightly MongoDB backup schedule |
 | `pssid_gui_backup_retention_days` | `14` | Prune backups older than this (0 keeps all) |

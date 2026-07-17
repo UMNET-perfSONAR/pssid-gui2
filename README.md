@@ -32,6 +32,14 @@ curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/boo
 `bootstrap.sh` documents the full list (TLS mode, Let's Encrypt email, SSO and
 its OIDC values). From a clone, `./bootstrap.sh` does the same thing.
 
+On a VM with a small disk, add `PSSID_PULL=true` to pull the prebuilt images
+from the registry instead of building them (~4 GB of Docker storage instead of
+~8-10 GB); see the
+[deployment guide](docs/deployment.md#small-vms-pull-prebuilt-images-instead-of-building).
+The bootstrap also recognizes a dedicated local filesystem mounted at
+`/var/lib/docker` and places containerd on that same volume automatically.
+Network filesystems such as NFS are not supported for container storage.
+
 Afterwards, one command each keeps the deployment maintained:
 
 ```bash

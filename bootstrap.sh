@@ -26,6 +26,10 @@
 #     PSSID_OIDC_ISSUER=...              OIDC issuer URL          (SSO only)
 #     PSSID_OIDC_CLIENT_ID=...           OIDC client id           (SSO only)
 #     PSSID_OIDC_CLIENT_SECRET=...       OIDC client secret       (SSO only)
+#     PSSID_PULL=true                    Pull prebuilt images from the registry
+#                                        instead of building on this machine
+#                                        (~4 GB disk instead of ~8-10 GB; falls
+#                                        back to building if the pull fails)
 #     PSSID_GUI_DIR=/opt/pssid-gui       Where to clone when not run from a checkout
 #     PSSID_GUI_REPO=<git url>           Alternate repository to clone
 #     PSSID_GUI_VERSION=main             Branch or tag to deploy
@@ -63,7 +67,7 @@ if [ "$(id -u)" -ne 0 ]; then
   if [ -f "${BASH_SOURCE[0]:-}" ] && command -v sudo >/dev/null 2>&1; then
     step "Re-running with sudo (root is required to install packages and Docker)"
     # Preserve the PSSID_* settings across the sudo boundary.
-    exec sudo --preserve-env=PSSID_HOSTNAME,PSSID_EDITION,PSSID_TLS,PSSID_LE_EMAIL,PSSID_SSO,PSSID_OIDC_ISSUER,PSSID_OIDC_CLIENT_ID,PSSID_OIDC_CLIENT_SECRET,PSSID_GUI_DIR,PSSID_GUI_REPO,PSSID_GUI_VERSION,PSSID_DOCKER_DATA_ROOT bash "${BASH_SOURCE[0]}" "$@"
+    exec sudo --preserve-env=PSSID_HOSTNAME,PSSID_EDITION,PSSID_TLS,PSSID_LE_EMAIL,PSSID_SSO,PSSID_OIDC_ISSUER,PSSID_OIDC_CLIENT_ID,PSSID_OIDC_CLIENT_SECRET,PSSID_GUI_DIR,PSSID_GUI_REPO,PSSID_GUI_VERSION,PSSID_DOCKER_DATA_ROOT,PSSID_PULL bash "${BASH_SOURCE[0]}" "$@"
   fi
   die "Run as root (for the piped form: sudo -i, then re-run the command)."
 fi
@@ -99,70 +103,165 @@ step "Checking prerequisites"
 # On these managed VMs the default /var/lib is a small partition while a large
 # data volume sits elsewhere. Setting PSSID_DOCKER_DATA_ROOT points both stores
 # at that volume (the Ansible role runs scripts/setup-docker-storage.sh); when
-# it is not set and space is tight, we suggest the roomiest volume we can find
-# so the operator can re-run in one step.
+# it is not set, a dedicated local filesystem already mounted at
+# /var/lib/docker is detected automatically. Otherwise, when space is tight,
+# we suggest the roomiest writable LOCAL volume we can find; network filesystems
+# such as NFS are deliberately excluded because Docker storage requires local
+# filesystem semantics and the server may root-squash writes.
+
+# Pull mode (PSSID_PULL=true) fetches prebuilt images instead of building, so
+# it needs ~4 GB rather than the ~8-10 GB a from-source build does.
+if [ "${PSSID_PULL:-false}" = "true" ]; then
+  DISK_MIN_KB=4194304;  DISK_WARN_KB=8388608   # 4 / 8 GiB
+  DISK_NEED_TEXT="pulling the prebuilt images (needs ~4 GB)"
+else
+  DISK_MIN_KB=6291456;  DISK_WARN_KB=12582912  # 6 / 12 GiB
+  DISK_NEED_TEXT="the image build (needs ~8-10 GB)"
+fi
+
+existing_path() {
+  local path="$1"
+  while [ ! -e "$path" ] && [ "$path" != "/" ]; do
+    path="$(dirname "$path")"
+  done
+  printf '%s\n' "$path"
+}
+
+filesystem_type() {
+  local path
+  path="$(existing_path "$1")"
+  if command -v findmnt >/dev/null 2>&1; then
+    findmnt -n -o FSTYPE -T "$path" 2>/dev/null | head -n1
+  else
+    df -PT "$path" 2>/dev/null | awk 'NR==2{print $2}'
+  fi
+}
+
+is_network_filesystem() {
+  case "$1" in
+    nfs|nfs4|cifs|smb3|9p|ceph|glusterfs|fuse.sshfs) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_dedicated_mount() {
+  local path="$1" target=""
+  [ -d "$path" ] || return 1
+  if command -v mountpoint >/dev/null 2>&1; then
+    mountpoint -q "$path" || return 1
+  elif command -v findmnt >/dev/null 2>&1; then
+    target="$(findmnt -n -o TARGET -T "$path" 2>/dev/null | head -n1)"
+    [ "$target" = "$path" ] || return 1
+  else
+    return 1
+  fi
+  ! is_network_filesystem "$(filesystem_type "$path")"
+}
+
+path_free_kb() {
+  local path
+  path="$(existing_path "$1")"
+  df -Pk "$path" 2>/dev/null | awk 'NR==2{print $4}'
+}
 
 # check_disk_target <label> <path>: 0 if ok/tight (prints status), 1 if too small.
 check_disk_target() {
-  local label="$1" path="$2" free_kb free_gb
+  local label="$1" requested="$2" path free_kb free_gb
+  path="$(existing_path "$requested")"
   [ -d "$path" ] || return 0
-  free_kb="$(df -Pk "$path" 2>/dev/null | awk 'NR==2{print $4}')"
+  free_kb="$(path_free_kb "$path")"
   [ -n "$free_kb" ] || return 0
   free_gb=$(( free_kb / 1024 / 1024 ))
-  if [ "$free_kb" -lt 6291456 ]; then          # < 6 GiB
+  if [ "$free_kb" -lt "$DISK_MIN_KB" ]; then
     return 1
-  elif [ "$free_kb" -lt 12582912 ]; then       # < 12 GiB: tight, warn and continue
-    printf "  ${C_R}!${C_N} only %s GB free on %s (%s storage); the image build is tight on space.\n" "$free_gb" "$path" "$label" >&2
+  elif [ "$free_kb" -lt "$DISK_WARN_KB" ]; then # tight, warn and continue
+    printf "  ${C_R}!${C_N} only %s GB free on %s (%s storage); %s is tight on space.\n" "$free_gb" "$path" "$label" "$DISK_NEED_TEXT" >&2
   else
     ok "disk space: ${free_gb} GB free on ${path} (${label} storage)"
   fi
   return 0
 }
 
-# suggest_volume: print "<free_gb> <mountpoint>" of the roomiest real
-# (non-pseudo) filesystem, to point a tight-disk error somewhere better.
+# suggest_volume: print "<free_gb> <mountpoint>" of the roomiest writable local
+# filesystem. Exclude pseudo, network, boot, and read-only filesystems.
 suggest_volume() {
-  df -PTk 2>/dev/null | awk '
-    NR>1 && $2 !~ /^(tmpfs|devtmpfs|overlay|squashfs|iso9660)$/ && $5 ~ /^[0-9]+$/ {
+  local candidate
+  while IFS= read -r candidate; do
+    [ -n "$candidate" ] || continue
+    [ -w "${candidate#* }" ] || continue
+    printf '%s\n' "$candidate"
+    return 0
+  done < <(df -PTk 2>/dev/null | awk '
+    NR>1 &&
+    $2 !~ /^(tmpfs|devtmpfs|overlay|squashfs|iso9660|efivarfs|autofs|nfs|nfs4|cifs|smb3|9p|ceph|glusterfs)$/ &&
+    $2 !~ /^fuse\./ &&
+    $7 !~ /^\/boot(\/|$)/ &&
+    $5 ~ /^[0-9]+$/ {
       print int($5/1024/1024), $7
-    }' | sort -rn | head -n1
+    }' | sort -rn)
 }
 
 # disk_die <path>: fail with a "not enough space" message, appending a concrete
 # PSSID_DOCKER_DATA_ROOT suggestion when a roomier volume exists.
 disk_die() {
-  local path="$1" sugg sugg_gb sugg_mp
+  local path="$1" sugg sugg_gb sugg_mp sugg_root hint=""
+  [ "${PSSID_PULL:-false}" = "true" ] || hint="
+  Tip: PSSID_PULL=true pulls prebuilt images instead of building and needs only ~4 GB."
   sugg="$(suggest_volume)"
   sugg_gb="${sugg%% *}"; sugg_mp="${sugg#* }"
+  if [ "$sugg_mp" = "/var/lib/docker" ]; then
+    sugg_root="$sugg_mp"
+  else
+    sugg_root="${sugg_mp%/}/docker"
+  fi
   if [ -n "$sugg" ] && [ "${sugg_gb:-0}" -ge 15 ] && [ "$sugg_mp" != "/" ] && [ "$sugg_mp" != "$path" ]; then
-    die "Not enough disk space on ${path} for the image build (needs ~8-10 GB).
+    die "Not enough disk space on ${path} for ${DISK_NEED_TEXT}.
   A larger volume was found at ${sugg_mp} (${sugg_gb} GB free). Point Docker there and re-run:
 
-      PSSID_DOCKER_DATA_ROOT=${sugg_mp%/}/docker  <re-run your bootstrap command>
+      PSSID_DOCKER_DATA_ROOT=${sugg_root}  <re-run your bootstrap command>
 
-  (or configure it once by hand first:  sudo scripts/setup-docker-storage.sh ${sugg_mp%/}/docker )
+  (or configure it once by hand first:  sudo scripts/setup-docker-storage.sh ${sugg_root})${hint}
   See docs/deployment.md -> \"Deploying to a new VM\"."
   else
-    die "Not enough disk space on ${path} for the image build (needs ~8-10 GB). Grow the disk (or free space with 'docker system prune -af' if Docker is installed), then re-run. See docs/deployment.md -> \"Deploying to a new VM\"."
+    die "Not enough disk space on ${path} for ${DISK_NEED_TEXT}. Grow the disk (or free space with 'docker system prune -af' if Docker is installed), then re-run.${hint}
+  See docs/deployment.md -> \"Deploying to a new VM\"."
   fi
 }
+
+# A managed VM may already have a large local LV mounted exactly where Docker
+# will use it. Detect that layout before Docker is installed and opt into the
+# storage helper so containerd is also placed on that LV.
+CONFIGURED_DOCKER_ROOT="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+if [ -z "$CONFIGURED_DOCKER_ROOT" ] && [ -r /etc/docker/daemon.json ]; then
+  CONFIGURED_DOCKER_ROOT="$(sed -n 's/.*"data-root"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/docker/daemon.json | head -n1)"
+fi
+if [ -z "${PSSID_DOCKER_DATA_ROOT:-}" ] \
+   && { [ -z "$CONFIGURED_DOCKER_ROOT" ] || [ "$CONFIGURED_DOCKER_ROOT" = "/var/lib/docker" ]; } \
+   && is_dedicated_mount /var/lib/docker; then
+  DEDICATED_FREE_KB="$(path_free_kb /var/lib/docker)"
+  if [ -n "$DEDICATED_FREE_KB" ] && [ "$DEDICATED_FREE_KB" -ge "$DISK_MIN_KB" ]; then
+    PSSID_DOCKER_DATA_ROOT="/var/lib/docker"
+    export PSSID_DOCKER_DATA_ROOT
+    ok "detected dedicated local Docker volume at /var/lib/docker; containerd will use it too"
+  fi
+fi
 
 if [ -n "${PSSID_DOCKER_DATA_ROOT:-}" ]; then
   # Operator chose where Docker + containerd storage will live. Both stores go
   # on this one volume (the Ansible role runs setup-docker-storage.sh), so a
   # single check on it covers the build.
-  mkdir -p "$PSSID_DOCKER_DATA_ROOT" 2>/dev/null || true
+  TARGET_FSTYPE="$(filesystem_type "$PSSID_DOCKER_DATA_ROOT")"
+  if is_network_filesystem "$TARGET_FSTYPE"; then
+    die "PSSID_DOCKER_DATA_ROOT=$PSSID_DOCKER_DATA_ROOT is on a ${TARGET_FSTYPE} network filesystem. Docker and containerd storage must use a local filesystem (for example ext4 or xfs)."
+  fi
+  mkdir -p "$PSSID_DOCKER_DATA_ROOT" 2>/dev/null \
+    || die "Cannot create PSSID_DOCKER_DATA_ROOT=$PSSID_DOCKER_DATA_ROOT. Choose a writable local filesystem."
   check_disk_target "Docker (PSSID_DOCKER_DATA_ROOT)" "$PSSID_DOCKER_DATA_ROOT" \
-    || die "PSSID_DOCKER_DATA_ROOT=$PSSID_DOCKER_DATA_ROOT is on a volume with too little free space (needs ~8-10 GB). Pick a bigger volume."
+    || die "PSSID_DOCKER_DATA_ROOT=$PSSID_DOCKER_DATA_ROOT is on a volume with too little free space for ${DISK_NEED_TEXT}. Pick a bigger local volume."
 else
   # Docker not installed yet in a fresh bootstrap; honor a pre-staged
   # daemon.json data-root, else fall back to where /var/lib/docker will live.
-  DISK_TARGET="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
-  if [ -z "$DISK_TARGET" ] && [ -r /etc/docker/daemon.json ]; then
-    DISK_TARGET="$(sed -n 's/.*"data-root"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/docker/daemon.json | head -n1)"
-  fi
-  [ -n "$DISK_TARGET" ] && [ -d "$DISK_TARGET" ] || DISK_TARGET="/var/lib"
-  [ -d "$DISK_TARGET" ] || DISK_TARGET="/"
+  DISK_TARGET="${CONFIGURED_DOCKER_ROOT:-/var/lib/docker}"
   check_disk_target "Docker" "$DISK_TARGET" || disk_die "$DISK_TARGET"
 
   # `|| true`: containerd is absent on a fresh box (command not found = 127);
@@ -171,8 +270,7 @@ else
   CONTAINERD_TARGET="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1 || true)"
   [ -z "$CONTAINERD_TARGET" ] && [ -r /etc/containerd/config.toml ] && \
     CONTAINERD_TARGET="$(sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' /etc/containerd/config.toml | head -n1)"
-  [ -n "$CONTAINERD_TARGET" ] && [ -d "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/var/lib/containerd"
-  [ -d "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/"
+  [ -n "$CONTAINERD_TARGET" ] || CONTAINERD_TARGET="/var/lib/containerd"
   if [ "$CONTAINERD_TARGET" != "$DISK_TARGET" ]; then
     check_disk_target "containerd" "$CONTAINERD_TARGET" || disk_die "$CONTAINERD_TARGET"
   fi
@@ -220,6 +318,7 @@ EXTRA=()
 [ -n "${PSSID_OIDC_CLIENT_ID:-}" ]     && EXTRA+=(-e "pssid_gui_oidc_client_id=${PSSID_OIDC_CLIENT_ID}")
 [ -n "${PSSID_OIDC_CLIENT_SECRET:-}" ] && EXTRA+=(-e "pssid_gui_oidc_client_secret=${PSSID_OIDC_CLIENT_SECRET}")
 [ -n "${PSSID_DOCKER_DATA_ROOT:-}" ]   && EXTRA+=(-e "pssid_gui_docker_data_root=${PSSID_DOCKER_DATA_ROOT}")
+[ "${PSSID_PULL:-false}" = "true" ]    && EXTRA+=(-e "pssid_gui_pull=true")
 
 # ─── Deploy ───────────────────────────────────────────────────────────────────
 step "Deploying (Ansible: docker + pssid_webgui roles)"

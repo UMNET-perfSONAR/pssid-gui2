@@ -43,6 +43,11 @@ CLIENT_SECRET=""
 LE_EMAIL=""
 NON_INTERACTIVE="false"
 DO_BUILD="true"
+# --pull: fetch prebuilt images from a registry instead of building on this
+# machine. Cuts the disk requirement from ~8-10 GB (build) to ~4 GB (pull) --
+# the difference between failing and deploying on VMs with a small /var.
+DO_PULL="false"
+PULL_PREFIX_DEFAULT="ghcr.io/umnet-perfsonar/pssid-gui2"
 
 usage() {
   cat <<EOF
@@ -58,6 +63,9 @@ Options:
   --tls=MODE             self-signed | letsencrypt | none          (default: self-signed)
   --email=EMAIL          Contact email for Let's Encrypt (tls=letsencrypt)
   --no-build             Use existing images; skip docker build
+  --pull                 Pull prebuilt images from the registry instead of
+                         building (~4 GB disk instead of ~8-10 GB; falls back
+                         to building if the pull fails)
   -y, --non-interactive  Never prompt; require flags/env for needed values
   -h, --help             Show this help
 
@@ -78,6 +86,7 @@ for arg in "$@"; do
     --tls=*)           TLS="${arg#*=}" ;;
     --email=*)         LE_EMAIL="${arg#*=}" ;;
     --no-build)        DO_BUILD="false" ;;
+    --pull)            DO_PULL="true" ;;
     -y|--non-interactive) NON_INTERACTIVE="true" ;;
     -h|--help)         usage; exit 0 ;;
     *) die "Unknown option: $arg (try --help)" ;;
@@ -154,7 +163,13 @@ ok "openssl found"
 # itself lives in scripts/lib/preflight.sh, shared with the controller upgrade.
 # shellcheck source=scripts/lib/preflight.sh
 . "$SCRIPT_DIR/scripts/lib/preflight.sh"
-check_disk || die "Not enough disk space for the image build (see the message above)."
+if [ "$DO_PULL" = "true" ]; then
+  # Pulling prebuilt images needs far less space than building from source.
+  PREFLIGHT_MIN_GIB=4 PREFLIGHT_NEED_TEXT="Pulling the prebuilt images needs about 4 GB" \
+    check_disk || die "Not enough disk space to pull the images (see the message above)."
+else
+  check_disk || die "Not enough disk space for the image build (see the message above)."
+fi
 
 # Warn (do not fail) on busy ports. Only nginx publishes ports to the host
 # (80/443); everything else stays on the internal Docker network.
@@ -418,14 +433,53 @@ else
 fi
 
 # ─── 8. Bring the stack up ───────────────────────────────────────────────────
-step "Building images and starting the stack"
-[ "$DO_BUILD" = "true" ] && info "Compiling the client bundle (vue-tsc + vite build); this takes a few minutes on first run."
 COMPOSE_ARGS=""
 [ "$SSO" = "true" ] && COMPOSE_ARGS="--profile sso"
-BUILD_FLAG=""; [ "$DO_BUILD" = "true" ] && BUILD_FLAG="--build"
-# shellcheck disable=SC2086
-EDITION="$EDITION" $COMPOSE -f docker-compose.yml $COMPOSE_ARGS up -d $BUILD_FLAG
-ok "Containers started"
+
+if [ "$DO_PULL" = "true" ]; then
+  # Pull the prebuilt images instead of building on this machine. On any pull
+  # failure (registry unreachable, images not published yet) fall back to the
+  # build path below so the deployment still succeeds.
+  step "Pulling prebuilt images"
+  export PSSID_IMAGE_PREFIX="${PSSID_IMAGE_PREFIX:-$PULL_PREFIX_DEFAULT}"
+  export PSSID_IMAGE_TAG="${PSSID_IMAGE_TAG:-latest}"
+  # The published client image is per edition (the brand is baked into the
+  # bundle): default -> :latest, umich -> :umich.
+  if [ "$EDITION" = "umich" ]; then
+    export PSSID_CLIENT_TAG="${PSSID_CLIENT_TAG:-umich}"
+  else
+    export PSSID_CLIENT_TAG="${PSSID_CLIENT_TAG:-$PSSID_IMAGE_TAG}"
+  fi
+  info "Registry: ${PSSID_IMAGE_PREFIX}_{server,mongo}:${PSSID_IMAGE_TAG}, _client:${PSSID_CLIENT_TAG}"
+  # shellcheck disable=SC2086
+  if EDITION="$EDITION" $COMPOSE -f docker-compose.yml $COMPOSE_ARGS pull client server mongo; then
+    # Persist the registry names in the root .env (compose reads it), so
+    # make up / restart / upgrade keep using the pulled images.
+    {
+      echo "PSSID_IMAGE_PREFIX=${PSSID_IMAGE_PREFIX}"
+      echo "PSSID_IMAGE_TAG=${PSSID_IMAGE_TAG}"
+      echo "PSSID_CLIENT_TAG=${PSSID_CLIENT_TAG}"
+    } >> .env
+    step "Starting the stack (prebuilt images)"
+    # shellcheck disable=SC2086
+    EDITION="$EDITION" $COMPOSE -f docker-compose.yml $COMPOSE_ARGS up -d --no-build
+    ok "Containers started"
+  else
+    warn "Pull failed; falling back to building the images from source."
+    warn "(Building needs ~8-10 GB free on Docker's storage; the pull-mode disk check was smaller.)"
+    unset PSSID_IMAGE_PREFIX PSSID_IMAGE_TAG PSSID_CLIENT_TAG
+    DO_PULL="false"
+  fi
+fi
+
+if [ "$DO_PULL" = "false" ]; then
+  step "Building images and starting the stack"
+  [ "$DO_BUILD" = "true" ] && info "Compiling the client bundle (vue-tsc + vite build); this takes a few minutes on first run."
+  BUILD_FLAG=""; [ "$DO_BUILD" = "true" ] && BUILD_FLAG="--build"
+  # shellcheck disable=SC2086
+  EDITION="$EDITION" $COMPOSE -f docker-compose.yml $COMPOSE_ARGS up -d $BUILD_FLAG
+  ok "Containers started"
+fi
 
 # ─── 9. Health check ─────────────────────────────────────────────────────────
 step "Waiting for the stack to become healthy"

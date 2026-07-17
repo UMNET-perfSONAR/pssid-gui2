@@ -29,7 +29,13 @@ services:
     networks:
       - internal
   client:
-    image: pssid-gui2_client:latest
+    # PSSID_IMAGE_PREFIX/PSSID_IMAGE_TAG let a deployment pull prebuilt images
+    # from a registry (install.sh --pull) instead of building on the VM; the
+    # defaults keep the local build-from-source names unchanged. The client has
+    # its own tag override because the published client image is per edition
+    # (:latest = default edition, :umich = umich edition — the brand is baked
+    # into the bundle at build time).
+    image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_client:${PSSID_CLIENT_TAG:-${PSSID_IMAGE_TAG:-latest}}
     # Built from the repo ROOT so the image can bundle both the client app and
     # the shared/ config at build time (see services/client/Dockerfile). The
     # production bundle is compiled once here, not per container start, so the
@@ -59,7 +65,7 @@ services:
           - client
 
   server:
-    image: pssid-gui2_server:latest
+    image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_server:${PSSID_IMAGE_TAG:-latest}
     restart: unless-stopped
     logging: *default-logging
     build: ./services/server
@@ -90,7 +96,7 @@ services:
         aliases:
           - server
   mongo:
-    image: pssid-gui2_mongo:latest
+    image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_mongo:${PSSID_IMAGE_TAG:-latest}
     build: ./services/database
     restart: unless-stopped
     logging: *default-logging
@@ -154,7 +160,7 @@ services:
   # Dumps the gui database to ./mongo-backups on a schedule and prunes old files.
   # Set-and-forget: no host cron, no operator action after enabling.
   backup:
-    image: pssid-gui2_mongo:latest
+    image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_mongo:${PSSID_IMAGE_TAG:-latest}
     profiles:
       - backup
     restart: unless-stopped

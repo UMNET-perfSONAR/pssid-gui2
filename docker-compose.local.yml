@@ -6,10 +6,14 @@ x-logging: &default-logging
 
 services:
   client:
-    image: pssid-gui2_client:latest
+    image: pssid-gui2_client-dev:latest
     build:
       context: .
       dockerfile: services/client/Dockerfile
+      # The dev stack runs the Vite dev server against mounted source, which
+      # needs the full node_modules — target the build stage (the production
+      # compose uses the slim runtime stage and its own image tag).
+      target: build
       args:
         VITE_EDITION: ${EDITION:-default}
     logging: *default-logging
