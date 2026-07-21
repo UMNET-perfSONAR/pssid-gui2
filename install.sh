@@ -269,7 +269,18 @@ SERVER_ENV="services/server/.env"
 # Contains the session secret, the OIDC client secret and the MongoDB URI with
 # its password: keep it owner-only rather than the umask default (usually 0644).
 chmod 600 "$SERVER_ENV" 2>/dev/null || warn "Could not chmod 600 $SERVER_ENV"
-ok "Wrote $SERVER_ENV (gitignored, mode 600)"
+# The server image runs as the non-root `node` user (uid/gid 1000) and compose
+# bind-mounts this file in, so host ownership carries through. Left root-owned,
+# a 0600 file is unreadable inside the container: dotenv then loads nothing and
+# says "injecting env (0)", and the server silently falls back to an
+# unauthenticated MongoDB URI with no SECRET and no BASE_URL — the database
+# rejects createIndexes and sessions break, while the container still reports
+# healthy. Hand the file to uid 1000 so it stays owner-only AND readable.
+if [ "$(uname -s)" = "Linux" ]; then
+  chown 1000:1000 "$SERVER_ENV" 2>/dev/null \
+    || warn "Could not chown $SERVER_ENV to uid 1000 (the server container may not be able to read it)"
+fi
+ok "Wrote $SERVER_ENV (gitignored, mode 600, owned by the container's uid)"
 
 # ─── 4. Root environment for compose interpolation ───────────────────────────
 step "Writing deployment environment"
