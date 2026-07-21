@@ -23,6 +23,10 @@ RUN npm ci
 COPY services/server/ ./
 COPY shared/ ./src/shared/
 
+# This stage is an entrypoint of its own (the dev stack targets it), so the
+# exec bit has to be set here too — not only in the runtime stage below.
+RUN chmod +x entrypoint.sh
+
 # Compile src/ -> build/ (tsconfig sets rootDir=src, outDir=build).
 RUN npm run build
 

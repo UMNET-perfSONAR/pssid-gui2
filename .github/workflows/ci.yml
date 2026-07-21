@@ -60,9 +60,12 @@ jobs:
       - uses: actions/checkout@v4
       # The compose file bind-mounts this env file; create it before `up` so
       # Docker does not materialize a directory in its place.
+      # OPEN_WRITE: the shipped default is read-only (shared/config.ts), so
+      # without this the smoke suite's create/update/delete checks all 403.
+      # Set here rather than in the committed config so the safe default stands.
       - name: Write the dev server environment
         run: |
-          printf 'MONGODB_URI=mongodb://mongo:27017\nBASE_URL=http://localhost:8888\n' \
+          printf 'MONGODB_URI=mongodb://mongo:27017\nBASE_URL=http://localhost:8888\nOPEN_WRITE=true\n' \
             > services/server/.env
       - name: Build and start the dev stack
         run: docker compose -f docker-compose.local.yml up -d --build

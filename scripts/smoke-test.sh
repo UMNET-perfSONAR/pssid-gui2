@@ -15,6 +15,8 @@ set -u
 BASE="${1:-http://localhost:8888}"
 CURL="curl -sSk"
 PASS=0; FAIL=0; FAILED_NAMES=()
+# Long enough in total (13 x 5s) to outlast the server's 60s rate-limit window.
+RETRY_WAIT=5; RETRY_MAX=13
 
 if [ -t 1 ]; then G='\033[32m'; R='\033[31m'; D='\033[2m'; N='\033[0m'; else G=''; R=''; D=''; N=''; fi
 
@@ -33,9 +35,21 @@ req() { # req METHOD path [json] -> sets STATUS and BODY
   local method="$1" path="$2" data="${3:-}"
   local args=(-X "$method" -H 'Content-Type: application/json' -w '\n%{http_code}')
   [ -n "$data" ] && args+=(-d "$data")
-  local out; out="$($CURL "${args[@]}" "$BASE$path")"
-  STATUS="${out##*$'\n'}"
-  BODY="${out%$'\n'*}"
+  local out attempt=0
+  while :; do
+    out="$($CURL "${args[@]}" "$BASE$path")"
+    STATUS="${out##*$'\n'}"
+    BODY="${out%$'\n'*}"
+    [ "$STATUS" = "429" ] || break
+    # The API rate-limits per IP (200/min, services/server/src/index.ts). Being
+    # limited mid-run is self-compounding: it aborts the cleanup deletes below,
+    # so the leftover smoke- objects make the NEXT run fail every create with
+    # "already exists". Wait the window out rather than cascade.
+    attempt=$((attempt+1))
+    if [ "$attempt" -gt "$RETRY_MAX" ]; then break; fi
+    printf "  ${D}rate limited, retrying in %ss (%d/%d)${N}\n" "$RETRY_WAIT" "$attempt" "$RETRY_MAX" >&2
+    sleep "$RETRY_WAIT"
+  done
 }
 
 echo "Smoke test against $BASE"
@@ -44,6 +58,20 @@ echo
 # ---- Health ------------------------------------------------------------------
 req GET /api/health
 check "health endpoint reports ok" 200 "$STATUS" '"status":"ok"' "$BODY"
+
+# ---- Pre-flight purge ------------------------------------------------------------
+# A run that died before finishing its cleanup (interrupted, or rate-limited part
+# way through the deletes) leaves its smoke- objects behind, and every create
+# below would then fail with "already exists". Clear them first so the suite is
+# idempotent however the last run ended. Statuses are deliberately ignored: on a
+# clean stack these are all 404s, and on a read-only one they are 403s that the
+# canary immediately below reports properly.
+for stale in /api/hosts/smoke-probe-1 /api/host-groups/smoke-group \
+             /api/batches/smoke-batch /api/jobs/smoke-job \
+             /api/tests/smoke-test-1 /api/ssid-profiles/smoke-ssid \
+             /api/schedules/smoke-schedule /api/schedules/smoke-canary; do
+  req DELETE "$stale"
+done
 
 # ---- Write access canary -------------------------------------------------------
 # The suite exercises create/update/delete, so it needs a writable stack. Detect
