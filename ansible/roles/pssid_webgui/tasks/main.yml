@@ -108,13 +108,21 @@
   # A missing mongo container just means there is nothing to back up yet.
   failed_when: false
 
-# install.sh rewrites nginx.conf and shared/config.ts in place at deploy time.
-# Those edits would abort the pull whenever upstream also touched either file,
-# so discard them first; the installer run below regenerates both from the
-# playbook variables.
+# This checkout is deployment-owned, not a working copy. install.sh rewrites
+# nginx.conf and shared/config.ts in place at deploy time, and earlier releases
+# left other tracked files dirty too (a root package-lock.json, removed in
+# 3.2.0). Any such edit aborts the --ff-only pull below as soon as upstream
+# touches or deletes the same path, which is how an upgrade stalls on a file no
+# playbook ever wrote. Discard every tracked modification rather than an
+# allowlist that has to be extended each time this recurs; the installer run
+# below regenerates the files it owns from the playbook variables.
+#
+# Untracked files are left alone. Anything hand-edited inside this checkout is
+# lost on upgrade by design: customisations belong in group_vars or the
+# inventory, where they are reapplied on every run.
 - name: Discard deploy-time edits that would conflict with the pull
   ansible.builtin.command:
-    argv: [git, -C, "{{ pssid_gui_src }}", checkout, --, nginx.conf, shared/config.ts]
+    argv: [git, -C, "{{ pssid_gui_src }}", checkout, --, .]
   when: pssid_gui_git_update | bool
   changed_when: false
   failed_when: false

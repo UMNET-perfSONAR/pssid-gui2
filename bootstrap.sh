@@ -56,9 +56,10 @@ REPO="${PSSID_GUI_REPO:-https://github.com/UMNET-perfSONAR/pssid-gui2.git}"
 VERSION="${PSSID_GUI_VERSION:-main}"
 INSTALL_DIR="${PSSID_GUI_DIR:-/opt/pssid-gui}"
 
-if [ -t 1 ]; then C_G='\033[32m'; C_R='\033[31m'; C_B='\033[1m'; C_N='\033[0m'; else C_G=''; C_R=''; C_B=''; C_N=''; fi
+if [ -t 1 ]; then C_G='\033[32m'; C_R='\033[31m'; C_Y='\033[33m'; C_B='\033[1m'; C_N='\033[0m'; else C_G=''; C_R=''; C_Y=''; C_B=''; C_N=''; fi
 step() { printf "${C_B}==> %s${C_N}\n" "$1"; }
 ok()   { printf "${C_G}  ok${C_N} %s\n" "$1"; }
+warn() { printf "${C_Y}  warn${C_N} %s\n" "$1" >&2; }
 die()  { printf "${C_R}error:${C_N} %s\n" "$1" >&2; exit 1; }
 
 # ─── Root ─────────────────────────────────────────────────────────────────────
@@ -299,8 +300,19 @@ else
   if [ -d "$INSTALL_DIR/.git" ]; then
     git -C "$INSTALL_DIR" fetch --quiet origin "$VERSION"
     git -C "$INSTALL_DIR" checkout --quiet "$VERSION"
-    git -C "$INSTALL_DIR" pull --ff-only --quiet origin "$VERSION" || true
-    ok "Updated existing clone"
+    # Report the real outcome. The deploy still proceeds on the existing
+    # checkout when the fast-forward is refused (a local edit to a tracked file
+    # is enough), but claiming "Updated" regardless is how a VM ends up running
+    # a revision nobody believes it is on: the edition, schema and fixes all
+    # silently lag main while the output says the update succeeded.
+    if git -C "$INSTALL_DIR" pull --ff-only --quiet origin "$VERSION"; then
+      ok "Updated existing clone"
+    else
+      warn "Could not fast-forward $INSTALL_DIR (local changes, or a diverged branch)."
+      warn "DEPLOYING THE EXISTING CHECKOUT at $(git -C "$INSTALL_DIR" rev-parse --short HEAD), not $VERSION."
+      warn "To take the latest instead, discard local edits and re-run this script:"
+      warn "  git -C $INSTALL_DIR checkout -- . && git -C $INSTALL_DIR pull --ff-only"
+    fi
   else
     git clone --quiet --branch "$VERSION" "$REPO" "$INSTALL_DIR"
     ok "Cloned $REPO ($VERSION)"

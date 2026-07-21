@@ -71,15 +71,19 @@ cd /opt/pssid-gui/ansible
 ansible-playbook upgrade.yml          # or: make upgrade (from the repo root)
 ```
 
-The upgrade backs up the database first, discards the installer's deploy-time
-edits to `nginx.conf` and `shared/config.ts` (so they can never block the
-pull; the installer run regenerates both), fast-forwards the checkout, rebuilds
+The upgrade backs up the database first, discards **all** local modifications to
+tracked files (so nothing can block the pull; the installer run regenerates the
+ones it owns, `nginx.conf` and `shared/config.ts`), fast-forwards the checkout, rebuilds
 the images, restarts the stack with the existing settings, and waits for the
 health check. Data is never touched: the starter defaults only load on a first
 install (a marker file under `/var/lib/pssid` records that), and MongoDB lives
 in a named volume that survives rebuilds. If an upgrade misbehaves, the
 pre-upgrade archive is in `mongo-backups/`; restore it with
 `scripts/restore.sh`.
+
+Treat the deployed checkout as owned by the deployment: hand-edits to tracked
+files are discarded on the next upgrade. Put customisations in `group_vars/` or
+your inventory, where the playbook reapplies them on every run.
 
 ## Backups
 
