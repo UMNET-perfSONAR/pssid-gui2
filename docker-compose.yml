@@ -33,8 +33,8 @@ services:
     # from a registry (install.sh --pull) instead of building on the VM; the
     # defaults keep the local build-from-source names unchanged. The client has
     # its own tag override because the published client image is per edition
-    # (:latest = default edition, :umich = umich edition — the brand is baked
-    # into the bundle at build time).
+    # (:latest = default edition; a branded edition is published under its own
+    # tag — the brand is baked into the bundle at build time).
     image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_client:${PSSID_CLIENT_TAG:-${PSSID_IMAGE_TAG:-latest}}
     # Built from the repo ROOT so the image can bundle both the client app and
     # the shared/ config at build time (see services/client/Dockerfile). The
@@ -68,17 +68,30 @@ services:
     image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_server:${PSSID_IMAGE_TAG:-latest}
     restart: unless-stopped
     logging: *default-logging
-    build: ./services/server
+    build:
+      context: .
+      dockerfile: services/server/Dockerfile
+      # Compiled JavaScript, production dependencies only, non-root (the local
+      # stack targets the `build` stage for the watch toolchain instead).
+      target: runtime
     environment:
       - REDIS_URL=redis://redis:6379
+      # Auth posture. Both default to the values compiled into shared/config.ts
+      # and can be overridden here without rebuilding the image, which is what
+      # makes a prebuilt (--pull) image usable for an SSO deployment.
+      - ENABLE_SSO=${ENABLE_SSO:-}
+      - OPEN_WRITE=${OPEN_WRITE:-}
     volumes:
-      - ./services/server/src:/usr/src/app/server/src
-      - ./services/server/.env:/usr/src/app/server/.env
-      - server_node_modules:/usr/src/app/server/node_modules
+      # src/ and node_modules are NOT mounted: the image ships the compiled
+      # build/ and its own production dependencies. Only genuine runtime state
+      # and operator-supplied files are mounted.
+      - ./services/server/.env:/usr/src/app/server/.env:ro
       - /usr/lib/exec/pssid:/usr/src/app/server/bin
       - /var/lib/pssid/plugins:/usr/src/app/server/plugins
       - /var/lib/pssid/output:/usr/src/app/server/output
-      - ./shared:/usr/src/app/server/src/shared:ro
+      # Group -> permission mapping, re-read at runtime so it can change
+      # without a rebuild.
+      - ./shared/auth-groups.config.json:/usr/src/app/server/src/shared/auth-groups.config.json:ro
       - ./certs:/etc/letsencrypt:ro
     expose:
       - "8000"
@@ -190,7 +203,6 @@ services:
       - internal
 
 volumes:
-  server_node_modules:
   mongo_db:
   redis_data:
 

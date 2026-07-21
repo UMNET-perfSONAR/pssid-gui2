@@ -22,8 +22,8 @@ services:
     # bundle. node_modules comes from the image (built via npm ci), so no volume.
     command: npm run dev
     environment:
-      # Selects the edition (see services/client/src/edition). Override with
-      # EDITION=umich in the root .env, or `make edition-umich`.
+      # Selects the edition (see services/client/src/edition). Override by
+      # setting EDITION=<id> in the root .env.
       - VITE_EDITION=${EDITION:-default}
     volumes:
       - ./services/client/src:/usr/src/app/client/src
@@ -42,10 +42,17 @@ services:
           - client
 
   server:
-    image: pssid-gui2_server:latest
+    image: pssid-gui2_server-dev:latest
     restart: on-failure
     logging: *default-logging
-    build: ./services/server
+    build:
+      context: .
+      dockerfile: services/server/Dockerfile
+      # The dev stack runs the watch toolchain (tsc -w + nodemon) against the
+      # mounted source, which needs the full node_modules and the TypeScript
+      # compiler — target the build stage (the production compose uses the slim
+      # runtime stage, which ships compiled output only).
+      target: build
     volumes:
       - ./services/server/src:/usr/src/app/server/src
       - ./services/server/.env:/usr/src/app/server/.env

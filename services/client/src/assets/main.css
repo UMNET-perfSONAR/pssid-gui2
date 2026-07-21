@@ -267,6 +267,13 @@ body * {
     margin-bottom: 1rem;
   }
 }
+/* The column divider reads as a stray line down the middle of the panel on
+   dark surfaces; drop it there and rely on the columns' own spacing instead. */
+:root[data-theme="dark"] .list.row .col-md-6:first-child,
+:root[data-theme="dark"] .list.row .col-lg-6:first-child {
+  border-right: none;
+  border-bottom: none;
+}
 
 /* ─── Form controls ──────────────────────────────────────────── */
 .form-control {

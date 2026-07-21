@@ -10,8 +10,8 @@
 # Common overrides (all variables are documented in group_vars/all.yml):
 #
 #   ansible-playbook site.yml -e pssid_gui_hostname=pssid.example.edu
-#   ansible-playbook site.yml -e pssid_gui_edition=umich -e pssid_gui_sso=true \
-#       -e pssid_gui_oidc_issuer=https://umich.okta.com \
+#   ansible-playbook site.yml -e pssid_gui_sso=true \
+#       -e pssid_gui_oidc_issuer=https://idp.example.com \
 #       -e pssid_gui_oidc_client_id=... -e pssid_gui_oidc_client_secret=...
 
 - name: Deploy pSSID GUI

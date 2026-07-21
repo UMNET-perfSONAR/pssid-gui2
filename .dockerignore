@@ -1,15 +1,19 @@
-# This .dockerignore governs the CLIENT image build only: its build context is
-# the repository root (see docker-compose*.yml build.context: .) so the Dockerfile
-# can COPY both services/client and the repo-root shared/ at build time. The
-# server and mongo images build from their own contexts with their own rules.
+# This .dockerignore governs the CLIENT and SERVER image builds: both use the
+# repository root as their build context (see docker-compose*.yml build.context: .)
+# so their Dockerfiles can COPY the service directory and the repo-root shared/
+# at build time. The mongo image builds from its own context with its own rules.
 #
-# Strategy: exclude everything, re-include only the client app and shared/, then
-# strip dependency trees, build output, and secrets so none ride into a layer.
+# Strategy: exclude everything, re-include the two app directories and shared/,
+# then strip dependency trees, build output, and secrets so none ride into a layer.
 *
-!services
+!services/client
+!services/server
 !shared
-services/server
 
+# Never ship these into a layer. node_modules and build output are produced
+# inside the image (npm ci / npm run build); the host's copies would only
+# shadow them and bloat the context. package-lock.json is deliberately NOT
+# excluded here — the server image needs it for `npm ci`.
 **/node_modules
 **/dist
 **/build
@@ -19,3 +23,5 @@ services/server
 **/*.key
 **/*.crt
 **/certs
+**/.vscode
+**/*.log

@@ -12,6 +12,7 @@ import { createClient } from 'redis';
 import { RedisStore } from 'connect-redis';
 
 import config from './shared/config'; // shared/config will appear in docker container
+import { isSsoEnabled } from './shared/accessControl';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -31,7 +32,10 @@ process.on('uncaughtException', (err) => {
   console.error('Uncaught exception:', err);
 });
 
-const ENABLE_SSO = config.ENABLE_SSO;
+// Resolved in accessControl so the middleware and the routes below can never
+// disagree about whether SSO is on (env override, else the compiled default).
+// Read once here, after dotenv.config() above has populated process.env.
+const ENABLE_SSO = isSsoEnabled();
 
 // either use authentication or proceed with application
 function useAuth () {
@@ -88,10 +92,12 @@ if (ENABLE_SSO) {
       authRequired: true,
       authorizationParams: {
         response_type: 'code',
-        // 'edumember' was required by UMich Weblogin; 'groups' is standard Okta.
-        // Requesting both ensures group membership arrives regardless of which
-        // claim UMich Okta returns (edumember_is_member_of or groups).
-        // accessControl.ts and userinfo.routes.ts handle both transparently.
+        // 'groups' is the standard OIDC group claim; 'edumember' is the
+        // eduPerson equivalent that federated higher-education identity
+        // providers issue instead. Requesting both ensures group membership
+        // arrives regardless of which claim the provider returns
+        // (edumember_is_member_of or groups); accessControl.ts and
+        // userinfo.routes.ts handle both transparently.
         scope: 'openid profile email edumember groups',
       },
       // OIDC flow will create a session for the user

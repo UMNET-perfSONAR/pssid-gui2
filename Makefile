@@ -12,7 +12,7 @@ EDITION ?= $(shell [ -f .env ] && sed -n 's/^EDITION=//p' .env || echo default)
 .DEFAULT_GOAL := help
 
 .PHONY: help install deploy upgrade refresh up down restart logs ps build dev dev-down \
-        seed-demo seed-defaults seed-qa edition-umich edition-default backup restore \
+        seed-defaults seed-qa edition-default backup restore \
         doctor clean test smoke
 
 help: ## Show this help
@@ -66,9 +66,6 @@ dev: ## Start the local dev stack with hot reload (http://localhost:8888)
 dev-down: ## Stop the local dev stack
 	@$(LOCAL) down
 
-seed-demo: ## Load the canonical demo dataset into the running MongoDB container
-	@bash scripts/seed-demo.sh
-
 seed-defaults: ## Load the pre-load starter data (fresh installs)
 	@bash scripts/seed-defaults.sh
 
@@ -83,9 +80,6 @@ test: ## Run all unit tests (server + client, no stack needed)
 
 smoke: ## End-to-end test of every user action against a running stack
 	@bash scripts/smoke-test.sh $(SMOKE_URL)
-
-edition-umich: ## Switch the client to the University of Michigan edition
-	@$(MAKE) --no-print-directory _set-edition EDITION=umich
 
 edition-default: ## Switch the client to the neutral default edition
 	@$(MAKE) --no-print-directory _set-edition EDITION=default

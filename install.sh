@@ -9,8 +9,8 @@
 #
 # Usage:
 #   ./install.sh                         # interactive
-#   ./install.sh --edition=umich --hostname=pssid.example.edu --sso=true \
-#       --issuer=https://umich.okta.com --client-id=... --client-secret=... -y
+#   ./install.sh --hostname=pssid.example.edu --sso=true \
+#       --issuer=https://idp.example.com --client-id=... --client-secret=... -y
 #
 # Run ./install.sh --help for all options.
 
@@ -54,7 +54,7 @@ usage() {
 ${C_BOLD}pSSID GUI installer${C_RESET}
 
 Options:
-  --edition=NAME         Edition: default | umich                  (default: default)
+  --edition=NAME         Interface edition id                      (default: default)
   --hostname=HOST        Public hostname for this deployment
   --sso=true|false       Enable Single Sign-On (OIDC)
   --issuer=URL           OIDC issuer base URL          (SSO only)
@@ -184,10 +184,12 @@ for p in 80 443; do check_port "$p"; done
 # ─── 2. Gather configuration ─────────────────────────────────────────────────
 step "Configuration"
 
-if [ "$EDITION" != "default" ] && [ "$EDITION" != "umich" ]; then
-  prompt EDITION "Edition (default/umich)" "default"
-fi
-[ "$EDITION" = "default" ] || [ "$EDITION" = "umich" ] || die "Invalid edition: $EDITION"
+# Editions are pluggable (see services/client/src/edition/editions.ts), so any
+# id the client bundle defines is accepted; reject only shell-unsafe values. An
+# id with no matching entry falls back to the default edition at runtime.
+case "$EDITION" in
+  ''|*[!a-zA-Z0-9_-]*) die "Invalid edition: $EDITION" ;;
+esac
 ok "Edition: $EDITION"
 
 [ -n "$HOSTNAME_INPUT" ] || prompt HOSTNAME_INPUT "Public hostname (e.g. pssid.example.edu)" "localhost"
@@ -201,7 +203,7 @@ SSO="$(printf '%s' "$SSO" | tr '[:upper:]' '[:lower:]')"
 ok "SSO: $SSO"
 
 if [ "$SSO" = "true" ]; then
-  [ -n "$ISSUER" ]        || prompt ISSUER "OIDC issuer base URL" "https://umich.okta.com"
+  [ -n "$ISSUER" ]        || prompt ISSUER "OIDC issuer base URL" ""
   [ -n "$CLIENT_ID" ]     || prompt CLIENT_ID "OIDC client id" ""
   [ -n "$CLIENT_SECRET" ] || prompt_secret CLIENT_SECRET "OIDC client secret (input hidden)"
   [ -n "$CLIENT_ID" ]     || die "CLIENT_ID is required when SSO is enabled."
@@ -264,7 +266,10 @@ SERVER_ENV="services/server/.env"
     echo "CLIENT_SECRET=${CLIENT_SECRET}"
   fi
 } > "$SERVER_ENV"
-ok "Wrote $SERVER_ENV (gitignored)"
+# Contains the session secret, the OIDC client secret and the MongoDB URI with
+# its password: keep it owner-only rather than the umask default (usually 0644).
+chmod 600 "$SERVER_ENV" 2>/dev/null || warn "Could not chmod 600 $SERVER_ENV"
+ok "Wrote $SERVER_ENV (gitignored, mode 600)"
 
 # ─── 4. Root environment for compose interpolation ───────────────────────────
 step "Writing deployment environment"
@@ -274,7 +279,9 @@ step "Writing deployment environment"
   echo "MONGO_USERNAME=${MONGO_USERNAME}"
   echo "MONGO_PASSWORD=${MONGO_PASSWORD}"
 } > .env
-ok "Wrote .env (edition + MongoDB credentials)"
+# Contains the generated MongoDB password.
+chmod 600 .env 2>/dev/null || warn "Could not chmod 600 .env"
+ok "Wrote .env (edition + MongoDB credentials, mode 600)"
 
 # ─── 5. Toggle SSO flag (shared/config.ts) ───────────────────────────────────
 # ENABLE_SSO lives in shared/config.ts and is read by both client and server.
@@ -308,7 +315,9 @@ http {
         listen 443 ssl;
         server_name ${HOSTNAME_INPUT};
 
-        add_header Content-Security-Policy "upgrade-insecure-requests";
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header X-Content-Type-Options "nosniff" always;
         proxy_busy_buffers_size 512k;
         proxy_buffers 4 512k;
         proxy_buffer_size 256k;
@@ -354,6 +363,11 @@ http {
     server {
         listen 80;
         server_name ${HOSTNAME_INPUT};
+
+        # No upgrade-insecure-requests here: this variant serves plain HTTP.
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header X-Content-Type-Options "nosniff" always;
 
         location = / {
             proxy_pass http://server:8000/;
@@ -417,6 +431,13 @@ if [ "$(uname -s)" = "Linux" ]; then
     /var/lib/pssid/plugins/tests \
     /var/lib/pssid/plugins/layer2 /var/lib/pssid/plugins/layer3 \
     /var/lib/pssid/output 2>/dev/null || warn "Could not create /var/lib/pssid (insufficient permissions)"
+
+  # The server container runs as the image's non-root `node` user (uid/gid 1000)
+  # and writes into these bind mounts: it seeds the test/layer templates into
+  # plugins/ and writes the generated pssid_config.json + hosts.ini into output/.
+  # Without this they stay root-owned 0755 and every write is denied.
+  $SUDO chown -R 1000:1000 /var/lib/pssid /usr/lib/exec/pssid 2>/dev/null \
+    || warn "Could not chown /var/lib/pssid and /usr/lib/exec/pssid to uid 1000 (the server container may not be able to write there)"
   ok "Runtime directories ready"
 
   # Note: the layer 2 / layer 3 (and tests) starter methods are seeded
@@ -444,11 +465,12 @@ if [ "$DO_PULL" = "true" ]; then
   export PSSID_IMAGE_PREFIX="${PSSID_IMAGE_PREFIX:-$PULL_PREFIX_DEFAULT}"
   export PSSID_IMAGE_TAG="${PSSID_IMAGE_TAG:-latest}"
   # The published client image is per edition (the brand is baked into the
-  # bundle): default -> :latest, umich -> :umich.
-  if [ "$EDITION" = "umich" ]; then
-    export PSSID_CLIENT_TAG="${PSSID_CLIENT_TAG:-umich}"
-  else
+  # bundle): the default edition is :latest, and any other edition is published
+  # under its own tag (see .github/workflows/publish.yml).
+  if [ "$EDITION" = "default" ]; then
     export PSSID_CLIENT_TAG="${PSSID_CLIENT_TAG:-$PSSID_IMAGE_TAG}"
+  else
+    export PSSID_CLIENT_TAG="${PSSID_CLIENT_TAG:-$EDITION}"
   fi
   info "Registry: ${PSSID_IMAGE_PREFIX}_{server,mongo}:${PSSID_IMAGE_TAG}, _client:${PSSID_CLIENT_TAG}"
   # shellcheck disable=SC2086

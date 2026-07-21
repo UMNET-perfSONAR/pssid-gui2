@@ -1,25 +1,25 @@
 # Deployment
 
 This guide covers deploying pSSID GUI on a single host with Docker. It applies to
-any organization. The University of Michigan specifics (Okta sign-on, hostnames,
-and published images) are gathered in their own section near the end.
+any organization; hostnames, identity-provider URLs, and storage paths in the
+examples are placeholders to replace with your own.
 
 ## Contents
 
 - [One-command bootstrap](#one-command-bootstrap)
 - [Deploying to a new VM](#deploying-to-a-new-vm)
+  - [Provisioning checklist for the VM administrator](#provisioning-checklist-for-the-vm-administrator)
 - [Prerequisites](#prerequisites)
 - [Deploying with Ansible](#deploying-with-ansible)
 - [Upgrades and backups](#upgrades-and-backups)
 - [Quickstart](#quickstart)
 - [What the installer does](#what-the-installer-does)
 - [Everyday operations](#everyday-operations)
-- [Demo data](#demo-data)
+- [Starter data](#starter-data)
 - [Single sign-on](#single-sign-on)
 - [TLS](#tls)
 - [Editions](#editions)
 - [Provisioning and automation](#provisioning-and-automation)
-- [University of Michigan notes](#university-of-michigan-notes)
 - [Troubleshooting](#troubleshooting)
 
 ## One-command bootstrap
@@ -56,12 +56,13 @@ and pull the images CI publishes to GitHub Container Registry — that needs onl
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh \
-  | PSSID_PULL=true PSSID_HOSTNAME=pssid.example.edu PSSID_EDITION=umich bash
+  | PSSID_PULL=true PSSID_HOSTNAME=pssid.example.edu bash
 ```
 
 or `./install.sh --pull ...` from a checkout, or `-e pssid_gui_pull=true` with
-the playbook. The client image is published per edition (`:latest` = default,
-`:umich` = umich) and the installer picks the right one from `--edition`. If
+the playbook. The client image is published per edition (the default edition is
+`:latest`; a branded edition is published under its own tag) and the installer
+picks the right one from `--edition`. If
 the pull fails (registry unreachable, images not yet published), the installer
 falls back to building from source automatically — with the larger disk
 requirement that implies. The images are published by
@@ -163,6 +164,28 @@ would still reside on the smaller `/var` filesystem.
 > is not present, it finds the roomiest writable local volume and prints the
 > exact `PSSID_DOCKER_DATA_ROOT=...` line to re-run with.
 
+### Provisioning checklist for the VM administrator
+
+The deployment itself never touches firewalls, DNS, or host networking — as
+noted above, that stays outside its scope on purpose (it keeps the product
+clean for a security review). Share this checklist with whoever provisions the
+VM (network/ITS team):
+
+- **Inbound `80`/`443`** must be reachable from every client network expected to
+  reach the site (campus ranges, VPN, etc.). Double-check any VPN/remote-access
+  range specifically: it is easy for a firewall to trust a range for SSH (`22`)
+  but not for `80`/`443`, which leaves the site healthy on the box yet
+  unreachable from a browser on that network — see
+  [Troubleshooting](#troubleshooting) for how to diagnose that symptom.
+- **A public DNS A record** for the hostname, pointing at the VM's IP.
+- **Outbound internet** from the VM to Docker Hub (or GHCR, for
+  `PSSID_PULL=true`) and the OS package mirrors — needed during the
+  build/pull, not afterward.
+- **TLS** and **SSO**, if used: see [TLS](#tls) and
+  [Single sign-on](#single-sign-on) for what each needs from the network
+  (Let's Encrypt needs inbound `80`; SSO needs the provider's redirect URI
+  registered).
+
 ## Prerequisites
 
 A Linux host with Docker and Docker Compose. If Docker is not already installed on
@@ -246,7 +269,7 @@ the case. Check with `git branch --show-current` and switch once with
 
 One-time setup: point the controller's GUI services at the locally built
 images with an override file, so playbook re-runs cannot revert it. Check the
-service names first (`grep -B4 'umnetworking/pssid-gui2'
+service names first (`grep -B4 'pssid-gui2'
 /usr/lib/pssid/docker-compose.yml`), then create
 `/usr/lib/pssid/docker-compose.override.yml`:
 
@@ -373,37 +396,22 @@ Practical consequences:
   `scripts/upgrade-controller.sh` build before they recreate.
 - After a `git pull`, run `make refresh` (unchanged) to rebuild and apply the
   new code.
-- Switching editions (`make edition-umich` / `edition-default`) rebuilds the
+- Switching editions (`make edition-default`, or `_set-edition EDITION=<id>`) rebuilds the
   client image, because the edition is baked into the bundle at build time.
 - `make dev` is unchanged: the development stack overrides the container command
   back to the Vite dev server for hot reload against the mounted source.
 
-## Demo data
+## Starter data
 
-Use one command for demos:
-
-```bash
-make seed-demo
-```
-
-All seeders run `mongosh` inside the database container and, on a production
+Both seeders run `mongosh` inside the database container and, on a production
 deployment (where the installer enabled database authentication), read the
 MongoDB credentials from the root `.env` automatically — so run them from the
 repository root, the same place the Makefile does. `seed-defaults.sh` also
 verifies its writes actually landed and fails loudly instead of leaving a
 silently empty site.
 
-This loads the canonical sample dataset through
-[`scripts/seed-demo.sh`](../scripts/seed-demo.sh). The data matches the current
-GUI forms and config generator: SSID profiles include their layer 2 and layer 3
-methods, tests use the dynamic-form `spec` array shape, jobs use the daemon's
-string fields, host metadata is stored as objects, and host regexes are arrays.
 After seeding, use Settings > Configuration > Preview to inspect and validate the
 generated files.
-
-The old [`scripts/seed-config-demo.sh`](../scripts/seed-config-demo.sh) command
-is kept only as a compatibility wrapper around `seed-demo.sh`, so running it will
-load the same current dataset.
 
 ### Pre-load and QA data
 
@@ -453,7 +461,7 @@ hostnames. Run it by hand on the VM after bootstrap finishes:
 cd /opt/pssid-gui   # or wherever bootstrap deployed to; see below
 PSSID_QA_PROBE1=<real-pi-hostname-1> \
 PSSID_QA_PROBE2=<real-pi-hostname-2> \
-PSSID_QA_MW_DEST=www.umich.edu \
+PSSID_QA_MW_DEST=www.example.edu \
 bash scripts/seed-qa.sh
 ```
 
@@ -503,24 +511,23 @@ Map the provider's group names to permissions in
 With SSO off, access is governed by `OPEN_WRITE` in `shared/config.ts`: `true`
 allows anyone to read and write, `false` makes the interface read-only.
 
-### UMich Okta
+### Example: Okta
 
-The steps below are specific to UMich's Okta tenant.
-
-1. Sign in to [umich.okta.com](https://umich.okta.com) with an admin account, go
-   to Applications, then Create App Integration, and choose OIDC (OpenID Connect)
-   followed by Web Application. Set the sign-in redirect URI to
-   `https://<your-hostname>/callback` and the sign-out redirect URI to
-   `https://<your-hostname>`. Save, and note the client ID and client secret.
+1. Sign in to your Okta tenant with an admin account, go to Applications, then
+   Create App Integration, and choose OIDC (OpenID Connect) followed by Web
+   Application. Set the sign-in redirect URI to `https://<your-hostname>/callback`
+   and the sign-out redirect URI to `https://<your-hostname>`. Save, and note the
+   client ID and client secret.
 2. Under Sign On, open the OpenID Connect ID Token section, set the groups claim
    type to Filter, and set a filter that matches your groups (for example, starts
-   with `pssid`). UMich's Okta may instead pass the `edumember_is_member_of`
-   attribute from the campus directory; if your admin has set that up, the claim
-   arrives on its own and no filter is needed. The application reads either
-   `edumember_is_member_of` or the standard `groups` claim.
-3. Use the Okta org authorization server as the issuer:
-   `ISSUER_BASE_URL=https://umich.okta.com`. The discovery document is at
-   `https://umich.okta.com/.well-known/openid-configuration`. Do not append
+   with `pssid`). A federated higher-education tenant may instead pass the
+   eduPerson `edumember_is_member_of` attribute from the directory; where that is
+   configured the claim arrives on its own and no filter is needed. The
+   application reads either `edumember_is_member_of` or the standard `groups`
+   claim.
+3. Use the Okta org authorization server as the issuer, for example
+   `ISSUER_BASE_URL=https://<your-tenant>.okta.com`. The discovery document is at
+   `<ISSUER_BASE_URL>/.well-known/openid-configuration`. Do not append
    `/oauth2/default`; that path is for Okta custom authorization servers and is
    not used here.
 4. Set the group permissions in
@@ -539,12 +546,12 @@ appropriate for local testing.
 ## Editions
 
 The interface can be shown with a different appearance for each organization: its
-colors, product name, and logo. Two editions ship today: `default`, a neutral navy
-and cyan, and `umich`, UMich navy and maize. The active edition is chosen by the
-`EDITION` value, which the installer writes to the root `.env`. You can change it
-later with `make edition-default` or `make edition-umich`, which rebuild the
+colors, product name, and logo. One edition ships today: `default`, a neutral navy
+and cyan. The active edition is chosen by the `EDITION` value, which the installer
+writes to the root `.env`. You can change it later with `make edition-default` (or
+`make _set-edition EDITION=<id>` for an edition you have added), which rebuilds the
 client image with the new edition (it is baked into the bundle at build time)
-and recreate the container.
+and recreates the container.
 
 To add an organization, add an entry to
 [`services/client/src/edition/editions.ts`](../services/client/src/edition/editions.ts),
@@ -708,43 +715,20 @@ make dev      # http://localhost:8888; edits under services/*/src reload live
 The source directories are mounted into the containers, so changes are picked up
 without rebuilding images.
 
-## University of Michigan notes
+### Image-based deployments
 
-A typical UMich install:
-
-```bash
-./install.sh \
-  --edition=umich \
-  --hostname=pssid-web-dev.miserver.it.umich.edu \
-  --sso=true \
-  --issuer=https://umich.okta.com \
-  --client-id=<from Okta> \
-  --client-secret=<from Okta> \
-  --tls=letsencrypt --email=<team-alias>@umich.edu
-```
-
-For an Ansible-managed install, use the playbook that ships in this repository
-([`ansible/`](../ansible/README.md)); it wraps the same installer with a
-`docker` role and a `pssid_webgui` role. UMNET separately maintains an older
-standalone playbook
-(`https://github.com/UMNET-perfSONAR/ansible-playbook-pssid-GUI-deploy.git`)
-that renders its own compose file under `/usr/lib/pssid`; it predates the
-in-repo playbook. Prefer the in-repo playbook unless the host is already
-managed by the standalone one.
-
-Release images are published under the `umnetworking` Docker Hub organization. Pin
-a release tag for reproducible deployments:
+When deploying from prebuilt images rather than a source build, pin a release
+tag for reproducibility:
 
 ```
-umnetworking/pssid-gui2_client:v3.2.0
-umnetworking/pssid-gui2_server:v3.2.0
-umnetworking/pssid-gui2_mongo:v3.2.0
+<registry>/pssid-gui2_client:v3.2.0
+<registry>/pssid-gui2_server:v3.2.0
+<registry>/pssid-gui2_mongo:v3.2.0
 ```
 
-For an image-based deployment, mount `shared/` into both the client and server
-containers, and do not mount the `node_modules` volumes, which would hide the
-dependencies already in the image. For SSO, provide the OIDC values through
-`/usr/lib/pssid/server.env`.
+Mount `shared/` into both the client and server containers, and do not mount the
+`node_modules` volumes, which would hide the dependencies already in the image.
+For SSO, provide the OIDC values through the server's env file.
 
 ## Troubleshooting
 
@@ -765,6 +749,19 @@ A few common issues:
 - For an SSO redirect loop, check that `BASE_URL` and `COOKIE_DOMAIN` in
   `services/server/.env` match the hostname in the browser, and that the
   provider's redirect URI is exactly `https://<host>/callback`.
+- **Healthy on the box but "This site can't be reached" in the browser** →
+  a firewall/reachability gap, not an application problem (see
+  [provisioning checklist](#provisioning-checklist-for-the-vm-administrator)).
+  A common cause: the host firewall trusts a remote-access range for SSH (`22`)
+  but not for `443`, so `curl -sk https://localhost/api/health` succeeds on the
+  box while the site stays unreachable from a browser on that network.
+  Diagnose which source IP is being dropped and on which port:
+  ```bash
+  grep 'UFW BLOCK' /var/log/ufw.log | tail     # SRC= the dropped client IP; DPT= the port
+  ```
+  then compare that `SRC=` against the ranges `ufw status` allows for `443`,
+  and add `80`/`443` to the same source ranges already allowed for SSH
+  (ideally in the managed firewall template so it survives config runs).
 - **The client image fails to build** (for example a TypeScript error in pulled
   source). `docker compose build` stops with the exact compiler error and a
   non-zero exit. Because `make refresh` and `scripts/upgrade-controller.sh` both

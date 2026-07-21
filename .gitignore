@@ -30,3 +30,9 @@ www/
 ansible/inventories/remote.ini
 # macOS folder metadata, never commit
 .DS_Store
+
+# The repo-root shared/ directory is staged into each service's src/shared at
+# build time (Docker COPY, CI, and the `sync:shared` npm script). The copies are
+# generated — the originals live in /shared.
+services/client/src/shared/
+services/server/src/shared/

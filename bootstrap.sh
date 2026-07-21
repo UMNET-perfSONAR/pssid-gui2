@@ -19,7 +19,8 @@
 #   Settings are environment variables (all optional; sane defaults apply):
 #
 #     PSSID_HOSTNAME=pssid.example.edu   Public hostname (default: this FQDN)
-#     PSSID_EDITION=umich                Interface edition: default | umich
+#     PSSID_EDITION=default              Interface edition id (see
+#                                        services/client/src/edition/)
 #     PSSID_TLS=letsencrypt              TLS: self-signed | letsencrypt | none
 #     PSSID_LE_EMAIL=you@example.edu     Contact email for Let's Encrypt
 #     PSSID_SSO=true                     Enable OIDC single sign-on
@@ -39,7 +40,7 @@
 #
 #   Example:
 #
-#     PSSID_HOSTNAME=pssid.example.edu PSSID_EDITION=umich ./bootstrap.sh
+#     PSSID_HOSTNAME=pssid.example.edu ./bootstrap.sh
 #
 #   Any extra arguments are passed through to ansible-playbook, so every
 #   playbook variable can also be set directly:

@@ -6,7 +6,7 @@
 # volume, so the image build does not die with "no space left on device" on a
 # VM whose default /var/lib sits on a small partition. This is a common managed
 # VM layout: several small root logical volumes plus one large data volume
-# (for example /usr/local/miserver on a University of Michigan MiServer host).
+# (for example a dedicated /data or /srv volume).
 #
 # Why two locations must move together: modern Docker Engine extracts image
 # layers through containerd's OWN snapshotter, whose root (/var/lib/containerd)
@@ -16,8 +16,8 @@
 # time. See docs/deployment.md ("Deploying to a new VM").
 #
 # Usage:
-#   sudo scripts/setup-docker-storage.sh /usr/local/miserver/docker
-#   sudo PSSID_DOCKER_DATA_ROOT=/usr/local/miserver/docker scripts/setup-docker-storage.sh
+#   sudo scripts/setup-docker-storage.sh /data/docker
+#   sudo PSSID_DOCKER_DATA_ROOT=/data/docker scripts/setup-docker-storage.sh
 #
 # The Docker data-root goes at the path you give; containerd's root normally
 # goes at a "containerd" directory beside it (so /data/docker pairs with

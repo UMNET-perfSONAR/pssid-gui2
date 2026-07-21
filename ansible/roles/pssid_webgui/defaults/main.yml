@@ -7,7 +7,7 @@
 # dev:  hot-reload stack on http://localhost:8888 (docker-compose.local.yml).
 pssid_gui_mode: prod
 
-# Interface edition: default | umich
+# Interface edition id (see services/client/src/edition/)
 pssid_gui_edition: default
 
 # Public hostname of this deployment (the URL users will visit).
@@ -46,7 +46,7 @@ pssid_gui_pull: false
 # Put Docker's data-root AND containerd's storage root on a roomier volume,
 # before the image build. Leave empty to use the system defaults
 # (/var/lib/docker and /var/lib/containerd). Set to a directory on a large
-# volume (e.g. /usr/local/miserver/docker) on VMs whose /var/lib is a small
+# volume (e.g. /data/docker) on VMs whose /var/lib is a small
 # partition; the role runs scripts/setup-docker-storage.sh to relocate both
 # stores. A dedicated local mount at /var/lib/docker is detected automatically;
 # containerd is then stored inside that same volume. Network filesystems such

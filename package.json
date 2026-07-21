@@ -1,10 +1,10 @@
 {
-  "dependencies": {
-    "connect-redis": "^9.0.0",
-    "express-session": "^1.18.2",
-    "redis": "^5.9.0"
-  },
-  "devDependencies": {
-    "@types/redis": "^4.0.11"
+  "name": "pssid-gui2",
+  "version": "3.2.0",
+  "description": "pSSID GUI — wireless measurement orchestration",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "test": "npm --prefix services/server test && npm --prefix services/client test"
   }
 }

@@ -27,8 +27,8 @@
 # their pre-load state (for example a batch assigned to "all" in the GUI is
 # detached again).
 #
-# For the populated QA dataset (probes, MWireless, BatchMW), use
-# scripts/seed-qa.sh. For the demo dataset, use scripts/seed-demo.sh.
+# For the populated QA dataset used in testing (probes, MWireless, BatchMW), use
+# scripts/seed-qa.sh.
 set -euo pipefail
 
 DB_NAME="gui"

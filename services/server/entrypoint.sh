@@ -3,11 +3,17 @@
 # Create target directories for the starter files
 mkdir -p bin plugins
 
-# Copy starter files to the correct directories
-if [ -f starters/provision ]; then
-  cp -f starters/provision bin/
+# Seed the placeholder provision script ONLY when the deployment has not
+# supplied its own. In production bin/ is a bind mount of the host's provision
+# directory (/usr/lib/exec/pssid), so an unconditional copy here would overwrite
+# the operator's real provision script with this repository's logging stub on
+# every container start.
+if [ -f starters/provision ] && [ ! -e bin/provision ]; then
+  cp starters/provision bin/
 fi
 
+# Test / layer-method templates are this repository's to own: they are the
+# selectable types the GUI offers, so they are refreshed on every start.
 if [ -d starters/tests ]; then
   cp -r starters/tests plugins/
 fi
@@ -26,17 +32,17 @@ fi
 # showing up as a selectable test type until it is deleted here.
 rm -f plugins/tests/example_script.json
 
-# Reconcile dependencies with package.json before starting. node_modules is a
-# named volume in the compose files, which shadows the image's modules, so a
-# rebuilt image alone will not pick up newly added packages. Installing here
-# keeps the volume in step with package.json (a fast no-op when already
-# satisfied) and avoids "Cannot find module" crashes after a dependency is
-# added. Because this script is the image ENTRYPOINT, it runs even when a
-# deployment overrides the container command (the production Ansible compose
-# does), where the install step would otherwise be skipped.
-npm install
+# Development only: reconcile dependencies with package.json before starting.
+# The dev stack keeps node_modules in a named volume that shadows the image's
+# modules, so a rebuilt image alone would not pick up a newly added package.
+# The production image ships its own immutable node_modules (npm ci --omit=dev
+# at build time) and must never reach out to the network at container start.
+if [ "${NODE_ENV}" != "production" ]; then
+  npm install
+fi
 
-# Hand off to the container command: the Dockerfile CMD (npm run dev) by
-# default, or whatever a compose `command:` override passes in. Using exec keeps
-# it as PID 1 so signals (e.g. shutdown) reach it directly.
+# Hand off to the container command: the Dockerfile CMD (node build/index.js in
+# the production image, npm run dev in the build stage), or whatever a compose
+# `command:` override passes in. Using exec keeps it as PID 1 so signals
+# (e.g. shutdown) reach it directly.
 exec "$@"

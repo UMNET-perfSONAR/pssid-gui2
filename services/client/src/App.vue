@@ -40,7 +40,11 @@
             @keydown.down.prevent="openThemeMenu(0)"
             @keydown.up.prevent="openThemeMenu(themeOptions.length - 1)"
           >
-            <span class="material-icons" aria-hidden="true">{{ currentTheme.icon }}</span>
+            <span
+              class="material-icons"
+              :class="{ 'theme-toggle-icon-moon': theme === 'dark' }"
+              aria-hidden="true"
+            >{{ currentTheme.icon }}</span>
           </button>
           <ul
             v-show="themeMenuOpen"
@@ -274,6 +278,14 @@ export default {
   border-color: #ffffff;
 }
 .theme-toggle .material-icons { font-size: 1.15rem; }
+/* The moon glyph (Dark appearance active) reads too close to the badge's own
+   near-white fill when it inherits --primary, which is barely distinguishable
+   from #eef2f7 at this size. Give it its own solid, edition-independent tone so
+   it's unmistakably differentiated from the fill it sits on, in every edition.
+   The badge fill/border above are untouched. */
+.theme-toggle-icon-moon {
+  color: #1e293b;
+}
 
 /* The dropdown of appearance modes. Anchored to the trigger on desktop; on the
    collapsed mobile nav it sits inline within the menu column. */

@@ -145,6 +145,18 @@ describe('assertDaemonValid', () => {
     const group = validConfig();
     (group.host_groups[0] as any).name = 'bad[group]';
     expect(() => assertDaemonValid(group)).toThrow(/not inventory-safe/);
+
+    // hosts_regex is rendered into the inventory as a comment line; a newline
+    // would break out of it and inject a real entry.
+    const regex = validConfig();
+    (regex.host_groups[0] as any).hosts_regex = ['probe-.*\n[all:vars]\nansible_user=root'];
+    expect(() => assertDaemonValid(regex)).toThrow(/not inventory-safe/);
+
+    // Square brackets are legitimate regex character classes and stay safely on
+    // the comment line, so they must NOT be rejected.
+    const charClass = validConfig();
+    (charClass.host_groups[0] as any).hosts_regex = ['probe-[0-9]+'];
+    expect(() => assertDaemonValid(charClass)).not.toThrow();
   });
 
   it('reports every problem in one error, not just the first', () => {

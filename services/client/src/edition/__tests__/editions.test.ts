@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { editions, DEFAULT_EDITION_ID } from '../editions';
 
 describe('edition registry', () => {
-  it('includes the default and umich editions', () => {
+  it('includes the default edition', () => {
     expect(editions).toHaveProperty('default');
-    expect(editions).toHaveProperty('umich');
     expect(editions[DEFAULT_EDITION_ID]).toBeDefined();
   });
 
@@ -23,10 +22,5 @@ describe('edition registry', () => {
       expect(c.primaryRgb).toMatch(/^\d{1,3},\d{1,3},\d{1,3}$/);
       expect(c.accentRgb).toMatch(/^\d{1,3},\d{1,3},\d{1,3}$/);
     }
-  });
-
-  it('preserves the UMich navy/maize identity', () => {
-    expect(editions.umich.colors.primary.toLowerCase()).toBe('#00274c');
-    expect(editions.umich.colors.accent.toLowerCase()).toBe('#ffcb05');
   });
 });

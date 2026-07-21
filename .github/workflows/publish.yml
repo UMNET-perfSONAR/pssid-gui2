@@ -9,8 +9,9 @@ name: Publish images
 #   ghcr.io/<owner>/pssid-gui2_server:latest
 #   ghcr.io/<owner>/pssid-gui2_mongo:latest
 #
-# The client is published per edition: the default edition as :latest and the
-# umich edition as :umich (the brand is baked into the bundle at build time).
+# The client bundle has its edition baked in at build time, so an organisation
+# publishing a branded edition adds a build step here with its own
+# VITE_EDITION and image tag (see services/client/src/edition/).
 
 on:
   push:
@@ -52,23 +53,13 @@ jobs:
             ${{ steps.prefix.outputs.prefix }}_client:latest
             ${{ steps.prefix.outputs.prefix }}_client:sha-${{ github.sha }}
 
-      - name: Build and push client (umich edition)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: services/client/Dockerfile
-          target: runtime
-          build-args: |
-            VITE_EDITION=umich
-          push: true
-          tags: |
-            ${{ steps.prefix.outputs.prefix }}_client:umich
-            ${{ steps.prefix.outputs.prefix }}_client:umich-sha-${{ github.sha }}
-
       - name: Build and push server
         uses: docker/build-push-action@v6
         with:
-          context: services/server
+          # Repo-root context so the image can COPY shared/ alongside the app.
+          context: .
+          file: services/server/Dockerfile
+          target: runtime
           push: true
           tags: |
             ${{ steps.prefix.outputs.prefix }}_server:latest

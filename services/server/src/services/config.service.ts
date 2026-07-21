@@ -328,6 +328,17 @@ export function assertDaemonValid(obj: any): void {
     if (!iniSafe(group.name)) {
       errors.push(`host_group name ${JSON.stringify(group.name)} is not inventory-safe (no newlines or square brackets)`);
     }
+    // hosts_regex is rendered into the inventory too (as a #Regex comment), so a
+    // newline in a pattern could smuggle in a real inventory line. Square
+    // brackets are legitimate regex syntax (character classes) and stay on the
+    // comment line harmlessly, so only line breaks are rejected here. The
+    // controllers enforce this at write time; this is the render-time backstop
+    // for values that reached the database another way.
+    for (const pattern of Array.isArray(group.hosts_regex) ? group.hosts_regex : []) {
+      if (typeof pattern !== 'string' || /[\r\n]/.test(pattern)) {
+        errors.push(`host_group "${group.name}" pattern ${JSON.stringify(pattern)} is not inventory-safe (no newlines)`);
+      }
+    }
   }
 
   const definedJobs = names(obj.jobs);

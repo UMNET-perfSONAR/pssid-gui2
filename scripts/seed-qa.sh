@@ -47,7 +47,7 @@ PSSID_QA_PROBE1="${PSSID_QA_PROBE1:-rpi4-probe-01}"
 PSSID_QA_PROBE2="${PSSID_QA_PROBE2:-rpi4-probe-02}"
 # Destination for the MWireless http test, stored as host metadata `dest` on
 # probe 1 and referenced by the test as $dest.
-PSSID_QA_MW_DEST="${PSSID_QA_MW_DEST:-www.umich.edu}"
+PSSID_QA_MW_DEST="${PSSID_QA_MW_DEST:-www.example.edu}"
 
 # Values are passed into mongosh via the environment (never spliced into the
 # script), so validate them only for sanity: host-name characters for probes,

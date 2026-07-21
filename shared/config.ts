@@ -1,8 +1,13 @@
 // Master file to enable or disable SSO (must edit both the frontend and backend config.ts file)
 const config = {
   ENABLE_SSO: false,
-  OPEN_WRITE: true, // if SSO is disabled, configure write options, true allows for write and read, false allows read only
-  BASE_URL: "https://pssid-web-dev.miserver.it.umich.edu"
+  // With SSO disabled, this governs write access. It ships FALSE (read-only) so
+  // that a deployment is never unauthenticated-writable by accident: an open
+  // instance has to be an explicit choice. Set it to true (or pass OPEN_WRITE=true
+  // to the server) only when the site is otherwise access-controlled.
+  OPEN_WRITE: false,
+  // Placeholder; the installer rewrites this with the deployment's hostname.
+  BASE_URL: "https://pssid.example.edu"
   // any other config values
 };
 

@@ -49,31 +49,12 @@ export interface Edition {
 
 export const editions: Record<string, Edition> = {
   /**
-   * University of Michigan edition. Preserves the existing navy/maize identity
-   * exactly so current UMich users see no visual change.
-   */
-  umich: {
-    id: 'umich',
-    productName: 'pSSID GUI · University of Michigan',
-    shortName: 'pSSID',
-    emphasis: 'GUI',
-    org: 'University of Michigan',
-    tagline: 'Wireless measurement orchestration for the University of Michigan.',
-    glyph: 'wifi',
-    version: 'v2.0',
-    colors: {
-      primary: '#00274C',
-      primaryDark: '#001e3d',
-      primaryRgb: '0,39,76',
-      accent: '#FFCB05',
-      accentRgb: '255,203,5',
-      accentText: '#00274C',
-    },
-  },
-
-  /**
    * Neutral, vendor-agnostic edition. A secure deep-navy + cyan identity that
    * reads as a trustworthy wireless/networking product for any organisation.
+   *
+   * To brand the interface for an organisation, add another entry here with
+   * that organisation's palette and product name, then deploy with
+   * `VITE_EDITION=<id>` (see ./index.ts).
    */
   default: {
     id: 'default',
@@ -83,7 +64,7 @@ export const editions: Record<string, Edition> = {
     org: '',
     tagline: 'Wireless measurement orchestration for any network.',
     glyph: 'wifi',
-    version: 'v2.0',
+    version: 'v3.2.0',
     colors: {
       primary: '#0b2545',
       primaryDark: '#081a33',

@@ -52,17 +52,16 @@ install only), and schedules a nightly database backup. With the default
 self-signed certificate the browser shows a warning once; choose Advanced,
 then Proceed.
 
-A University of Michigan install with Okta sign-on:
+An install with OIDC single sign-on and a trusted certificate:
 
 ```bash
 ansible-playbook site.yml \
-  -e pssid_gui_edition=umich \
-  -e pssid_gui_hostname=pssid-web-dev.miserver.it.umich.edu \
+  -e pssid_gui_hostname=pssid.example.edu \
   -e pssid_gui_sso=true \
-  -e pssid_gui_oidc_issuer=https://umich.okta.com \
-  -e pssid_gui_oidc_client_id=<from Okta> \
-  -e pssid_gui_oidc_client_secret=<from Okta> \
-  -e pssid_gui_tls=letsencrypt -e pssid_gui_letsencrypt_email=<team>@umich.edu
+  -e pssid_gui_oidc_issuer=https://idp.example.com \
+  -e pssid_gui_oidc_client_id=<from your IdP> \
+  -e pssid_gui_oidc_client_secret=<from your IdP> \
+  -e pssid_gui_tls=letsencrypt -e pssid_gui_letsencrypt_email=<team>@example.edu
 ```
 
 ## Upgrades
@@ -132,7 +131,7 @@ The most common:
 |---|---|---|
 | `pssid_gui_mode` | `prod` | `prod` (HTTPS stack) or `dev` (hot reload) |
 | `pssid_gui_hostname` | machine FQDN | Public hostname users will visit |
-| `pssid_gui_edition` | `default` | Interface edition (`default`, `umich`) |
+| `pssid_gui_edition` | `default` | Interface edition id (see `services/client/src/edition/`) |
 | `pssid_gui_tls` | `self-signed` | `self-signed`, `letsencrypt`, or `none` |
 | `pssid_gui_sso` | `false` | Enable OIDC single sign-on |
 | `pssid_gui_version` | `main` | Branch or tag to deploy when cloning |

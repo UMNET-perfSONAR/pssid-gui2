@@ -26,7 +26,7 @@ Settings ride along as environment variables (all optional):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh \
-  | PSSID_HOSTNAME=pssid.example.edu PSSID_EDITION=umich bash
+  | PSSID_HOSTNAME=pssid.example.edu bash
 ```
 
 `bootstrap.sh` documents the full list (TLS mode, Let's Encrypt email, SSO and
@@ -92,37 +92,26 @@ Day-to-day operations are wrapped in the Makefile (`make up`, `make down`,
 `make logs`, `make dev`, `make doctor`, and others). Run `make help` for the
 full list.
 
-## Demo data
+## Starter data
 
-For a populated demo stack, start the containers and run:
-
-```bash
-make seed-demo
-```
-
-That target runs [`scripts/seed-demo.sh`](scripts/seed-demo.sh), the canonical
-demo seeder. It populates the current GUI data model and produces data that can
-be previewed and generated through Settings > Configuration. The older
-`scripts/seed-config-demo.sh` command is kept as a compatibility wrapper around
-the same seeder.
-
-Two other seeders serve different purposes:
+Two seeders ship with the project:
 
 - `make seed-defaults` ([`scripts/seed-defaults.sh`](scripts/seed-defaults.sh))
-  loads the pre-load starter data for a fresh site: the standard schedules, the
-  eduroam profile, the google http/rtt tests, `job-comprehensive`,
-  `batch-comprehensive`, and the `all` (regex `.*`) and `rpi4`
-  (metadata `ifacename=wlan0`) host groups. No hosts are pre-loaded.
-- `make seed-qa` ([`scripts/seed-qa.sh`](scripts/seed-qa.sh)) loads the QA
-  dataset: everything in the pre-load plus the MWireless profile, `BatchMW`,
-  the captive-portal and MWireless jobs, and the two Raspberry Pi probes wired
-  to exercise batch and metadata assignment at both the host and group level
+  is the main one: it loads the pre-load starter data for a fresh site — the
+  standard schedules, the eduroam profile, the google http/rtt tests,
+  `job-comprehensive`, `batch-comprehensive`, and the `all` (regex `.*`) and
+  `rpi4` (metadata `ifacename=wlan0`) host groups. No hosts are pre-loaded. The
+  installer runs this once on first install, and it can also be run by hand.
+- `make seed-qa` ([`scripts/seed-qa.sh`](scripts/seed-qa.sh)) is for testing:
+  everything in the pre-load plus the MWireless profile, `BatchMW`, the
+  captive-portal and MWireless jobs, and two Raspberry Pi probes wired to
+  exercise batch and metadata assignment at both the host and group level
   (override the probe names with `PSSID_QA_PROBE1`/`PSSID_QA_PROBE2`).
 
 ## Documentation
 
 The [deployment guide](docs/deployment.md) covers installation, single sign-on
-(including UMich Okta), TLS, editions, and the provisioning pipeline. The
+(with an Okta example), TLS, editions, and the provisioning pipeline. The
 [Ansible guide](ansible/README.md) covers the role-based deployment.
 
 ## System overview

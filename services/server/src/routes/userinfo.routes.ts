@@ -26,7 +26,7 @@ router.get('/', guard, async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    // Support both UMich Okta edumember claim and standard Okta groups claim.
+    // Support both the eduPerson edumember claim and the standard groups claim.
     res.json({
       name: user.name,
       sub: user.sub,

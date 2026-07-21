@@ -8,7 +8,7 @@
 # prod (HTTPS stack behind nginx) or dev (hot reload on http://localhost:8888).
 # pssid_gui_mode: prod
 
-# Interface edition: default | umich
+# Interface edition id (see services/client/src/edition/)
 # pssid_gui_edition: default
 
 # Public hostname of this deployment. Defaults to the machine's FQDN.
@@ -21,7 +21,7 @@
 # Single sign-on (OIDC). Store the secret in an Ansible Vault file rather than
 # here in plain text when committing inventories.
 # pssid_gui_sso: true
-# pssid_gui_oidc_issuer: https://umich.okta.com
+# pssid_gui_oidc_issuer: https://idp.example.com
 # pssid_gui_oidc_client_id: ...
 # pssid_gui_oidc_client_secret: ...
 
@@ -41,7 +41,7 @@
 
 # Put Docker + containerd storage on a roomier volume before the build, for VMs
 # whose /var/lib is a small partition. Empty = system defaults. Example:
-# pssid_gui_docker_data_root: /usr/local/miserver/docker
+# pssid_gui_docker_data_root: /data/docker
 # A dedicated local mount at /var/lib/docker is detected automatically. Do not
 # use NFS/CIFS/other network storage for Docker or containerd data.
 
