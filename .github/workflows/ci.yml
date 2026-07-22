@@ -32,8 +32,16 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
-      - name: Dependency audit (advisory)
-        run: npm audit --omit=dev --audit-level=high || true
+      # Gating on the PRODUCTION tree only, and only at high/critical. What ships
+      # in the image must stay clean, and both trees are clean today, so this
+      # fails only on a genuine regression. The dev tree stays advisory below:
+      # build and test tooling never reaches a deployment, and letting a CVE in
+      # a transitive vite/vitest dependency block every merge trains people to
+      # ignore the signal — which is how the real one gets missed.
+      - name: Dependency audit (production deps, gating)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency audit (dev deps, advisory)
+        run: npm audit --audit-level=high || true
 
   automation:
     name: Automation (ansible + shell syntax)
@@ -109,5 +117,13 @@ jobs:
         run: npm run build
       - name: Unit tests
         run: npm test
-      - name: Dependency audit (advisory)
-        run: npm audit --omit=dev --audit-level=high || true
+      # Gating on the PRODUCTION tree only, and only at high/critical. What ships
+      # in the image must stay clean, and both trees are clean today, so this
+      # fails only on a genuine regression. The dev tree stays advisory below:
+      # build and test tooling never reaches a deployment, and letting a CVE in
+      # a transitive vite/vitest dependency block every merge trains people to
+      # ignore the signal — which is how the real one gets missed.
+      - name: Dependency audit (production deps, gating)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency audit (dev deps, advisory)
+        run: npm audit --audit-level=high || true

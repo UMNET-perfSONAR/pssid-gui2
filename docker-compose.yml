@@ -12,16 +12,42 @@ services:
     profiles:
       - sso
     container_name: redis
-    # Internal only: the server reaches redis over the Docker network. Nothing
-    # on the host needs it, and redis runs without auth, so never publish it.
+    # Internal only: the server reaches redis over the Docker network, and
+    # nothing on the host needs it, so it is never published. It ALSO requires a
+    # password, because with SSO on this holds the session store — anything that
+    # reaches it could read or forge logged-in sessions, and network isolation
+    # should not be the only thing standing in the way.
+    # The check is made at RUNTIME, not through compose interpolation: this
+    # service is profile-gated to `sso`, but compose interpolates the whole file
+    # either way, so a `${VAR:?}` here would break every non-SSO deployment —
+    # which needs no Redis at all. Failing in the container instead means the
+    # requirement lands only when Redis is actually started, and it fails loudly
+    # rather than silently starting an unauthenticated instance.
+    command:
+      - sh
+      - -c
+      - |
+        test -n "$$REDISCLI_AUTH" || {
+          echo "REDIS_PASSWORD is empty: refusing to start Redis without authentication. Run ./install.sh to generate one." >&2
+          exit 1
+        }
+        exec redis-server --requirepass "$$REDISCLI_AUTH"
     expose:
       - "6379"
+    environment:
+      # Doubles as the server password and the credential redis-cli reads on its
+      # own, so the healthcheck below authenticates without putting a password on
+      # a command line.
+      - REDISCLI_AUTH=${REDIS_PASSWORD:-}
     volumes:
       - redis_data:/data
     restart: unless-stopped
     logging: *default-logging
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # Match on PONG rather than the exit code: redis-cli exits 0 even when the
+      # server answers "NOAUTH Authentication required", so a bare `ping` would
+      # report healthy on a container nothing can actually authenticate to.
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -75,12 +101,26 @@ services:
       # stack targets the `build` stage for the watch toolchain instead).
       target: runtime
     environment:
-      - REDIS_URL=redis://redis:6379
+      # Authenticated: see the redis service above. Compose wins over the value
+      # in services/server/.env, since dotenv does not override a set variable.
+      # Authenticated; see the redis service. Only used when SSO is on (the
+      # server connects to Redis nowhere else), so an empty value on a non-SSO
+      # deployment is harmless. Compose wins over services/server/.env, because
+      # dotenv does not override an already-set variable.
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379
       # Auth posture. Both default to the values compiled into shared/config.ts
       # and can be overridden here without rebuilding the image, which is what
       # makes a prebuilt (--pull) image usable for an SSO deployment.
       - ENABLE_SSO=${ENABLE_SSO:-}
       - OPEN_WRITE=${OPEN_WRITE:-}
+    # services/server/.env carries the MongoDB password, the session secret and
+    # the OIDC client secret. It is root-owned 0640 on the host, readable only
+    # through this dedicated gid — deliberately NOT uid/gid 1000, which on
+    # Debian/Ubuntu is the first human login account. Adding the gid here as a
+    # supplementary group lets this non-root process read the file while
+    # granting no host account any access to it. install.sh sets both sides.
+    group_add:
+      - "${PSSID_SECRET_GID:-61000}"
     volumes:
       # src/ and node_modules are NOT mounted: the image ships the compiled
       # build/ and its own production dependencies. Only genuine runtime state

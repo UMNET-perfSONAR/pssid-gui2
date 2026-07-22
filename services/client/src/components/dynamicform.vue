@@ -223,8 +223,20 @@
 
      validateField(field) {
        const value = field.value;
-       const validator = new Function('input', field.validator);
-       if (!validator(value)) {
+       // Advisory only — the server is the authority on every one of these
+       // fields. Two things are guarded here: a template field with no
+       // validator (the Function body would be "undefined", which returns
+       // undefined and flagged every value as invalid), and the production CSP
+       // (`script-src 'self'`, no 'unsafe-eval') under which the Function
+       // constructor throws. Either way, skip the check instead of blocking a
+       // valid submission. Adding 'unsafe-eval' to the CSP is not the fix.
+       let valid = true;
+       try {
+         valid = Boolean(new Function('input', field.validator || 'return true;')(value));
+       } catch (e) {
+         console.warn(`Skipping client-side validator for "${field.name}":`, e);
+       }
+       if (!valid) {
          this.errors[field.name] = field.description;
        }
      }

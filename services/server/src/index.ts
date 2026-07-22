@@ -13,6 +13,7 @@ import { RedisStore } from 'connect-redis';
 
 import config from './shared/config'; // shared/config will appear in docker container
 import { isSsoEnabled } from './shared/accessControl';
+import { auditLog } from './services/audit.service';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -57,8 +58,16 @@ app.use(helmet({
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+// The SPA is served from this same origin (nginx serves the bundle and proxies
+// /api/ on one hostname), so cross-origin access is never needed in normal
+// operation. `|| false` makes that explicit and FAILS CLOSED: passing an
+// undefined origin makes the cors package emit `Access-Control-Allow-Origin: *`,
+// which would let any website a signed-in user visits read this API from their
+// browser. That is exactly what happened while services/server/.env was
+// unreadable and BASE_URL came back undefined. With `false`, no CORS headers are
+// sent and cross-origin reads are blocked; same-origin requests are unaffected.
 app.use(cors({
-  origin: process.env.BASE_URL,
+  origin: process.env.BASE_URL || false,
   credentials: ENABLE_SSO
 }));
 
@@ -71,6 +80,23 @@ const apiLimiter = rateLimit({
   message: { message: 'Too many requests, please try again later.' }
 });
 app.use('/api/', apiLimiter);
+
+// Health check, used by Docker and monitoring to verify the server + DB are
+// reachable. Registered HERE, deliberately ahead of the OIDC middleware below:
+// `auth({ authRequired: true })` protects every route registered after it, so
+// with SSO on this would answer 302-to-the-IdP instead of 200. That breaks the
+// container healthcheck (docker-compose.yml), which fails the server, which
+// stops nginx starting via `depends_on: service_healthy`, which fails the
+// Ansible health wait. It exposes no data — liveness only — so it stays public.
+app.get('/api/health', async (_req: Request, res: Response) => {
+  try {
+    const client = await connectToMongoDB();
+    await client.db('admin').command({ ping: 1 });
+    res.json({ status: 'ok', mongo: 'connected', time: new Date().toISOString() });
+  } catch {
+    res.status(503).json({ status: 'error', mongo: 'disconnected' });
+  }
+});
 
 // create a redis database to store user sessions (prevents sessions from being deleted after redirect)
 const redisClient = createClient({ url: process.env.REDIS_URL });
@@ -127,6 +153,11 @@ const layerscriptroute=require("./routes/layer_scripts.routes");
 const provisionroute=require("./routes/provision.routes");
 const settingsroute=require("./routes/settings.routes");
 
+// Audit trail. Mounted here deliberately: after the OIDC middleware above, so
+// the acting identity is resolvable, and before every API route, so no
+// state-changing request and no denial can bypass it by being added later.
+app.use('/api/', auditLog);
+
 // Auto-provision: successful writes to daemon-affecting routers (below) request
 // a debounced provision when the operator has enabled it in Settings.
 const { autoProvisionOnWrite } = require('./services/autoProvision.service');
@@ -142,17 +173,6 @@ app.use('/api/userinfo', userinforoute);
 app.use('/api/layer-scripts', layerscriptroute);
 app.use('/api/provision', provisionroute);
 app.use('/api/settings', settingsroute);
-
-// Health check, used by Docker and monitoring to verify the server + DB are reachable
-app.get('/api/health', async (_req: Request, res: Response) => {
-  try {
-    const client = await connectToMongoDB();
-    await client.db('admin').command({ ping: 1 });
-    res.json({ status: 'ok', mongo: 'connected', time: new Date().toISOString() });
-  } catch {
-    res.status(503).json({ status: 'error', mongo: 'disconnected' });
-  }
-});
 
 // force login on '/', to enable SSO by default, either set ENABLE_SSO to true or use the requireAuth() function in place of useAuth()
 // need to make a request to IdP, so async await is needed

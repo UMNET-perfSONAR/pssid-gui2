@@ -408,8 +408,21 @@
            testOption.validator : 'return true;';
          const description = testOption.hasOwnProperty('description') ?
            testOption.description : 'Invalid input for ' + key;
-         const validator = new Function('input', validatorStr);
-         if (!validator(value)) {
+         // Template validators are advisory UX only: the server re-validates
+         // every field and is the authority (see the "server rejects ..." cases
+         // in scripts/smoke-test.sh). The production CSP is `script-src 'self'`
+         // with no 'unsafe-eval' (nginx.conf), so the Function constructor
+         // throws there — degrade to "no client-side check" rather than break
+         // the form. Do NOT add 'unsafe-eval' to the CSP to make this run: that
+         // would weaken the page's XSS defences so it can execute strings from
+         // disk, which is a bad trade for a convenience check.
+         let valid = true;
+         try {
+           valid = Boolean(new Function('input', validatorStr)(value));
+         } catch (e) {
+           console.warn(`Skipping client-side validator for "${key}":`, e);
+         }
+         if (!valid) {
            errorMessage += description + '\n';
          }
        });
