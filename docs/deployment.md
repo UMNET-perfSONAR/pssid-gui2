@@ -721,9 +721,9 @@ When deploying from prebuilt images rather than a source build, pin a release
 tag for reproducibility:
 
 ```
-<registry>/pssid-gui2_client:v3.2.0
-<registry>/pssid-gui2_server:v3.2.0
-<registry>/pssid-gui2_mongo:v3.2.0
+<registry>/pssid-gui2_client:v1
+<registry>/pssid-gui2_server:v1
+<registry>/pssid-gui2_mongo:v1
 ```
 
 Mount `shared/` into both the client and server containers, and do not mount the

@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "3.2.0",
+  "version": "1",
   "description": "pSSID GUI server",
   "main": "build/index.js",
   "scripts": {

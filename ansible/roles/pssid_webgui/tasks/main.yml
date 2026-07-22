@@ -110,10 +110,10 @@
 
 # This checkout is deployment-owned, not a working copy. install.sh rewrites
 # nginx.conf and shared/config.ts in place at deploy time, and earlier releases
-# left other tracked files dirty too (a root package-lock.json, removed in
-# 3.2.0). Any such edit aborts the --ff-only pull below as soon as upstream
-# touches or deletes the same path, which is how an upgrade stalls on a file no
-# playbook ever wrote. Discard every tracked modification rather than an
+# left other tracked files dirty too (a root package-lock.json, removed in an
+# earlier release). Any such edit aborts the --ff-only pull below as soon as
+# upstream touches or deletes the same path, which is how an upgrade stalls on
+# a file no playbook ever wrote. Discard every tracked modification rather than an
 # allowlist that has to be extended each time this recurs; the installer run
 # below regenerates the files it owns from the playbook variables.
 #

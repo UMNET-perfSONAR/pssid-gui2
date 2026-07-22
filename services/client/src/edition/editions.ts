@@ -64,7 +64,7 @@ export const editions: Record<string, Edition> = {
     org: '',
     tagline: 'Wireless measurement orchestration for any network.',
     glyph: 'wifi',
-    version: 'v3.2.0',
+    version: 'v1',
     colors: {
       primary: '#0b2545',
       primaryDark: '#081a33',
