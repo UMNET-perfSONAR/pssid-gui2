@@ -190,13 +190,38 @@
         EDITION: "{{ pssid_gui_edition }}"
       changed_when: true
 
+# ---- Reverse proxy -----------------------------------------------------------
+
+# nginx resolves the `client` and `server` hostnames ONCE, when its config is
+# loaded, and then caches those container IPs for the life of the worker. An
+# upgrade recreates the application containers, Docker hands them new addresses,
+# and nginx keeps dialling the old ones: every request to a moved upstream fails
+# with "connect() failed (111: Connection refused)" and the browser gets a 502,
+# while `docker compose ps` shows every container up and healthy.
+#
+# Nothing else clears those addresses. nginx is NOT recreated by the upgrade,
+# because its own image and config are unchanged, so compose correctly leaves it
+# alone -- and that is precisely why it keeps the stale values. Restarting it
+# reloads the config and re-resolves both upstreams.
+- name: Restart nginx so it re-resolves the application container addresses
+  ansible.builtin.command:
+    argv: >-
+      {{ ['docker', 'compose']
+         + (['-f', 'docker-compose.local.yml'] if pssid_gui_mode == 'dev' else [])
+         + ['restart', 'nginx'] }}
+    chdir: "{{ pssid_gui_src }}"
+  changed_when: true
+
 # ---- Verify ------------------------------------------------------------------
 
-- name: Determine the health check URL
+- name: Determine the health check URLs
   ansible.builtin.set_fact:
     pssid_gui_health_url: >-
       {{ 'http://localhost:8888/api/health' if pssid_gui_mode == 'dev'
          else (('http' if pssid_gui_tls == 'none' else 'https') ~ '://localhost/api/health') }}
+    pssid_gui_ui_url: >-
+      {{ 'http://localhost:8888/dashboard' if pssid_gui_mode == 'dev'
+         else (('http' if pssid_gui_tls == 'none' else 'https') ~ '://localhost/dashboard') }}
 
 # The client image is pre-built (the bundle is compiled during the image build,
 # not at container start), so containers start in seconds. 100 x 3s = 5 minutes
@@ -210,6 +235,28 @@
   retries: 100
   delay: 3
   until: pssid_gui_health.status == 200
+
+# /api/health only exercises the SERVER upstream. The web interface is proxied
+# to a DIFFERENT container, so a stale address for the client returns 502 on
+# every page while this health check still reports 200 -- which is how an
+# upgrade can finish "successfully" onto a site that will not load at all. Check
+# a UI route too, so the play fails where the problem is instead of leaving it
+# to be found in a browser. 302 is a success here: with SSO on, an
+# unauthenticated request to /dashboard redirects to the identity provider,
+# which still proves the client upstream is reachable.
+- name: Verify the web interface is served, not just the API
+  ansible.builtin.uri:
+    url: "{{ pssid_gui_ui_url }}"
+    validate_certs: false
+    # Do not chase the redirect: the point is that the local upstream answered,
+    # and following it would send a deploy-time request to an external identity
+    # provider, whose reachability is not what this task is testing.
+    follow_redirects: none
+    status_code: [200, 302]
+  register: pssid_gui_ui
+  retries: 20
+  delay: 3
+  until: pssid_gui_ui.status in [200, 302]
 
 # ---- First-install starter data ----------------------------------------------
 # Runs once per host: the marker file makes every later run (and every upgrade)
