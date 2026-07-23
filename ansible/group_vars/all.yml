@@ -25,6 +25,12 @@
 # pssid_gui_oidc_client_id: ...
 # pssid_gui_oidc_client_secret: ...
 
+# Write access when SSO is off. Empty leaves it to the installer, which keeps
+# the host's current setting and defaults a new install to read-only. "true"
+# lets anyone who can reach the site change the configuration -- appropriate for
+# a demo or test box on a restricted network, not for an open one.
+# pssid_gui_open_write: "true"
+
 # Source selection: auto | checkout | git (see roles/pssid_webgui/defaults).
 # pssid_gui_deploy_from: auto
 # pssid_gui_repo: https://github.com/UMNET-perfSONAR/pssid-gui2.git

@@ -149,6 +149,8 @@
               ['--issuer=' ~ pssid_gui_oidc_issuer,
                '--client-id=' ~ pssid_gui_oidc_client_id,
                '--client-secret=' ~ pssid_gui_oidc_client_secret], []))
+         + ((pssid_gui_open_write | length > 0) | ternary(
+              ['--open-write=' ~ pssid_gui_open_write], []))
          + ((pssid_gui_tls == 'letsencrypt' and (pssid_gui_letsencrypt_email | length > 0)) | ternary(
               ['--email=' ~ pssid_gui_letsencrypt_email], []))
          + ((pssid_gui_no_build | bool) | ternary(['--no-build'], []))

@@ -27,6 +27,8 @@
 #     PSSID_OIDC_ISSUER=...              OIDC issuer URL          (SSO only)
 #     PSSID_OIDC_CLIENT_ID=...           OIDC client id           (SSO only)
 #     PSSID_OIDC_CLIENT_SECRET=...       OIDC client secret       (SSO only)
+#     PSSID_OPEN_WRITE=true              Allow writes when SSO is off (default:
+#                                        keep the host's setting, else read-only)
 #     PSSID_PULL=true                    Pull prebuilt images from the registry
 #                                        instead of building on this machine
 #                                        (~4 GB disk instead of ~8-10 GB; falls
@@ -69,7 +71,7 @@ if [ "$(id -u)" -ne 0 ]; then
   if [ -f "${BASH_SOURCE[0]:-}" ] && command -v sudo >/dev/null 2>&1; then
     step "Re-running with sudo (root is required to install packages and Docker)"
     # Preserve the PSSID_* settings across the sudo boundary.
-    exec sudo --preserve-env=PSSID_HOSTNAME,PSSID_EDITION,PSSID_TLS,PSSID_LE_EMAIL,PSSID_SSO,PSSID_OIDC_ISSUER,PSSID_OIDC_CLIENT_ID,PSSID_OIDC_CLIENT_SECRET,PSSID_GUI_DIR,PSSID_GUI_REPO,PSSID_GUI_VERSION,PSSID_DOCKER_DATA_ROOT,PSSID_PULL bash "${BASH_SOURCE[0]}" "$@"
+    exec sudo --preserve-env=PSSID_HOSTNAME,PSSID_EDITION,PSSID_TLS,PSSID_LE_EMAIL,PSSID_SSO,PSSID_OIDC_ISSUER,PSSID_OIDC_CLIENT_ID,PSSID_OIDC_CLIENT_SECRET,PSSID_OPEN_WRITE,PSSID_GUI_DIR,PSSID_GUI_REPO,PSSID_GUI_VERSION,PSSID_DOCKER_DATA_ROOT,PSSID_PULL bash "${BASH_SOURCE[0]}" "$@"
   fi
   die "Run as root (for the piped form: sudo -i, then re-run the command)."
 fi
@@ -330,6 +332,7 @@ EXTRA=()
 [ -n "${PSSID_OIDC_ISSUER:-}" ]        && EXTRA+=(-e "pssid_gui_oidc_issuer=${PSSID_OIDC_ISSUER}")
 [ -n "${PSSID_OIDC_CLIENT_ID:-}" ]     && EXTRA+=(-e "pssid_gui_oidc_client_id=${PSSID_OIDC_CLIENT_ID}")
 [ -n "${PSSID_OIDC_CLIENT_SECRET:-}" ] && EXTRA+=(-e "pssid_gui_oidc_client_secret=${PSSID_OIDC_CLIENT_SECRET}")
+[ -n "${PSSID_OPEN_WRITE:-}" ]         && EXTRA+=(-e "pssid_gui_open_write=${PSSID_OPEN_WRITE}")
 [ -n "${PSSID_DOCKER_DATA_ROOT:-}" ]   && EXTRA+=(-e "pssid_gui_docker_data_root=${PSSID_DOCKER_DATA_ROOT}")
 [ "${PSSID_PULL:-false}" = "true" ]    && EXTRA+=(-e "pssid_gui_pull=true")
 

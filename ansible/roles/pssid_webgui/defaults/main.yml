@@ -23,6 +23,13 @@ pssid_gui_oidc_issuer: ""
 pssid_gui_oidc_client_id: ""
 pssid_gui_oidc_client_secret: ""
 
+# Write access when SSO is off: "true" allows anyone who can reach the site to
+# change the configuration, "false" makes it read-only. Empty (the default)
+# leaves the decision to the installer, which preserves whatever the host's
+# existing .env has and falls back to read-only on a first install. Set this
+# only to force a value on every run.
+pssid_gui_open_write: ""
+
 # Where the application source comes from.
 #   auto:     use the checkout this playbook is part of when it exists on the
 #             target (the usual case when deploying to localhost from a clone),

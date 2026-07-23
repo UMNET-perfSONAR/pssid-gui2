@@ -40,6 +40,10 @@ TLS="self-signed"
 ISSUER=""
 CLIENT_ID=""
 CLIENT_SECRET=""
+# Write access when SSO is off. Empty here means "decide below": reuse whatever
+# the existing .env has, so an operator's choice survives an upgrade, and fall
+# back to the shipped read-only default on a first install.
+OPEN_WRITE=""
 LE_EMAIL=""
 NON_INTERACTIVE="false"
 DO_BUILD="true"
@@ -60,6 +64,8 @@ Options:
   --issuer=URL           OIDC issuer base URL          (SSO only)
   --client-id=ID         OIDC client id                (SSO only)
   --client-secret=SECRET OIDC client secret            (SSO only)
+  --open-write=true|false  Allow writes when SSO is off. Preserved across
+                         upgrades; defaults to false (read-only) on a new install
   --tls=MODE             self-signed | letsencrypt | none          (default: self-signed)
   --email=EMAIL          Contact email for Let's Encrypt (tls=letsencrypt)
   --no-build             Use existing images; skip docker build
@@ -83,6 +89,7 @@ for arg in "$@"; do
     --issuer=*)        ISSUER="${arg#*=}" ;;
     --client-id=*)     CLIENT_ID="${arg#*=}" ;;
     --client-secret=*) CLIENT_SECRET="${arg#*=}" ;;
+    --open-write=*)    OPEN_WRITE="${arg#*=}" ;;
     --tls=*)           TLS="${arg#*=}" ;;
     --email=*)         LE_EMAIL="${arg#*=}" ;;
     --no-build)        DO_BUILD="false" ;;
@@ -97,6 +104,7 @@ done
 EDITION="${EDITION:-${PSSID_EDITION:-default}}"
 HOSTNAME_INPUT="${HOSTNAME_INPUT:-${HOSTNAME_OVERRIDE:-}}"
 ISSUER="${ISSUER:-${PSSID_ISSUER:-}}"
+OPEN_WRITE="${OPEN_WRITE:-${PSSID_OPEN_WRITE:-}}"
 
 prompt() { # prompt VAR "Question" "default"
   local __var="$1" __q="$2" __def="${3:-}" __ans
@@ -323,6 +331,25 @@ fi
 
 # ─── 4. Root environment for compose interpolation ───────────────────────────
 step "Writing deployment environment"
+
+# Resolve the write policy BEFORE the file is rewritten, because this block
+# truncates .env: anything not written back here is destroyed. That is exactly
+# how a hand-added OPEN_WRITE=true used to disappear on the next `make upgrade`,
+# silently returning the site to read-only. Precedence:
+#   1. --open-write / PSSID_OPEN_WRITE, an explicit choice for this run
+#   2. the value already in .env, so an operator's setting survives upgrades
+#   3. the compiled default in shared/config.ts (ships false = read-only)
+if [ -z "$OPEN_WRITE" ] && [ -f .env ] && grep -q '^OPEN_WRITE=' .env; then
+  OPEN_WRITE="$(sed -n 's/^OPEN_WRITE=//p' .env | tail -1)"
+  info "Preserving OPEN_WRITE=${OPEN_WRITE} from the existing .env"
+fi
+if [ -z "$OPEN_WRITE" ]; then
+  OPEN_WRITE="false"
+fi
+OPEN_WRITE="$(printf '%s' "$OPEN_WRITE" | tr '[:upper:]' '[:lower:]')"
+[ "$OPEN_WRITE" = "true" ] || [ "$OPEN_WRITE" = "false" ] \
+  || die "Invalid --open-write value: $OPEN_WRITE (expected true or false)"
+
 # Same ordering rule as above: create and lock the file before the MongoDB
 # password is written into it, not after.
 : > .env
@@ -333,6 +360,11 @@ chmod 600 .env 2>/dev/null || warn "Could not chmod 600 .env"
   echo "MONGO_USERNAME=${MONGO_USERNAME}"
   echo "MONGO_PASSWORD=${MONGO_PASSWORD}"
   echo "REDIS_PASSWORD=${REDIS_PASSWORD}"
+  # Auth posture, read by compose and passed to the server. Written on every run
+  # so it survives the truncation above; the server and the browser both resolve
+  # write access from this (see shared/accessControl.ts and /api/userinfo).
+  echo "ENABLE_SSO=${SSO}"
+  echo "OPEN_WRITE=${OPEN_WRITE}"
   # Supplementary gid the server container is given so it can read
   # services/server/.env. Kept here so compose and install.sh cannot disagree.
   echo "PSSID_SECRET_GID=${SECRET_GID}"
