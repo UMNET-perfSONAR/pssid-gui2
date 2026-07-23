@@ -295,10 +295,18 @@ export default {
   color: var(--muted);
   cursor: pointer;
 }
+/* The active tab takes the code panel's own colours (see .preview-pre below)
+   rather than the card's, so the tab and the panel it labels read as one
+   surface -- the conventional tabbed-panel look, and the reason the tab strip
+   is pulled down a pixel to sit flush against it. These are the panel's fixed
+   values, not theme tokens, because the panel is deliberately dark in every
+   theme; matching it keeps the two in step. Previously the active tab was
+   filled with --surface, which in dark mode is nearly the card colour, so the
+   tab lost its shape and the label appeared to float on the background. */
 .preview-tabs button.active {
-  color: var(--primary);
-  background: var(--surface);
-  border-color: var(--border);
+  color: #e2e8f0;
+  background: #0f172a;
+  border-color: #0f172a;
 }
 .preview-pre {
   margin: 0;
@@ -316,10 +324,6 @@ export default {
 
 :global(:root[data-theme="dark"]) .setting-sub code {
   background: #0e1626;
-}
-/* Navy on dark is nearly black; the active preview tab uses the accent. */
-:global(:root[data-theme="dark"]) .preview-tabs button.active {
-  color: var(--accent);
 }
 
 @media (max-width: 700px) {

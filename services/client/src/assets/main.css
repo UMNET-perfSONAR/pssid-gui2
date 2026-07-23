@@ -189,6 +189,13 @@ body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   -webkit-font-smoothing: antialiased;
   margin: 0;
+  /* Always fill the viewport. Without this, body's box ends with its content,
+     so on a short page (Settings, an empty list) everything below it is painted
+     by html instead. Any difference between the two -- including the moment
+     during startup when one has been restyled and the other has not -- then
+     shows up as a hard horizontal edge across the page. Covering the viewport
+     means there is no such region to disagree about. */
+  min-height: 100vh;
 }
 body * {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

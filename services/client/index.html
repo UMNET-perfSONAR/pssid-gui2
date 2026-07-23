@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Let native UI (form controls, scrollbars) follow the active theme. -->
     <meta name="color-scheme" content="light dark" />
+    <!-- Sets data-theme before the first paint. Must stay a blocking script in
+         <head>: the bundle below is a deferred module, so without this the page
+         paints light first and then swaps to dark. See public/theme-init.js. -->
+    <script src="/theme-init.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
     rel="stylesheet">
     <!-- Title and favicon are set at runtime by the active edition (src/edition). -->
