@@ -199,16 +199,24 @@
 # with "connect() failed (111: Connection refused)" and the browser gets a 502,
 # while `docker compose ps` shows every container up and healthy.
 #
-# Nothing else clears those addresses. nginx is NOT recreated by the upgrade,
-# because its own image and config are unchanged, so compose correctly leaves it
-# alone -- and that is precisely why it keeps the stale values. Restarting it
-# reloads the config and re-resolves both upstreams.
-- name: Restart nginx so it re-resolves the application container addresses
+# Observed in practice: nginx held 172.19.0.2 for `client` while Docker's DNS
+# correctly answered 172.19.0.3, because the recycled .2 had by then been handed
+# to MONGO -- so nginx was connecting to the database on port 8080 and being
+# refused. Docker's DNS is not at fault and querying it proves nothing; the
+# stale value lives inside the nginx process.
+#
+# Nothing else clears it. nginx is NOT recreated by the upgrade, because its own
+# image and config are unchanged, so compose correctly leaves it alone -- which
+# is exactly why it keeps the stale addresses. Recreate rather than `restart`:
+# both re-resolve, but recreating also re-attaches the container if the compose
+# networks themselves were rebuilt, which a restart would not do. `--no-deps`
+# keeps this from touching the healthy application containers.
+- name: Recreate nginx so it re-resolves the application container addresses
   ansible.builtin.command:
     argv: >-
       {{ ['docker', 'compose']
          + (['-f', 'docker-compose.local.yml'] if pssid_gui_mode == 'dev' else [])
-         + ['restart', 'nginx'] }}
+         + ['up', '-d', '--force-recreate', '--no-deps', 'nginx'] }}
     chdir: "{{ pssid_gui_src }}"
   changed_when: true
 
