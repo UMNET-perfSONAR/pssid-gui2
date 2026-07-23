@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { requiresAuth } from 'express-openid-connect';
-import { isSsoEnabled } from '../shared/accessControl';
+import { isSsoEnabled, isOpenWrite } from '../shared/accessControl';
 
 const router = express.Router();
 
@@ -22,11 +22,21 @@ const guard = isSsoEnabled()
 
 router.get('/', guard, async (req: Request, res: Response) => {
   try {
+    // The EFFECTIVE auth posture, resolved from the environment, travels with
+    // every identity response. The client compiles shared/config.ts into its
+    // bundle, so on its own it can only see the values that were baked in at
+    // build time -- and an operator who sets ENABLE_SSO/OPEN_WRITE in the
+    // environment (the documented way to configure a prebuilt image) would move
+    // the server without moving the browser. That desync is not cosmetic: with
+    // OPEN_WRITE=true on the server but false in the bundle, every write is
+    // permitted yet the interface greys out all of its own forms.
+    const posture = { sso_enabled: isSsoEnabled(), open_write: isOpenWrite() };
+
     // No SSO: return an empty identity rather than erroring; the client treats
     // this as "no signed-in user" and falls back to the OPEN_WRITE policy.
     // Same env-aware resolution as the guard above, for the same reason.
     if (!isSsoEnabled()) {
-      return res.json({ name: null, sub: null, groups: [] });
+      return res.json({ name: null, sub: null, groups: [], ...posture });
     }
 
     const user = req.oidc.user;
@@ -40,6 +50,7 @@ router.get('/', guard, async (req: Request, res: Response) => {
       name: user.name,
       sub: user.sub,
       groups: user.edumember_is_member_of || user.groups || [],
+      ...posture,
     });
   } catch (err) {
     console.error('Error in /api/userinfo:', err);

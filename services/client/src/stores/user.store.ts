@@ -16,6 +16,14 @@ export const useUserStore = defineStore('user', {
     isLoading: false,
     writeGroups: [] as string[], // dynamically add more groups to here if needed
     permissionsConfig: config.permissions || {},
+    // The server's EFFECTIVE auth posture, from /api/userinfo. null means "not
+    // known yet" (first render, or the request failed), and callers fall back to
+    // the values compiled into shared/config.ts. These exist because the
+    // compiled values are only build-time defaults: an operator can override
+    // ENABLE_SSO/OPEN_WRITE in the environment without rebuilding, and the
+    // browser has no other way to find that out.
+    ssoEnabled: null as boolean | null,
+    openWrite: null as boolean | null,
   }),
   getters: {
     isInGroup: (state) => {
@@ -51,6 +59,10 @@ export const useUserStore = defineStore('user', {
             sub: data.sub,
             groups: data.groups || [],
           };
+          // Absent on an older server: leave null so the compiled defaults
+          // continue to apply rather than reading `undefined` as false.
+          this.ssoEnabled = typeof data.sso_enabled === 'boolean' ? data.sso_enabled : null;
+          this.openWrite = typeof data.open_write === 'boolean' ? data.open_write : null;
         } catch (err) {
           console.error('Failed to fetch user info:', err);
           this.user = null;
