@@ -151,9 +151,9 @@
      await this.layerScriptsStore.getLayer2Scripts();
      await this.layerScriptsStore.getLayer3Scripts();
      await this.layerScriptsStore.getDefaults();
-     if (this.enable_sso) {
-       await this.userStore.fetchUser();
-     }
+     // Always fetched: carries the server's effective auth posture as well as
+     // the identity. See the note in schedules.vue.
+     await this.userStore.fetchUser();
      // Blank form starts from the configured default methods.
      this.form = this.blankForm();
      this.baseline = this.blankForm();

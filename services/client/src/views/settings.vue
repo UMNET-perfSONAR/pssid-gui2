@@ -142,9 +142,9 @@ export default {
     },
   },
   async mounted() {
-    if (this.enable_sso) {
-      await this.userStore.fetchUser();
-    }
+    // Always fetched: carries the server's effective auth posture as well as
+    // the identity. See the note in schedules.vue.
+    await this.userStore.fetchUser();
     await this.settingsStore.getSettings();
   },
   methods: {

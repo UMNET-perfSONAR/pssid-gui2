@@ -227,9 +227,9 @@
    async mounted() {
      await this.testStore.getTests();
      await this.testStore.getTestNames();
-     if (this.enable_sso) {
-      await this.userStore.fetchUser();
-     }
+     // Always fetched: carries the server's effective auth posture as well as
+     // the identity. See the note in schedules.vue.
+     await this.userStore.fetchUser();
      this.loaded = true;
    },
 

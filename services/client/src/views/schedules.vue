@@ -129,9 +129,13 @@
 
    async mounted() {
      await this.scheduleStore.getSchedules();
-     if (this.enable_sso) {
-       await this.userStore.fetchUser();
-     }
+     // Always fetched, with or without SSO: this response also carries the
+     // server's effective auth posture (sso_enabled / open_write), which is what
+     // isFormDisabled() needs to decide whether the form is editable. Skipping
+     // it when SSO is off left that posture unknown, so the compiled fallback
+     // (OPEN_WRITE: false) disabled every form on a server that allows writes.
+     // With SSO off the endpoint returns an empty identity by design.
+     await this.userStore.fetchUser();
      this.loaded = true;
    },
 
