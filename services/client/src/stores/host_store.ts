@@ -153,7 +153,10 @@ export const useHostStore = defineStore('hostStore', {
         if (res.ok) {
           this.probeConfig = data;
         } else {
-          this.probeConfigError = data.message || 'Could not build the probe configuration';
+          // `error` as well as `message`: authorization failures use the former
+          // (authorize() in shared/accessControl.ts), and reading only the
+          // latter would report a permission problem as a build failure.
+          this.probeConfigError = data.message || data.error || 'Could not build the probe configuration';
         }
       }
       catch(error) {

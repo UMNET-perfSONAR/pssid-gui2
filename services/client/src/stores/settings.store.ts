@@ -16,7 +16,14 @@ async function responseMessage(res: Response, fallback: string): Promise<string>
 
   try {
     const data = JSON.parse(text);
-    return typeof data?.message === 'string' ? data.message : fallback;
+    if (typeof data?.message === 'string') return data.message;
+    // Authorization failures answer with `error`, not `message` (see
+    // authorize() in shared/accessControl.ts). Reading only `message` turned
+    // the most actionable response the server sends -- "Write access denied:
+    // SSO disabled and OPEN_WRITE false" -- into the caller's generic fallback,
+    // leaving no way to tell a permission problem from a broken config.
+    if (typeof data?.error === 'string') return data.error;
+    return fallback;
   } catch {
     return text;
   }
