@@ -5,30 +5,29 @@
 # The Ansible role runs this once on first install; it can also be run by hand.
 #
 # What it loads:
-#   - schedules:     the four standard schedules (unchanged from earlier defaults)
+#   - schedules:     the four standard schedules
 #   - SSID profiles: eduroam only, with its layer 2 / layer 3 methods
 #   - tests:         test-http-to-google (url www.google.com) and
 #                    test-rtt-to-google (dest www.google.com)
 #   - jobs:          job-comprehensive, running both tests
-#   - batches:       batch-comprehensive: priority 0, test interface $ifacename
-#                    (resolved per host from metadata), eduroam, hourly
-#   - host groups:   "all"  - host regex ".*", nothing else attached
-#                    "rpi4" - empty, carries group metadata ifacename=wlan0
+#   - host groups:   "all" - host regex ".*" (see the note on that group below)
+#   - batches:       none
 #   - hosts:         none; hosts are site-specific
+#
+# Batches, hosts and the rpi4 group belong to the QA dataset
+# (scripts/seed-qa.sh), which layers on top of this one WITHOUT disturbing
+# anything loaded here. See docs/QA.md for the full walkthrough.
 #
 # It also retires the legacy example_script test type: the template file is
 # deleted from the server container's plugins directory (a persistent bind mount
 # in production, so dropping the file from the repo alone never removes it), and
 # any tests saved with that type are deleted from the database.
 #
-# Safe to re-run: it removes the docs it owns (by name) before inserting, then
-# scrubs references to anything it removed without recreating. NOTE that a
-# re-run therefore RESETS the "all" and "rpi4" groups and batch-comprehensive to
-# their pre-load state (for example a batch assigned to "all" in the GUI is
-# detached again).
-#
-# For the populated QA dataset used in testing (probes, MWireless, BatchMW), use
-# scripts/seed-qa.sh.
+# Safe to re-run, and safe to re-run AFTER the QA seeder: it owns only the
+# documents listed above, so it never deletes a batch, host, or the rpi4 group.
+# The "all" group is upserted rather than replaced, so batches attached to it
+# (by the QA seeder or by hand in the GUI) survive a re-run; only its regex and
+# metadata are reasserted.
 set -euo pipefail
 
 DB_NAME="gui"
@@ -77,8 +76,11 @@ const ownedNames = {
     'throughput-by-metadata'
   ],
   jobs:          ['job-comprehensive'],
-  batches:       ['batch-comprehensive'],
-  host_groups:   ['all', 'rpi4'],
+  // Deliberately empty: batches, hosts and the rpi4 group are owned by the QA
+  // seeder. Listing them here would make a re-run of this script delete QA
+  // data, which is exactly what the additive split is meant to prevent.
+  batches:       [],
+  host_groups:   [],
   hosts:         [],
 };
 // The example_script test type was retired: also delete any tests saved with
@@ -90,18 +92,21 @@ for (const [coll, ns] of Object.entries(ownedNames)) {
   if (ns.length > 0) db.getCollection(coll).deleteMany({ name: { $in: ns } });
 }
 
-// ---- schedules (kept exactly as the earlier pre-load) -------------------------
-const sIds = db.schedules.insertMany([
+// ---- schedules ------------------------------------------------------------------
+// The QA seeder reuses these by name rather than creating its own, so the four
+// standard schedules are defined in exactly one place.
+db.schedules.insertMany([
   { name: 'Every 5 minutes',    repeat: '*/5 * * * *' },
   { name: 'Every 1 hour',       repeat: '0 * * * *' },
   { name: 'Every 4 hours',      repeat: '0 */4 * * *' },
   { name: 'Every day at 23:00', repeat: '0 23 * * *' },
-]).insertedIds;
+]);
 
 // ---- SSID profiles: eduroam only ----------------------------------------------
-const pIds = db.ssid_profiles.insertMany([
+// MWireless belongs to the QA dataset; this script stays eduroam-only.
+db.ssid_profiles.insertMany([
   { name: 'eduroam', SSID: 'eduroam', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
-]).insertedIds;
+]);
 
 // ---- tests: one http and one rtt, both against Google --------------------------
 const tIds = db.tests.insertMany([
@@ -117,34 +122,36 @@ const tIds = db.tests.insertMany([
 ]).insertedIds;
 
 // ---- job: the comprehensive suite ----------------------------------------------
-const jIds = db.jobs.insertMany([
+// Seeded unattached: with no batches in this dataset, nothing runs it yet. It
+// exists so a fresh install has a working job to inspect and assign in the GUI.
+db.jobs.insertMany([
   { name: 'job-comprehensive', parallel: 'True', 'continue-if': 'true', backoff: 'PT1S',
     tests: ['test-http-to-google', 'test-rtt-to-google'], test_ids: [tIds[0], tIds[1]] },
-]).insertedIds;
-
-// ---- batch: comprehensive, hourly, interface from metadata ---------------------
-// test_interface "$ifacename" is a metadata reference: the daemon substitutes it
-// per host from that host's effective metadata (the rpi4 group below supplies
-// ifacename=wlan0 to its member hosts).
-db.batches.insertMany([
-  { name: 'batch-comprehensive', priority: 0, test_interface: '$ifacename',
-    ssid_profiles: ['eduroam'],  ssid_profile_ids: [pIds[0]],
-    schedules: ['Every 1 hour'], schedule_ids: [sIds[1]],
-    jobs: ['job-comprehensive'], job_ids: [jIds[0]] },
 ]);
 
-// ---- host groups ----------------------------------------------------------------
-// "all": host regex ".*" matches every host; no batches or metadata attached.
-// NOTE this is the custom pSSID pattern, not standard regex: "." = any character,
-// "*" = zero or more occurrences of the preceding character, so ".*" = everything.
-// "rpi4": for Raspberry Pi 4 probes. No hosts yet; carries the group metadata
-// ifacename=wlan0 that $ifacename above resolves to on its member hosts.
-db.host_groups.insertMany([
-  { name: 'all',  batches: [], batch_ids: [], hosts: [], host_ids: [],
-    hosts_regex: ['.*'], data: {} },
-  { name: 'rpi4', batches: [], batch_ids: [], hosts: [], host_ids: [],
-    hosts_regex: [], data: { ifacename: 'wlan0' } },
-]);
+// ---- host group: "all" ----------------------------------------------------------
+// Selects every host by REGEX. hosts_regex is a STANDARD regular expression,
+// matched on the probe with Python's re.match (find_matching_regex in
+// pssid-daemon.py): "." is any character and "*" is a quantifier, so ".*" means
+// "everything". It is anchored at the start but NOT the end, and a bare "*" is
+// invalid (the daemon logs it and the group matches nothing) -- which is why the
+// pattern is ".*" and not "*". See docs/deployment.md, "Host regex is a standard
+// regular expression, anchored at the start".
+//
+// Upserted, not deleted-and-recreated: $setOnInsert reasserts the regex only when
+// the group does not already exist, so batches attached to "all" -- by the QA
+// seeder, or by hand in the GUI -- are preserved across a re-run of this script.
+db.host_groups.updateOne(
+  { name: 'all' },
+  { $setOnInsert: {
+      name: 'all', batches: [], batch_ids: [], hosts: [], host_ids: [],
+      hosts_regex: ['.*'], data: {},
+  } },
+  { upsert: true }
+);
+// Reassert the regex on an existing group without touching its attachments, so a
+// hand-edited or stale pattern is corrected but assignments survive.
+db.host_groups.updateOne({ name: 'all' }, { $set: { hosts_regex: ['.*'] } });
 
 // ---- scrub dangling references left by the cleanup ------------------------------
 // The deleteMany calls at the top are raw removals; unlike the GUI's delete
@@ -221,7 +228,9 @@ else
 fi
 
 echo ""
-echo "Done. Pre-loaded: eduroam, the google http/rtt tests, job-comprehensive,"
-echo "batch-comprehensive (priority 0, hourly, interface \$ifacename), and the"
-echo "'all' (regex .*) and 'rpi4' (metadata ifacename=wlan0) groups."
-echo "No hosts are pre-loaded; add them in the GUI or run scripts/seed-qa.sh."
+echo "Done. Pre-loaded: the four schedules, eduroam, the google http/rtt tests,"
+echo "job-comprehensive, and the 'all' host group (regex .*)."
+echo ""
+echo "No batches, hosts or rpi4 group: those belong to the QA dataset, which"
+echo "layers on top of this one without disturbing it. Run it with:"
+echo "    bash scripts/seed-qa.sh        (see docs/QA.md)"

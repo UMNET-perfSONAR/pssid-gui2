@@ -16,6 +16,7 @@ examples are placeholders to replace with your own.
 - [What the installer does](#what-the-installer-does)
 - [Everyday operations](#everyday-operations)
 - [Starter data](#starter-data)
+- [QA walkthrough](QA.md)
 - [Single sign-on](#single-sign-on)
 - [TLS](#tls)
 - [Editions](#editions)
@@ -361,7 +362,7 @@ The Makefile wraps the common commands:
 | `make dev` | Local development stack on `http://localhost:8888` |
 | `make backup` / `make restore` | Back up or restore MongoDB |
 | `make seed-defaults` | Load the pre-load starter data (fresh installs) |
-| `make seed-qa` | Load the QA dataset (pre-load + probes, MWireless, BatchMW) |
+| `make seed-qa` | Add the QA dataset on top of the pre-load (see [QA.md](QA.md)) |
 | `make doctor` | Check prerequisites and ports |
 | `make test` | Run every unit test (server and client; no stack needed) |
 | `make smoke` | Walk every user action against a running stack |
@@ -415,25 +416,39 @@ generated files.
 
 ### Pre-load and QA data
 
+The two seeders are **additive**: the pre-load establishes the baseline, and the
+QA seeder adds to it without deleting, resetting or rewriting anything the
+pre-load owns. Run the pre-load first.
+
 [`scripts/seed-defaults.sh`](../scripts/seed-defaults.sh) is the **pre-load**: the
 starter data every fresh site begins with (the Ansible role runs it once on first
 install). It loads the four standard schedules, the eduroam SSID profile, the
-`test-http-to-google` and `test-rtt-to-google` tests, `job-comprehensive`,
-`batch-comprehensive` (priority 0, hourly, test interface `$ifacename`), and two
-host groups: `all` (host regex `.*`, nothing else attached) and `rpi4` (empty,
-group metadata `ifacename=wlan0`). No hosts are pre-loaded, and the retired
-`example_script` test type is removed.
+`test-http-to-google` and `test-rtt-to-google` tests, `job-comprehensive`, and the
+`all` host group (host regex `.*`). It loads no batches, no hosts and no `rpi4`
+group — those belong to the QA dataset — and it removes the retired
+`example_script` test type. The `all` group is upserted rather than replaced, so
+re-running the pre-load never detaches a batch assigned to it.
 
-[`scripts/seed-qa.sh`](../scripts/seed-qa.sh) (or `make seed-qa`) loads the QA
-dataset: the pre-load plus the MWireless profile, `test-http-to-MWireless`
-(url `$dest`), the `job-MWagree` (captive portal) and `job-MWireless` jobs,
-`BatchMW` (priority 1, MWireless, hourly + every 5 minutes), and two Raspberry Pi
-probe hosts. It wires the four assignment paths QA exercises: a group batch via
-the `all` regex, group hosts by name in `rpi4` (which delivers the group
-metadata `ifacename=wlan0`), a host-level batch (`BatchMW` on probe 1), and
-host-level metadata (`dest` on probe 1). Override the probe host names and
-destination with `PSSID_QA_PROBE1`, `PSSID_QA_PROBE2`, and `PSSID_QA_MW_DEST`;
-the probe names must match the probes' real hostnames.
+[`scripts/seed-qa.sh`](../scripts/seed-qa.sh) (or `make seed-qa`) layers the QA
+dataset on top: the MWireless profile, five more tests (including
+`test-http-to-external`, whose url is the metadata reference `$external_dest`),
+four more jobs, three batches — `batch-comprehensive` (priority 0, eduroam),
+`batch-host` (1, MWireless) and `batch-group` (2, MWireless) — four probe hosts,
+and the `rpi4` group carrying group metadata `ifacename=wlan0`.
+
+It wires every assignment path: a group batch via the `all` regex, a group batch
+via members selected by name in `rpi4`, host metadata (`external_dest`, the same
+key with a different value on each probe), and group metadata. `batch-host` is
+left attached to no host on purpose — assigning it in the GUI is a QA step, and
+the only one that exercises the GUI's own assignment path. All three batches
+share the same two schedules so they collide deliberately, which is how QA
+checks that priority is honoured (lower number wins).
+
+Override the probe names and destinations with `PSSID_QA_PROBE1`…`4` and
+`PSSID_QA_DEST1`…`4`; the probe names must match the probes' real hostnames.
+
+**[docs/QA.md](QA.md) is the full walkthrough**, with the expected output for
+every section and how to roll back afterwards.
 
 A batch's **test interface** may be a literal interface (`wlan0`) or a metadata
 reference (`$ifacename`), resolved per host by the daemon from that host's
@@ -459,33 +474,28 @@ hostnames. Run it by hand on the VM after bootstrap finishes:
 
 ```bash
 cd /opt/pssid-gui   # or wherever bootstrap deployed to; see below
-PSSID_QA_PROBE1=<real-pi-hostname-1> \
-PSSID_QA_PROBE2=<real-pi-hostname-2> \
-PSSID_QA_MW_DEST=www.example.edu \
+PSSID_QA_PROBE1=<real-pi-hostname-1> PSSID_QA_PROBE2=<real-pi-hostname-2> \
+PSSID_QA_PROBE3=<real-pi-hostname-3> PSSID_QA_PROBE4=<real-pi-hostname-4> \
 bash scripts/seed-qa.sh
 ```
 
 The probe names must exactly match the Pis' hostnames, or the daemon exits on
-them; running seed-qa over an already pre-loaded database is the expected path
-and replaces its own objects cleanly (`make seed-qa` also works, but only with
-the placeholder probe names). Where to `cd`: the piped bootstrap clones to
-`/opt/pssid-gui` (`$PSSID_GUI_DIR` to override); running `./bootstrap.sh` from a
-checkout deploys that checkout instead, so run the seeder from there. Both
-seeders `docker exec` into the running mongo container, so they must run on the
-VM itself, after the stack is up.
+them (`make seed-qa` also works, but only with the placeholder names). Where to
+`cd`: the piped bootstrap clones to `/opt/pssid-gui` (`$PSSID_GUI_DIR` to
+override); running `./bootstrap.sh` from a checkout deploys that checkout
+instead, so run the seeder from there. Both seeders `docker exec` into the
+running mongo container, so they must run on the VM itself, after the stack is
+up.
 
-To skip the pre-load and go straight to seed-qa, pass the playbook variable
-through bootstrap (extra arguments are forwarded to `ansible-playbook`):
+The QA seeder requires the pre-load, since it reuses the schedules and eduroam
+by name; it stops with a clear message if they are absent. It adds to that
+baseline and never resets it, so re-running either script is safe in either
+order — the pre-load owns no batches, hosts or `rpi4` group, and upserts the
+`all` group rather than replacing it.
 
-```bash
-./bootstrap.sh -e pssid_gui_seed_defaults=false
-```
-
-then run `seed-qa.sh` as above; it contains the whole pre-load, so the end state
-is the same either way. Re-running `seed-defaults.sh` on a QA box **resets** the
-objects it owns (for example it detaches `batch-comprehensive` from `all` and
-empties `rpi4`), so on a QA deployment always reseed with `seed-qa.sh`, not
-`seed-defaults.sh`.
+To roll back to the pre-load afterwards, restore a backup taken before seeding
+(`make backup` / `make restore`); re-running `seed-defaults.sh` deliberately does
+not remove QA data. [docs/QA.md](QA.md) covers the whole cycle.
 
 ## Single sign-on
 
@@ -644,10 +654,12 @@ even on the same OS) or a per-group test destination.
 - **Where it is used:** the generated `pssid_config.json` carries each host's
   effective metadata under a `metadata` key, and the daemon substitutes `$key`
   references from it per host (an unresolved `$key` invalidates the batch on
-  that host). The pre-load and QA data show the pattern: `batch-comprehensive`
-  and `BatchMW` set the test interface to `$ifacename` (supplied by the `rpi4`
-  group as `ifacename=wlan0`), and `test-http-to-MWireless` targets `$dest`
-  (supplied by the probe's own host metadata).
+  that host). The QA data shows the pattern: all three batches set the test
+  interface to `$ifacename` (supplied by the `rpi4` group as `ifacename=wlan0`),
+  and `test-http-to-external` targets `$external_dest` (supplied by each probe's
+  own host metadata, the same key with a different value per probe). Use an
+  underscore, not a hyphen: `$`-substitution stops at a hyphen, so
+  `$external-dest` would resolve as `$external` followed by a literal `-dest`.
 - **Group metadata reaches named hosts only:** a group's metadata applies to
   the hosts the group lists by name. A host matched only by the group's regex
   still receives the group's **batches**, but not its metadata.

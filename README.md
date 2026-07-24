@@ -94,19 +94,22 @@ full list.
 
 ## Starter data
 
-Two seeders ship with the project:
+Two seeders ship with the project, and they are **additive**: the pre-load
+establishes the baseline and the QA dataset layers on top without disturbing it.
 
 - `make seed-defaults` ([`scripts/seed-defaults.sh`](scripts/seed-defaults.sh))
   is the main one: it loads the pre-load starter data for a fresh site — the
   standard schedules, the eduroam profile, the google http/rtt tests,
-  `job-comprehensive`, `batch-comprehensive`, and the `all` (regex `.*`) and
-  `rpi4` (metadata `ifacename=wlan0`) host groups. No hosts are pre-loaded. The
-  installer runs this once on first install, and it can also be run by hand.
-- `make seed-qa` ([`scripts/seed-qa.sh`](scripts/seed-qa.sh)) is for testing:
-  everything in the pre-load plus the MWireless profile, `BatchMW`, the
-  captive-portal and MWireless jobs, and two Raspberry Pi probes wired to
-  exercise batch and metadata assignment at both the host and group level
-  (override the probe names with `PSSID_QA_PROBE1`/`PSSID_QA_PROBE2`).
+  `job-comprehensive`, and the `all` host group (regex `.*`). No batches or
+  hosts. The installer runs this once on first install, and it can also be run
+  by hand.
+- `make seed-qa` ([`scripts/seed-qa.sh`](scripts/seed-qa.sh)) is for testing: it
+  adds the MWireless profile, five more tests, four more jobs, three batches at
+  different priorities, four probes carrying per-host metadata, and the `rpi4`
+  group (metadata `ifacename=wlan0`). Between them these exercise every batch
+  and metadata assignment path. Override the probe names with
+  `PSSID_QA_PROBE1`…`4`. The [QA walkthrough](docs/QA.md) has the full
+  procedure and the expected output.
 
 ## Documentation
 
