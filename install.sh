@@ -152,12 +152,21 @@ else
   die "Docker is not installed. See the Prerequisites section in docs/deployment.md."
 fi
 
+# Compose v2 only. The deprecated standalone docker-compose v1 is rejected rather
+# than used as a fallback: it does not interpolate this project's image tags and
+# dies mid-build with `invalid tag "..._client:${PSSID_IMAGE_TAG:-latest}":
+# invalid reference format`. Failing here names the real problem instead of
+# surfacing it several minutes later as a build error.
 if docker compose version >/dev/null 2>&1; then
   COMPOSE="docker compose"
 elif command -v docker-compose >/dev/null 2>&1; then
-  COMPOSE="docker-compose"
+  die "Only the standalone docker-compose (v1) was found, which this project does not support.
+  v1 reached end of life in 2023 and cannot build this compose file.
+  Install the Compose v2 plugin, then re-run:
+      apt-get update && apt-get install -y docker-compose-plugin
+  Verify with:  docker compose version"
 else
-  die "Docker Compose is not available. Install the docker-compose-plugin."
+  die "Docker Compose is not available. Install the docker-compose-plugin package."
 fi
 ok "compose command: $COMPOSE"
 

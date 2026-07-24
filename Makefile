@@ -104,7 +104,12 @@ restore: ## Restore the MongoDB database (see scripts/restore.sh)
 doctor: ## Check prerequisites and port availability
 	@echo "Checking prerequisites..."
 	@command -v docker >/dev/null 2>&1 && echo "  ok  docker: $$(docker --version | cut -d, -f1)" || echo "  ERR docker not found"
-	@$(COMPOSE) version >/dev/null 2>&1 && echo "  ok  compose: $(COMPOSE)" || echo "  ERR compose not found"
+	@if docker compose version >/dev/null 2>&1; then echo "  ok  compose: docker compose (v2)"; \
+	 elif command -v docker-compose >/dev/null 2>&1; then \
+	   echo "  ERR compose: only standalone docker-compose (v1) found - NOT supported."; \
+	   echo "      v1 cannot build this project's compose file. Install the plugin:"; \
+	   echo "      apt-get update && apt-get install -y docker-compose-plugin"; \
+	 else echo "  ERR compose not found"; fi
 	@command -v openssl >/dev/null 2>&1 && echo "  ok  openssl" || echo "  ERR openssl not found"
 	@for p in 80 443 8888; do \
 		if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$$p "; then \

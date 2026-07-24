@@ -10,16 +10,32 @@
   changed_when: false
   failed_when: false
 
-- name: Install Docker Engine (Debian/Ubuntu)
-  when: docker_present.rc != 0
+# Checked BEFORE anything is installed, and separately from Docker itself: a host
+# that already has Docker Engine may still lack the Compose **v2** plugin (common
+# when Docker came from Ubuntu's docker.io package, from snap, or from an earlier
+# manual install). Gating the package step on "is Docker present" alone meant such
+# a host skipped the whole install block, leaving the deployment on the
+# deprecated standalone docker-compose v1 -- which cannot build this project's
+# compose file (it fails to interpolate the image tag and dies with
+# `invalid tag "..._client:${PSSID_IMAGE_TAG:-latest}"`).
+- name: Check whether the Docker Compose v2 plugin is present
+  ansible.builtin.command: docker compose version
+  register: compose_plugin
+  changed_when: false
+  failed_when: false
+
+# Needed when EITHER Docker or the compose plugin has to be installed, since both
+# come from Docker's official repository.
+- name: Configure Docker's apt repository
+  when: docker_present.rc != 0 or compose_plugin.rc != 0
   block:
     - name: Verify the OS is supported for automatic installation
       ansible.builtin.assert:
         that: ansible_os_family == 'Debian'
         fail_msg: >-
           Automatic Docker installation supports Debian and Ubuntu only.
-          Install Docker Engine manually (https://docs.docker.com/engine/install/)
-          and re-run this playbook.
+          Install Docker Engine and the Compose v2 plugin manually
+          (https://docs.docker.com/engine/install/) and re-run this playbook.
 
     - name: Install prerequisites for the Docker repository
       ansible.builtin.apt:
@@ -50,11 +66,22 @@
         filename: docker
         state: present
 
-    - name: Install Docker Engine and the compose plugin
-      ansible.builtin.apt:
-        name: "{{ docker_packages }}"
-        state: present
-        update_cache: true
+- name: Install Docker Engine and the compose plugin
+  ansible.builtin.apt:
+    name: "{{ docker_packages }}"
+    state: present
+    update_cache: true
+  when: docker_present.rc != 0
+
+# Docker is already here but the v2 plugin is not. Install just the plugin rather
+# than the whole package set, so an existing Engine installation (whatever its
+# origin) is left exactly as it is.
+- name: Install the Docker Compose v2 plugin alongside the existing Docker
+  ansible.builtin.apt:
+    name: docker-compose-plugin
+    state: present
+    update_cache: true
+  when: docker_present.rc == 0 and compose_plugin.rc != 0
 
 - name: Make sure the Docker service is enabled and running
   ansible.builtin.service:
@@ -62,22 +89,22 @@
     state: started
     enabled: true
 
-- name: Check for the compose plugin
+- name: Re-check for the Docker Compose v2 plugin after installation
   ansible.builtin.command: docker compose version
-  register: compose_plugin
+  register: compose_plugin_final
   changed_when: false
   failed_when: false
 
-- name: Check for standalone docker-compose
-  ansible.builtin.command: docker-compose version
-  register: compose_standalone
-  changed_when: false
-  failed_when: false
-  when: compose_plugin.rc != 0
-
-- name: Fail when no Docker Compose implementation is present
+# Compose v2 is required, and standalone docker-compose v1 is deliberately NOT
+# accepted as a fallback: it reached end of life in 2023 and cannot build this
+# project's compose file. Failing here, with the reason, beats letting install.sh
+# fall back to v1 and die later inside the image build.
+- name: Fail when the Docker Compose v2 plugin is unavailable
   ansible.builtin.fail:
     msg: >-
-      Docker Compose is not available. Install the docker-compose-plugin
-      package (or standalone docker-compose) and re-run this playbook.
-  when: compose_plugin.rc != 0 and (compose_standalone.rc | default(1)) != 0
+      Docker Compose v2 is required but not available ("docker compose version"
+      failed). Install the docker-compose-plugin package and re-run. The
+      standalone docker-compose v1 is not supported: it cannot interpolate this
+      project's image tags and fails the build with
+      'invalid tag "..._client:${PSSID_IMAGE_TAG:-latest}"'.
+  when: compose_plugin_final.rc != 0
