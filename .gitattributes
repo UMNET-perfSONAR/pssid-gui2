@@ -1,15 +1,13 @@
 # Pin LF on every file that Linux executes or builds from.
 #
-# This repository is developed on Windows but runs in Linux containers. A
-# checkout with core.autocrlf=true (the Windows default) rewrites these files to
-# CRLF, which commits cleanly and only fails later, inside a container, with
-# errors that name the wrong culprit. The rules below keep LF regardless of the
-# checkout platform.
+# These files run inside Linux containers. A checkout with core.autocrlf
+# enabled rewrites them to CRLF, which commits cleanly and only fails later,
+# inside a container, with errors that name the wrong culprit. The rules below
+# keep LF regardless of the checkout platform.
 #
 # Scope: .gitattributes governs file CONTENT, not file MODE. The executable bit
 # lives in the git index and is unaffected by anything here — a script that is
 # exec'd by path needs `git update-index --chmod=+x` in addition to an LF rule.
-# (core.filemode is false on Windows, so chmod in the worktree does nothing.)
 
 # bash rejects CRLF scripts and make rejects CRLF recipes. `*.sh` also covers
 # services/server/entrypoint.sh, the server image's ENTRYPOINT.
@@ -24,6 +22,6 @@ services/server/starters/provision text eol=lf
 
 # Patterns without a slash match by basename at any depth, so these two cover
 # every services/*/Dockerfile and each .dockerignore beside them. Images build
-# on Linux whatever the checkout platform; LF keeps builds identical everywhere.
+# on Linux, so LF keeps builds identical everywhere.
 Dockerfile text eol=lf
 .dockerignore text eol=lf

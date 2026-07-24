@@ -1,8 +1,8 @@
 # Backend Initialization
 Docker runs `entrypoint.sh` to start the backend service, in which files under
 `starters/` are copied to the correct destinations within the container. The folder
-worth mentioning is `staters/tests/`, which contains test templates that used to
-define the rules for each test.
+worth mentioning is `starters/tests/`, which contains the test templates that define
+the rules for each test.
 
 For instance, `rtt` is a test option on the frontend tests page with three input
 fields - `dest`, `length`, and `protocol`. Correspondingly, `starters/tests/rtt.json`
@@ -38,7 +38,7 @@ following is the content of `rtt.json`.
             "description": "protocol should be either TCP or UDP"
         }
     ],
-    "validator": "console.log('Global validator'); return true;"
+    "validator": "return true;"
 }
 ```
 Note that `validator` can be any string representing a piece of validation code, and

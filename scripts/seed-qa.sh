@@ -281,13 +281,68 @@ db.host_groups.insertOne({
 });
 
 // ---- attach batch-comprehensive to the pre-load's "all" group ------------------------
-// $addToSet, not a rewrite: the pre-load owns this group, and this script only adds
-// a reference to it. Everything else about "all" (its ".*" regex, any batch attached
-// by hand) is left exactly as it was.
+// The pre-load owns this group; this script only manages its own reference to it,
+// leaving the ".*" regex and any hand-attached batch untouched.
+//
+// NOT $addToSet: batch-comprehensive is deleted and recreated with a fresh _id on
+// every run, so $addToSet would dedupe the NAME (already present) while appending
+// the new _id, growing batch_ids past batches on each re-run and leaving dead ids
+// behind. Because the app treats *_ids as the source of truth and re-derives the
+// name arrays from them (update.service.ts), that drift corrupts the group. So
+// rebuild both arrays index-for-index: drop any existing batch-comprehensive
+// entry, then append the current name and _id together.
+const allGroup = db.host_groups.findOne({ name: 'all' });
+const abNames = Array.isArray(allGroup.batches) ? allGroup.batches : [];
+const abIds   = Array.isArray(allGroup.batch_ids) ? allGroup.batch_ids : [];
+const keepBatches = [], keepBatchIds = [];
+abNames.forEach((n, i) => {
+  if (n === 'batch-comprehensive') return;      // drop the stale pair (name + its _id)
+  keepBatches.push(n);
+  if (i < abIds.length) keepBatchIds.push(abIds[i]);
+});
+keepBatches.push('batch-comprehensive');
+keepBatchIds.push(bIds[0]);
 db.host_groups.updateOne(
   { name: 'all' },
-  { $addToSet: { batches: 'batch-comprehensive', batch_ids: bIds[0] } }
+  { $set: { batches: keepBatches, batch_ids: keepBatchIds } }
 );
+
+// ---- scrub dangling references to deleted legacy names --------------------------
+// The deleteMany at the top removes this script's legacy names (BatchMW,
+// job-MWagree, job-MWireless, test-http-to-MWireless) without scrubbing arrays
+// that referenced them. The current QA documents are recreated above with clean
+// references, but any OTHER document (hand-made in the GUI) that still pointed at
+// a legacy name would be left dangling, which blocks config generation. Remove
+// every reference to a legacy name that was deleted and not recreated, keeping
+// the parallel *_ids arrays in step.
+const dead = {};
+for (const coll of Object.keys(ownedNames)) {
+  dead[coll] = ownedNames[coll].filter(n => !db.getCollection(coll).findOne({ name: n }));
+}
+const scrub = (coll, field, idField, deadNames) => {
+  if (!deadNames || deadNames.length === 0) return;
+  db.getCollection(coll).find().forEach((doc) => {
+    const names = doc[field];
+    if (!Array.isArray(names)) return;
+    const keep = [], keepIds = [];
+    names.forEach((n, i) => {
+      if (deadNames.includes(n)) return;
+      keep.push(n);
+      if (Array.isArray(doc[idField]) && i < doc[idField].length) keepIds.push(doc[idField][i]);
+    });
+    if (keep.length !== names.length) {
+      const set = { [field]: keep };
+      if (Array.isArray(doc[idField])) set[idField] = keepIds;
+      db.getCollection(coll).updateOne({ _id: doc._id }, { $set: set });
+      print('  scrubbed ' + (names.length - keep.length) + ' dangling ' + field + ' reference(s) from ' + coll + ' "' + doc.name + '"');
+    }
+  });
+};
+scrub('hosts',       'batches',       'batch_ids',        dead.batches);
+scrub('host_groups', 'batches',       'batch_ids',        dead.batches);
+scrub('batches',     'ssid_profiles', 'ssid_profile_ids', dead.ssid_profiles);
+scrub('batches',     'jobs',          'job_ids',          dead.jobs);
+scrub('jobs',        'tests',         'test_ids',         dead.tests);
 
 // ---- summary --------------------------------------------------------------------------
 print('QA seed complete (added on top of the pre-load):');
@@ -295,6 +350,22 @@ for (const coll of ['schedules', 'ssid_profiles', 'tests', 'jobs', 'batches', 'h
   print('  ' + coll.padEnd(15) + db.getCollection(coll).countDocuments());
 }
 EOF
+
+# ---- verify the writes actually landed -------------------------------------------
+# mongosh reading stdin exits 0 even when statements failed -- for example when
+# the pre-load check quit(1) after an auth error, or writes were rejected on an
+# authenticated database with missing .env credentials. Check the net effect and
+# fail loudly, so a "Done" banner never appears over an unchanged database. The
+# pre-load leaves zero batches; this dataset adds three, so a batch count below
+# three means the seed did not take. (Same guard as scripts/seed-defaults.sh.)
+# shellcheck disable=SC2086
+BATCH_COUNT="$(docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" --eval 'db.batches.countDocuments()' | tail -n1 | tr -dc '0-9')"
+if [ "${BATCH_COUNT:-0}" -lt 3 ]; then
+  echo "error: QA seeding did not complete (batches=${BATCH_COUNT:-0}, expected 3+)." >&2
+  echo "Run the pre-load first (bash scripts/seed-defaults.sh), and if database" >&2
+  echo "authentication is enabled ensure .env has MONGO_USERNAME/MONGO_PASSWORD." >&2
+  exit 1
+fi
 
 # ---- retire the example_script test TYPE (template file) -------------------------
 # Same cleanup as the pre-load script; see the note there.

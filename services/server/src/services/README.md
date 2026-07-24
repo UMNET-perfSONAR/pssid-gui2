@@ -1,21 +1,24 @@
-# Backend Services
+# Backend services
 
 ### config.service.ts
-Responsible for producing the config file, ansible inventory, and running the shellscript.sh file. All outputs originate from here.
+Produces the config file and the Ansible inventory, and runs the provision script.
+All generated outputs originate here.
 
 ### database.service.ts
-Connects to MongoDB client instance
+Connects to the MongoDB client instance.
 
 ### delete.service.ts
-Maintains data validity when an object is deleted. For instance, if a host is deleted, this verifies that that same host is deleted in every host_group object that references it. Meant to prevent future errors.
+Maintains data validity when an object is deleted. For example, when a host is
+deleted, it ensures the same host is removed from every host_group that references it,
+preventing later inconsistencies.
 
 ### update.service.ts
-Maintains data validity by updating outdated collections when a referenced collection's data changes. 
-
-Could improve code here by templating further :)
+Maintains data validity by updating dependent collections when a referenced
+collection's data changes.
 
 ### utility.service.ts
-Contains functions that get object ids from database. Helps set up reference system to potentially update objects in the future. 
-
-When an object is referenced in another collection, like when hosts are selected in the host_groups collection, their object _ids are also placed in the collection to maintain data validity. We cannot strictly reference by name in case a name changes or we need to delete objects in multiple places! (Although I found a work around for this on the frontend side of things by keeping track of an old name and a new name if it changes)
-
+Provides functions that resolve object IDs from the database, supporting the reference
+system that keeps related objects in sync. When an object is referenced from another
+collection — for example, when hosts are selected within a host_group — its object
+`_id` is stored alongside the reference. Referencing by `_id` rather than by name keeps
+references stable when a name changes or an object must be removed from several places.

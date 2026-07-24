@@ -16,6 +16,6 @@
             "description": "port should be a positive integer"
         }
     ],
-    "validator": "console.log('Global validator'); return true;",
+    "validator": "return true;",
     "category": "perfsonar"
 }

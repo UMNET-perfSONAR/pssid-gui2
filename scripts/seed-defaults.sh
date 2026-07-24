@@ -24,10 +24,12 @@
 # any tests saved with that type are deleted from the database.
 #
 # Safe to re-run, and safe to re-run AFTER the QA seeder: it owns only the
-# documents listed above, so it never deletes a batch, host, or the rpi4 group.
-# The "all" group is upserted rather than replaced, so batches attached to it
-# (by the QA seeder or by hand in the GUI) survive a re-run; only its regex and
-# metadata are reasserted.
+# documents listed above, never a batch, host, or the rpi4 group. Its own
+# documents (schedules, eduroam, the two tests, job-comprehensive) are upserted
+# by name with their _id preserved, so their content is reasserted without
+# breaking the QA seeder's references to them. The "all" group is created only
+# if absent and otherwise left untouched, so a batch attached to it -- or a
+# regex narrowed by hand in the GUI -- survives a re-run.
 set -euo pipefail
 
 DB_NAME="gui"
@@ -56,78 +58,81 @@ echo "Loading pre-load data into '$DB_NAME' via container '$MONGO_CONTAINER'..."
 
 # shellcheck disable=SC2086
 docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" <<'EOF'
-// ---- idempotent cleanup of the docs this script owns -------------------------
-const ownedNames = {
-  schedules:     [
-    'Every 5 minutes', 'Every 1 hour', 'Every 4 hours', 'Every day at 23:00',
-    // Earlier wordings of the same defaults; removed on re-run so a reseed
-    // upgrades an existing database instead of duplicating schedules.
-    'Every hour', 'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 23:00', 'every day at 16:00'
-  ],
-  ssid_profiles: [
-    'eduroam',
-    // Earlier starter names; removed on re-run so a reseed upgrades an
-    // existing database instead of duplicating profiles.
-    'MWireless1', 'MWireless2', 'campus-wifi', 'guest-wifi'
-  ],
-  tests:         [
-    'test-http-to-google', 'test-rtt-to-google',
-    // Earlier starter test; removed on re-run.
-    'throughput-by-metadata'
-  ],
+// ---- names this script owns, current and historical --------------------------
+// Two roles below. CURRENT names are upserted, preserving each document's _id so
+// cross-script references survive a re-run (the QA seeder stores THIS eduroam's
+// and THESE schedules' _ids on its batches; deleting and recreating them would
+// hand out fresh _ids and silently orphan those references). LEGACY names --
+// renamed-away or retired -- are deleted, then any document still pointing at
+// them is scrubbed.
+const currentNames = {
+  schedules:     ['Every 5 minutes', 'Every 1 hour', 'Every 4 hours', 'Every day at 23:00'],
+  ssid_profiles: ['eduroam'],
+  tests:         ['test-http-to-google', 'test-rtt-to-google'],
   jobs:          ['job-comprehensive'],
-  // Deliberately empty: batches, hosts and the rpi4 group are owned by the QA
-  // seeder. Listing them here would make a re-run of this script delete QA
-  // data, which is exactly what the additive split is meant to prevent.
+  batches:       [],
+  host_groups:   ['all'],
+  hosts:         [],
+};
+const legacyNames = {
+  schedules:     ['Every hour', 'every 5 minutes', 'every hour', 'every 4 hours', 'every day at 23:00', 'every day at 16:00'],
+  ssid_profiles: ['MWireless1', 'MWireless2', 'campus-wifi', 'guest-wifi'],
+  tests:         ['throughput-by-metadata'],
+  jobs:          [],
   batches:       [],
   host_groups:   [],
   hosts:         [],
 };
-// The example_script test type was retired: also delete any tests saved with
-// that type, whatever they were named, so they cannot linger in jobs.
-const exampleScriptTests = db.tests.find({ type: 'example_script' })
-  .toArray().map((t) => t.name);
-ownedNames.tests.push(...exampleScriptTests);
-for (const [coll, ns] of Object.entries(ownedNames)) {
+// The example_script test type was retired: delete any test saved with that
+// type, whatever it was named, so it cannot linger in jobs.
+legacyNames.tests.push(...db.tests.find({ type: 'example_script' }).toArray().map((t) => t.name));
+
+// Delete ONLY the legacy names. Current-name docs are upserted below (their _id
+// preserved), never deleted.
+for (const [coll, ns] of Object.entries(legacyNames)) {
   if (ns.length > 0) db.getCollection(coll).deleteMany({ name: { $in: ns } });
+}
+
+// Upsert by name: create if absent, reassert content if present, and ALWAYS keep
+// the existing _id. Returns the _id so dependent documents can reference it.
+function upsertByName(coll, name, fields) {
+  db.getCollection(coll).updateOne({ name }, { $set: fields }, { upsert: true });
+  return db.getCollection(coll).findOne({ name })._id;
 }
 
 // ---- schedules ------------------------------------------------------------------
 // The QA seeder reuses these by name rather than creating its own, so the four
 // standard schedules are defined in exactly one place.
-db.schedules.insertMany([
+for (const s of [
   { name: 'Every 5 minutes',    repeat: '*/5 * * * *' },
   { name: 'Every 1 hour',       repeat: '0 * * * *' },
   { name: 'Every 4 hours',      repeat: '0 */4 * * *' },
   { name: 'Every day at 23:00', repeat: '0 23 * * *' },
-]);
+]) upsertByName('schedules', s.name, { repeat: s.repeat });
 
 // ---- SSID profiles: eduroam only ----------------------------------------------
 // MWireless belongs to the QA dataset; this script stays eduroam-only.
-db.ssid_profiles.insertMany([
-  { name: 'eduroam', SSID: 'eduroam', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' },
-]);
+upsertByName('ssid_profiles', 'eduroam',
+  { SSID: 'eduroam', layer2_script: 'wpa_supplicant', layer3_script: 'dhcp_client' });
 
 // ---- tests: one http and one rtt, both against Google --------------------------
-const tIds = db.tests.insertMany([
-  { name: 'test-http-to-google', type: 'http', spec: [
-      { type: 'text', name: 'url',     value: 'www.google.com' },
-      { type: 'text', name: 'timeout', value: 'PT10S' },
-  ] },
-  { name: 'test-rtt-to-google',  type: 'rtt',  spec: [
-      { type: 'text',         name: 'dest',     value: 'www.google.com' },
-      { type: 'number',       name: 'length',   value: 512 },
-      { type: 'singleselect', name: 'protocol', selected: { name: 'TCP' } },
-  ] },
-]).insertedIds;
+const tHttp = upsertByName('tests', 'test-http-to-google', { type: 'http', spec: [
+  { type: 'text', name: 'url',     value: 'www.google.com' },
+  { type: 'text', name: 'timeout', value: 'PT10S' },
+] });
+const tRtt = upsertByName('tests', 'test-rtt-to-google', { type: 'rtt', spec: [
+  { type: 'text',         name: 'dest',     value: 'www.google.com' },
+  { type: 'number',       name: 'length',   value: 512 },
+  { type: 'singleselect', name: 'protocol', selected: { name: 'TCP' } },
+] });
 
 // ---- job: the comprehensive suite ----------------------------------------------
 // Seeded unattached: with no batches in this dataset, nothing runs it yet. It
 // exists so a fresh install has a working job to inspect and assign in the GUI.
-db.jobs.insertMany([
-  { name: 'job-comprehensive', parallel: 'True', 'continue-if': 'true', backoff: 'PT1S',
-    tests: ['test-http-to-google', 'test-rtt-to-google'], test_ids: [tIds[0], tIds[1]] },
-]);
+upsertByName('jobs', 'job-comprehensive', {
+  parallel: 'True', 'continue-if': 'true', backoff: 'PT1S',
+  tests: ['test-http-to-google', 'test-rtt-to-google'], test_ids: [tHttp, tRtt],
+});
 
 // ---- host group: "all" ----------------------------------------------------------
 // Selects every host by REGEX. hosts_regex is a STANDARD regular expression,
@@ -138,9 +143,11 @@ db.jobs.insertMany([
 // pattern is ".*" and not "*". See docs/deployment.md, "Host regex is a standard
 // regular expression, anchored at the start".
 //
-// Upserted, not deleted-and-recreated: $setOnInsert reasserts the regex only when
-// the group does not already exist, so batches attached to "all" -- by the QA
-// seeder, or by hand in the GUI -- are preserved across a re-run of this script.
+// Created only if absent ($setOnInsert), then left ENTIRELY alone on a re-run:
+// its regex, metadata, and any batches attached to it (by the QA seeder or by
+// hand in the GUI) are preserved. A first install has no "all" group, so the
+// insert branch establishes the ".*" pattern; nothing reasserts it afterwards,
+// so an operator who narrows the group in the GUI is not overruled.
 db.host_groups.updateOne(
   { name: 'all' },
   { $setOnInsert: {
@@ -149,21 +156,18 @@ db.host_groups.updateOne(
   } },
   { upsert: true }
 );
-// Reassert the regex on an existing group without touching its attachments, so a
-// hand-edited or stale pattern is corrected but assignments survive.
-db.host_groups.updateOne({ name: 'all' }, { $set: { hosts_regex: ['.*'] } });
 
-// ---- scrub dangling references left by the cleanup ------------------------------
-// The deleteMany calls at the top are raw removals; unlike the GUI's delete
-// handlers they do not scrub the arrays that reference the deleted names. The
-// pre-load documents are recreated above with clean references, but any OTHER
-// document (hand-made in the GUI) that referenced a removed name would be left
-// pointing at nothing, which blocks config generation. Remove every reference
-// to a cleaned-up name that was not recreated, keeping the parallel *_ids
-// arrays in step.
+// ---- scrub dangling references to deleted legacy names --------------------------
+// The deleteMany above is a raw removal; unlike the GUI's delete handlers it does
+// not scrub arrays that reference a deleted name. Current-name docs are upserted
+// with clean references, but any OTHER document (hand-made in the GUI) that
+// referenced a now-deleted LEGACY name would be left pointing at nothing, which
+// blocks config generation. Remove every such reference, keeping the parallel
+// *_ids arrays in step. (Current names are never dead here, since they were
+// upserted rather than deleted.)
 const dead = {};
-for (const coll of Object.keys(ownedNames)) {
-  dead[coll] = ownedNames[coll].filter(n => !db.getCollection(coll).findOne({ name: n }));
+for (const coll of Object.keys(legacyNames)) {
+  dead[coll] = legacyNames[coll].filter(n => !db.getCollection(coll).findOne({ name: n }));
 }
 const scrub = (coll, field, idField, deadNames) => {
   if (deadNames.length === 0) return;
@@ -184,9 +188,7 @@ const scrub = (coll, field, idField, deadNames) => {
     }
   });
 };
-scrub('hosts',       'batches',       'batch_ids',        dead.batches);
 scrub('host_groups', 'batches',       'batch_ids',        dead.batches);
-scrub('host_groups', 'hosts',         'host_ids',         dead.hosts);
 scrub('batches',     'ssid_profiles', 'ssid_profile_ids', dead.ssid_profiles);
 scrub('batches',     'schedules',     'schedule_ids',     dead.schedules);
 scrub('batches',     'jobs',          'job_ids',          dead.jobs);

@@ -1,22 +1,28 @@
-# About each frontend directory
+# Frontend directory overview
 
-#### Assets
-Some initial styling. May be outdated.
+### assets/
+Global styles and theme assets for the web application.
 
-#### Components
-Contains more complex, reusable components in web application. Some key files include: 
-* cron.vue - Cron scheduling component 
-* list_items.vue - Regex search bar and rendering for an arbitrary list of objects lives here. Each tab on the web page uses this.
-* dynamic_add_data.vue - Arbitrary dynamic data addition. Used in Hosts, Host Groups, and Tests.
-* dynamicform.vue - Renders changing forms for tests
+### components/
+Reusable components used across the application. Key files include:
+* `cron.vue` — cron scheduling input.
+* `list_items.vue` — regular-expression search bar and list rendering for a set of
+  objects; used by every page.
+* `dynamic_add_data.vue` — arbitrary key/value data entry, used in Hosts, Host
+  Groups, and Tests.
+* `dynamicform.vue` — renders forms that vary by test type.
 
+### stores/
+Pinia stores, one per page, holding the frontend state-management logic: API calls to
+the backend and the more involved data manipulation.
 
-#### Stores
-Pinia stores for each tab of the web app. Contains business logic for front end state management (makes API calls to backend, more complex data manipulation). 
+Pinia is a state-management library that tracks the state currently rendered in Vue,
+so a single piece of state can be shared across pages. Each configuration-file page
+has a corresponding store, letting the application load related objects quickly. For
+example, the Host Groups page reads the host store to access every host name, avoiding
+a second HTTP GET to fetch the hosts again.
 
-Pinia is a state management library that keeps track of the current state of what's rendered in Vue. This allows a single state to be rendered across multiple web pages. Each configuration file tab has a corresponding state, which allows the app to quickly load the state of another object on a related page. For example, we quickly load the host store on the host groups web page because we need to access the name of all the hosts. This prevents a second HTTP GET request from being made to retrieve the hosts again. 
+See the [Pinia documentation](https://pinia.vuejs.org/) for more.
 
-Read more about Pinia [here](https://pinia.vuejs.org/)
-
-#### Views
-Contains a .vue file for each tab of the web application. 
+### views/
+One `.vue` file per page of the web application.

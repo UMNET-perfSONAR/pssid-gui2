@@ -69,7 +69,7 @@ dev-down: ## Stop the local dev stack
 seed-defaults: ## Load the pre-load starter data (fresh installs)
 	@bash scripts/seed-defaults.sh
 
-seed-qa: ## Load the QA dataset (pre-load + probes, MWireless, BatchMW)
+seed-qa: ## Add the QA dataset on top of the pre-load (see docs/QA.md)
 	@bash scripts/seed-qa.sh
 
 test: ## Run all unit tests (server + client, no stack needed)
