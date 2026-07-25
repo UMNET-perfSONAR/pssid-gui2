@@ -394,6 +394,19 @@ else
   warn "shared/config.ts not found; skipping SSO toggle"
 fi
 
+# The server runs as non-root (uid 1000) and bind-mounts this file read-only
+# (docker-compose.yml). accessControl.ts reads it at startup regardless of SSO,
+# so the container user MUST be able to read it. A restrictive host umask (e.g.
+# 027) leaves a freshly cloned file at mode 640 root:root, which that user cannot
+# read, and the server crashes with EACCES before it reaches the database. The
+# file holds only a group -> read/write mapping and no secrets, so it is made
+# world-readable rather than exposed through the secret gid used for .env.
+AUTH_GROUPS="shared/auth-groups.config.json"
+if [ -f "$AUTH_GROUPS" ]; then
+  chmod a+r "$AUTH_GROUPS" 2>/dev/null \
+    || warn "Could not make $AUTH_GROUPS readable; the server container may fail to start."
+fi
+
 # ─── 6. TLS material + nginx config ──────────────────────────────────────────
 step "Configuring TLS and nginx"
 mkdir -p certs
