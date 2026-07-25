@@ -142,7 +142,7 @@
  }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 /* This picker uses a bare Bootstrap .list-group, so it does not inherit the
    app's themed .item-list styles and would otherwise render low-contrast text
    (light on light in dark mode). Style it here from the shared CSS variables so
