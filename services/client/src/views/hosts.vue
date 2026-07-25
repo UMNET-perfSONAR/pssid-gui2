@@ -90,13 +90,16 @@
       </div>
     </div>
 
-    <!-- Effective configuration of the selected probe: the slice of
-         pssid_config.json (the one file the daemon reads) this host acts on. -->
+    <!-- Effective configuration of the selected probe: this host's slice of
+         pssid_config.json, built live from the current database state (same
+         dry-run mechanism as Settings' Preview) -- not a read of any file
+         actually written to disk. -->
     <div v-if="editing" class="probe-config">
       <h2 class="probe-config-title">Probe configuration</h2>
       <p class="probe-config-sub">
-        Everything <strong>{{ selectedName }}</strong> will run, from the
-        generated <code>pssid_config.json</code> the daemon receives.
+        Everything <strong>{{ selectedName }}</strong> would run: its slice of
+        <code>pssid_config.json</code>, built live from the current database
+        state.
       </p>
 
       <div v-if="hostStore.probeConfigLoading" class="loading-state" role="status" aria-live="polite">

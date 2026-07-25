@@ -372,3 +372,19 @@
 </script>
 
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
+
+<style scoped>
+/* Match the code styling used for inline snippets elsewhere (settings.vue's
+   .setting-sub code, hosts.vue's .probe-config-sub code) instead of leaving
+   Bootstrap's default pink code color on these two snippets. */
+#group-regex-help code {
+  background: rgba(var(--primary-rgb), .08);
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: var(--text);
+}
+:global(:root[data-theme="dark"]) #group-regex-help code {
+  background: #0e1626;
+}
+</style>

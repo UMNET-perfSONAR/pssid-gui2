@@ -15,17 +15,12 @@
       <section class="settings-card" aria-labelledby="tools-title">
         <div class="settings-card-head">
           <span class="material-icons settings-card-icon" aria-hidden="true">fact_check</span>
-          <div>
-            <h2 id="tools-title" class="settings-card-title">Configuration</h2>
-            <p class="settings-card-desc">
-              Verify and generate the config files from your current setup.
-            </p>
-          </div>
+          <h2 id="tools-title" class="settings-card-title">Configuration</h2>
         </div>
 
         <div class="setting-row">
           <div class="setting-text">
-            <div class="setting-name">Preview generated files</div>
+            <div class="setting-name">Preview config files</div>
             <div class="setting-sub">
               Builds <code>pssid_config.json</code> and <code>hosts.ini</code> from the
               current database state and checks them against the same rules the daemon
@@ -39,7 +34,7 @@
             @click="previewConfig"
           >
             <span class="material-icons btn-icon" aria-hidden="true">visibility</span>
-            {{ settingsStore.previewLoading ? 'Building...' : 'Preview' }}
+            {{ settingsStore.previewLoading ? 'Previewing...' : 'Preview' }}
           </button>
         </div>
 
@@ -51,7 +46,7 @@
         <div v-if="settingsStore.preview" class="preview-result" aria-live="polite">
           <div class="preview-status valid">
             <span class="material-icons" aria-hidden="true">check_circle</span>
-            <span>This configuration is valid: it passes the same checks the daemon enforces.</span>
+            <span>No validation problems found.</span>
           </div>
 
           <div class="preview-tabs" role="tablist" aria-label="Preview file">
@@ -108,7 +103,7 @@
 
         <div v-if="settingsStore.generated" class="preview-status valid" role="status" aria-live="polite">
           <span class="material-icons" aria-hidden="true">check_circle</span>
-          <span>Config files generated on the controller: <code>pssid_config.json</code> and <code>hosts.ini</code>.</span>
+          <span>Files written to the controller.</span>
         </div>
       </section>
     </template>
@@ -195,11 +190,6 @@ export default {
   letter-spacing: 0 !important;
   border: none !important;
   padding: 0 !important;
-}
-.settings-card-desc {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin: 0;
 }
 .setting-row {
   display: flex;

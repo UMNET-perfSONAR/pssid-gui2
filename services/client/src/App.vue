@@ -68,10 +68,7 @@
                 @keydown.esc.prevent="closeThemeMenu(true)"
               >
                 <span class="material-icons theme-menu-icon" aria-hidden="true">{{ opt.icon }}</span>
-                <span class="theme-menu-text">
-                  <span class="theme-menu-label">{{ opt.label }}</span>
-                  <span class="theme-menu-desc">{{ opt.desc }}</span>
-                </span>
+                <span class="theme-menu-label">{{ opt.label }}</span>
                 <span class="material-icons theme-menu-check" aria-hidden="true">{{ theme === opt.value ? 'check' : '' }}</span>
               </button>
             </li>
@@ -94,11 +91,11 @@ import ToastNotification from './components/ToastNotification.vue'
 import { activeEdition } from './edition'
 import { getTheme, setTheme } from './theme'
 
-// The three appearance modes, with the icon/label/description shown in the menu.
+// The three appearance modes, with the icon and label shown in the menu.
 const THEME_OPTIONS = [
-  { value: 'light',      icon: 'light_mode',         label: 'Light',      desc: 'Bright surfaces' },
-  { value: 'dark',       icon: 'dark_mode',          label: 'Dark',       desc: 'Dim, low-light surfaces' },
-  { value: 'colorblind', icon: 'accessibility_new',  label: 'High contrast', desc: 'Colour-blind-safe palette' },
+  { value: 'light',      icon: 'light_mode',         label: 'Light' },
+  { value: 'dark',       icon: 'dark_mode',          label: 'Dark' },
+  { value: 'colorblind', icon: 'accessibility_new',  label: 'High contrast' },
 ];
 
 export default {
@@ -332,21 +329,12 @@ export default {
   color: var(--text);
   flex-shrink: 0;
 }
-.theme-menu-text {
-  display: flex;
-  flex-direction: column;
+.theme-menu-label {
   flex: 1;
   min-width: 0;
-}
-.theme-menu-label {
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.2;
-}
-.theme-menu-desc {
-  font-size: 0.72rem;
-  color: var(--muted);
-  line-height: 1.3;
 }
 .theme-menu-check {
   font-size: 1.1rem;

@@ -16,7 +16,7 @@
 
     <PageHeader
       title="SSID Profiles"
-      subtitle="A wireless network plus the layer 2 and layer 3 methods used to connect to it"
+      subtitle="Define an SSID and the layer 2/3 methods used to connect to it"
       icon="wifi"
       :can-add="true"
       :add-disabled="isDisabled"
