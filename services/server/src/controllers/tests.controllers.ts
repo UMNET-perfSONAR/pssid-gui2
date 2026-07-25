@@ -7,7 +7,6 @@ import fs from 'fs';
 import path from 'path';
 import { isNameInDB, isValidObjectName } from './helpers';
 
-// TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
 
 // Retrieves the path to the tests directory from the paths_config.json file.
@@ -162,8 +161,7 @@ const postTest = (async (req:Request, res:Response) => {
   }
 })
 
-// TODO: Add option to provide meta-information 
-// completely update one test
+// Completely update one test.
 const updateTest = (async (req:Request, res:Response) => {
   try {
     let body = req.body;
@@ -200,9 +198,6 @@ const updateTest = (async (req:Request, res:Response) => {
 
 /**
  * Read test option filenames from test_options
- * 
- * @param req - request information sent from client
- * @param res - response sent back to client
  */
 const readFileNames = ((req:Request, res:Response) => {
   try {
@@ -232,9 +227,6 @@ const readFileNames = ((req:Request, res:Response) => {
 
 /**
  * Read selected filename (params.name) from test_options - send contents back as a json array 
- * 
- * @param req - request information sent from client
- * @param res - response sent back to client
  */
 const readTestFile = ((req:Request, res:Response) => {
   try {

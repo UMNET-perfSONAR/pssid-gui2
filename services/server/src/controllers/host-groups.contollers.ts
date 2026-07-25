@@ -31,9 +31,6 @@ var client = connectToMongoDB();
 
 /**
  * Return all host_group information from mongodb 
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getHostGroups = (async (req: Request, res: Response) =>{
   try {
@@ -50,9 +47,6 @@ const getHostGroups = (async (req: Request, res: Response) =>{
 
 /**
  * Get one host_group by 'name'
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getOneHostGroup = (async (req: Request, res: Response) => {
   try {
@@ -70,9 +64,6 @@ const getOneHostGroup = (async (req: Request, res: Response) => {
 
 /**
  * Delete specified host_group from database. host_group to be deleted comes as URL parameter
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const deleteHostGroup = (async (req:Request, res:Response) => {
   try {
@@ -91,9 +82,6 @@ const deleteHostGroup = (async (req:Request, res:Response) => {
 
 /**
  * Creates new host_group entry in database.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const postHostGroup = (async (req:Request, res:Response) => {
   try {
@@ -132,9 +120,6 @@ const postHostGroup = (async (req:Request, res:Response) => {
 
 /**
  * Updates host_group with information specified by the user. 
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const updateHostGroup = (async (req:Request, res:Response) => {
   try {

@@ -24,14 +24,10 @@ const batchFieldError = (data: any): string | null => {
   return null;
 };
 
-// TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
 
 /**
  * Return all batch information from mongodb
- * 
- * @param req - request information from client
- * @param res - response sent back to client
  */
 const getBatches = (async (req: Request, res: Response) =>{
   try {
@@ -50,9 +46,6 @@ const getBatches = (async (req: Request, res: Response) =>{
 
 /**
  * Get one batch from batches collection by 'name'
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getOneBatch = (async (req: Request, res: Response) => {
   try {
@@ -70,9 +63,6 @@ const getOneBatch = (async (req: Request, res: Response) => {
 
 /**
  * Delete specified batch from database. batch to be deleted comes as URL parameter 
- * 
- * @param req - request information from client. specific batch in 
- * @param res - response sent back to client 
  */
 const deleteBatch = (async (req:Request, res:Response) => {
   try {
@@ -97,9 +87,6 @@ const deleteBatch = (async (req:Request, res:Response) => {
 /**
  * Creates new batch entry in database. Inserts ObjectId arrays for ssid_profiles, jobs, schedules
  * to make compatible with future updates.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const postBatch = (async (req:Request, res:Response) => {
   try {
@@ -145,9 +132,6 @@ const postBatch = (async (req:Request, res:Response) => {
 /**
  * Updates batch with information specified by the user. 
  * Triggers updates in hosts and host_groups to ensure up to date information.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const updateBatch = (async (req:Request, res:Response) => {
   try {

@@ -25,9 +25,7 @@ export async function updateCollection(outdated_col: string, truth_col_name:stri
 /**
  * Enables templating of updateCollection() function above.
  *      Returns the matched documents between the current outdated document and the truth collection based off of _id
- * 
- * TODO: Determine if there is a better/more efficient way to do this 
- * 
+ *
  * @param outdated_col_doc - Current document we are iterating over
  * @param truth_collection - Reference to collection we are using as "source-of-truth"
  * @param truth_col_name - Name of source of truth collection

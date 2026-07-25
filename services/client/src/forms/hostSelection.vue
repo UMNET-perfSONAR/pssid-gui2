@@ -143,5 +143,26 @@
 </script>
 
 <style lang="scss" scoped>
-
+/* This picker uses a bare Bootstrap .list-group, so it does not inherit the
+   app's themed .item-list styles and would otherwise render low-contrast text
+   (light on light in dark mode). Style it here from the shared CSS variables so
+   the host names stay readable in both light and dark themes. */
+.list-group-item {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  cursor: pointer;
+  transition: background .12s;
+}
+.list-group-item p {
+  margin: 0;
+  color: var(--text);
+}
+.list-group-item:hover:not(.active) {
+  background: rgba(var(--primary-rgb), .06) !important;
+}
+.list-group-item.active {
+  background: rgba(var(--primary-rgb), .14) !important;
+  font-weight: 600;
+}
 </style>

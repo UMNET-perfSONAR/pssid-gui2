@@ -6,7 +6,6 @@ import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
 import { isNameInDB, isValidRfc1123Name, isValidSsidName } from './helpers';
 
-// TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
 
 const getPathsConfig = (): any => {
@@ -36,9 +35,6 @@ const isValidScript = (value: string, dirKey: 'layer2_path' | 'layer3_path'): bo
 
 /**
  * Return all ssid_profile information from mongodb 
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getSSIDProfiles = (async (req: Request, res: Response) =>{
   try {
@@ -56,9 +52,6 @@ const getSSIDProfiles = (async (req: Request, res: Response) =>{
 
 /**
  * Get one ssid_profile by 'name'
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getOneSSIDProfile = (async (req: Request, res: Response) => {
   try {
@@ -76,9 +69,6 @@ const getOneSSIDProfile = (async (req: Request, res: Response) => {
 
 /**
  * Delete specified ssid_profile from database. ssid_profile to be deleted comes as URL parameter
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const deleteSSIDProfile = (async (req:Request, res:Response) => {
   try {
@@ -104,9 +94,6 @@ const deleteSSIDProfile = (async (req:Request, res:Response) => {
 
 /**
  * Creates new ssid_profile entry in database.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const postSSIDProfile = (async (req:Request, res:Response) => {
   try {
@@ -147,9 +134,6 @@ const postSSIDProfile = (async (req:Request, res:Response) => {
 /**
  * Updates ssid_profile with information specified by the user. 
  * Triggers update in batches to ensure up to date information.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const updateSSIDProfile = (async (req:Request, res:Response) => {
   try {

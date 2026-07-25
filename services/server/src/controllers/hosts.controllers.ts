@@ -20,14 +20,10 @@ const hostFieldError = (body: any): string | null => {
   return null;
 };
 
-// TODO: Scope of client variable - Import from another module?
 var client = connectToMongoDB();
 
 /** 
  * Return all host information from mongodb 
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getHosts = (async (req: Request, res: Response) =>{
   try {
@@ -44,9 +40,6 @@ const getHosts = (async (req: Request, res: Response) =>{
 
 /**
  * Get one host by 'name'
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getOneHost = (async (req: Request, res: Response) => {
   try {
@@ -64,11 +57,6 @@ const getOneHost = (async (req: Request, res: Response) => {
 
 /**
  * Delete specified host from database. host to be deleted comes as URL parameter
- * 
- * TODO - Compress to one lookup (findOneAndDelete)
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const deleteHost = (async (req:Request, res:Response) => {
   try {
@@ -112,9 +100,6 @@ const deleteAll = (async (req:Request, res:Response) => {
 
 /**
  * Creates new host entry in database.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const postHost = (async (req:Request, res:Response) => {
   try {
@@ -149,9 +134,6 @@ const postHost = (async (req:Request, res:Response) => {
 /**
  * Updates host with information specified by the user. 
  * Triggers update in host_groups to ensure up to date information.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const updateHost = (async (req:Request, res:Response) => {
   try {

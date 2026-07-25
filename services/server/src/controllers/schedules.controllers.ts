@@ -9,9 +9,6 @@ var client = connectToMongoDB();
 
 /**
  * Return all schedule information from mongodb 
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getSchedules = (async (req: Request, res: Response) =>{
   try {
@@ -30,9 +27,6 @@ const getSchedules = (async (req: Request, res: Response) =>{
 
 /**
  * Delete specified schedule from database. schedule to be deleted comes as URL parameter
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const deleteSchedule = (async (req:Request, res:Response) => {
   try {
@@ -58,9 +52,6 @@ const deleteSchedule = (async (req:Request, res:Response) => {
 
 /**
  * Creates new schedule entry in database.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const postSchedule = (async (req:Request, res:Response) => {
   try {
@@ -91,9 +82,6 @@ const postSchedule = (async (req:Request, res:Response) => {
 /**
  * Updates schedule with information specified by the user. 
  * Triggers update in batches to ensure up to date information.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const updateSchedule = (async (req:Request, res:Response) => {
   try {

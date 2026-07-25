@@ -28,9 +28,6 @@ var client = connectToMongoDB();
 
 /**
  * Return all job information from mongodb 
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getJobs = (async (req: Request, res: Response) =>{
   try {
@@ -47,9 +44,6 @@ const getJobs = (async (req: Request, res: Response) =>{
 
 /**
  * Get one job by 'name'
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const getOneJob = (async (req: Request, res: Response) => {
   try {
@@ -67,9 +61,6 @@ const getOneJob = (async (req: Request, res: Response) => {
 
 /**
  * Delete specified ssid_profile from database. ssid_profile to be deleted comes as URL parameter
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const deleteJob = (async (req:Request, res:Response) => {
   try {
@@ -94,9 +85,6 @@ const deleteJob = (async (req:Request, res:Response) => {
 
 /**
  * Creates new job entry in database.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const postJob = (async (req:Request, res:Response) => {
   try {
@@ -136,9 +124,6 @@ const postJob = (async (req:Request, res:Response) => {
 /**
  * Updates jobs with information specified by the user. 
  * Triggers update in batches to ensure up to date information.
- * 
- * @param req - request information from client
- * @param res - response sent back to client 
  */
 const updateJob = (async (req:Request, res:Response) => {
   try {

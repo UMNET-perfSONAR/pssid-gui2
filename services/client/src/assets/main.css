@@ -313,6 +313,36 @@ body * {
 .multiselect__tags {
   border: 1px solid var(--field-border) !important;
 }
+/* vue-multiselect ships light-mode surfaces (white control box and dropdown),
+   which read as a bright panel against dark mode. Repaint its surfaces from the
+   theme tokens so it matches the other form controls (same #0e1626 field fill). */
+:root[data-theme="dark"] .multiselect__tags,
+:root[data-theme="dark"] .multiselect__input,
+:root[data-theme="dark"] .multiselect__single,
+:root[data-theme="dark"] .multiselect__spinner {
+  background: #0e1626 !important;
+  color: var(--text) !important;
+}
+:root[data-theme="dark"] .multiselect__placeholder {
+  color: var(--muted) !important;
+}
+:root[data-theme="dark"] .multiselect__content-wrapper {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+:root[data-theme="dark"] .multiselect__option {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+:root[data-theme="dark"] .multiselect__option--highlight {
+  background: rgba(var(--accent-rgb), .18) !important;
+  color: var(--text) !important;
+}
+:root[data-theme="dark"] .multiselect__option--selected {
+  background: rgba(var(--primary-rgb), .22) !important;
+  color: var(--text) !important;
+  font-weight: 600;
+}
 .form-group {
   margin-bottom: 1rem;
 }

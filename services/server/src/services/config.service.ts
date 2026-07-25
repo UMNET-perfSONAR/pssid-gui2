@@ -1,4 +1,5 @@
-// generate a config file from current state of DBs
+// Config generation: assembles, validates, and writes pssid_config.json and the
+// Ansible inventory from the current database state.
 import { MongoClient } from 'mongodb';
 import { connectToMongoDB } from './database.service';
 import { execFile } from 'node:child_process';
@@ -702,7 +703,7 @@ export function get_current_config(): { config: string | null; inventory: string
 }
 
 /**
- * creates config file, ansible inventory, and executes shellscript
+ * Creates the config file and Ansible inventory, then executes the provision script.
  * @param name - name of host or host_group where button was clicked. defaults to '*'
  * @param click_context - 'host', 'host_group', or 'auto'
  * @param caller - username of the authenticated user, or 'unauthenticated'

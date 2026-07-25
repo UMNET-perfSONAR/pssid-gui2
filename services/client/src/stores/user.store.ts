@@ -70,15 +70,5 @@ export const useUserStore = defineStore('user', {
           this.isLoading = false;
         }
       },
-      // async loadPermissionsConfig(this: typeof useUserStore.prototype) {
-      //   try {
-      //     const res = await fetch('/api/authconfig');
-      //     const data = await res.json();
-      //     this.permissionsConfig = data.permissions || {};
-      //   } catch (err) {
-      //     console.error('Failed to load permissions config:', err);
-      //     this.permissionsConfig = {};
-      //   }
-      // },
     },
 })

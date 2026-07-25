@@ -179,7 +179,7 @@
      },
 
      async setUpData() {
-       // INFO: form_layout contains the item {type: 'optional', name: "Optional Data"},
+       // form_layout contains the item {type: 'optional', name: "Optional Data"},
        // which is correct since it is part of the form layout, namely
        // <div v-if="item.type==='optional'">. We need it to render optional data.
        // However, it should not be a part of the form_values array

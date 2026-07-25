@@ -1,5 +1,3 @@
-// process.env.DEBUG = 'openid-client,express-openid-connect:*';
-
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { connectToMongoDB, ensureIndexes } from './services/database.service';
 import cors from 'cors';
@@ -174,8 +172,8 @@ app.use('/api/layer-scripts', layerscriptroute);
 app.use('/api/provision', provisionroute);
 app.use('/api/settings', settingsroute);
 
-// force login on '/', to enable SSO by default, either set ENABLE_SSO to true or use the requireAuth() function in place of useAuth()
-// need to make a request to IdP, so async await is needed
+// Root redirect to the dashboard. With SSO enabled, useAuth() requires an IdP
+// login first; the handler is async for the OIDC userinfo call.
 app.get('/', useAuth(), async (req: Request, res: Response) => {
   if (ENABLE_SSO) {
     const userInfo = await req.oidc.fetchUserInfo();
