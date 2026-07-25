@@ -7,7 +7,7 @@
 # recreated. The pre-load's "all" group keeps its regex and gains one batch.
 #
 # Run the pre-load FIRST (the Ansible role does this on a first install), then
-# this. See docs/QA.md for the full walkthrough and expected output.
+# this. See QA/QA.md for the full walkthrough and expected output.
 #
 # What it ADDS:
 #   - SSID profile:  MWireless (eduroam comes from the pre-load)
@@ -24,7 +24,7 @@
 #   - batches:       batch-comprehensive  priority 0  eduroam    (-> "all" group)
 #                    batch-host           priority 1  MWireless  (UNASSIGNED)
 #                    batch-group          priority 2  MWireless  (-> rpi4 group)
-#   - hosts:         four probes, each with the SAME metadata key
+#   - hosts:         two probes, each with the SAME metadata key
 #                    (external_dest) holding a DIFFERENT value
 #   - host group:    rpi4 - every probe listed BY NAME (the GUI's "Select all",
 #                    not a regex), carrying group metadata ifacename=wlan0
@@ -38,42 +38,48 @@
 # through the GUI is a QA step, and the only thing that exercises the GUI's own
 # host/batch assignment path (the seeders write to MongoDB directly).
 #
-# Probe names and the external destinations are overridable; when deploying to
-# real probes the names MUST match their real hostnames or the daemon exits:
+# The probe NAMES are the probes' hostnames, which at this site are their IP
+# addresses -- ask the QA operator for the two probe IPs and pass them in. The
+# names MUST match what each probe reports as its hostname, or the daemon exits
+# on that probe. Placeholders are used until the real IPs are supplied:
 #
-#   PSSID_QA_PROBE1=<hostname> ... PSSID_QA_PROBE4=<hostname> \
-#   PSSID_QA_DEST1=<url> ... PSSID_QA_DEST4=<url> bash scripts/seed-qa.sh
+#   PSSID_QA_PROBE1=10.0.0.11 PSSID_QA_PROBE2=10.0.0.12 \
+#   PSSID_QA_DEST1=<url> PSSID_QA_DEST2=<url> bash QA/seed-qa.sh
 #
 # Safe to re-run: it removes only the documents it owns (by name, including
 # probes a previous run put in the rpi4 group) before inserting them again.
 set -euo pipefail
 
+# Resolve the repository root from this script's own location, so it works
+# whether it is run as `bash QA/seed-qa.sh` from the root, via `make seed-qa`,
+# or from inside the QA/ folder. The .env read below is relative to the root.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
 DB_NAME="gui"
 
-# The lab probes. Neutral placeholders by default so no internal hostname is
-# committed to this repository; override with the real names at run time.
-PSSID_QA_PROBE1="${PSSID_QA_PROBE1:-rpi4-probe-01}"
-PSSID_QA_PROBE2="${PSSID_QA_PROBE2:-rpi4-probe-02}"
-PSSID_QA_PROBE3="${PSSID_QA_PROBE3:-rpi4-probe-03}"
-PSSID_QA_PROBE4="${PSSID_QA_PROBE4:-rpi4-probe-04}"
+# The two lab probes. Their hostnames are IP addresses at this site; the
+# placeholders below stand in until the QA operator supplies the real IPs
+# (which also keeps internal addresses out of the committed repository).
+PSSID_QA_PROBE1="${PSSID_QA_PROBE1:-Probe-IP-address-1}"
+PSSID_QA_PROBE2="${PSSID_QA_PROBE2:-Probe-IP-address-2}"
 
-# Same metadata KEY on every host, a DIFFERENT value per host. This is what
+# Same metadata KEY on both hosts, a DIFFERENT value each. This is what
 # $external_dest resolves to per probe, and checking that each probe gets its own
 # value is one of the things QA verifies.
 PSSID_QA_DEST1="${PSSID_QA_DEST1:-www.google.com}"
 PSSID_QA_DEST2="${PSSID_QA_DEST2:-www.reddit.com}"
-PSSID_QA_DEST3="${PSSID_QA_DEST3:-www.wikipedia.org}"
-PSSID_QA_DEST4="${PSSID_QA_DEST4:-www.example.edu}"
 
 # Values are passed into mongosh through the environment (never spliced into the
-# script text), so validate them only for sanity.
-for v in "$PSSID_QA_PROBE1" "$PSSID_QA_PROBE2" "$PSSID_QA_PROBE3" "$PSSID_QA_PROBE4"; do
+# script text), so validate them only for sanity. The pattern accepts both an IP
+# address and the placeholder names; it is the same shape a host name must have.
+for v in "$PSSID_QA_PROBE1" "$PSSID_QA_PROBE2"; do
   if ! [[ "$v" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
     echo "Invalid probe hostname: '$v'" >&2
     exit 1
   fi
 done
-for v in "$PSSID_QA_DEST1" "$PSSID_QA_DEST2" "$PSSID_QA_DEST3" "$PSSID_QA_DEST4"; do
+for v in "$PSSID_QA_DEST1" "$PSSID_QA_DEST2"; do
   if [[ -z "$v" || "$v" =~ [[:space:]] ]]; then
     echo "Invalid external destination: '$v'" >&2
     exit 1
@@ -99,30 +105,22 @@ if [ -f .env ] && grep -q '^MONGO_PASSWORD=' .env; then
 fi
 
 echo "Seeding QA data into '$DB_NAME' via container '$MONGO_CONTAINER'..."
-echo "  probes: $PSSID_QA_PROBE1, $PSSID_QA_PROBE2, $PSSID_QA_PROBE3, $PSSID_QA_PROBE4"
+echo "  probes: $PSSID_QA_PROBE1, $PSSID_QA_PROBE2"
 
 # shellcheck disable=SC2086
 docker exec -i \
   -e PSSID_QA_PROBE1="$PSSID_QA_PROBE1" \
   -e PSSID_QA_PROBE2="$PSSID_QA_PROBE2" \
-  -e PSSID_QA_PROBE3="$PSSID_QA_PROBE3" \
-  -e PSSID_QA_PROBE4="$PSSID_QA_PROBE4" \
   -e PSSID_QA_DEST1="$PSSID_QA_DEST1" \
   -e PSSID_QA_DEST2="$PSSID_QA_DEST2" \
-  -e PSSID_QA_DEST3="$PSSID_QA_DEST3" \
-  -e PSSID_QA_DEST4="$PSSID_QA_DEST4" \
   "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" <<'EOF'
 const PROBES = [
   process.env.PSSID_QA_PROBE1,
   process.env.PSSID_QA_PROBE2,
-  process.env.PSSID_QA_PROBE3,
-  process.env.PSSID_QA_PROBE4,
 ];
 const DESTS = [
   process.env.PSSID_QA_DEST1,
   process.env.PSSID_QA_DEST2,
-  process.env.PSSID_QA_DEST3,
-  process.env.PSSID_QA_DEST4,
 ];
 
 // ---- require the pre-load ------------------------------------------------------
@@ -386,7 +384,7 @@ Done. The QA scenario is wired as follows:
   batch-host           priority 1  MWireless  NOT ASSIGNED - attach it in the GUI
   batch-group          priority 2  MWireless  via the rpi4 group
 
-  rpi4 lists all four probes BY NAME (the GUI's "Select all"), which is what
+  rpi4 lists both probes BY NAME (the GUI's "Select all"), which is what
   delivers the group metadata ifacename=wlan0 that \$ifacename resolves to.
 
   Each probe carries its own external_dest, so \$external_dest resolves to a
@@ -396,5 +394,5 @@ Done. The QA scenario is wired as follows:
   on the hour: that is how QA checks the probe honours priority.
 
 Next: assign batch-host to a probe in the GUI, then Settings > Configuration >
-Preview. The full walkthrough and the expected output are in docs/QA.md.
+Preview. The full walkthrough and the expected output are in QA/QA.md.
 MSG

@@ -286,7 +286,10 @@ export default {
 }
 .preview-tabs button {
   background: transparent;
-  border: 1px solid var(--border);
+  /* Transparent (not a grey --border): an inactive tab's outline floating above
+     the dark code panel read as a stray grey line. The 1px keeps the box size
+     stable so the active tab still aligns; the active rule colours it in. */
+  border: 1px solid transparent;
   border-bottom: none;
   border-radius: 6px 6px 0 0;
   padding: 0.35rem 0.85rem;

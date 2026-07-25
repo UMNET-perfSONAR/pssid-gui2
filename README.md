@@ -103,13 +103,14 @@ establishes the baseline and the QA dataset layers on top without disturbing it.
   `job-comprehensive`, and the `all` host group (regex `.*`). No batches or
   hosts. The installer runs this once on first install, and it can also be run
   by hand.
-- `make seed-qa` ([`scripts/seed-qa.sh`](scripts/seed-qa.sh)) is for testing: it
-  adds the MWireless profile, five more tests, four more jobs, three batches at
-  different priorities, four probes carrying per-host metadata, and the `rpi4`
-  group (metadata `ifacename=wlan0`). Between them these exercise every batch
-  and metadata assignment path. Override the probe names with
-  `PSSID_QA_PROBE1`…`4`. The [QA walkthrough](docs/QA.md) has the full
-  procedure and the expected output.
+- `QA/seed-qa.sh` (or `make seed-qa`) is for testing, and lives in
+  [`QA/`](QA/) so it stays out of the deployment path: it adds the MWireless
+  profile, five more tests, four more jobs, three batches at different
+  priorities, two probes carrying per-host metadata, and the `rpi4` group
+  (metadata `ifacename=wlan0`). Between them these exercise every batch and
+  metadata assignment path. Supply the two probe IPs with `PSSID_QA_PROBE1`
+  and `PSSID_QA_PROBE2`. The [QA walkthrough](QA/QA.md) has the full
+  demonstration and the expected output.
 
 ## Documentation
 

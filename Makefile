@@ -69,8 +69,8 @@ dev-down: ## Stop the local dev stack
 seed-defaults: ## Load the pre-load starter data (fresh installs)
 	@bash scripts/seed-defaults.sh
 
-seed-qa: ## Add the QA dataset on top of the pre-load (see docs/QA.md)
-	@bash scripts/seed-qa.sh
+seed-qa: ## Add the QA dataset on top of the pre-load (manual; see QA/QA.md)
+	@bash QA/seed-qa.sh
 
 test: ## Run all unit tests (server + client, no stack needed)
 	@echo "== server unit tests =="

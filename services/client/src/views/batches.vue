@@ -97,6 +97,9 @@
             </div>
             <div class="form-group">
               <label for="batch-priority"> Priority </label>
+              <small id="batch-priority-help" class="text-muted" style="display:block; margin:0.15rem 0 0.5rem;">
+                Lower number = higher priority — sets which batch runs first when a probe's batches overlap.
+              </small>
               <input
                 type="number"
                 id="batch-priority"
@@ -105,7 +108,7 @@
                 class="form-control"
                 v-model.number="form.priority"
                 :aria-invalid="priorityError ? 'true' : 'false'"
-                :aria-describedby="priorityError ? 'batch-priority-error' : null"
+                :aria-describedby="priorityError ? 'batch-priority-help batch-priority-error' : 'batch-priority-help'"
               />
               <small v-if="priorityError" id="batch-priority-error" class="text-danger" role="alert">{{ priorityError }}</small>
             </div>

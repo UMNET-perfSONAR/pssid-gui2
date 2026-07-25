@@ -59,7 +59,7 @@ jobs:
       - name: Shell script syntax check
         run: |
           bash -n bootstrap.sh install.sh
-          for f in scripts/*.sh; do bash -n "$f"; done
+          for f in scripts/*.sh QA/*.sh; do bash -n "$f"; done
 
   smoke:
     name: End-to-end smoke (full stack)

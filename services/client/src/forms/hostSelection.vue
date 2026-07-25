@@ -146,13 +146,15 @@
 /* This picker uses a bare Bootstrap .list-group, so it does not inherit the
    app's themed .item-list styles and would otherwise render low-contrast text
    (light on light in dark mode). Style it here from the shared CSS variables so
-   the host names stay readable in both light and dark themes. */
+   the host names stay readable, and the selected row stays obvious, in both
+   light and dark themes. */
 .list-group-item {
   background: var(--surface) !important;
   color: var(--text) !important;
   border-color: var(--border) !important;
+  border-left: 3px solid transparent !important;
   cursor: pointer;
-  transition: background .12s;
+  transition: background .12s, border-left-color .12s;
 }
 .list-group-item p {
   margin: 0;
@@ -161,8 +163,20 @@
 .list-group-item:hover:not(.active) {
   background: rgba(var(--primary-rgb), .06) !important;
 }
+/* Selected host: tinted fill plus a solid left bar so the selection is obvious. */
 .list-group-item.active {
-  background: rgba(var(--primary-rgb), .14) !important;
+  background: rgba(var(--primary-rgb), .12) !important;
+  border-left-color: var(--primary) !important;
   font-weight: 600;
+}
+/* In dark mode the deep-navy --primary reads as almost-black on the dark
+   surface, so a selected row would not look selected. Use the bright accent for
+   the hover and selected states instead (matching the app-wide list styling). */
+:root[data-theme="dark"] .list-group-item:hover:not(.active) {
+  background: rgba(var(--accent-rgb), .08) !important;
+}
+:root[data-theme="dark"] .list-group-item.active {
+  background: rgba(var(--accent-rgb), .18) !important;
+  border-left-color: var(--accent) !important;
 }
 </style>
