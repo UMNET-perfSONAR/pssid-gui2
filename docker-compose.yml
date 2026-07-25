@@ -157,7 +157,7 @@ services:
       # When MONGO_USERNAME/MONGO_PASSWORD are set (the installer generates them),
       # the official image creates this root user on first initialization and
       # enables authentication. Left empty, the database runs without auth, which
-      # preserves the previous behaviour for a plain `docker compose up`.
+      # preserves the previous behavior for a plain `docker compose up`.
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-}
     expose:

@@ -22,21 +22,26 @@
 #                    job-group-1          rtt
 #                    job-host-1           rtt
 #   - batches:       batch-comprehensive  priority 0  eduroam    (-> "all" group)
-#                    batch-host           priority 1  MWireless  (UNASSIGNED)
+#                    batch-host           priority 1  MWireless  (-> probe 1, directly)
 #                    batch-group          priority 2  MWireless  (-> rpi4 group)
 #   - hosts:         two probes, each with the SAME metadata key
-#                    (external_dest) holding a DIFFERENT value
+#                    (external_dest) holding a DIFFERENT value. Probe 1 also
+#                    carries batch-host directly (not via a group).
 #   - host group:    rpi4 - every probe listed BY NAME (the GUI's "Select all",
 #                    not a regex), carrying group metadata ifacename=wlan0
 #
 # PRIORITY: lower number = higher priority. All three batches share the "Every 5
-# minutes" and "Every 1 hour" schedules so they COLLIDE on purpose; the probe
+# minutes" and "Every 1 hour" schedules so they COLLIDE on purpose; probe 1
 # should run batch-comprehensive (0) ahead of batch-host (1) ahead of
-# batch-group (2). That collision is the point -- it is how QA checks priority.
+# batch-group (2) -- it is the only host all three reach. Probe 2 only sees
+# batch-comprehensive (0) and batch-group (2). That collision is the point --
+# it is how QA checks priority.
 #
-# batch-host is deliberately left attached to NO host: assigning it to a probe
-# through the GUI is a QA step, and the only thing that exercises the GUI's own
-# host/batch assignment path (the seeders write to MongoDB directly).
+# batch-host is attached to probe 1 directly (not through a group), so the
+# dataset exercises the plain host-level batch attachment path without a manual
+# step. To ALSO exercise the GUI's own write path for this (as opposed to the
+# seeder writing to MongoDB directly), detach and reattach it by hand in the
+# GUI -- see QA/QA.md section 3.
 #
 # The probe NAMES are the probes' hostnames, which at this site are their IP
 # addresses -- ask the QA operator for the two probe IPs and pass them in. The
@@ -237,7 +242,7 @@ const s1hr  = sched('Every 1 hour');
 // ---- batches ------------------------------------------------------------------------
 // Lower priority number = higher priority. All three share BOTH schedules, so they
 // are due at the same instant every 5 minutes and again on the hour: a deliberate
-// collision, so QA can confirm the probe honours priority
+// collision, so QA can confirm the probe honors priority
 // (batch-comprehensive 0 > batch-host 1 > batch-group 2).
 const bIds = db.batches.insertMany([
   { name: 'batch-comprehensive', priority: 0, test_interface: '$ifacename',
@@ -256,12 +261,16 @@ const bIds = db.batches.insertMany([
 
 // ---- hosts: the lab probes ----------------------------------------------------------
 // Same metadata KEY on every probe, a DIFFERENT value each, so $external_dest
-// resolves per host. No batches attached here: batch-comprehensive arrives through
-// the "all" group's regex, batch-group through rpi4, and batch-host is left for the
-// tester to assign in the GUI.
+// resolves per host. batch-comprehensive and batch-group reach both probes
+// through the "all" and rpi4 groups; batch-host is attached directly to probe 1
+// only, so at least one probe exercises the plain host-level attachment path
+// (and so probe 1, not probe 2, is the one that sees all three batches).
 const hIds = db.hosts.insertMany(
   PROBES.map((name, i) => ({
-    name, batches: [], batch_ids: [], data: { external_dest: DESTS[i] },
+    name,
+    batches: i === 0 ? ['batch-host'] : [],
+    batch_ids: i === 0 ? [bIds[1]] : [],
+    data: { external_dest: DESTS[i] },
   }))
 ).insertedIds;
 
@@ -381,8 +390,12 @@ cat <<MSG
 Done. The QA scenario is wired as follows:
 
   batch-comprehensive  priority 0  eduroam    via the "all" group's .* regex
-  batch-host           priority 1  MWireless  NOT ASSIGNED - attach it in the GUI
+  batch-host           priority 1  MWireless  attached directly to $PSSID_QA_PROBE1
   batch-group          priority 2  MWireless  via the rpi4 group
+
+  $PSSID_QA_PROBE1 sees all three batches (0, 1, 2); $PSSID_QA_PROBE2 sees only
+  batch-comprehensive and batch-group (0, 2) -- that difference is deliberate,
+  so priority is only fully observable on probe 1.
 
   rpi4 lists both probes BY NAME (the GUI's "Select all"), which is what
   delivers the group metadata ifacename=wlan0 that \$ifacename resolves to.
@@ -391,8 +404,8 @@ Done. The QA scenario is wired as follows:
   different destination per host.
 
   All three batches share both schedules, so they collide every 5 minutes and
-  on the hour: that is how QA checks the probe honours priority.
+  on the hour: that is how QA checks the probe honors priority.
 
-Next: assign batch-host to a probe in the GUI, then Settings > Configuration >
-Preview. The full walkthrough and the expected output are in QA/QA.md.
+Next: Settings > Configuration > Preview. The full walkthrough and the
+expected output are in QA/QA.md.
 MSG

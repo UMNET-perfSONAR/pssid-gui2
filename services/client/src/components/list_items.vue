@@ -24,7 +24,7 @@
       class="form-control search-input"
       :aria-describedby="hintId"
     />
-    <p class="list-hint" :id="hintId">Click an item (or use the arrow keys and Enter) to edit it; click it again to close the editor.</p>
+    <p class="list-hint" :id="hintId">Click an item to edit it, or click it again to close the editor. Arrow keys and Enter work too.</p>
 
     <div
       v-if="filteredArray.length"

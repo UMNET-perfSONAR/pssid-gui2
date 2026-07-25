@@ -79,6 +79,7 @@
                 :close-on-select="false"
                 :options="batchNames"
                 v-model="form.batches"
+                :disabled="isDisabled"
                 aria-labelledby="host-batches-label"
               >
               </VueMultiselect>

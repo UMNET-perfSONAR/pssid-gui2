@@ -392,7 +392,7 @@ Practical consequences:
 - Containers start in seconds (they serve a pre-built bundle), so deploys and
   recreates are fast.
 - A broken build (for example a TypeScript error in pulled source) fails at
-  `docker compose build`, visibly, **before any container is recreated** - so a
+  `docker compose build`, visibly, **before any container is recreated** — so a
   bad change cannot take a running site down. Both `make refresh` and
   `scripts/upgrade-controller.sh` build before they recreate.
 - After a `git pull`, run `make refresh` (unchanged) to rebuild and apply the
@@ -439,12 +439,13 @@ is the metadata reference `$external_dest`), four more jobs, three batches —
 group metadata `ifacename=wlan0`.
 
 It wires every assignment path: a group batch via the `all` regex, a group batch
-via members selected by name in `rpi4`, host metadata (`external_dest`, the same
-key with a different value on each probe), and group metadata. `batch-host` is
-left attached to no host on purpose — assigning it in the GUI is a QA step, and
-the only one that exercises the GUI's own assignment path. All three batches
-share the same two schedules so they collide deliberately, which is how QA
-checks that priority is honoured (lower number wins).
+via members selected by name in `rpi4`, a batch attached directly to a host
+(`batch-host`, on the first probe only), host metadata (`external_dest`, the
+same key with a different value on each probe), and group metadata. Because
+`batch-host` reaches only that one probe, it is also the only host all three
+batches reach — all three share the same two schedules so they collide
+deliberately, which is how QA checks that priority is honored (lower number
+wins).
 
 Supply the two probe IPs (and, optionally, the destinations) with
 `PSSID_QA_PROBE1`/`PSSID_QA_PROBE2` and `PSSID_QA_DEST1`/`PSSID_QA_DEST2`; the

@@ -9,7 +9,7 @@ name: Publish images
 #   ghcr.io/<owner>/pssid-gui2_server:latest
 #   ghcr.io/<owner>/pssid-gui2_mongo:latest
 #
-# The client bundle has its edition baked in at build time, so an organisation
+# The client bundle has its edition baked in at build time, so an organization
 # publishing a branded edition adds a build step here with its own
 # VITE_EDITION and image tag (see services/client/src/edition/).
 

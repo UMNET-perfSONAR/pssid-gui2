@@ -90,6 +90,7 @@
                 :options="batchNames"
                 :multiple="true"
                 :close-on-select="false"
+                :disabled="isDisabled"
                 aria-labelledby="group-batches-label"
               >
               </VueMultiselect>

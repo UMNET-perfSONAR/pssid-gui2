@@ -4,7 +4,7 @@
  * The active edition is chosen from the `VITE_EDITION` build/deploy variable. We
  * apply it at runtime (setting CSS custom properties on :root) rather than at
  * build time, so the same image works for any edition and there is no risk of a
- * CSS purge dropping the colours. If `VITE_EDITION` is unset or unknown we fall
+ * CSS purge dropping the colors. If `VITE_EDITION` is unset or unknown we fall
  * back to the neutral default, so the app always renders with a valid identity.
  */
 

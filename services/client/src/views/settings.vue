@@ -276,10 +276,13 @@ export default {
 }
 .preview-tabs button {
   background: transparent;
-  /* Transparent (not a grey --border): an inactive tab's outline floating above
-     the dark code panel read as a stray grey line. The 1px keeps the box size
-     stable so the active tab still aligns; the active rule colours it in. */
+  /* Transparent (not a gray --border): an inactive tab's outline floating above
+     the dark code panel read as a stray gray line. The 1px keeps the box size
+     stable so the active tab still aligns; the active rule colors it in.
+     border-top is 2px in both states (transparent here) so recoloring it on
+     .active below doesn't shift the tab's height. */
   border: 1px solid transparent;
+  border-top-width: 2px;
   border-bottom: none;
   border-radius: 6px 6px 0 0;
   padding: 0.35rem 0.85rem;
@@ -288,18 +291,24 @@ export default {
   color: var(--muted);
   cursor: pointer;
 }
-/* The active tab takes the code panel's own colours (see .preview-pre below)
+/* The active tab takes the code panel's own colors (see .preview-pre below)
    rather than the card's, so the tab and the panel it labels read as one
    surface -- the conventional tabbed-panel look, and the reason the tab strip
    is pulled down a pixel to sit flush against it. These are the panel's fixed
    values, not theme tokens, because the panel is deliberately dark in every
-   theme; matching it keeps the two in step. Previously the active tab was
-   filled with --surface, which in dark mode is nearly the card colour, so the
-   tab lost its shape and the label appeared to float on the background. */
+   theme; matching it keeps the two in step.
+   That match is also why background/text alone cannot mark which tab is
+   selected in dark mode: the card's own --surface is already a near-black
+   navy there, almost the same shade as this fixed panel color, so the
+   "boxed tab popping off the card" cue that works in light mode nearly
+   vanishes in dark mode. The accent top border is theme-independent (the
+   edition accent color, not a neutral token) and stays visible regardless of
+   how close --surface lands to the panel's fixed dark value. */
 .preview-tabs button.active {
   color: #e2e8f0;
   background: #0f172a;
   border-color: #0f172a;
+  border-top-color: var(--accent);
 }
 .preview-pre {
   margin: 0;

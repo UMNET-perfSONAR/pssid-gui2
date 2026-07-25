@@ -29,7 +29,7 @@ router.get('/', guard, async (req: Request, res: Response) => {
     // environment (the documented way to configure a prebuilt image) would move
     // the server without moving the browser. That desync is not cosmetic: with
     // OPEN_WRITE=true on the server but false in the bundle, every write is
-    // permitted yet the interface greys out all of its own forms.
+    // permitted yet the interface grays out all of its own forms.
     const posture = { sso_enabled: isSsoEnabled(), open_write: isOpenWrite() };
 
     // No SSO: return an empty identity rather than erroring; the client treats

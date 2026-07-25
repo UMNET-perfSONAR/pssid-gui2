@@ -31,7 +31,7 @@ export default {
       return { success: 'check_circle', error: 'error', info: 'info' }[type] || 'info'
     },
     // Spoken prefix so a screen-reader user hears the toast's kind even though
-    // the visual cue is colour + icon (WCAG 1.4.1, never colour alone).
+    // the visual cue is color + icon (WCAG 1.4.1, never color alone).
     labelFor(type) {
       return { success: 'Success', error: 'Error', info: 'Information' }[type] || 'Information'
     }
@@ -40,7 +40,7 @@ export default {
 </script>
 
 <style scoped>
-/* Feedback appears as a snackbar rising from the bottom centre of the page,
+/* Feedback appears as a snackbar rising from the bottom center of the page,
    out of the way of the header actions and the form being edited. */
 .snackbar-region {
   position: fixed;

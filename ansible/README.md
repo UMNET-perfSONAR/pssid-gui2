@@ -82,7 +82,7 @@ pre-upgrade archive is in `mongo-backups/`; restore it with
 `scripts/restore.sh`.
 
 Treat the deployed checkout as owned by the deployment: hand-edits to tracked
-files are discarded on the next upgrade. Put customisations in `group_vars/` or
+files are discarded on the next upgrade. Put customizations in `group_vars/` or
 your inventory, where the playbook reapplies them on every run.
 
 ## Backups

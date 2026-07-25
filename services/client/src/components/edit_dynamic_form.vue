@@ -44,6 +44,7 @@
         :multiple="true"
         :close-on-select="false"
         :options="item.options"
+        :disabled="disabled"
         label="name"
         track-by="name"
       >
@@ -59,6 +60,7 @@
         :allow-empty="false"
         :options="item.options"
         :searchable="false"
+        :disabled="disabled"
         track-by="name"
         label="name"
       >
@@ -118,7 +120,7 @@
        type: String,
        default: 'Update'
      },
-     // Lets the parent keep the submit button grey until the fields it owns
+     // Lets the parent keep the submit button gray until the fields it owns
      // (for example the item name) are valid.
      submitDisabled: {
        type: Boolean,
@@ -130,6 +132,12 @@
      showSubmit: {
        type: Boolean,
        default: true
+     },
+     // Forwarded to the VueMultiselect fields above: unlike a native <select>,
+     // they don't gray out on their own inside a disabled <fieldset>.
+     disabled: {
+       type: Boolean,
+       default: false
      }
    }
 

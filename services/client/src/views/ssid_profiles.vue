@@ -90,18 +90,32 @@
               <small v-if="ssidNameError" id="ssid-network-name-error" class="text-danger" role="alert">{{ ssidNameError }}</small>
             </div>
             <div class="form-group">
-              <label for="ssid-layer2"> Layer 2 method </label>
-              <select id="ssid-layer2" v-model="form.layer2_script" class="form-control">
-                <option value="" disabled>-- Select Layer 2 Method --</option>
-                <option v-for="script in layerScriptsStore.layer2_scripts" :key="script" :value="script">{{ script }}</option>
-              </select>
+              <label id="ssid-layer2-label"> Layer 2 method </label>
+              <VueMultiselect
+                v-model="form.layer2_script"
+                :multiple="false"
+                :close-on-select="true"
+                :options="layerScriptsStore.layer2_scripts"
+                :searchable="false"
+                :disabled="isDisabled"
+                placeholder="Select layer 2 method"
+                aria-labelledby="ssid-layer2-label"
+              >
+              </VueMultiselect>
             </div>
             <div class="form-group">
-              <label for="ssid-layer3"> Layer 3 method </label>
-              <select id="ssid-layer3" v-model="form.layer3_script" class="form-control">
-                <option value="" disabled>-- Select Layer 3 Method --</option>
-                <option v-for="script in layerScriptsStore.layer3_scripts" :key="script" :value="script">{{ script }}</option>
-              </select>
+              <label id="ssid-layer3-label"> Layer 3 method </label>
+              <VueMultiselect
+                v-model="form.layer3_script"
+                :multiple="false"
+                :close-on-select="true"
+                :options="layerScriptsStore.layer3_scripts"
+                :searchable="false"
+                :disabled="isDisabled"
+                placeholder="Select layer 3 method"
+                aria-labelledby="ssid-layer3-label"
+              >
+              </VueMultiselect>
             </div>
           </fieldset>
         </form>
@@ -118,12 +132,13 @@
  import itemList from '../components/list_items.vue';
  import PageHeader from '../components/PageHeader.vue';
  import ConfirmModal from '../components/ConfirmModal.vue';
+ import VueMultiselect from 'vue-multiselect';
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName, validSsidNetworkName } from "../utils/validators.ts"
 
  export default {
-   components: { itemList, PageHeader, ConfirmModal },
+   components: { itemList, PageHeader, ConfirmModal, VueMultiselect },
    data() {
      return {
        ssidStore: useSsidStore(),
@@ -353,3 +368,5 @@
    }
  }
 </script>
+
+<style src="vue-multiselect/dist/vue-multiselect.css"></style>

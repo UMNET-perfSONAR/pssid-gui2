@@ -7,23 +7,23 @@
  * environment variable (see ./index.ts). Add a new entry here for another
  * organization.
  *
- * `*Rgb` values are the comma-separated channels of the matching hex colour so
+ * `*Rgb` values are the comma-separated channels of the matching hex color so
  * that translucent tints can be expressed as `rgba(var(--primary-rgb), .08)`
  * in CSS and still follow the active edition.
  */
 
 export interface EditionColors {
-  /** Primary surface colour: navbar, primary buttons, accents on light bg. */
+  /** Primary surface color: navbar, primary buttons, accents on light bg. */
   primary: string;
   /** Darker shade of primary, used for hover/pressed states. */
   primaryDark: string;
   /** RGB channels of `primary`, e.g. "0,39,76". */
   primaryRgb: string;
-  /** Accent colour: active indicators, highlights, warning buttons. */
+  /** Accent color: active indicators, highlights, warning buttons. */
   accent: string;
   /** RGB channels of `accent`. */
   accentRgb: string;
-  /** Readable text colour to place on top of `accent`. */
+  /** Readable text color to place on top of `accent`. */
   accentText: string;
 }
 
@@ -34,9 +34,9 @@ export interface Edition {
   productName: string;
   /** Leading navbar word, e.g. "pSSID". */
   shortName: string;
-  /** Emphasised (accent-coloured) navbar word, e.g. "GUI". */
+  /** Emphasized (accent-colored) navbar word, e.g. "GUI". */
   emphasis: string;
-  /** Owning organisation; shown where a sponsor label is appropriate. "" hides it. */
+  /** Owning organization; shown where a sponsor label is appropriate. "" hides it. */
   org: string;
   /** Short marketing line for docs/landing surfaces. */
   tagline: string;
@@ -50,10 +50,10 @@ export interface Edition {
 export const editions: Record<string, Edition> = {
   /**
    * Neutral, vendor-agnostic edition. A secure deep-navy + cyan identity that
-   * reads as a trustworthy wireless/networking product for any organisation.
+   * reads as a trustworthy wireless/networking product for any organization.
    *
-   * To brand the interface for an organisation, add another entry here with
-   * that organisation's palette and product name, then deploy with
+   * To brand the interface for an organization, add another entry here with
+   * that organization's palette and product name, then deploy with
    * `VITE_EDITION=<id>` (see ./index.ts).
    */
   default: {

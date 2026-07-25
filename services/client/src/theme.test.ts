@@ -13,7 +13,7 @@ describe('theme', () => {
   });
 
   it('exposes the three selectable modes in menu order', () => {
-    expect(THEME_MODES).toEqual(['light', 'dark', 'colorblind']);
+    expect(THEME_MODES).toEqual(['light', 'dark', 'accessible']);
   });
 
   it('persists and applies a chosen theme', () => {
@@ -22,28 +22,28 @@ describe('theme', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
   });
 
-  it('persists and applies the colour-blind theme', () => {
-    setTheme('colorblind');
-    expect(getTheme()).toBe('colorblind');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('colorblind');
+  it('persists and applies the accessible (high-contrast) theme', () => {
+    setTheme('accessible');
+    expect(getTheme()).toBe('accessible');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('accessible');
   });
 
-  it('ignores an unrecognised stored value and falls back to the default', () => {
+  it('ignores an unrecognized stored value and falls back to the default', () => {
     localStorage.setItem('pssid-theme', 'neon');
     expect(getTheme()).toBe('light');
   });
 
-  it('cycles light -> dark -> colorblind -> light', () => {
+  it('cycles light -> dark -> accessible -> light', () => {
     setTheme('light');
     expect(toggleTheme()).toBe('dark');
-    expect(toggleTheme()).toBe('colorblind');
+    expect(toggleTheme()).toBe('accessible');
     expect(toggleTheme()).toBe('light');
   });
 
   it('applyTheme reflects the stored value onto the document', () => {
-    setTheme('colorblind');
+    setTheme('accessible');
     document.documentElement.removeAttribute('data-theme');
     applyTheme();
-    expect(document.documentElement.getAttribute('data-theme')).toBe('colorblind');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('accessible');
   });
 });

@@ -45,7 +45,11 @@ export const useUserStore = defineStore('user', {
 
   actions: {
 
-    async fetchUser(this: typeof useUserStore) {
+    // No explicit `this` annotation: Pinia infers `this` as the store instance
+    // inside actions, giving access to state/getters/actions. Annotating it (e.g.
+    // `this: typeof useUserStore`) would instead type `this` as the store
+    // *definition* factory, on which state fields like `isLoading` don't exist.
+    async fetchUser() {
       this.isLoading = true;
         try {
           const res = await fetch('/api/userinfo', {

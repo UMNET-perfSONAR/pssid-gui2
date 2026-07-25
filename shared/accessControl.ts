@@ -28,7 +28,7 @@ function envBool(name: string, fallback: boolean): boolean {
 // Resolved lazily, not at module load: index.ts calls dotenv.config() in its
 // module body, which runs AFTER this module's imports are evaluated. Reading
 // the environment on each call means a value from services/server/.env is
-// honoured just as a real environment variable from compose is.
+// honored just as a real environment variable from compose is.
 
 /** Effective write policy when SSO is disabled. */
 export const isOpenWrite = (): boolean => envBool('OPEN_WRITE', config.OPEN_WRITE);

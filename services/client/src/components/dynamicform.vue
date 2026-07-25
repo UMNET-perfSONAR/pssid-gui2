@@ -45,6 +45,7 @@
           :multiple="true"
           :close-on-select="false"
           :options="item.options"
+          :disabled="disabled"
           label="name"
           track-by="name"
         >
@@ -60,6 +61,7 @@
           :allow-empty="false"
           :options="item.options"
           :searchable="false"
+          :disabled="disabled"
           track-by="name"
           label="name"
           @select="sendFormType(form_values[index].selected)"
@@ -116,7 +118,7 @@
        type: String,
        default: 'Save'
      },
-     // Lets the parent keep the submit button grey until the fields it owns
+     // Lets the parent keep the submit button gray until the fields it owns
      // (for example the item name) are valid.
      submitDisabled: {
        type: Boolean,
@@ -127,6 +129,12 @@
      showSubmit: {
        type: Boolean,
        default: true
+     },
+     // Forwarded to the VueMultiselect fields below: unlike a native <select>,
+     // they don't gray out on their own inside a disabled <fieldset>.
+     disabled: {
+       type: Boolean,
+       default: false
      }
 
    },
@@ -144,7 +152,7 @@
    methods: {
      handleFormSubmit() {
        // Pressing Enter in a field submits the form even while the submit
-       // button is greyed out; honour the disabled state either way.
+       // button is grayed out; honor the disabled state either way.
        if (this.submitDisabled) return;
        this.form_values.forEach((field) => {
          this.validateField(field);
@@ -195,7 +203,7 @@
            value: item.default,
            // VueMultiselect's v-model shape depends on :multiple - an array for
            // multiselect, a plain object (or null) for singleselect. Wrapping a
-           // singleselect default in an array (the old behaviour) doesn't match
+           // singleselect default in an array (the old behavior) doesn't match
            // what the component emits once a user actually picks an option, so
            // an untouched default silently produced the wrong spec value.
            selected: item.type === 'singleselect'

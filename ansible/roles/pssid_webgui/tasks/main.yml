@@ -118,7 +118,7 @@
 # below regenerates the files it owns from the playbook variables.
 #
 # Untracked files are left alone. Anything hand-edited inside this checkout is
-# lost on upgrade by design: customisations belong in group_vars or the
+# lost on upgrade by design: customizations belong in group_vars or the
 # inventory, where they are reapplied on every run.
 - name: Discard deploy-time edits that would conflict with the pull
   ansible.builtin.command:

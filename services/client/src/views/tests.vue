@@ -74,6 +74,7 @@
               :close-on-select="true"
               :options="testStore.listOfOptions"
               :searchable="false"
+              :disabled="isDisabled"
               aria-labelledby="test-type-label"
               @select="renderForm($event)"
             >
@@ -94,6 +95,7 @@
               :optional_data="addedOptionalData"
               :submit-disabled="!addTestValid"
               :show-submit="false"
+              :disabled="isDisabled"
             >
             </dynamicform>
           </div>
@@ -132,6 +134,7 @@
               :close-on-select="true"
               :options="testStore.listOfOptions"
               :searchable="false"
+              :disabled="isDisabled"
               aria-labelledby="edit-test-type-label"
               @select="renderForm($event)"
             >
@@ -150,6 +153,7 @@
               :dynamic_options="currOptionalData"
               :submit-disabled="!editTestValid"
               :show-submit="false"
+              :disabled="isDisabled"
             > </editFormComp>
           </div>
           <!-- Type changed: fill in the new type's fields from its template. -->
@@ -161,6 +165,7 @@
               :optional_data="currOptionalData"
               :submit-disabled="!editTestValid"
               :show-submit="false"
+              :disabled="isDisabled"
             >
             </dynamicform>
           </div>
@@ -254,7 +259,7 @@
         if (this.isDuplicate(this.currentItem.name)) return 'A test with this name already exists.';
         return '';
       },
-      // The submit buttons stay grey until every field this view owns is
+      // The submit buttons stay gray until every field this view owns is
       // valid; the dynamic form validates its template fields on submit.
       addTestValid() {
         return validDisplayName(this.test_name).valid &&
@@ -414,7 +419,7 @@
          // with no 'unsafe-eval' (nginx.conf), so the Function constructor
          // throws there — degrade to "no client-side check" rather than break
          // the form. Do NOT add 'unsafe-eval' to the CSP to make this run: that
-         // would weaken the page's XSS defences so it can execute strings from
+         // would weaken the page's XSS defenses so it can execute strings from
          // disk, which is a bad trade for a convenience check.
          let valid = true;
          try {

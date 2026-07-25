@@ -22,7 +22,7 @@
 (function () {
   try {
     var STORAGE_KEY = 'pssid-theme';
-    var VALID = ['light', 'dark', 'colorblind'];
+    var VALID = ['light', 'dark', 'accessible'];
 
     var mode = null;
     try {
@@ -32,7 +32,7 @@
     }
 
     if (VALID.indexOf(mode) === -1) {
-      // No stored preference: honour the operating-system colour scheme, the
+      // No stored preference: honor the operating-system color scheme, the
       // same default getTheme() falls back to.
       var prefersDark = typeof window.matchMedia === 'function'
         && window.matchMedia('(prefers-color-scheme: dark)').matches;

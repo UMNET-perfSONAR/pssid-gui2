@@ -78,6 +78,7 @@
                 :multiple="true"
                 :close-on-select="false"
                 :options="testNames"
+                :disabled="isDisabled"
                 aria-labelledby="job-tests-label"
               >
               </VueMultiselect>

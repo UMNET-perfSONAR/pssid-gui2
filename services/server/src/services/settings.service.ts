@@ -1,6 +1,6 @@
 // Application settings persisted as a single document in the `settings`
 // collection. Kept in MongoDB (not shared/config.ts) so operators can change
-// behaviour at runtime through the GUI without a redeploy.
+// behavior at runtime through the GUI without a redeploy.
 import { connectToMongoDB } from './database.service';
 
 export interface AppSettings {

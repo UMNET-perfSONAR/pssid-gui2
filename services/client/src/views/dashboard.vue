@@ -318,7 +318,7 @@ export default {
   margin-bottom: 2rem;
 }
 /* No outer panel: the individual white cards stand on the page, connected by
-   the measured arrows. Blocks span two rows so the flow is vertically centred
+   the measured arrows. Blocks span two rows so the flow is vertically centered
    and Hosts / Groups fan out from Batches. */
 .anatomy {
   position: relative;

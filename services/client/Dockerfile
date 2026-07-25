@@ -35,7 +35,7 @@ RUN npm run build
 EXPOSE 8080
 
 # The dev stack overrides the command to `npm run dev`; this default matches the
-# runtime stage so behaviour is identical whichever stage a container runs.
+# runtime stage so behavior is identical whichever stage a container runs.
 CMD ["node_modules/.bin/http-server", "dist", "-a", "0.0.0.0", "-p", "8080", "-c-1", "-d", "false", "--proxy", "http://127.0.0.1:8080?"]
 
 # ---- Runtime: static bundle + http-server only -------------------------------

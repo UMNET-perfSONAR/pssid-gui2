@@ -61,7 +61,7 @@
        return validCron(this.text).error;
      },
      // Plain-English reading of the current (valid) expression, shown live so a
-     // schedule's real behaviour is visible while it is being edited.
+     // schedule's real behavior is visible while it is being edited.
      description() {
        return describeCron(this.text);
      }

@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 /* ─── Design Tokens ─────────────────────────────────────────── */
-/* The edition colours (--primary*, --accent*) are set at runtime by the active
+/* The edition colors (--primary*, --accent*) are set at runtime by the active
    edition; see src/edition/. The values here are the neutral default and act as
    a fallback if the edition layer has not run yet. */
 :root {
@@ -26,9 +26,9 @@
   --shadow:    0 2px 10px rgba(0,0,0,.09);
 
   /* ── Semantic state tokens ──────────────────────────────────────
-     Every status pill, badge, banner, toggle and coloured button reads its
-     colour from these tokens rather than a hard-coded hex, so a single theme
-     override (dark, colour-blind) recolours the whole app consistently. The
+     Every status pill, badge, banner, toggle and colored button reads its
+     color from these tokens rather than a hard-coded hex, so a single theme
+     override (dark, accessible) recolors the whole app consistently. The
      light defaults below reproduce the original appearance exactly. */
   --ok:           #16a34a;   /* positive / success / healthy, solid fill    */
   --ok-hover:     #15803d;
@@ -53,7 +53,7 @@
 
   --neutral:      #94a3b8;   /* off / inactive                              */
   --track-off:    #cbd2dc;   /* switch track, off                           */
-  --disabled-bg:  #a7b0bc;   /* greyed submit button                        */
+  --disabled-bg:  #a7b0bc;   /* grayed submit button                        */
   --disabled-fg:  #ffffff;
 
   /* Snackbar icons always sit on a dark toast, in every theme. */
@@ -65,7 +65,7 @@
   --focus-ring:   #1a56db;
 }
 
-/* Dark theme: overrides neutral surfaces only; the edition colours are untouched.
+/* Dark theme: overrides neutral surfaces only; the edition colors are untouched.
    Toggled via data-theme="dark" on <html> (see src/theme.ts). */
 :root[data-theme="dark"] {
   color-scheme: dark;
@@ -92,20 +92,21 @@
   --focus-ring:   #7aa7ff;
 }
 
-/* ── Colour-blind / high-contrast theme ─────────────────────────────
-   A bright, high-contrast light scheme whose state colours are drawn from the
-   Okabe–Ito colour-blind-safe family: success = blue (#0072B2), danger =
+/* ── Accessible / high-contrast theme ─────────────────────────────
+   A bright, high-contrast light scheme whose state colors are drawn from the
+   Okabe–Ito color-blind-safe family: success = blue (#0072B2), danger =
    vermillion, caution = amber. Those hues stay mutually distinguishable under
    protanopia, deuteranopia and tritanopia (the three dichromacies). They sit
    at similar luminance, so hue alone would not separate them under full
-   monochromacy; the app never relies on colour alone for that reason: every
-   status also carries an icon and a text label (WCAG 1.4.1 Use of Colour), so
-   no information is lost even when all three read as the same grey. Each state
-   colour keeps >= 4.5:1 as white-on-solid and >= 3:1 as an icon on white.
-   Toggled via data-theme="colorblind" on <html> (see src/theme.ts). Note: the edition
-   --primary/--accent are inline styles set by the edition layer and cannot be
-   overridden here; only the neutral surfaces and semantic tokens change. */
-:root[data-theme="colorblind"] {
+   monochromacy; the app never relies on color alone for that reason: every
+   status also carries an icon and a text label (WCAG 1.4.1 Use of Color), so
+   no information is lost even when all three read as the same gray. Each state
+   color keeps >= 4.5:1 as white-on-solid and >= 3:1 as an icon on white.
+   Toggled via data-theme="accessible" on <html> (see src/theme.ts). Note: the
+   edition --primary/--accent are inline styles set by the edition layer and
+   cannot be overridden here; only the neutral surfaces and semantic tokens
+   change. */
+:root[data-theme="accessible"] {
   color-scheme: light;
   --bg:        #ffffff;
   --surface:   #ffffff;
@@ -160,7 +161,7 @@
 
 /* In dark mode the deep-navy --primary used for icon glyphs is nearly invisible
    on the dark surfaces, so render those icons in the bright accent instead. This
-   covers both class-styled icons and the few that set the colour inline. */
+   covers both class-styled icons and the few that set the color inline. */
 :root[data-theme="dark"] .page-header-icon,
 :root[data-theme="dark"] .settings-card-icon,
 :root[data-theme="dark"] .material-icons[style*="var(--primary)"] {
@@ -176,8 +177,8 @@
    gives the root element a UA-provided background of its own, and that stops
    body's background from propagating to the canvas the way it normally would.
    On a short page body's box then ends partway down the viewport and the UA
-   colour shows below it, so the seam reads as a stray full-width rule with a
-   different shade beneath — most visible in dark mode, where the UA colour is a
+   color shows below it, so the seam reads as a stray full-width rule with a
+   different shade beneath — most visible in dark mode, where the UA color is a
    near-black that clashes with the navy. Painting --bg here removes the seam at
    any content height. */
 html {
@@ -426,7 +427,7 @@ fieldset[disabled] .form-control {
   opacity: 0.5 !important;
   cursor: not-allowed;
 }
-/* Add/Update buttons read as grey until every field is valid; the green fill
+/* Add/Update buttons read as gray until every field is valid; the green fill
    is the signal that the entry is complete and can be submitted. */
 .btn.btn-success:disabled,
 .btn.btn-success[disabled] {
@@ -640,7 +641,7 @@ fieldset[disabled] .form-control {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--muted);
-  /* Page-background shade, not a hardcoded light grey: a fixed #f8f9fb reads
+  /* Page-background shade, not a hardcoded light gray: a fixed #f8f9fb reads
      as a glaring light band on dark-mode tables. var(--bg) gives the same
      subtle header tint in light mode and follows every theme. */
   background: var(--bg);
@@ -798,7 +799,7 @@ summary:focus-visible,
 #main-content:focus-visible {
   outline: none !important;
 }
-/* On the dark navbar a coloured ring can be low-contrast; use white there. */
+/* On the dark navbar a colored ring can be low-contrast; use white there. */
 .navbar a:focus-visible,
 .navbar button:focus-visible {
   outline-color: #ffffff !important;
@@ -822,7 +823,7 @@ summary:focus-visible,
    adjustment strengthens contrast in dark mode too (a global darker --muted
    would otherwise disappear on the dark surfaces). */
 @media (prefers-contrast: more) {
-  :root {                          /* light + colour-blind (light) surfaces */
+  :root {                          /* light + accessible (light) surfaces   */
     --border: #4b5563;
     --muted:  #3a414c;
   }
@@ -834,7 +835,7 @@ summary:focus-visible,
   .form-control { border-width: 2px !important; }
 }
 
-/* Windows High Contrast / forced-colors: let the OS palette drive colours and
+/* Windows High Contrast / forced-colors: let the OS palette drive colors and
    keep a visible focus outline that respects the user's chosen highlight. */
 @media (forced-colors: active) {
   *:focus-visible {

@@ -30,7 +30,7 @@ deleting, resetting or rewriting anything the pre-load owns.
 Both seeders `docker exec` into the running mongo container, so run them **on the
 VM**, from the deployment directory (usually `/opt/pssid-gui`), with the stack up.
 
-Writes must be enabled or every GUI edit is refused and the forms stay greyed
+Writes must be enabled or every GUI edit is refused and the forms stay grayed
 out. With SSO off that means `OPEN_WRITE=true`:
 
 ```bash
@@ -111,8 +111,8 @@ below; substitute the real IPs if you seeded with them.
 
 **SSID profiles** — show `eduroam` and `MWireless`.
 - Open `MWireless`; show it has both a layer 2 and a layer 3 method.
-- (Optional break, restored later:) clear the layer 2 method and note Preview
-  will later reject it.
+- (Optional, restored by re-seeding:) clear the layer 2 method and note Preview
+  rejects it.
 
 **Tests** — show the seven tests and that different types have different fields.
 - Open `test-rtt-to-external`: type **rtt**, `dest` is `$external_dest`, `length`
@@ -136,9 +136,14 @@ below; substitute the real IPs if you seeded with them.
 - Open `Probe-IP-address-1`; show its metadata `external_dest = <its value>`
   (e.g. `www.google.com`), and that `Probe-IP-address-2` has the **same key, a
   different value** (`www.reddit.com`).
-- **Assign a batch through the GUI** (the one step the seeder leaves for you):
-  attach **batch-host** to `Probe-IP-address-1`, Save, reload — it persists.
-  This is what proves the GUI's own write path, not just the seeder's.
+- Point out `Probe-IP-address-1`'s **Batches** field already lists
+  `batch-host`, attached directly rather than through a group;
+  `Probe-IP-address-2` has none of its own. Why that matters: section 5.
+- Optional: to also exercise the GUI's own write path for a host-batch
+  assignment (as opposed to the seeder writing to MongoDB directly), remove
+  `batch-host` from `Probe-IP-address-1`, Save, reload to confirm it is gone,
+  then reattach it and Save again. Re-running `bash QA/seed-qa.sh` restores it
+  regardless.
 - Open the host's **Probe configuration** panel: it shows only this host's slice
   of the config.
 
@@ -165,6 +170,11 @@ attach to hosts and groups → generate a validated config file.
 **Settings → Configuration → Preview**, then check each of the following. All of
 it is verified against the shipped pipeline, so these are exact expectations.
 (Values assume the placeholder probe names and default destinations.)
+
+**Batch attachment** — `Probe-IP-address-1`'s `batches` lists all three;
+`Probe-IP-address-2`'s lists only `batch-comprehensive` and `batch-group`
+(both arriving via `all`/`rpi4`). `batch-host` reaches probe 1 alone, by
+direct host attachment rather than a group — see section 5 for why.
 
 **Metadata layering** — group metadata sits *under* host metadata, and each probe
 carries its own destination:
@@ -234,11 +244,17 @@ Lower number wins: `batch-comprehensive` (0) → `batch-host` (1) →
 
 All three share **both** the "Every 1 hour" and "Every 5 minutes" schedules, so
 they are due simultaneously every five minutes and again on the hour. That
-collision is deliberate — it is what makes priority observable. On a probe, the
-higher-priority batch should run and the others yield.
+collision is deliberate — it is what makes priority observable.
 
-Without a probe, confirm in Preview that the three batches carry priorities
-0/1/2 and genuinely overlap on both schedules.
+`batch-host` reaches only `Probe-IP-address-1` (attached directly, not through
+a group), so that probe is the one all three batches reach — on it, the
+higher-priority batch should run and the others yield. `Probe-IP-address-2`
+only ever sees `batch-comprehensive` (0) and `batch-group` (2), so priority
+there is a simple two-way comparison, not a three-way one.
+
+Without a probe, confirm in Preview that `Probe-IP-address-1` resolves to all
+three batches, `Probe-IP-address-2` to two, and that the shared batches
+genuinely overlap on both schedules.
 
 ## 6. Error handling
 
@@ -287,7 +303,7 @@ its own documents, by design. Restoring from a backup is the way back.
 |---|---|
 | Batch via group **regex** | `all` (`.*`) carries `batch-comprehensive` |
 | Batch via group **selection** | `rpi4` (members by name) carries `batch-group` |
-| Batch via **host**, set in the GUI | `batch-host`, assigned by hand in section 3 |
+| Batch via **host**, attached directly | `batch-host`, on `Probe-IP-address-1` only (optionally re-exercised by hand in section 3) |
 | Group metadata | `ifacename=wlan0` on `rpi4` → `$ifacename` |
 | Host metadata, same key, different values | `external_dest` per probe → `$external_dest` |
 | Metadata layering | group under host, per host |

@@ -91,6 +91,7 @@
                 :multiple="true"
                 :close-on-select="false"
                 :options="ssidProfileNames"
+                :disabled="isDisabled"
                 aria-labelledby="batch-ssid-label"
               >
               </VueMultiselect>
@@ -119,6 +120,7 @@
                 :multiple="true"
                 :close-on-select="false"
                 :options="jobNames"
+                :disabled="isDisabled"
                 aria-labelledby="batch-jobs-label"
               >
               </VueMultiselect>
@@ -130,6 +132,7 @@
                 :multiple="true"
                 :close-on-select="false"
                 :options="scheduleNames"
+                :disabled="isDisabled"
                 aria-labelledby="batch-schedules-label"
               >
               </VueMultiselect>

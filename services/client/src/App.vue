@@ -92,10 +92,14 @@ import { activeEdition } from './edition'
 import { getTheme, setTheme } from './theme'
 
 // The three appearance modes, with the icon and label shown in the menu.
+// 'tonality' (a circle split into a light and a dark half) reads as "contrast"
+// on sight, matching the "High contrast" label directly; 'accessibility_new'
+// (a person) reads as "accessibility settings" more broadly, which is one step
+// removed from what this specific option does.
 const THEME_OPTIONS = [
-  { value: 'light',      icon: 'light_mode',         label: 'Light' },
-  { value: 'dark',       icon: 'dark_mode',          label: 'Dark' },
-  { value: 'colorblind', icon: 'accessibility_new',  label: 'High contrast' },
+  { value: 'light',      icon: 'light_mode', label: 'Light' },
+  { value: 'dark',       icon: 'dark_mode',  label: 'Dark' },
+  { value: 'accessible', icon: 'tonality',   label: 'High contrast' },
 ];
 
 export default {
@@ -291,7 +295,10 @@ export default {
   top: calc(100% + 6px);
   right: 0;
   z-index: 1050;
-  min-width: 260px;
+  /* Sized for one line (icon + label + check) since the per-mode descriptions
+     were removed; 260px was left over from when a row wrapped onto a second
+     line and needed the extra width. */
+  min-width: 190px;
   margin: 0;
   padding: 0.35rem;
   list-style: none;
@@ -320,10 +327,10 @@ export default {
 .theme-menu-item.active {
   background: rgba(var(--primary-rgb), 0.06);
 }
-/* Match the icon colour to the menu's own label text so it is always exactly
+/* Match the icon color to the menu's own label text so it is always exactly
    as legible as the label, in every theme (the deep-navy --primary was too
    dark to read on the panel in light and high-contrast modes). The active row
-   is additionally marked with the check on the right, so colour isn't the cue. */
+   is additionally marked with the check on the right, so color isn't the cue. */
 .theme-menu-icon {
   font-size: 1.25rem;
   color: var(--text);
