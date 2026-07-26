@@ -358,11 +358,12 @@ for (const coll of ['schedules', 'ssid_profiles', 'tests', 'jobs', 'batches', 'h
 }
 EOF
 
-# ---- verify the writes actually landed -------------------------------------------
+# ---- verify that the writes landed -----------------------------------------------
 # mongosh reading stdin exits 0 even when statements failed -- for example when
 # the pre-load check quit(1) after an auth error, or writes were rejected on an
 # authenticated database with missing .env credentials. Check the net effect and
-# fail loudly, so a "Done" banner never appears over an unchanged database. The
+# report an explicit error, so a "Done" banner never appears over an unchanged
+# database. The
 # pre-load leaves zero batches; this dataset adds three, so a batch count below
 # three means the seed did not take. (Same guard as scripts/seed-defaults.sh.)
 # shellcheck disable=SC2086

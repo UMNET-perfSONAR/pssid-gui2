@@ -201,10 +201,11 @@ for (const coll of ['schedules', 'ssid_profiles', 'tests', 'jobs', 'batches', 'h
 }
 EOF
 
-# ---- verify the writes actually landed -------------------------------------------
+# ---- verify that the writes landed -----------------------------------------------
 # mongosh reading stdin exits 0 even when every statement failed (for example,
 # unauthenticated writes against an authenticated database), so check the net
-# effect and fail loudly instead of letting an empty site look "seeded". The
+# effect and report an explicit error rather than letting an empty site appear
+# seeded. The
 # Ansible role only writes its once-only marker when this script succeeds.
 # shellcheck disable=SC2086
 SCHEDULE_COUNT="$(docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" --eval 'db.schedules.countDocuments()' | tail -n1 | tr -dc '0-9')"

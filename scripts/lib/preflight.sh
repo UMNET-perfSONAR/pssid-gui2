@@ -68,17 +68,17 @@ _check_disk_path() {
 # (default: /var/lib/containerd), which is independent of Docker's own
 # "data-root" (default: /var/lib/docker, overridable in /etc/docker/daemon.json).
 # Redirecting only one of the two (e.g. pointing daemon.json's data-root at a
-# roomy volume while containerd still writes to a cramped /var/lib/containerd)
-# looks fine in `docker info` but still dies mid-build with "no space left on
+# large volume while containerd still writes to a constrained /var/lib/containerd)
+# appears correct in `docker info` but still fails mid-build with "no space left on
 # device" while extracting layers. Falls back to /var/lib/docker and
 # /var/lib/containerd respectively when Docker is not installed yet.
 check_disk() {
   local docker_root containerd_root rc=0
   docker_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
   [ -n "$docker_root" ] && [ -d "$docker_root" ] || docker_root="/var/lib/docker"
-  # `|| true`: the containerd CLI may be absent (fresh box, or Docker installs
+  # `|| true`: the containerd CLI may be absent (fresh host, or Docker installs
   # that do not expose it); callers source this under `set -e -o pipefail`,
-  # where an unguarded command-not-found would silently kill the installer.
+  # where an unguarded command-not-found would silently abort the installer.
   containerd_root="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1 || true)"
   [ -n "$containerd_root" ] && [ -d "$containerd_root" ] || containerd_root="/var/lib/containerd"
   _check_disk_path "Docker" "$docker_root" || rc=1

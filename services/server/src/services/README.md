@@ -19,6 +19,6 @@ collection's data changes.
 ### utility.service.ts
 Provides functions that resolve object IDs from the database, supporting the reference
 system that keeps related objects in sync. When an object is referenced from another
-collection — for example, when hosts are selected within a host_group — its object
+collection (for example, when hosts are selected within a host_group), its object
 `_id` is stored alongside the reference. Referencing by `_id` rather than by name keeps
 references stable when a name changes or an object must be removed from several places.

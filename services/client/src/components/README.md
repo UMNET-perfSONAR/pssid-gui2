@@ -19,8 +19,8 @@ Adds arbitrary optional key/value data to a record. Used in Hosts, Host Groups, 
 Tests.
 
 ### dynamicform.vue
-Generates a form dynamically from a field specification — each entry names a field
-and its input type — and renders the matching input for each. Used for test forms,
+Generates a form dynamically from a field specification (each entry names a field
+and its input type) and renders the matching input for each. Used for test forms,
 whose fields vary by test type.
 
 ### edit_dynamic_form.vue

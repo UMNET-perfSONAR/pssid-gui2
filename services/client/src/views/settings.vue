@@ -8,7 +8,7 @@
 
     <div v-if="settingsStore.isLoading" class="loading-state" role="status" aria-live="polite">
       <div class="spinner"></div>
-      <span>Loading settings...</span>
+      <span>Loading settings…</span>
     </div>
 
     <template v-else>

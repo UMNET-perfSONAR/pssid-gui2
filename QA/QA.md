@@ -2,7 +2,7 @@
 
 How to load the QA dataset on top of the pre-load, run an official demo that
 shows every part of the GUI working, and verify the generated configuration is
-correct — all without needing a probe.
+correct, all without needing a probe.
 
 This folder is deliberately **outside the deployment path**: neither the
 bootstrap nor the installer runs `seed-qa.sh`. It is a manual QA tool, applied
@@ -40,7 +40,7 @@ cd /opt/pssid-gui && curl -sk https://localhost/api/userinfo; echo
 Expect `"open_write":true`. If it is false, see
 [../docs/deployment.md](../docs/deployment.md#single-sign-on).
 
-Take a restore point first — this is what section 7 rolls back to:
+Take a restore point first. This is what section 7 rolls back to:
 
 ```bash
 make backup && ls -lt mongo-backups | head -3
@@ -79,12 +79,12 @@ batches 3, hosts 2, host_groups 2.
 
 | | Pre-load | QA |
 |---|---|---|
-| Schedules | all 4 | — (reuses them) |
+| Schedules | all 4 | none (reuses them) |
 | SSID profiles | eduroam | MWireless |
 | Tests | 2 Google tests | 5 more |
 | Jobs | job-comprehensive | 4 more |
-| Batches | — | all 3 |
-| Hosts | — | 2 probes |
+| Batches | none | all 3 |
+| Hosts | none | 2 probes |
 | Host groups | `all` (regex `.*`) | `rpi4` |
 
 The QA seeder attaches `batch-comprehensive` to the pre-load's `all` group and
@@ -92,7 +92,7 @@ leaves everything else about that group alone. Re-running either seeder, in
 either order, lands in the same state: the pre-load upserts its own documents
 (preserving their database ids) and never touches batches, hosts or `rpi4`.
 
-**Host regex.** `all` uses `.*`, a standard Python `re.match` pattern — `.` is
+**Host regex.** `all` uses `.*`, a standard Python `re.match` pattern: `.` is
 any character, `*` a quantifier, so `.*` matches everything (a bare `*` is
 invalid). The GUI's regex field links to the
 [`re` syntax guide](https://docs.python.org/3/library/re.html); see also
@@ -105,34 +105,35 @@ there and editable, and finish at Settings where the whole thing becomes a
 config file. Every screen is one or two clicks. Placeholder probe names are used
 below; substitute the real IPs if you seeded with them.
 
-**Schedules** — show the four cron schedules.
+**Schedules.** Show the four cron schedules.
 - Point out `Every 5 minutes` and `Every 1 hour` (the two the batches collide on).
 - Open one, change nothing, and note the cron string renders. Cancel.
 
-**SSID profiles** — show `eduroam` and `MWireless`.
+**SSID profiles.** Show `eduroam` and `MWireless`.
 - Open `MWireless`; show it has both a layer 2 and a layer 3 method.
 - (Optional, restored by re-seeding:) clear the layer 2 method and note Preview
   rejects it.
 
-**Tests** — show the seven tests and that different types have different fields.
+**Tests.** Show the seven tests and that different types have different fields.
 - Open `test-rtt-to-external`: type **rtt**, `dest` is `$external_dest`, `length`
   is a number, `protocol` is a dropdown set to `UDP`.
 - Open `test-dns-to-external`: type **dns**, a `record` dropdown (`AAAA`), and a
-  free-form `comment` field — this is the one that exercises every field kind.
+  free-form `comment` field. This is the one that exercises every field kind.
 - Point out `$external_dest`: a metadata reference resolved per host, not a
   literal URL.
 
-**Jobs** — show the five jobs bundling tests.
+**Jobs.** Show the five jobs bundling tests.
 - Open `job-comprehensive-2`: it runs two tests, `parallel` is `False`,
-  `continue-if` is `false` — different from the others, to show the options.
+  `continue-if` is `false`, different from the others, to show the options.
 
-**Batches** — the heart of the demo: three batches at three priorities.
+**Batches.** The central part of the demonstration: three batches at three priorities.
 - Show `batch-comprehensive` (priority **0**, eduroam, two jobs),
   `batch-host` (**1**, MWireless), `batch-group` (**2**, MWireless).
-- Point out the priority help text: *lower number = higher priority*.
-- All three list the same two schedules — the deliberate collision for section 5.
+- Point out the priority help text: *lower number runs first when a probe's
+  batches overlap*.
+- All three list the same two schedules, the deliberate collision for section 5.
 
-**Hosts** — show the two probes.
+**Hosts.** Show the two probes.
 - Open `Probe-IP-address-1`; show its metadata `external_dest = <its value>`
   (e.g. `www.google.com`), and that `Probe-IP-address-2` has the **same key, a
   different value** (`www.reddit.com`).
@@ -147,17 +148,17 @@ below; substitute the real IPs if you seeded with them.
 - Open the host's **Probe configuration** panel: it shows only this host's slice
   of the config.
 
-**Host groups** — show `all` and `rpi4`, the two ways to select hosts.
+**Host groups.** Show `all` and `rpi4`, the two ways to select hosts.
 - `all`: **by regex**. Open it; the regex field shows `.*` and the help text
   links to the Python `re` guide. This is how `batch-comprehensive` reaches every
   probe.
 - `rpi4`: **by selection**. Its hosts were added with **Select all** (by name,
-  not a pattern) — which is what delivers the group metadata `ifacename=wlan0`
+  not a pattern), which is what delivers the group metadata `ifacename=wlan0`
   to them. It carries `batch-group`.
 - Point out the contrast: a host matched only by regex still gets the group's
   *batches*, but group *metadata* reaches only hosts listed by name.
 
-**Settings → Configuration** — turn all of the above into the daemon's files.
+**Settings → Configuration.** Turn all of the above into the daemon's files.
 - **Preview**: builds and validates without writing. Walk through the output
   using section 4 below.
 - **Generate**: writes `pssid_config.json` and `hosts.ini` to the controller.
@@ -171,12 +172,12 @@ attach to hosts and groups → generate a validated config file.
 it is verified against the shipped pipeline, so these are exact expectations.
 (Values assume the placeholder probe names and default destinations.)
 
-**Batch attachment** — `Probe-IP-address-1`'s `batches` lists all three;
+**Batch attachment.** `Probe-IP-address-1`'s `batches` lists all three;
 `Probe-IP-address-2`'s lists only `batch-comprehensive` and `batch-group`
 (both arriving via `all`/`rpi4`). `batch-host` reaches probe 1 alone, by
-direct host attachment rather than a group — see section 5 for why.
+direct host attachment rather than a group. See section 5 for why.
 
-**Metadata layering** — group metadata sits *under* host metadata, and each probe
+**Metadata layering.** Group metadata sits *under* host metadata, and each probe
 carries its own destination:
 
 ```json
@@ -185,20 +186,20 @@ carries its own destination:
 ```
 
 `ifacename` comes from the `rpi4` group, `external_dest` from each host. Same
-key, different value per probe — the point of this part of the dataset.
+key, different value per probe, which is the point of this part of the dataset.
 
 **Metadata references stay literal.** `"url": "$external_dest"` and
 `"test_interface": "$ifacename"` are **not** substituted in this file; the daemon
 resolves them per host at run time. Seeing `$external_dest` is correct.
 
 The key uses an **underscore**, not a hyphen. Metadata references use identifier
-syntax (like the existing `$ifacename`), and `$`-substitution stops at a hyphen —
+syntax (like the existing `$ifacename`), and `$`-substitution stops at a hyphen,
 so `$external-dest` would resolve as `$external` followed by a literal `-dest`.
 `$external_dest` is the correct form.
 
 **Test specs are flat objects**, converted from the GUI's form-field arrays.
 `test-dns-to-external` is the one to check, since it covers three field kinds at
-once — text, singleselect, and a user-defined optional key/value:
+once: text, singleselect, and a user-defined optional key/value:
 
 ```json
 { "name": "test-dns-to-external", "type": "dns",
@@ -210,7 +211,7 @@ If you see `"type"`/`"name"` keys inside `spec`, the conversion did not run.
 **No `_ids` fields anywhere.** `batch_ids`, `test_ids` and friends are database
 bookkeeping and are stripped before the daemon sees the file.
 
-**`hosts.ini`** — every host first, then one section per group:
+**`hosts.ini`.** Every host first, then one section per group:
 
 ```ini
 Probe-IP-address-1
@@ -224,7 +225,7 @@ Probe-IP-address-1
 Probe-IP-address-2
 ```
 
-`all` renders as a `#Regex` **comment** with no members — Ansible cannot expand
+`all` renders as a `#Regex` **comment** with no members, because Ansible cannot expand
 patterns, so the daemon does the matching. `rpi4` lists its members because they
 were selected by name.
 
@@ -244,10 +245,10 @@ Lower number wins: `batch-comprehensive` (0) → `batch-host` (1) →
 
 All three share **both** the "Every 1 hour" and "Every 5 minutes" schedules, so
 they are due simultaneously every five minutes and again on the hour. That
-collision is deliberate — it is what makes priority observable.
+collision is deliberate: it is what makes priority observable.
 
 `batch-host` reaches only `Probe-IP-address-1` (attached directly, not through
-a group), so that probe is the one all three batches reach — on it, the
+a group), so that probe is the one all three batches reach. On it, the
 higher-priority batch should run and the others yield. `Probe-IP-address-2`
 only ever sees `batch-comprehensive` (0) and `batch-group` (2), so priority
 there is a simple two-way comparison, not a three-way one.
@@ -294,7 +295,7 @@ docker compose exec -T mongo mongosh --quiet \
 
 Expect `hosts: 0 batches: 0`.
 
-Re-running `seed-defaults.sh` alone does **not** undo the QA data — it owns only
+Re-running `seed-defaults.sh` alone does **not** undo the QA data; it owns only
 its own documents, by design. Restoring from a backup is the way back.
 
 ## Reference: what the dataset exercises

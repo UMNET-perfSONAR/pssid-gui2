@@ -1,11 +1,11 @@
 # Backend Initialization
 Docker runs `entrypoint.sh` to start the backend service, in which files under
-`starters/` are copied to the correct destinations within the container. The folder
-worth mentioning is `starters/tests/`, which contains the test templates that define
-the rules for each test.
+`starters/` are copied to the correct destinations within the container. Of
+particular note is `starters/tests/`, which contains the test templates that
+define the rules for each test.
 
 For instance, `rtt` is a test option on the frontend tests page with three input
-fields - `dest`, `length`, and `protocol`. Correspondingly, `starters/tests/rtt.json`
+fields: `dest`, `length`, and `protocol`. Correspondingly, `starters/tests/rtt.json`
 contains entries for the three input fields along with input validation code. The
 following is the content of `rtt.json`.
 ```
@@ -41,8 +41,8 @@ following is the content of `rtt.json`.
     "validator": "return true;"
 }
 ```
-Note that `validator` can be any string representing a piece of validation code, and
-it will be converted into actual JavaScript code and will be run against user input.
+Note that `validator` may be any string containing validation code; it is compiled
+into JavaScript and evaluated against user input.
 After initialization, Docker mounts the template files to
 `/var/lib/pssid/plugins/tests/` on the hosting machine.
 
@@ -54,8 +54,8 @@ templates: the available options are the files on disk. A batch inherits the
 methods from the SSID profiles it references, so the methods travel with the
 network rather than the batch.
 
-Per the agreed layout, the plugin directory has one parent (`plugins/`) with a
-subdirectory per category: `tests/`, `scripts/`, `layer2/`, `layer3/`.
+The plugin directory has one parent (`plugins/`) with a subdirectory per
+category: `tests/`, `scripts/`, `layer2/`, `layer3/`.
 
 - The available files live in `starters/layer2/` and `starters/layer3/`. At
   startup `entrypoint.sh` copies them to `plugins/layer2/` and `plugins/layer3/`
@@ -67,8 +67,8 @@ subdirectory per category: `tests/`, `scripts/`, `layer2/`, `layer3/`.
   exactly one file it is auto-selected; multiple files produce a real choice; an
   empty directory yields no options and profiles cannot be saved.
 
-To add a new option, drop a JSON file into the matching `starters/<category>/`
-directory, no code change is required.
+To add a new option, place a JSON file in the matching `starters/<category>/`
+directory; no code change is required.
 
 ## SSID profile config fields
 
@@ -101,7 +101,7 @@ on by the probes, the value is constrained at every step:
    injected directly into MongoDB is reset to `""` rather than emitted.
 3. **Authorization** (`*.routes.ts` + `shared/accessControl.ts`): listing scripts
    requires `read`; changing a batch (and therefore its script selection)
-   requires `write`. These are enforced server-side, not just hidden in the UI.
+   requires `write`. These are enforced server-side, not merely hidden in the UI.
 
 ### Deployment responsibilities (outside this repo)
 

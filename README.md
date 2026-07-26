@@ -11,7 +11,7 @@ model: HTTPS, optional single sign-on, and an isolated Docker network.
 
 ## Quickstart: one command
 
-On a fresh Unix box, as root:
+On a fresh Unix host, as root:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh | bash
@@ -98,7 +98,7 @@ Two seeders ship with the project, and they are **additive**: the pre-load
 establishes the baseline and the QA dataset layers on top without disturbing it.
 
 - `make seed-defaults` ([`scripts/seed-defaults.sh`](scripts/seed-defaults.sh))
-  is the main one: it loads the pre-load starter data for a fresh site — the
+  is the main one. It loads the pre-load starter data for a fresh site: the
   standard schedules, the eduroam profile, the google http/rtt tests,
   `job-comprehensive`, and the `all` host group (regex `.*`). No batches or
   hosts. The installer runs this once on first install, and it can also be run

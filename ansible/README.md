@@ -1,6 +1,6 @@
 # Deploying pSSID GUI with Ansible
 
-These playbooks deploy and maintain the pSSID GUI end to end on a Unix box:
+These playbooks deploy and maintain the pSSID GUI end to end on a Unix host:
 they install Docker, then install, configure, start, and keep the application
 stack maintained. Two roles do the work:
 
@@ -23,7 +23,7 @@ Three playbooks use them:
 ## One-command install
 
 The repository root carries [`bootstrap.sh`](../bootstrap.sh), which wraps this
-playbook so a fresh box needs exactly one command:
+playbook so a fresh host needs exactly one command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh | bash
@@ -36,7 +36,7 @@ the `PSSID_OIDC_*` values; see the header of the script).
 
 ## Production install
 
-The same thing, step by step, on the target box as root:
+The same procedure, step by step, on the target host as root:
 
 ```bash
 apt-get update && apt-get install -y git ansible
@@ -77,7 +77,7 @@ ones it owns, `nginx.conf` and `shared/config.ts`), fast-forwards the checkout, 
 the images, restarts the stack with the existing settings, and waits for the
 health check. Data is never touched: the starter defaults only load on a first
 install (a marker file under `/var/lib/pssid` records that), and MongoDB lives
-in a named volume that survives rebuilds. If an upgrade misbehaves, the
+in a named volume that survives rebuilds. If an upgrade fails, the
 pre-upgrade archive is in `mongo-backups/`; restore it with
 `scripts/restore.sh`.
 
@@ -139,7 +139,7 @@ The most common:
 | `pssid_gui_tls` | `self-signed` | `self-signed`, `letsencrypt`, or `none` |
 | `pssid_gui_sso` | `false` | Enable OIDC single sign-on |
 | `pssid_gui_version` | `main` | Branch or tag to deploy when cloning |
-| `pssid_gui_docker_data_root` | auto | Roomy local filesystem for Docker + containerd; a dedicated `/var/lib/docker` mount is detected automatically |
+| `pssid_gui_docker_data_root` | auto | Local filesystem with sufficient space for Docker + containerd; a dedicated `/var/lib/docker` mount is detected automatically |
 | `pssid_gui_pull` | `false` | Pull prebuilt images (~4 GB minimum) instead of building (~6 GB minimum, ~12 GB recommended) |
 | `pssid_gui_seed_defaults` | `true` | Load starter defaults on the first install |
 | `pssid_gui_backup_cron` | `true` | Nightly MongoDB backup schedule |
@@ -148,7 +148,7 @@ The most common:
 ## Relationship to install.sh
 
 The `pssid_webgui` role runs the repository's own installer
-(`install.sh -y ...`) under the hood, so the Ansible path and the manual
+(`install.sh -y ...`) internally, so the Ansible path and the manual
 one-machine path share the same logic and cannot drift apart. Use whichever
 fits: `./install.sh` for a quick single host where Docker already exists, this
 playbook when you want Docker installed for you, are deploying remotely, or

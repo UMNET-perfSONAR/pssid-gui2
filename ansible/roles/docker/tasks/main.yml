@@ -16,7 +16,7 @@
 # manual install). Gating the package step on "is Docker present" alone meant such
 # a host skipped the whole install block, leaving the deployment on the
 # deprecated standalone docker-compose v1 -- which cannot build this project's
-# compose file (it fails to interpolate the image tag and dies with
+# compose file (it fails to interpolate the image tag and exits with
 # `invalid tag "..._client:${PSSID_IMAGE_TAG:-latest}"`).
 - name: Check whether the Docker Compose v2 plugin is present
   ansible.builtin.command: docker compose version
@@ -97,8 +97,8 @@
 
 # Compose v2 is required, and standalone docker-compose v1 is deliberately NOT
 # accepted as a fallback: it reached end of life in 2023 and cannot build this
-# project's compose file. Failing here, with the reason, beats letting install.sh
-# fall back to v1 and die later inside the image build.
+# project's compose file. Failing here, with the reason, is preferable to letting
+# install.sh fall back to v1 and fail later inside the image build.
 - name: Fail when the Docker Compose v2 plugin is unavailable
   ansible.builtin.fail:
     msg: >-

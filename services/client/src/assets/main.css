@@ -178,7 +178,7 @@
    body's background from propagating to the canvas the way it normally would.
    On a short page body's box then ends partway down the viewport and the UA
    color shows below it, so the seam reads as a stray full-width rule with a
-   different shade beneath — most visible in dark mode, where the UA color is a
+   different shade beneath, most visible in dark mode, where the UA color is a
    near-black that clashes with the navy. Painting --bg here removes the seam at
    any content height. */
 html {

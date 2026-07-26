@@ -417,10 +417,10 @@
          // every field and is the authority (see the "server rejects ..." cases
          // in scripts/smoke-test.sh). The production CSP is `script-src 'self'`
          // with no 'unsafe-eval' (nginx.conf), so the Function constructor
-         // throws there — degrade to "no client-side check" rather than break
+         // throws there. Degrade to "no client-side check" rather than break
          // the form. Do NOT add 'unsafe-eval' to the CSP to make this run: that
          // would weaken the page's XSS defenses so it can execute strings from
-         // disk, which is a bad trade for a convenience check.
+         // disk, which is not a worthwhile tradeoff for a convenience check.
          let valid = true;
          try {
            valid = Boolean(new Function('input', validatorStr)(value));

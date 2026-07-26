@@ -281,8 +281,8 @@ export function stripLegacyArchivers(batch_data: any) {
  * no-op and the emitted bytes are identical to what they would be without it. On
  * INVALID data (data that would crash or be silently rejected by the pSSID
  * daemon) it throws a single Error listing every problem, so the preview /
- * provision fails loudly in the GUI instead of shipping a broken config to a
- * probe.
+ * provision fails with an explicit error in the GUI instead of shipping a broken
+ * config to a probe.
  *
  * Scope is deliberately limited to SHAPE rules we have verified the daemon cares
  * about (type/presence/cross-reference). It intentionally does NOT try to predict

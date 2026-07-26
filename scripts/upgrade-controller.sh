@@ -44,7 +44,8 @@ bash "$REPO_DIR/scripts/backup.sh"
 
 # The pull fast-forwards whatever branch this checkout is on. Releases land on
 # main, so a checkout left on a feature branch would keep "upgrading" to stale
-# code while reporting success. Say which branch we are on, loudly if unusual.
+# code while reporting success. Report the current branch, with a warning when
+# it is not main.
 branch="$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD)"
 echo "==> Updating the source in $REPO_DIR (branch: $branch)"
 if [ "$branch" != "main" ]; then

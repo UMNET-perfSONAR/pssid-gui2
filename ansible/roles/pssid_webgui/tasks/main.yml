@@ -80,7 +80,7 @@
     - (pssid_gui_dedicated_docker_mount.rc | default(1)) == 0
     - (pssid_gui_dedicated_docker_fstype.stdout | default('')) not in ['nfs', 'nfs4', 'cifs', 'smb3', '9p', 'ceph', 'glusterfs', 'fuse.sshfs']
 
-- name: Relocate Docker and containerd storage to a roomy volume
+- name: Relocate Docker and containerd storage to a volume with sufficient space
   ansible.builtin.command:
     argv:
       - bash

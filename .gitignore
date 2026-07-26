@@ -2,9 +2,9 @@ build/
 node_modules/
 log
 
-# Ignore all output files except provision.sh as this comes by default so that
-# the application can be used out of the box. Users have the choice of using their
-# own provision.sh.
+# Ignore all output files except provision.sh, which ships by default so the
+# application is usable without further configuration. Deployments may supply
+# their own provision.sh.
 services/server/output/*
 !services/server/output/provision.sh
 services/server/.env
@@ -33,6 +33,6 @@ ansible/inventories/remote.ini
 
 # The repo-root shared/ directory is staged into each service's src/shared at
 # build time (Docker COPY, CI, and the `sync:shared` npm script). The copies are
-# generated — the originals live in /shared.
+# generated; the originals live in /shared.
 services/client/src/shared/
 services/server/src/shared/

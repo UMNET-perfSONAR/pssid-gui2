@@ -11,7 +11,7 @@ services:
       context: .
       dockerfile: services/client/Dockerfile
       # The dev stack runs the Vite dev server against mounted source, which
-      # needs the full node_modules — target the build stage (the production
+      # needs the full node_modules, so target the build stage (the production
       # compose uses the slim runtime stage and its own image tag).
       target: build
       args:
@@ -50,7 +50,7 @@ services:
       dockerfile: services/server/Dockerfile
       # The dev stack runs the watch toolchain (tsc -w + nodemon) against the
       # mounted source, which needs the full node_modules and the TypeScript
-      # compiler — target the build stage (the production compose uses the slim
+      # compiler, so target the build stage (the production compose uses the slim
       # runtime stage, which ships compiled output only).
       target: build
     volumes:

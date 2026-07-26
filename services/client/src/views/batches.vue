@@ -99,7 +99,7 @@
             <div class="form-group">
               <label for="batch-priority"> Priority </label>
               <small id="batch-priority-help" class="text-muted" style="display:block; margin:0.15rem 0 0.5rem;">
-                Lower number = higher priority — sets which batch runs first when a probe's batches overlap.
+                Lower number runs first when a probe's batches overlap.
               </small>
               <input
                 type="number"

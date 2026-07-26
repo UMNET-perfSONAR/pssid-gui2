@@ -1,7 +1,7 @@
 {
   "name": "pssid-gui2",
   "version": "1",
-  "description": "pSSID GUI — wireless measurement orchestration",
+  "description": "pSSID GUI: wireless measurement orchestration",
   "license": "Apache-2.0",
   "private": true,
   "scripts": {

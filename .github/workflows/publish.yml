@@ -2,7 +2,7 @@ name: Publish images
 
 # Builds the production images and pushes them to GitHub Container Registry,
 # so deployments can `install.sh --pull` (or PSSID_PULL=true bootstrap) instead
-# of building on the VM — ~4 GB of Docker storage instead of ~8-10 GB.
+# of building on the VM: ~4 GB of Docker storage instead of ~8-10 GB.
 #
 # Images (public once the packages are set to public in the repo settings):
 #   ghcr.io/<owner>/pssid-gui2_client:latest   (+ :sha-<commit>)

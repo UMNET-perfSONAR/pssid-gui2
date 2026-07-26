@@ -2,8 +2,8 @@
 #
 # pSSID GUI storage relocation helper.
 #
-# Points BOTH Docker's data-root and containerd's storage root at a roomy
-# volume, so the image build does not die with "no space left on device" on a
+# Points BOTH Docker's data-root and containerd's storage root at a volume with
+# sufficient space, so the image build does not fail with "no space left on device" on a
 # VM whose default /var/lib sits on a small partition. This is a common managed
 # VM layout: several small root logical volumes plus one large data volume
 # (for example a dedicated /data or /srv volume).
@@ -61,7 +61,7 @@ is_network_filesystem() {
 }
 
 [ "$(id -u)" -eq 0 ] || err "run as root (use sudo)."
-[ -n "$TARGET" ] || err "usage: setup-docker-storage.sh <absolute-dir-on-a-roomy-volume>"
+[ -n "$TARGET" ] || err "usage: setup-docker-storage.sh <absolute-dir-on-a-large-volume>"
 case "$TARGET" in
   /*) ;;
   *)  err "the target must be an absolute path (got: $TARGET).";;
@@ -98,7 +98,7 @@ if is_network_filesystem "$TARGET_FSTYPE"; then
 fi
 
 # Copy a directory tree, preferring rsync when present (handles xattrs/sparse
-# files cleanly) and falling back to cp so a minimal box still works.
+# files cleanly) and falling back to cp so a minimal host still works.
 migrate() { # migrate SRC DST
   if command -v rsync >/dev/null 2>&1; then
     rsync -aXS --numeric-ids "$1/" "$2/"
@@ -110,7 +110,7 @@ migrate() { # migrate SRC DST
 mkdir -p "$DOCKER_ROOT" "$CONTAINERD_ROOT" \
   || err "cannot create storage directories under $DOCKER_ROOT; choose a writable local filesystem."
 
-# Make sure the chosen volume actually has room, and is not the same cramped
+# Confirm the chosen volume has sufficient space, and is not the same constrained
 # filesystem we are trying to escape.
 MIN_GIB="${PSSID_STORAGE_MIN_GIB:-6}"
 WARN_GIB="${PSSID_STORAGE_WARN_GIB:-12}"

@@ -24,7 +24,7 @@ COPY services/server/ ./
 COPY shared/ ./src/shared/
 
 # This stage is an entrypoint of its own (the dev stack targets it), so the
-# exec bit has to be set here too — not only in the runtime stage below.
+# exec bit has to be set here too, not only in the runtime stage below.
 RUN chmod +x entrypoint.sh
 
 # Compile src/ -> build/ (tsconfig sets rootDir=src, outDir=build).
@@ -44,13 +44,13 @@ WORKDIR /usr/src/app/server
 
 ENV NODE_ENV=production
 
-# Production dependencies only — no TypeScript, nodemon, or concurrently.
+# Production dependencies only: no TypeScript, nodemon, or concurrently.
 COPY services/server/package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 # Compiled JavaScript, plus the runtime files the server reads by path:
 # paths_config.json / defaults_config.json (read relative to build/), the
-# starter templates the entrypoint seeds, and shared/ — accessControl.js reads
+# starter templates the entrypoint seeds, and shared/. accessControl.js reads
 # src/shared/auth-groups.config.json at runtime, so it must exist here even
 # though the TypeScript is already compiled.
 COPY --from=build /usr/src/app/server/build ./build

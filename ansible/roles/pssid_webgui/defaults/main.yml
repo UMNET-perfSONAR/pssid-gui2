@@ -46,7 +46,7 @@ pssid_gui_no_build: false
 
 # Pull prebuilt images from the registry instead of building on this host.
 # Needs ~4 GB of Docker storage instead of the ~8-10 GB a from-source build
-# does — the right choice for VMs with a small /var. Falls back to building
+# does, the right choice for VMs with a small /var. Falls back to building
 # automatically if the pull fails.
 pssid_gui_pull: false
 

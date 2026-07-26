@@ -2,7 +2,7 @@
 #
 # pSSID GUI one-command bootstrap.
 #
-# Takes a fresh Unix box (root shell) to a running pSSID GUI in one step:
+# Takes a fresh Unix host (root shell) to a running pSSID GUI in one step:
 # installs git and Ansible if missing, fetches the application source, and
 # hands off to the Ansible playbook, which installs Docker, generates the
 # secrets, certificates and nginx config, builds and starts the stack, loads
@@ -16,7 +16,7 @@
 #
 #     ./bootstrap.sh
 #
-#   Settings are environment variables (all optional; sane defaults apply):
+#   Settings are environment variables (all optional; sensible defaults apply):
 #
 #     PSSID_HOSTNAME=pssid.example.edu   Public hostname (default: this FQDN)
 #     PSSID_EDITION=default              Interface edition id (see
@@ -102,7 +102,7 @@ step "Checking prerequisites"
 # Checks BOTH Docker's storage root and containerd's storage root: modern
 # Docker Engine extracts image layers through containerd's own snapshotter
 # (default /var/lib/containerd), a SEPARATE directory from Docker's "data-root"
-# -- redirecting only one still dies mid-build with "no space left on device".
+# -- redirecting only one still fails mid-build with "no space left on device".
 #
 # On these managed VMs the default /var/lib is a small partition while a large
 # data volume sits elsewhere. Setting PSSID_DOCKER_DATA_ROOT points both stores
@@ -268,8 +268,8 @@ else
   DISK_TARGET="${CONFIGURED_DOCKER_ROOT:-/var/lib/docker}"
   check_disk_target "Docker" "$DISK_TARGET" || disk_die "$DISK_TARGET"
 
-  # `|| true`: containerd is absent on a fresh box (command not found = 127);
-  # under `set -e -o pipefail` an unguarded failure here would silently kill
+  # `|| true`: containerd is absent on a fresh host (command not found = 127);
+  # under `set -e -o pipefail` an unguarded failure here would silently abort
   # the whole bootstrap right after the first disk-check line.
   CONTAINERD_TARGET="$(containerd config dump 2>/dev/null | sed -n 's/^root[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1 || true)"
   [ -z "$CONTAINERD_TARGET" ] && [ -r /etc/containerd/config.toml ] && \

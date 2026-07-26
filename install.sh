@@ -154,7 +154,7 @@ fi
 
 # Compose v2 only. The deprecated standalone docker-compose v1 is rejected rather
 # than used as a fallback: it does not interpolate this project's image tags and
-# dies mid-build with `invalid tag "..._client:${PSSID_IMAGE_TAG:-latest}":
+# fails mid-build with `invalid tag "..._client:${PSSID_IMAGE_TAG:-latest}":
 # invalid reference format`. Failing here names the real problem instead of
 # surfacing it several minutes later as a build error.
 if docker compose version >/dev/null 2>&1; then
@@ -312,8 +312,8 @@ chmod 600 "$SERVER_ENV" 2>/dev/null || warn "Could not chmod $SERVER_ENV"
 # ("injecting env (0)") and the server falls back to an unauthenticated MongoDB
 # URI with no SECRET, while still reporting healthy.
 #
-# The obvious fix — handing the file to uid/gid 1000, the image's `node` user —
-# is a bad trade on Debian/Ubuntu, where 1000 is the first human login account
+# The obvious fix, handing the file to uid/gid 1000 (the image's `node` user),
+# is not an acceptable tradeoff on Debian/Ubuntu, where 1000 is the first human login account
 # (typically `ubuntu`). That would give any shell user on this host the database
 # password and the OIDC client secret.
 #
@@ -420,7 +420,7 @@ gen_nginx_https() { # $1 cert path, $2 key path, $3 "hsts" to enable HSTS
   if [ "${3:-}" = "hsts" ]; then
     hsts_header='
         # One year, subdomains included. No `preload`: that is a submission to a
-        # browser-vendor list which is slow and painful to reverse.
+        # browser-vendor list which is slow and difficult to reverse.
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;'
   fi
   cat > nginx.conf <<EOF

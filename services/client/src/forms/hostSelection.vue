@@ -8,7 +8,7 @@
       <div v-if="view_host_options==true">
         <input
           type="text"
-          placeholder="Search hosts..."
+          placeholder="Search hosts…"
           aria-label="Search hosts"
           class="form-control"
           v-model="hostSearchKey"
@@ -31,7 +31,7 @@
       <div v-if="view_host_options==false">
         <input
           type="text"
-          placeholder="Search selected hosts..."
+          placeholder="Search selected hosts…"
           aria-label="Search selected hosts"
           class="form-control"
           v-model="selectedSearchKey"

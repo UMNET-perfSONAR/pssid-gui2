@@ -14,15 +14,15 @@ services:
     container_name: redis
     # Internal only: the server reaches redis over the Docker network, and
     # nothing on the host needs it, so it is never published. It ALSO requires a
-    # password, because with SSO on this holds the session store — anything that
+    # password, because with SSO on this holds the session store, so anything that
     # reaches it could read or forge logged-in sessions, and network isolation
     # should not be the only thing standing in the way.
     # The check is made at RUNTIME, not through compose interpolation: this
     # service is profile-gated to `sso`, but compose interpolates the whole file
-    # either way, so a `${VAR:?}` here would break every non-SSO deployment —
+    # either way, so a `${VAR:?}` here would break every non-SSO deployment,
     # which needs no Redis at all. Failing in the container instead means the
-    # requirement lands only when Redis is actually started, and it fails loudly
-    # rather than silently starting an unauthenticated instance.
+    # requirement lands only when Redis is actually started, and it fails with an
+    # explicit error rather than silently starting an unauthenticated instance.
     command:
       - sh
       - -c
@@ -60,7 +60,7 @@ services:
     # defaults keep the local build-from-source names unchanged. The client has
     # its own tag override because the published client image is per edition
     # (:latest = default edition; a branded edition is published under its own
-    # tag — the brand is baked into the bundle at build time).
+    # tag, because the brand is baked into the bundle at build time).
     image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_client:${PSSID_CLIENT_TAG:-${PSSID_IMAGE_TAG:-latest}}
     # Built from the repo ROOT so the image can bundle both the client app and
     # the shared/ config at build time (see services/client/Dockerfile). The
@@ -115,7 +115,7 @@ services:
       - OPEN_WRITE=${OPEN_WRITE:-}
     # services/server/.env carries the MongoDB password, the session secret and
     # the OIDC client secret. It is root-owned 0640 on the host, readable only
-    # through this dedicated gid — deliberately NOT uid/gid 1000, which on
+    # through this dedicated gid, deliberately NOT uid/gid 1000, which on
     # Debian/Ubuntu is the first human login account. Adding the gid here as a
     # supplementary group lets this non-root process read the file while
     # granting no host account any access to it. install.sh sets both sides.

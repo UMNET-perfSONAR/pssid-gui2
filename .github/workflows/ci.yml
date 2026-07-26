@@ -36,8 +36,8 @@ jobs:
       # in the image must stay clean, and both trees are clean today, so this
       # fails only on a genuine regression. The dev tree stays advisory below:
       # build and test tooling never reaches a deployment, and letting a CVE in
-      # a transitive vite/vitest dependency block every merge trains people to
-      # ignore the signal — which is how the real one gets missed.
+      # a transitive vite/vitest dependency block every merge would condition
+      # reviewers to ignore the signal, which is how a genuine one gets missed.
       - name: Dependency audit (production deps, gating)
         run: npm audit --omit=dev --audit-level=high
       - name: Dependency audit (dev deps, advisory)
@@ -121,8 +121,8 @@ jobs:
       # in the image must stay clean, and both trees are clean today, so this
       # fails only on a genuine regression. The dev tree stays advisory below:
       # build and test tooling never reaches a deployment, and letting a CVE in
-      # a transitive vite/vitest dependency block every merge trains people to
-      # ignore the signal — which is how the real one gets missed.
+      # a transitive vite/vitest dependency block every merge would condition
+      # reviewers to ignore the signal, which is how a genuine one gets missed.
       - name: Dependency audit (production deps, gating)
         run: npm audit --omit=dev --audit-level=high
       - name: Dependency audit (dev deps, advisory)

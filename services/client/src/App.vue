@@ -92,14 +92,15 @@ import { activeEdition } from './edition'
 import { getTheme, setTheme } from './theme'
 
 // The three appearance modes, with the icon and label shown in the menu.
-// 'tonality' (a circle split into a light and a dark half) reads as "contrast"
-// on sight, matching the "High contrast" label directly; 'accessibility_new'
-// (a person) reads as "accessibility settings" more broadly, which is one step
-// removed from what this specific option does.
+// 'contrast' (a circle with one half filled solid) is the standard high-contrast
+// glyph, matching the "High contrast" label directly. 'tonality' is the photo
+// filter icon (its unfilled half is broken into dashed arcs) and
+// 'accessibility_new' (a person) reads as "accessibility settings" more broadly;
+// both are a step removed from what this option does.
 const THEME_OPTIONS = [
   { value: 'light',      icon: 'light_mode', label: 'Light' },
   { value: 'dark',       icon: 'dark_mode',  label: 'Dark' },
-  { value: 'accessible', icon: 'tonality',   label: 'High contrast' },
+  { value: 'accessible', icon: 'contrast',   label: 'High contrast' },
 ];
 
 export default {
@@ -258,7 +259,7 @@ export default {
   margin-left: 0.5rem;
 }
 /* On the always-navy navbar any translucent white fill still composites to a
-   dark slate lump that is easy to miss. Use a SOLID near-white fill with the
+   dark slate tone that is easy to overlook. Use a SOLID near-white fill with the
    navy glyph on top, so the appearance control is unmistakable at rest in
    every theme (~13:1 against the navbar, glyph ~12:1 against the fill). */
 .theme-toggle {

@@ -5,12 +5,12 @@ Global styles and theme assets for the web application.
 
 ### components/
 Reusable components used across the application. Key files include:
-* `cron.vue` — cron scheduling input.
-* `list_items.vue` — regular-expression search bar and list rendering for a set of
+* `cron.vue`: cron scheduling input.
+* `list_items.vue`: regular-expression search bar and list rendering for a set of
   objects; used by every page.
-* `dynamic_add_data.vue` — arbitrary key/value data entry, used in Hosts, Host
+* `dynamic_add_data.vue`: arbitrary key/value data entry, used in Hosts, Host
   Groups, and Tests.
-* `dynamicform.vue` — renders forms that vary by test type.
+* `dynamicform.vue`: renders forms that vary by test type.
 
 ### stores/
 Pinia stores, one per page, holding the frontend state-management logic: API calls to

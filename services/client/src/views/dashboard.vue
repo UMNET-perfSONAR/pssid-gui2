@@ -241,8 +241,8 @@ export default {
 .status-pill.has-hint { position: relative; cursor: help; }
 .status-pill.has-hint:focus-visible { outline: 2px solid rgba(var(--primary-rgb), .5); outline-offset: 2px; }
 /* Hover/focus explanation styled as a floating tooltip: a dark, slightly
-   see-through bubble with a pointer arrow, so it's obviously a transient hint
-   raised by hovering, not another solid card like the pills. The same dark
+   translucent panel with a pointer arrow, so it reads clearly as a transient
+   hint raised by hovering, not another solid card like the pills. The same dark
    treatment reads well in light, dark and high-contrast themes. */
 .hint {
   position: absolute;

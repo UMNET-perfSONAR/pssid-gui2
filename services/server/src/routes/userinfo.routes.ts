@@ -8,7 +8,7 @@ const router = express.Router();
 // posture can be switched by environment variable without a rebuild, which is
 // the whole point of shipping prebuilt images (install.sh --pull). Reading the
 // compiled default here instead would desynchronise this route from the rest of
-// the app on a pulled image — the OIDC middleware would authenticate the user
+// the app on a pulled image: the OIDC middleware would authenticate the user
 // while this endpoint still reported "nobody is signed in", and the client would
 // fall back to the OPEN_WRITE policy for a user who actually has a session.
 //

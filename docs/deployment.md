@@ -25,7 +25,7 @@ examples are placeholders to replace with your own.
 
 ## One-command bootstrap
 
-The fastest path from a fresh box to a running deployment is the bootstrap
+The fastest path from a fresh host to a running deployment is the bootstrap
 script at the repository root:
 
 ```bash
@@ -43,7 +43,8 @@ each stage can be run or repaired by hand.
 
 ## Deploying to a new VM
 
-The bootstrap above "just works" on a box with a single large disk. Some VMs
+The bootstrap above requires no additional configuration on a host with a single
+large disk. Some VMs
 split storage across several small partitions plus one large data volume, which
 can stop the image build part way through with `no space left on device`. Check
 the disk layout once per new VM and the one command goes through cleanly.
@@ -52,7 +53,7 @@ the disk layout once per new VM and the one command goes through cleanly.
 
 Building the images from source needs ~8-10 GB of Docker storage. On VMs whose
 `/var` is a small partition (common on managed VMs), skip the build entirely
-and pull the images CI publishes to GitHub Container Registry — that needs only
+and pull the images CI publishes to GitHub Container Registry, which needs only
 ~4 GB:
 
 ```bash
@@ -65,7 +66,7 @@ the playbook. The client image is published per edition (the default edition is
 `:latest`; a branded edition is published under its own tag) and the installer
 picks the right one from `--edition`. If
 the pull fails (registry unreachable, images not yet published), the installer
-falls back to building from source automatically — with the larger disk
+falls back to building from source automatically, with the larger disk
 requirement that implies. The images are published by
 `.github/workflows/publish.yml` on every push to `main`; make sure the three
 `pssid-gui2_*` packages are set to **public** in the GitHub organization's
@@ -82,7 +83,7 @@ expect to reach those ports.
 The build needs about 8-10 GB free on the local filesystem(s) holding Docker
 and containerd data. On some VMs `/var` is a small partition while
 `/var/lib/docker` is already a separate large logical volume; on others, the
-only large path is an unrelated data mount. Look before you deploy:
+only large path is an unrelated data mount. Inspect the layout before deploying:
 
 ```bash
 df -hT            # free space per filesystem
@@ -98,11 +99,11 @@ Plan for these amounts:
 | Docker + containerd storage, prebuilt-image pull | ~8 GB recommended; deployment refuses below 4 GB |
 | `/opt/pssid-gui` checkout | Keep at least ~1 GB free, plus room for database backups stored under `mongo-backups/` |
 
-Docker and containerd may share one roomy filesystem; the space is not additive
+Docker and containerd may share one sufficiently large filesystem; the space is not additive
 when they do. If they are on separate filesystems, both are checked because
 either can stop the deployment during image extraction.
 
-- If `/var/lib/docker` is itself a roomy **local** mount (for example the 49 GB
+- If `/var/lib/docker` is itself a sufficiently large **local** mount (for example the 49 GB
   ext4 LV commonly supplied on managed VMs), run the plain bootstrap. It
   detects that mount automatically, keeps Docker there, and bind-mounts
   containerd storage from `/var/lib/docker/.containerd`.
@@ -121,7 +122,7 @@ NFS exports commonly root-squash the VM's root user. The bootstrap excludes
 network mounts from automatic suggestions and rejects an explicitly selected
 network path with a clear error.
 
-### Point Docker at the roomy volume
+### Point Docker at the large volume
 
 Set `PSSID_DOCKER_DATA_ROOT` to a directory on the large volume. The deployment
 relocates **both** Docker's data-root and containerd's storage root there before
@@ -157,30 +158,31 @@ would still reside on the smaller `/var` filesystem.
 > **Why both stores move.** Modern Docker Engine extracts image layers through
 > containerd's own snapshotter, whose root (`/var/lib/containerd`) is a separate
 > directory from Docker's data-root (`/var/lib/docker`, set in
-> `/etc/docker/daemon.json`). Relocating only one still dies mid-build with
+> `/etc/docker/daemon.json`). Relocating only one still fails mid-build with
 > `no space left on device`, and `docker info` looks healthy the whole time.
 > `scripts/setup-docker-storage.sh`, `make doctor`, and the bootstrap preflight
-> all account for both. If you forget to set the variable, the bootstrap
+> all account for both. If the variable is not set, the bootstrap
 > preflight first recognizes a dedicated local `/var/lib/docker` mount. If one
-> is not present, it finds the roomiest writable local volume and prints the
+> is not present, it selects the largest writable local volume and prints the
 > exact `PSSID_DOCKER_DATA_ROOT=...` line to re-run with.
 
 ### Provisioning checklist for the VM administrator
 
-The deployment itself never touches firewalls, DNS, or host networking — as
-noted above, that stays outside its scope on purpose (it keeps the product
-clean for a security review). Share this checklist with whoever provisions the
+The deployment itself never touches firewalls, DNS, or host networking. As
+noted above, that stays outside its scope by design, which keeps the
+deployment's boundaries well defined for security review. Share this checklist
+with whoever provisions the
 VM (network/ITS team):
 
 - **Inbound `80`/`443`** must be reachable from every client network expected to
   reach the site (campus ranges, VPN, etc.). Double-check any VPN/remote-access
   range specifically: it is easy for a firewall to trust a range for SSH (`22`)
-  but not for `80`/`443`, which leaves the site healthy on the box yet
-  unreachable from a browser on that network — see
+  but not for `80`/`443`, which leaves the site healthy on the host yet
+  unreachable from a browser on that network. See
   [Troubleshooting](#troubleshooting) for how to diagnose that symptom.
 - **A public DNS A record** for the hostname, pointing at the VM's IP.
 - **Outbound internet** from the VM to Docker Hub (or GHCR, for
-  `PSSID_PULL=true`) and the OS package mirrors — needed during the
+  `PSSID_PULL=true`) and the OS package mirrors, needed during the
   build/pull, not afterward.
 - **TLS** and **SSO**, if used: see [TLS](#tls) and
   [Single sign-on](#single-sign-on) for what each needs from the network
@@ -214,7 +216,7 @@ hand is only needed for the plain installer path.
 ## Deploying with Ansible
 
 The repository ships a role-based Ansible playbook under
-[`ansible/`](../ansible/README.md) that takes a fresh box to a running
+[`ansible/`](../ansible/README.md) that takes a fresh host to a running
 deployment, Docker included:
 
 ```bash
@@ -247,8 +249,8 @@ only load on first installs, so upgrades never modify data.
 
 The installer edits `nginx.conf` and `shared/config.ts` in place at deploy time
 (hostname, SSO flag, base URL). The upgrade discards those two local edits
-before pulling — they would otherwise block the pull whenever upstream also
-changed either file — and the installer run that follows regenerates both from
+before pulling (they would otherwise block the pull whenever upstream also
+changed either file), and the installer run that follows regenerates both from
 the deployment's settings, so nothing is lost.
 
 ### Controller-integrated installs
@@ -392,7 +394,7 @@ Practical consequences:
 - Containers start in seconds (they serve a pre-built bundle), so deploys and
   recreates are fast.
 - A broken build (for example a TypeScript error in pulled source) fails at
-  `docker compose build`, visibly, **before any container is recreated** — so a
+  `docker compose build`, visibly, **before any container is recreated**, so a
   bad change cannot take a running site down. Both `make refresh` and
   `scripts/upgrade-controller.sh` build before they recreate.
 - After a `git pull`, run `make refresh` (unchanged) to rebuild and apply the
@@ -406,10 +408,10 @@ Practical consequences:
 
 Both seeders run `mongosh` inside the database container and, on a production
 deployment (where the installer enabled database authentication), read the
-MongoDB credentials from the root `.env` automatically — so run them from the
+MongoDB credentials from the root `.env` automatically, so run them from the
 repository root, the same place the Makefile does. `seed-defaults.sh` also
-verifies its writes actually landed and fails loudly instead of leaving a
-silently empty site.
+verifies that its writes landed and reports an explicit error rather than
+leaving a silently empty site.
 
 After seeding, use Settings > Configuration > Preview to inspect and validate the
 generated files.
@@ -425,17 +427,17 @@ starter data every fresh site begins with (the Ansible role runs it once on firs
 install). It loads the four standard schedules, the eduroam SSID profile, the
 `test-http-to-google` and `test-rtt-to-google` tests, `job-comprehensive`, and the
 `all` host group (host regex `.*`). It loads no batches, no hosts and no `rpi4`
-group — those belong to the QA dataset — and it removes the retired
+group (those belong to the QA dataset), and it removes the retired
 `example_script` test type. The `all` group is upserted rather than replaced, so
 re-running the pre-load never detaches a batch assigned to it.
 
 The QA dataset lives under [`QA/`](../QA/), deliberately outside the deployment
-path — neither the bootstrap nor the installer runs it. Apply it by hand with
+path: neither the bootstrap nor the installer runs it. Apply it by hand with
 `bash QA/seed-qa.sh` (or `make seed-qa`). It layers on top of the pre-load: the
 MWireless profile, five more tests (including `test-http-to-external`, whose url
-is the metadata reference `$external_dest`), four more jobs, three batches —
-`batch-comprehensive` (priority 0, eduroam), `batch-host` (1, MWireless) and
-`batch-group` (2, MWireless) — two probe hosts, and the `rpi4` group carrying
+is the metadata reference `$external_dest`), four more jobs, three batches
+(`batch-comprehensive` at priority 0 on eduroam, `batch-host` at 1 on MWireless
+and `batch-group` at 2 on MWireless), two probe hosts, and the `rpi4` group carrying
 group metadata `ifacename=wlan0`.
 
 It wires every assignment path: a group batch via the `all` regex, a group batch
@@ -443,7 +445,7 @@ via members selected by name in `rpi4`, a batch attached directly to a host
 (`batch-host`, on the first probe only), host metadata (`external_dest`, the
 same key with a different value on each probe), and group metadata. Because
 `batch-host` reaches only that one probe, it is also the only host all three
-batches reach — all three share the same two schedules so they collide
+batches reach. All three share the same two schedules so they collide
 deliberately, which is how QA checks that priority is honored (lower number
 wins).
 
@@ -466,7 +468,7 @@ metadata.
 The pre-load is already wired into the playbook: `scripts/seed-defaults.sh` runs
 automatically on first install (guarded by `pssid_gui_seed_defaults: true`, the
 default, and a marker file under `/var/lib/pssid` so later playbook runs never
-re-seed). So a plain bootstrap already leaves you with the pre-load data:
+re-seed). A plain bootstrap therefore leaves the pre-load data in place:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh | \
@@ -482,9 +484,9 @@ cd /opt/pssid-gui   # or wherever bootstrap deployed to; see below
 PSSID_QA_PROBE1=<probe-1-ip> PSSID_QA_PROBE2=<probe-2-ip> bash QA/seed-qa.sh
 ```
 
-The probe names must exactly match what each Pi reports as its hostname (their
+The probe names must exactly match what each probe reports as its hostname (their
 IP addresses at this site), or the daemon exits on them (`make seed-qa` also
-works, but only with the placeholder names). Where to `cd`: the piped bootstrap
+works, but only with the placeholder names). Regarding the working directory: the piped bootstrap
 clones to `/opt/pssid-gui` (`$PSSID_GUI_DIR` to override); running
 `./bootstrap.sh` from a checkout deploys that checkout instead, so run the
 seeder from there. Both seeders `docker exec` into the running mongo container,
@@ -493,7 +495,7 @@ so they must run on the VM itself, after the stack is up.
 The QA seeder requires the pre-load, since it reuses the schedules and eduroam
 by name; it stops with a clear message if they are absent. It adds to that
 baseline and never resets it, so re-running either script is safe in either
-order — the pre-load owns no batches, hosts or `rpi4` group, and upserts the
+order: the pre-load owns no batches, hosts or `rpi4` group, and upserts the
 `all` group rather than replacing it.
 
 To roll back to the pre-load afterwards, restore a backup taken before seeding
@@ -630,7 +632,7 @@ Examples:
 
 | Pattern | Matches | Does not match |
 |---|---|---|
-| `.*` | every host | — |
+| `.*` | every host | nothing |
 | `rp.*` | `rp4-01`, `rpi-lab` | `sensor-1` |
 | `probe-0[12]` | `probe-01`, `probe-02` | `probe-03` |
 | `probe-01$` | `probe-01` only | `probe-011` |
@@ -748,8 +750,8 @@ For SSO, provide the OIDC values through the server's env file.
 ## Troubleshooting
 
 ```bash
-make ps                              # are the containers running?
-make logs                            # what do the logs say?
+make ps                              # container status
+make logs                            # service logs
 make doctor                          # prerequisites and port conflicts
 curl -k https://<host>/api/health    # server and database health
 ```
@@ -764,12 +766,12 @@ A few common issues:
 - For an SSO redirect loop, check that `BASE_URL` and `COOKIE_DOMAIN` in
   `services/server/.env` match the hostname in the browser, and that the
   provider's redirect URI is exactly `https://<host>/callback`.
-- **Healthy on the box but "This site can't be reached" in the browser** →
+- **Healthy on the host but "This site can't be reached" in the browser** →
   a firewall/reachability gap, not an application problem (see
   [provisioning checklist](#provisioning-checklist-for-the-vm-administrator)).
   A common cause: the host firewall trusts a remote-access range for SSH (`22`)
   but not for `443`, so `curl -sk https://localhost/api/health` succeeds on the
-  box while the site stays unreachable from a browser on that network.
+  host while the site stays unreachable from a browser on that network.
   Diagnose which source IP is being dropped and on which port:
   ```bash
   grep 'UFW BLOCK' /var/log/ufw.log | tail     # SRC= the dropped client IP; DPT= the port
@@ -782,7 +784,7 @@ A few common issues:
   non-zero exit. Because `make refresh` and `scripts/upgrade-controller.sh` both
   build *before* they recreate anything, this happens before any container is
   touched: a currently-running site keeps serving the previous image and stays
-  up. Fix the reported error in `services/client/src` (or, on a controller box,
+  up. Fix the reported error in `services/client/src` (or, on a controller host,
   the deployment's `shared/config.ts`), then re-run the build or upgrade.
   Nothing on the running stack needs to be undone.
 - **`no space left on device` partway through a build, even after moving Docker
@@ -793,9 +795,9 @@ A few common issues:
   On a VM with a small root disk and a large secondary volume, redirecting
   only `daemon.json`'s `data-root` is not enough: `docker info` and this
   project's disk preflight (`make doctor`, `scripts/lib/preflight.sh`,
-  `bootstrap.sh`) will report the roomy volume as free and healthy, while
-  containerd keeps writing to the cramped default path and the build still
-  dies mid-layer-extraction. Point containerd at the same volume with a bind
+  `bootstrap.sh`) will report the large volume as free and healthy, while
+  containerd keeps writing to the constrained default path and the build still
+  fails during layer extraction. Point containerd at the same volume with a bind
   mount:
   ```bash
   sudo systemctl stop docker containerd

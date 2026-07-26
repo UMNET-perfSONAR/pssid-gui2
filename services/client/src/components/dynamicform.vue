@@ -8,7 +8,7 @@
         <label> {{ item.name }} <small class="text-muted">({{ item.type }})</small> </label>
         <input
           type="text"
-          placeholder="Enter here"
+          placeholder="Enter a value"
           id="name"
           class="form-control"
           v-model="form_values[index].value"
@@ -231,7 +231,7 @@
 
      validateField(field) {
        const value = field.value;
-       // Advisory only — the server is the authority on every one of these
+       // Advisory only: the server is the authority on every one of these
        // fields. Two things are guarded here: a template field with no
        // validator (the Function body would be "undefined", which returns
        // undefined and flagged every value as invalid), and the production CSP

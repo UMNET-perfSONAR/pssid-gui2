@@ -13,7 +13,7 @@
 # Never ship these into a layer. node_modules and build output are produced
 # inside the image (npm ci / npm run build); the host's copies would only
 # shadow them and bloat the context. package-lock.json is deliberately NOT
-# excluded here — the server image needs it for `npm ci`.
+# excluded here: the server image needs it for `npm ci`.
 **/node_modules
 **/dist
 **/build

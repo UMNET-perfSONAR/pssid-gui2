@@ -85,7 +85,7 @@ app.use('/api/', apiLimiter);
 // with SSO on this would answer 302-to-the-IdP instead of 200. That breaks the
 // container healthcheck (docker-compose.yml), which fails the server, which
 // stops nginx starting via `depends_on: service_healthy`, which fails the
-// Ansible health wait. It exposes no data — liveness only — so it stays public.
+// Ansible health wait. It exposes no data (liveness only), so it stays public.
 app.get('/api/health', async (_req: Request, res: Response) => {
   try {
     const client = await connectToMongoDB();

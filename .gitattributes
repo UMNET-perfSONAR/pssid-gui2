@@ -6,7 +6,7 @@
 # keep LF regardless of the checkout platform.
 #
 # Scope: .gitattributes governs file CONTENT, not file MODE. The executable bit
-# lives in the git index and is unaffected by anything here — a script that is
+# lives in the git index and is unaffected by anything here, so a script that is
 # exec'd by path needs `git update-index --chmod=+x` in addition to an LF rule.
 
 # bash rejects CRLF scripts and make rejects CRLF recipes. `*.sh` also covers
