@@ -243,10 +243,17 @@ const readTestFile = ((req:Request, res:Response) => {
     res.json(object);
   }
   catch(error) {
+    // A template that is not there is a 404, not a server fault. The path is
+    // caller-supplied, so this is reachable by simply asking for a name that
+    // does not exist -- reporting it as a 500 logs a stack trace for ordinary
+    // input and buries the genuine faults this handler should be shouting about.
+    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+      return res.status(404).json({message:"Test template not found"});
+    }
     console.error(error);
     res.status(500).json({message:"Server Error"});
   }
-}) 
+})
 
 module.exports = {getTests, 
                   getOneTest, 

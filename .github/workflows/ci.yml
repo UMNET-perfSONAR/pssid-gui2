@@ -43,6 +43,178 @@ jobs:
       - name: Dependency audit (dev deps, advisory)
         run: npm audit --audit-level=high || true
 
+  security:
+    name: Security (config validation + secret scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # nginx is the only published entry point and its config is not exercised
+      # by any unit test, so a typo in the hardening below ships as a container
+      # that will not start. `nginx -t` is the only real check there is, and it
+      # needs an nginx binary, so it runs here rather than on a developer's
+      # machine. The committed nginx.conf AND all three installer renders are
+      # checked: the installer overwrites the committed file on every run, so a
+      # config that is valid only in the repo protects nobody.
+      - name: Render the installer's nginx variants
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nginx-check /tmp/nginx-render
+          # Extract just the nginx-rendering section of install.sh and drive its
+          # generators directly, so all three TLS modes are checked without
+          # running an actual install.
+          START=$(grep -n '^# Host names this deployment answers to' install.sh | cut -d: -f1)
+          END=$(grep -n '^# Back up any existing host-specific nginx.conf' install.sh | cut -d: -f1)
+          {
+            echo 'set -euo pipefail'
+            echo 'HOSTNAME_INPUT=pssid.example.edu'
+            sed -n "${START},$((END-1))p" install.sh
+            echo 'gen_nginx_https /etc/nginx/certs/fullchain.pem /etc/nginx/certs/privkey.pem'
+            echo 'cp nginx.conf /tmp/nginx-check/self-signed.conf'
+            echo 'gen_nginx_https /etc/nginx/certs/live/h/fullchain.pem /etc/nginx/certs/live/h/privkey.pem hsts'
+            echo 'cp nginx.conf /tmp/nginx-check/letsencrypt.conf'
+            echo 'gen_nginx_http'
+            echo 'cp nginx.conf /tmp/nginx-check/plain-http.conf'
+          } > /tmp/gen-nginx.sh
+          # Run in a scratch directory: the generators write ./nginx.conf, and the
+          # committed one is checked separately below.
+          (cd /tmp/nginx-render && bash /tmp/gen-nginx.sh)
+          cp nginx.conf /tmp/nginx-check/committed.conf
+          cp nginx.local.conf /tmp/nginx-check/local.conf
+          ls -l /tmp/nginx-check
+
+      # The certificate is generated HERE, on the runner, and mounted in.
+      # nginx:stable-alpine ships no openssl binary, so generating it inside the
+      # container fails with "openssl: not found" -- and because that failure is
+      # easy to swallow, every TLS config then fails on a missing certificate and
+      # the whole point of this job is lost while looking like a config error.
+      - name: Generate a throwaway certificate for the config test
+        run: |
+          set -euo pipefail
+          CERTS=/tmp/nginx-certs
+          mkdir -p "$CERTS/live/h" "$CERTS/live/pssid.example.edu"
+          openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+            -keyout "$CERTS/privkey.pem" -out "$CERTS/fullchain.pem" -subj "/CN=nginx-config-test"
+          for d in "$CERTS/live/h" "$CERTS/live/pssid.example.edu"; do
+            cp "$CERTS/fullchain.pem" "$CERTS/privkey.pem" "$d/"
+          done
+          test "$(find "$CERTS" -name '*.pem' | wc -l)" = "6"
+
+      - name: Validate every nginx config
+        run: |
+          docker run --rm \
+            -v /tmp/nginx-check:/confs \
+            -v /tmp/nginx-certs:/etc/nginx/certs \
+            nginx:stable-alpine sh -c '
+              # nginx resolves a literal proxy_pass hostname at CONFIG PARSE
+              # time, so without these `nginx -t` fails with "host not found in
+              # upstream" before it ever looks at the directives under test.
+              printf "127.0.0.1 client\n127.0.0.1 server\n" >> /etc/hosts
+              mkdir -p /var/www/certbot
+              fail=0
+              for f in /confs/*.conf; do
+                echo "== nginx -t $f"
+                nginx -t -c "$f" || fail=1
+              done
+              exit $fail
+            '
+
+      # Compose has to parse, and the hardening has to actually reach every
+      # service. A YAML merge key that silently fails to apply looks identical to
+      # one that worked, right up until a container escape uses the capability it
+      # was supposed to drop.
+      - name: Validate docker-compose and assert the hardening applies
+        run: |
+          set -euo pipefail
+          # `docker compose config` both validates the file and resolves the YAML
+          # anchors and merge keys, so what it prints is what would actually run.
+          #
+          # BOTH profiles are enabled deliberately. redis (sso) and backup are
+          # profile-gated, and `config` omits a service whose profile is inactive
+          # -- so without these flags the two would silently drop out of the
+          # output and go unchecked. redis in particular holds every live session.
+          docker compose -f docker-compose.yml --profile sso --profile backup config \
+            > /tmp/compose-resolved.yml
+          docker compose -f docker-compose.local.yml config > /dev/null
+          python3 -c 'import yaml' 2>/dev/null || pip install --quiet pyyaml
+          python3 - <<'PY'
+          import sys, yaml
+          with open('/tmp/compose-resolved.yml') as fh:
+              resolved = yaml.safe_load(fh)
+          services = resolved.get('services', {})
+          # Fail loudly rather than vacuously if the file ever stops listing these.
+          expected = {'redis', 'client', 'server', 'mongo', 'nginx', 'certbot', 'backup'}
+          assert expected <= set(services), f'missing services: {expected - set(services)}'
+          problems = []
+          for name, svc in services.items():
+              if 'no-new-privileges:true' not in (svc.get('security_opt') or []):
+                  problems.append(f'{name}: security_opt is missing no-new-privileges:true')
+              if not svc.get('pids_limit'):
+                  problems.append(f'{name}: pids_limit is not set')
+              # Without this, code execution in a container becomes persistence.
+              # Every service was verified to run read-only against a real stack;
+              # the writable paths each one needs are tmpfs, declared per service.
+              if not svc.get('read_only'):
+                  problems.append(f'{name}: read_only is not set')
+              if not svc.get('tmpfs'):
+                  problems.append(f'{name}: read_only with no tmpfs (it will not start)')
+          # client and server run unprivileged Node and need no capability at all.
+          # The others' entrypoints drop privileges at startup, which requires some.
+          for name in ('client', 'server'):
+              if 'ALL' not in (services[name].get('cap_drop') or []):
+                  problems.append(f'{name}: cap_drop must include ALL')
+          if problems:
+              print('Container hardening missing:')
+              for p in problems:
+                  print(' -', p)
+              sys.exit(1)
+          print(f'Container hardening present on all {len(services)} services.')
+          PY
+
+      # Nothing that holds a credential may be tracked. The .env files are
+      # gitignored, but a `git add -f` or a rename past the ignore rule is a
+      # single command, and the consequence is a client secret in the history
+      # forever.
+      - name: No secrets or certificates in version control
+        run: |
+          fail=0
+          # -z and a null-delimited read: a path containing a space must not be
+          # split into two harmless-looking fragments that match nothing.
+          while IFS= read -r -d '' f; do
+            case "$f" in
+              # The documented template. It holds placeholders only, and the
+              # secret-value scan below is what keeps it that way.
+              services/server/.env.example) continue ;;
+              *.env|.env|*/.env|*.env.*|*.pem|*.key|*.crt|*.p12|*.pfx)
+                echo "TRACKED SECRET-BEARING FILE: $f"; fail=1 ;;
+            esac
+          done < <(git ls-files -z)
+          # A real credential assigned in a committed file. The placeholders the
+          # templates and tests legitimately contain are excluded by name, so
+          # adding a new one is a deliberate act, not an accident.
+          if grep -rInE '(CLIENT_SECRET|MONGO_PASSWORD|REDIS_PASSWORD|SECRET)=[A-Za-z0-9+/=_-]{12,}' \
+               --include='*.yml' --include='*.yaml' --include='*.json' \
+               --include='*.ts' --include='*.sh' --include='*.example' . \
+               | grep -vE 'your-client-secret-here|replace-with-a|a-real-looking-client-secret-value'; then
+            echo "A committed file appears to contain a real secret value (above)."
+            fail=1
+          fi
+          exit $fail
+
+      # The auth posture that SHIPS must be the safe one. An accidental commit of
+      # a locally-toggled shared/config.ts is how a repository starts handing out
+      # unauthenticated write access to everyone who deploys it.
+      - name: Shipped defaults are the closed ones
+        run: |
+          fail=0
+          grep -qE 'ENABLE_SSO:\s*false' shared/config.ts \
+            || { echo 'shared/config.ts: ENABLE_SSO must ship false'; fail=1; }
+          grep -qE 'OPEN_WRITE:\s*false' shared/config.ts \
+            || { echo 'shared/config.ts: OPEN_WRITE must ship false (read-only)'; fail=1; }
+          grep -q 'pssid.example' shared/config.ts \
+            || { echo 'shared/config.ts: BASE_URL must ship a placeholder hostname'; fail=1; }
+          exit $fail
+
   automation:
     name: Automation (ansible + shell syntax)
     runs-on: ubuntu-latest
@@ -59,7 +231,7 @@ jobs:
       - name: Shell script syntax check
         run: |
           bash -n bootstrap.sh install.sh
-          for f in scripts/*.sh QA/*.sh; do bash -n "$f"; done
+          for f in scripts/*.sh umich/QA/*.sh; do bash -n "$f"; done
 
   smoke:
     name: End-to-end smoke (full stack)
@@ -77,13 +249,30 @@ jobs:
             > services/server/.env
       - name: Build and start the dev stack
         run: docker compose -f docker-compose.local.yml up -d --build
-      - name: Wait for the stack to become healthy
+      # Wait for the stack to be STABLE, not merely to answer once.
+      #
+      # The dev stack runs tsc -w alongside nodemon, and tsc emits its output
+      # file by file: on a cold start nodemon restarts the server dozens of times
+      # (45 observed) before it settles. The first successful /api/health can
+      # therefore land in the middle of that, and the suite below then runs
+      # against a server that keeps disappearing -- nginx answers 502 and a
+      # handful of checks fail for reasons that have nothing to do with the code.
+      # Requiring consecutive successes waits out the restart storm instead.
+      - name: Wait for the stack to become healthy and settle
         run: |
-          for i in $(seq 1 60); do
-            if curl -sf http://localhost:8888/api/health >/dev/null; then exit 0; fi
-            sleep 5
+          need=5; streak=0
+          for i in $(seq 1 120); do
+            if curl -sf http://localhost:8888/api/health >/dev/null 2>&1; then
+              streak=$((streak+1))
+              if [ "$streak" -ge "$need" ]; then
+                echo "Healthy and stable ($need consecutive checks)."; exit 0
+              fi
+            else
+              streak=0
+            fi
+            sleep 2
           done
-          echo "Stack never became healthy"; exit 1
+          echo "Stack never became stably healthy"; exit 1
       - name: Run the end-to-end smoke suite (every user action)
         run: bash scripts/smoke-test.sh http://localhost:8888
       - name: Show container state and logs on failure

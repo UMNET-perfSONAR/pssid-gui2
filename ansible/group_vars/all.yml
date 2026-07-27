@@ -4,11 +4,16 @@
 # Every variable is optional; the defaults live in
 # roles/pssid_webgui/defaults/main.yml. Uncomment a line here to override it
 # for all hosts, or pass -e name=value on the command line for a single run.
+#
+# A site that deploys the same hosts repeatedly should keep its values in a
+# group_vars file beside its own inventory instead of editing this one, so that
+# upgrades never conflict with it. ../../umich/ is the worked example.
 
 # prod (HTTPS stack behind nginx) or dev (hot reload on http://localhost:8888).
 # pssid_gui_mode: prod
 
-# Interface edition id (see services/client/src/edition/)
+# Interface edition id: default | umich | another entry in
+# services/client/src/edition/editions.ts
 # pssid_gui_edition: default
 
 # Public hostname of this deployment. Defaults to the machine's FQDN.
@@ -51,9 +56,10 @@
 # A dedicated local mount at /var/lib/docker is detected automatically. Do not
 # use NFS/CIFS/other network storage for Docker or containerd data.
 
-# Load the starter defaults (schedules, SSID profiles, a metadata test, the
-# "all" host group) on the FIRST install only. A marker file under
-# /var/lib/pssid makes re-runs and upgrades leave data alone.
+# Load the starter defaults (the four schedules, the eduroam profile, the two
+# google http/rtt tests, job-comprehensive, and the "all" host group) on the
+# FIRST install only. A marker file under /var/lib/pssid makes re-runs and
+# upgrades leave data alone.
 # pssid_gui_seed_defaults: true
 
 # Nightly MongoDB backups (cron). Archives go to mongo-backups/ in the source

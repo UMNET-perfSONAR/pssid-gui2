@@ -1,0 +1,45 @@
+---
+# UMich-specific deployment settings for every host in the [pssid_gui] group of
+# ../inventory.ini. Ansible loads this file automatically when that inventory is
+# used, so the deployment command carries no -e flags and nothing about the
+# UMich install lives outside this folder.
+#
+# Every variable here is one of the generic ones documented in
+# ../../ansible/group_vars/all.yml and defined in
+# ../../ansible/roles/pssid_webgui/defaults/main.yml. This file only supplies
+# UMich values for them; it never introduces a UMich-only variable, so the
+# vendor-neutral code path stays the only code path.
+
+# Navy/maize interface. See ../../services/client/src/edition/editions.ts.
+pssid_gui_edition: umich
+
+# Public hostname users visit. Must match the DNS name and the redirect URIs
+# registered with ITS in Okta, or sign-in fails.
+pssid_gui_hostname: pssid-web-dev.miserver.it.umich.edu
+
+# Okta single sign-on through the ITS tenant. The client id and secret are
+# issued by ITS; keep them in the vault file described in ../README.md rather
+# than here, since this file is committed.
+pssid_gui_sso: true
+pssid_gui_oidc_issuer: https://umich.okta.com
+
+# With SSO on, group membership decides read vs write (see
+# ../../shared/auth-groups.config.json), so this setting is not consulted. It is
+# pinned to read-only anyway, so that turning SSO off for troubleshooting cannot
+# leave the site unauthenticated-writable.
+pssid_gui_open_write: "false"
+
+# MiServer VMs have a small /var/lib partition; put Docker and containerd on the
+# roomier volume so an image build does not fill the root filesystem.
+pssid_gui_docker_data_root: /usr/local/miserver/docker
+
+# Trusted certificate from Let's Encrypt (needs ports 80 and 443 reachable).
+# Switch to self-signed if the firewall does not allow the HTTP-01 challenge.
+pssid_gui_tls: letsencrypt
+pssid_gui_letsencrypt_email: pssid-admins@umich.edu
+
+# Nightly database backup at 03:15, keeping two weeks of archives.
+pssid_gui_backup_cron: true
+pssid_gui_backup_hour: "3"
+pssid_gui_backup_minute: "15"
+pssid_gui_backup_retention_days: 14

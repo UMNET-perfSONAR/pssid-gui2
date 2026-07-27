@@ -4,12 +4,15 @@ How to load the QA dataset on top of the pre-load, run an official demo that
 shows every part of the GUI working, and verify the generated configuration is
 correct, all without needing a probe.
 
-This folder is deliberately **outside the deployment path**: neither the
-bootstrap nor the installer runs `seed-qa.sh`. It is a manual QA tool, applied
-by hand on a running stack.
+This dataset is site-specific — the campus SSIDs and the two lab probes — so it
+lives under [`umich/`](../README.md) with the rest of the University of Michigan
+material, and deliberately **outside the deployment path**: neither the bootstrap
+nor the installer runs `seed-qa.sh`. It is a manual QA tool, applied by hand on a
+running stack. Run the commands below from the deployment directory (the
+repository root), not from this folder.
 
 The two seeders are **additive**: the pre-load
-([`scripts/seed-defaults.sh`](../scripts/seed-defaults.sh)) establishes the
+([`scripts/seed-defaults.sh`](../../scripts/seed-defaults.sh)) establishes the
 baseline, and the QA seeder ([`seed-qa.sh`](seed-qa.sh)) adds to it without
 deleting, resetting or rewriting anything the pre-load owns.
 
@@ -38,7 +41,7 @@ cd /opt/pssid-gui && curl -sk https://localhost/api/userinfo; echo
 ```
 
 Expect `"open_write":true`. If it is false, see
-[../docs/deployment.md](../docs/deployment.md#single-sign-on).
+[../../docs/deployment.md](../../docs/deployment.md#single-sign-on).
 
 Take a restore point first. This is what section 7 rolls back to:
 
@@ -52,28 +55,29 @@ Order matters: the QA seeder reuses the pre-load's schedules and eduroam by
 name, and refuses to run if they are missing.
 
 ```bash
-bash scripts/seed-defaults.sh     # or: make seed-defaults
-bash QA/seed-qa.sh                # or: make seed-qa
+bash scripts/seed-defaults.sh    # or: make seed-defaults
+bash umich/QA/seed-qa.sh         # or: make seed-qa
 ```
 
 On a first install the Ansible role has already run the pre-load, so only the
 second command is needed.
 
 **Probe names.** The two probes are identified by hostname, which at this site is
-each probe's **IP address**. Ask the QA operator for the two IPs and pass them
-in; they must match what each probe reports as its hostname, or the daemon exits
-on it. Until you have them, the script uses the placeholders
-`Probe-IP-address-1` / `Probe-IP-address-2`.
+each probe's **IP address**. The seeder defaults to the two lab probes,
+`198.111.226.186` and `198.111.226.189`, so the command above needs no arguments.
+
+A name must match exactly what that probe reports as its hostname, or the daemon
+exits on it. To point the dataset at a different pair, override the defaults:
 
 ```bash
-PSSID_QA_PROBE1=10.0.0.11 PSSID_QA_PROBE2=10.0.0.12 bash QA/seed-qa.sh
+PSSID_QA_PROBE1=<probe-1-ip> PSSID_QA_PROBE2=<probe-2-ip> bash umich/QA/seed-qa.sh
 ```
 
 The two external destinations are overridable the same way
 (`PSSID_QA_DEST1` / `PSSID_QA_DEST2`).
 
-Expected final counts: schedules 4, ssid_profiles 2, tests 7, jobs 5,
-batches 3, hosts 2, host_groups 2.
+Expected final counts: schedules 4, ssid_profiles 2, tests 7, jobs 6,
+batches 4, hosts 2, host_groups 2.
 
 ## 2. What each seeder owns
 
@@ -82,8 +86,8 @@ batches 3, hosts 2, host_groups 2.
 | Schedules | all 4 | none (reuses them) |
 | SSID profiles | eduroam | MWireless |
 | Tests | 2 Google tests | 5 more |
-| Jobs | job-comprehensive | 4 more |
-| Batches | none | all 3 |
+| Jobs | job-comprehensive | 5 more |
+| Batches | none | all 4 |
 | Hosts | none | 2 probes |
 | Host groups | `all` (regex `.*`) | `rpi4` |
 
@@ -96,14 +100,14 @@ either order, lands in the same state: the pre-load upserts its own documents
 any character, `*` a quantifier, so `.*` matches everything (a bare `*` is
 invalid). The GUI's regex field links to the
 [`re` syntax guide](https://docs.python.org/3/library/re.html); see also
-[../docs/deployment.md](../docs/deployment.md#host-groups-regex-and-metadata).
+[../../docs/deployment.md](../../docs/deployment.md#host-groups-regex-and-metadata).
 
 ## 3. Official demonstration (GUI, section by section)
 
 A presenter's script: open each page in turn, point out that the seeded data is
 there and editable, and finish at Settings where the whole thing becomes a
-config file. Every screen is one or two clicks. Placeholder probe names are used
-below; substitute the real IPs if you seeded with them.
+config file. Every screen is one or two clicks. The probe names below are the two
+lab probes the seeder defaults to; substitute your own if you overrode them.
 
 **Schedules.** Show the four cron schedules.
 - Point out `Every 5 minutes` and `Every 1 hour` (the two the batches collide on).
@@ -122,28 +126,36 @@ below; substitute the real IPs if you seeded with them.
 - Point out `$external_dest`: a metadata reference resolved per host, not a
   literal URL.
 
-**Jobs.** Show the five jobs bundling tests.
+**Jobs.** Show the six jobs bundling tests.
 - Open `job-comprehensive-2`: it runs two tests, `parallel` is `False`,
   `continue-if` is `false`, different from the others, to show the options.
+- Point out the help text under **Tests**: the tests inside a job are **not
+  guaranteed to run in any particular order**. If one thing has to happen before
+  another, they belong in separate jobs — a batch runs *its jobs* in the listed
+  order.
 
-**Batches.** The central part of the demonstration: three batches at three priorities.
+**Batches.** The central part of the demonstration: four batches at three priorities.
 - Show `batch-comprehensive` (priority **0**, eduroam, two jobs),
-  `batch-host` (**1**, MWireless), `batch-group` (**2**, MWireless).
-- Point out the priority help text: *lower number runs first when a probe's
-  batches overlap*.
-- All three list the same two schedules, the deliberate collision for section 5.
+  `batch-host` (**1**, MWireless), `batch-group` (**2**, MWireless) and
+  `batch-tie` (**2**, MWireless).
+- Point out the priority help text: *lower number has higher precedence in the
+  event of a scheduling conflict*.
+- `batch-group` and `batch-tie` carry the **same** priority on purpose — the
+  ambiguous case, covered in section 5.
+- All four list the same two schedules, the deliberate collision for section 5.
 
 **Hosts.** Show the two probes.
-- Open `Probe-IP-address-1`; show its metadata `external_dest = <its value>`
-  (e.g. `www.google.com`), and that `Probe-IP-address-2` has the **same key, a
-  different value** (`www.reddit.com`).
-- Point out `Probe-IP-address-1`'s **Batches** field already lists
+- Open `198.111.226.186`; show its metadata `external_dest = <its value>`
+  (e.g. `www.google.com`), and that `198.111.226.189` has the **same key, a
+  different value** (`www.reddit.com`). This is what the host's `data` block
+  holds, and it is the only metadata field the daemon reads.
+- Point out `198.111.226.186`'s **Batches** field already lists
   `batch-host`, attached directly rather than through a group;
-  `Probe-IP-address-2` has none of its own. Why that matters: section 5.
+  `198.111.226.189` has none of its own. Why that matters: section 5.
 - Optional: to also exercise the GUI's own write path for a host-batch
   assignment (as opposed to the seeder writing to MongoDB directly), remove
-  `batch-host` from `Probe-IP-address-1`, Save, reload to confirm it is gone,
-  then reattach it and Save again. Re-running `bash QA/seed-qa.sh` restores it
+  `batch-host` from `198.111.226.186`, Save, reload to confirm it is gone,
+  then reattach it and Save again. Re-running `bash umich/QA/seed-qa.sh` restores it
   regardless.
 - Open the host's **Probe configuration** panel: it shows only this host's slice
   of the config.
@@ -153,10 +165,12 @@ below; substitute the real IPs if you seeded with them.
   links to the Python `re` guide. This is how `batch-comprehensive` reaches every
   probe.
 - `rpi4`: **by selection**. Its hosts were added with **Select all** (by name,
-  not a pattern), which is what delivers the group metadata `ifacename=wlan0`
-  to them. It carries `batch-group`.
-- Point out the contrast: a host matched only by regex still gets the group's
-  *batches*, but group *metadata* reaches only hosts listed by name.
+  not a pattern). It supplies the group metadata `ifacename=wlan0` and carries
+  both `batch-group` and `batch-tie`.
+- Point out that the two membership styles are equivalent in what they deliver:
+  a host gets the group's **batches and its metadata** whether it was listed by
+  name or matched by the pattern. What separates a group key from a host key is
+  precedence, not membership style — the host's own key wins.
 
 **Settings → Configuration.** Turn all of the above into the daemon's files.
 - **Preview**: builds and validates without writing. Walk through the output
@@ -170,27 +184,39 @@ attach to hosts and groups → generate a validated config file.
 
 **Settings → Configuration → Preview**, then check each of the following. All of
 it is verified against the shipped pipeline, so these are exact expectations.
-(Values assume the placeholder probe names and default destinations.)
+(Values assume the default probe names and destinations.)
 
-**Batch attachment.** `Probe-IP-address-1`'s `batches` lists all three;
-`Probe-IP-address-2`'s lists only `batch-comprehensive` and `batch-group`
-(both arriving via `all`/`rpi4`). `batch-host` reaches probe 1 alone, by
-direct host attachment rather than a group. See section 5 for why.
+**Batch attachment.** `198.111.226.186`'s `batches` lists all four;
+`198.111.226.189`'s lists `batch-comprehensive`, `batch-group` and
+`batch-tie` (all arriving via `all`/`rpi4`). `batch-host` reaches probe 1 alone,
+by direct host attachment rather than a group. See section 5 for why.
 
-**Metadata layering.** Group metadata sits *under* host metadata, and each probe
-carries its own destination:
+**`data` vs `metadata`.** Both appear per host, and they are not the same thing:
+
+- `data` is what was typed into the Metadata section of the host (or the group).
+  **It is the only field the daemon reads.**
+- `metadata` is the resolved answer the GUI computed from those `data` blocks —
+  a convenience for the reader. The daemon ignores it and re-derives the same
+  values itself.
+
+So each probe carries its own `data` and the merged `metadata`:
 
 ```json
-"Probe-IP-address-1": { "ifacename": "wlan0", "external_dest": "www.google.com" }
-"Probe-IP-address-2": { "ifacename": "wlan0", "external_dest": "www.reddit.com" }
+"198.111.226.186": { "data": { "external_dest": "www.google.com" },
+                        "metadata": { "external_dest": "www.google.com", "ifacename": "wlan0" } }
+"198.111.226.189": { "data": { "external_dest": "www.reddit.com" },
+                        "metadata": { "external_dest": "www.reddit.com", "ifacename": "wlan0" } }
 ```
 
-`ifacename` comes from the `rpi4` group, `external_dest` from each host. Same
-key, different value per probe, which is the point of this part of the dataset.
+`ifacename` comes from the `rpi4` group's `data`, `external_dest` from each
+host's own. Same key, different value per probe, which is the point of this part
+of the dataset. A host key would win over a group key of the same name; nothing
+in this dataset collides, so both survive.
 
 **Metadata references stay literal.** `"url": "$external_dest"` and
 `"test_interface": "$ifacename"` are **not** substituted in this file; the daemon
-resolves them per host at run time. Seeing `$external_dest` is correct.
+resolves them per host at run time, from `data`. Seeing `$external_dest` is
+correct.
 
 The key uses an **underscore**, not a hyphen. Metadata references use identifier
 syntax (like the existing `$ifacename`), and `$`-substitution stops at a hyphen,
@@ -214,15 +240,15 @@ bookkeeping and are stripped before the daemon sees the file.
 **`hosts.ini`.** Every host first, then one section per group:
 
 ```ini
-Probe-IP-address-1
-Probe-IP-address-2
+198.111.226.186
+198.111.226.189
 
 [all]
 #Regex [all] [.*]
 
 [rpi4]
-Probe-IP-address-1
-Probe-IP-address-2
+198.111.226.186
+198.111.226.189
 ```
 
 `all` renders as a `#Regex` **comment** with no members, because Ansible cannot expand
@@ -240,22 +266,50 @@ Both files must carry **today's** timestamp. Clear them first
 
 ## 5. Check priority
 
-Lower number wins: `batch-comprehensive` (0) → `batch-host` (1) →
-`batch-group` (2).
+**Lower number has higher precedence in the event of a scheduling conflict**:
+`batch-comprehensive` (0) → `batch-host` (1) → `batch-group` and `batch-tie`
+(both 2).
 
-All three share **both** the "Every 1 hour" and "Every 5 minutes" schedules, so
+All four share **both** the "Every 1 hour" and "Every 5 minutes" schedules, so
 they are due simultaneously every five minutes and again on the hour. That
-collision is deliberate: it is what makes priority observable.
+collision is deliberate: it is what makes precedence observable.
 
-`batch-host` reaches only `Probe-IP-address-1` (attached directly, not through
-a group), so that probe is the one all three batches reach. On it, the
-higher-priority batch should run and the others yield. `Probe-IP-address-2`
-only ever sees `batch-comprehensive` (0) and `batch-group` (2), so priority
-there is a simple two-way comparison, not a three-way one.
+`batch-host` reaches only `198.111.226.186` (attached directly, not through
+a group), so that probe is the one all four batches reach. On it, the
+higher-precedence batch should run and the others yield. `198.111.226.189`
+sees `batch-comprehensive` (0), `batch-group` (2) and `batch-tie` (2), so the
+full three-level ordering is only visible on probe 1.
 
-Without a probe, confirm in Preview that `Probe-IP-address-1` resolves to all
-three batches, `Probe-IP-address-2` to two, and that the shared batches
+Without a probe, confirm in Preview that `198.111.226.186` resolves to all
+four batches, `198.111.226.189` to three, and that the shared batches
 genuinely overlap on both schedules.
+
+### Identical precedence
+
+`batch-group` and `batch-tie` are **both priority 2**, both on the `rpi4` group,
+and both on the same two schedules. Every five minutes, and again on the hour,
+every probe in `rpi4` has two batches due at the same instant with nothing to
+choose between them.
+
+This is the case worth recognising, because it is the one the configuration does
+**not** answer. Priority orders batches only when the numbers differ; at equal
+numbers the daemon hands both to the scheduler with the same key and their
+relative order falls out of its internal ordering. Treat it as unspecified: it is
+not a promise, and it may differ between runs, releases, or probes.
+
+What to check:
+
+- Preview shows `batch-group` and `batch-tie` on both probes, both at priority 2,
+  both listing the same two schedules. The GUI reports the tie faithfully rather
+  than silently reordering or rejecting it — equal priorities are legal.
+- Their jobs are distinct (`job-group-1` runs rtt, `job-tie-1` runs http to a
+  fixed target), so on a real probe the two are easy to tell apart in the logs.
+- Whatever order a probe happens to run them in, do not record it as expected
+  behaviour.
+
+The remedy, whenever the order between two batches actually matters, is to give
+them different priorities — which is exactly what separates 0, 1 and 2 in the
+rest of this dataset.
 
 ## 6. Error handling
 
@@ -266,7 +320,7 @@ Confirm a broken reference is reported rather than silently shipped. Delete
 batch "batch-group": references unknown job "job-group-1"
 ```
 
-Re-run `bash QA/seed-qa.sh` to restore.
+Re-run `bash umich/QA/seed-qa.sh` to restore.
 
 Other messages worth provoking the same way:
 
@@ -303,12 +357,13 @@ its own documents, by design. Restoring from a backup is the way back.
 | Path | How |
 |---|---|
 | Batch via group **regex** | `all` (`.*`) carries `batch-comprehensive` |
-| Batch via group **selection** | `rpi4` (members by name) carries `batch-group` |
-| Batch via **host**, attached directly | `batch-host`, on `Probe-IP-address-1` only (optionally re-exercised by hand in section 3) |
+| Batch via group **selection** | `rpi4` (members by name) carries `batch-group` and `batch-tie` |
+| Batch via **host**, attached directly | `batch-host`, on `198.111.226.186` only (optionally re-exercised by hand in section 3) |
 | Group metadata | `ifacename=wlan0` on `rpi4` → `$ifacename` |
 | Host metadata, same key, different values | `external_dest` per probe → `$external_dest` |
-| Metadata layering | group under host, per host |
-| Priority collision | three batches, shared schedules, priorities 0/1/2 |
+| Metadata layering | host `data` over group `data`, resolved per host into `metadata` |
+| Priority collision | four batches, shared schedules, priorities 0/1/2/2 |
+| **Identical** precedence | `batch-group` and `batch-tie`, both priority 2, both due together |
 | Test field types | text, number, singleselect, optional key/value |
 | Test types | http, rtt, dns, trace |
 | Job variants | parallel True/False, continue-if true/false, differing backoff |

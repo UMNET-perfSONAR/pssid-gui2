@@ -60,8 +60,9 @@ pssid_gui_pull: false
 # as NFS are rejected. See docs/deployment.md ("Deploying to a new VM").
 pssid_gui_docker_data_root: ""
 
-# Load the reusable starter defaults (schedules, SSID profiles, a metadata test,
-# the "all" host group) into MongoDB the FIRST time this host is deployed. A
+# Load the reusable starter defaults (the four schedules, the eduroam profile,
+# the two google http/rtt tests, job-comprehensive, and the "all" host group)
+# into MongoDB the FIRST time this host is deployed. A
 # marker file ({{ pssid_gui_state_dir }}/.defaults-seeded) guarantees re-runs
 # and upgrades never touch data, so deleting or editing the defaults in the GUI
 # sticks. Prod mode only.

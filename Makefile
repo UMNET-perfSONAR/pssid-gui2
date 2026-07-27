@@ -11,9 +11,10 @@ EDITION ?= $(shell [ -f .env ] && sed -n 's/^EDITION=//p' .env || echo default)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install deploy upgrade refresh up down restart logs ps build dev dev-down \
-        seed-defaults seed-qa edition-default backup restore \
-        doctor clean test smoke
+.PHONY: help install deploy deploy-umich upgrade upgrade-umich refresh up down restart logs ps build dev dev-down \
+        seed-defaults seed-qa edition-default edition-umich backup restore \
+        sso-on sso-off sso-status \
+        doctor clean test smoke security-check
 
 help: ## Show this help
 	@echo "pSSID GUI make targets:"
@@ -28,6 +29,12 @@ deploy: ## Full automated deployment via Ansible (Docker, certs, stack, backups)
 
 upgrade: ## Upgrade in place: backup, pull latest, rebuild, verify
 	@cd ansible && ansible-playbook upgrade.yml
+
+deploy-umich: ## Deploy the UMich controllers from umich/inventory.ini
+	@cd ansible && ansible-playbook -i ../umich/inventory.ini site.yml $(ANSIBLE_ARGS)
+
+upgrade-umich: ## Upgrade the UMich controllers from umich/inventory.ini
+	@cd ansible && ansible-playbook -i ../umich/inventory.ini upgrade.yml $(ANSIBLE_ARGS)
 
 refresh: ## Apply pulled source to a RUNNING repo stack (rebuild + recreate client & server, keeps DB up)
 	@echo "Rebuilding client and server images (edition: $(EDITION)); the client bundle compiles here..."
@@ -69,8 +76,8 @@ dev-down: ## Stop the local dev stack
 seed-defaults: ## Load the pre-load starter data (fresh installs)
 	@bash scripts/seed-defaults.sh
 
-seed-qa: ## Add the QA dataset on top of the pre-load (manual; see QA/QA.md)
-	@bash QA/seed-qa.sh
+seed-qa: ## Add the QA dataset on top of the pre-load (manual; see umich/QA/QA.md)
+	@bash umich/QA/seed-qa.sh
 
 test: ## Run all unit tests (server + client, no stack needed)
 	@echo "== server unit tests =="
@@ -81,8 +88,14 @@ test: ## Run all unit tests (server + client, no stack needed)
 smoke: ## End-to-end test of every user action against a running stack
 	@bash scripts/smoke-test.sh $(SMOKE_URL)
 
+security-check: ## Verify the security posture of a running deployment (TLS, headers, auth, containers)
+	@bash scripts/security-check.sh $(SECURITY_URL)
+
 edition-default: ## Switch the client to the neutral default edition
 	@$(MAKE) --no-print-directory _set-edition EDITION=default
+
+edition-umich: ## Switch the client to the UMich (navy/maize) edition
+	@$(MAKE) --no-print-directory _set-edition EDITION=umich
 
 _set-edition:
 	@touch .env
@@ -94,6 +107,64 @@ _set-edition:
 	@echo "Recreating the client container..."
 	@EDITION=$(EDITION) $(PROD) up -d --no-deps --force-recreate client
 	@echo "Done. When 'make ps' shows client healthy, reload the browser to see the $(EDITION) edition."
+
+# ─── Auth posture ────────────────────────────────────────────────────────────
+# ENABLE_SSO is the single on/off switch for single sign-on, and it ships OFF.
+# It lives in the two places install.sh writes, and they must move together:
+#
+#   .env             read by Docker Compose and passed to the server, which
+#                    resolves it at runtime (shared/accessControl.ts)
+#   shared/config.ts the compiled default the browser bundle carries
+#
+# If only one moves, the API and the interface disagree about who may do what.
+# These targets move both and rebuild, so turning SSO on later is one command
+# rather than a full re-run of install.sh.
+SERVER_ENV := services/server/.env
+
+sso-status: ## Show whether SSO is on, in config, in .env, and on the running stack
+	@printf "  shared/config.ts  "; grep -oE 'ENABLE_SSO:[[:space:]]*(true|false)' shared/config.ts 2>/dev/null || echo "(not found)"
+	@printf "  root .env         "; grep -oE '^ENABLE_SSO=.*' .env 2>/dev/null || echo "ENABLE_SSO= (unset -> compiled default)"
+	@printf "  running server    "; curl -sk https://localhost/api/userinfo 2>/dev/null | grep -oE '"sso_enabled":(true|false)' || echo "(stack not reachable)"
+
+sso-on: ## Turn single sign-on ON (needs the OIDC values in services/server/.env)
+	@$(MAKE) --no-print-directory _set-sso SSO=true
+
+sso-off: ## Turn single sign-on OFF (site is unauthenticated; OPEN_WRITE governs writes)
+	@$(MAKE) --no-print-directory _set-sso SSO=false
+
+_set-sso:
+	@if [ "$(SSO)" = "true" ]; then \
+	  missing=""; \
+	  for k in ISSUER_BASE_URL CLIENT_ID CLIENT_SECRET SECRET; do \
+	    v="$$(sed -n "s/^$$k=//p" $(SERVER_ENV) 2>/dev/null)"; \
+	    case "$$v" in \
+	      ""|*your-client*|*replace-with*|*idp.example.com*) missing="$$missing $$k" ;; \
+	    esac; \
+	  done; \
+	  if [ -n "$$missing" ]; then \
+	    echo "Refusing to turn SSO on. Not set in $(SERVER_ENV):$$missing"; \
+	    echo ""; \
+	    echo "The server fails closed on an incomplete OIDC config: it would refuse"; \
+	    echo "to boot and take the site down with it. Fill those in first (see"; \
+	    echo "docs/deployment.md#single-sign-on), then re-run 'make sso-on'."; \
+	    exit 1; \
+	  fi; \
+	fi
+	@touch .env
+	@grep -q '^ENABLE_SSO=' .env && sed -i.bak -E 's/^ENABLE_SSO=.*/ENABLE_SSO=$(SSO)/' .env || echo "ENABLE_SSO=$(SSO)" >> .env
+	@sed -i.bak -E 's/(ENABLE_SSO:[[:space:]]*)(true|false)/\1$(SSO)/' shared/config.ts
+	@rm -f .env.bak shared/config.ts.bak
+	@echo "ENABLE_SSO=$(SSO) in both the root .env and shared/config.ts."
+	@echo "The flag is compiled into the browser bundle, so rebuilding the client"
+	@echo "(a bare recreate would keep the old posture)..."
+	@EDITION=$(EDITION) $(PROD) build client
+	@echo "Recreating the client and server containers..."
+	@EDITION=$(EDITION) $(PROD) up -d --no-deps --force-recreate client server
+	@$(PROD) restart nginx 2>/dev/null || true
+	@echo ""
+	@echo "Done. Verify with 'make sso-status' once 'make ps' shows client healthy."
+	@echo "With SSO off, OPEN_WRITE in the root .env decides whether the interface"
+	@echo "is read-only or writable."
 
 backup: ## Back up the MongoDB database
 	@bash scripts/backup.sh

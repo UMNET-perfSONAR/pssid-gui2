@@ -72,7 +72,11 @@
             </div>
 
             <div class="form-group">
-              <label id="job-tests-label"> Tests (run in the listed order) </label>
+              <label id="job-tests-label"> Tests </label>
+              <small id="job-tests-help" class="text-muted" style="display:block; margin:0.15rem 0 0.5rem;">
+                The tests in a job are not guaranteed to run in any particular order.
+                Put a test in its own job if something must run before something else.
+              </small>
               <VueMultiselect
                 v-model="form.tests"
                 :multiple="true"
@@ -80,6 +84,7 @@
                 :options="testNames"
                 :disabled="isDisabled"
                 aria-labelledby="job-tests-label"
+                aria-describedby="job-tests-help"
               >
               </VueMultiselect>
             </div>

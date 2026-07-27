@@ -7,7 +7,7 @@
 # recreated. The pre-load's "all" group keeps its regex and gains one batch.
 #
 # Run the pre-load FIRST (the Ansible role does this on a first install), then
-# this. See QA/QA.md for the full walkthrough and expected output.
+# this. See QA.md for the full walkthrough and expected output.
 #
 # What it ADDS:
 #   - SSID profile:  MWireless (eduroam comes from the pre-load)
@@ -20,54 +20,73 @@
 #   - jobs:          job-comprehensive-1  http only
 #                    job-comprehensive-2  rtt + a different http test
 #                    job-group-1          rtt
-#                    job-host-1           rtt
+#                    job-host-1           dns + trace
+#                    job-tie-1            http (fixed target)
 #   - batches:       batch-comprehensive  priority 0  eduroam    (-> "all" group)
 #                    batch-host           priority 1  MWireless  (-> probe 1, directly)
 #                    batch-group          priority 2  MWireless  (-> rpi4 group)
+#                    batch-tie            priority 2  MWireless  (-> rpi4 group)
 #   - hosts:         two probes, each with the SAME metadata key
 #                    (external_dest) holding a DIFFERENT value. Probe 1 also
 #                    carries batch-host directly (not via a group).
 #   - host group:    rpi4 - every probe listed BY NAME (the GUI's "Select all",
-#                    not a regex), carrying group metadata ifacename=wlan0
+#                    not a regex), carrying group data ifacename=wlan0
 #
-# PRIORITY: lower number = higher priority. All three batches share the "Every 5
-# minutes" and "Every 1 hour" schedules so they COLLIDE on purpose; probe 1
-# should run batch-comprehensive (0) ahead of batch-host (1) ahead of
-# batch-group (2) -- it is the only host all three reach. Probe 2 only sees
-# batch-comprehensive (0) and batch-group (2). That collision is the point --
-# it is how QA checks priority.
+# METADATA: operators author it in the "data" field of a host or a group, and
+# "data" is the only field the daemon reads. It resolves $key per probe from that
+# host's own data first (so a host key always wins) and then from every group the
+# host belongs to, whether it joined BY NAME or BY REGEX. The generated config
+# also carries a "metadata" key per host: that is the GUI's precomputed view of
+# the same answer, for reading, not an input.
+#
+# PRIORITY: lower number has higher precedence in the event of a scheduling
+# conflict. All four batches share the "Every 5 minutes" and "Every 1 hour"
+# schedules so they COLLIDE on purpose; probe 1 should give batch-comprehensive
+# (0) precedence over batch-host (1) over batch-group / batch-tie (2) -- it is
+# the only host all four reach. Probe 2 sees batch-comprehensive (0),
+# batch-group (2) and batch-tie (2). That collision is the point -- it is how QA
+# checks priority.
+#
+# IDENTICAL PRECEDENCE: batch-group and batch-tie are BOTH priority 2 and share
+# both schedules, so on every probe two due batches are tied. Nothing in the
+# configuration breaks that tie -- the daemon hands both to the scheduler with
+# the same (time, priority) key and their relative order is whatever its internal
+# ordering happens to produce, which is not a contract and may change. The tie is
+# seeded deliberately so QA can SEE that state and recognise it in the field: if
+# the order of two batches matters, give them different priorities.
 #
 # batch-host is attached to probe 1 directly (not through a group), so the
 # dataset exercises the plain host-level batch attachment path without a manual
 # step. To ALSO exercise the GUI's own write path for this (as opposed to the
 # seeder writing to MongoDB directly), detach and reattach it by hand in the
-# GUI -- see QA/QA.md section 3.
+# GUI -- see QA.md section 3.
 #
 # The probe NAMES are the probes' hostnames, which at this site are their IP
-# addresses -- ask the QA operator for the two probe IPs and pass them in. The
-# names MUST match what each probe reports as its hostname, or the daemon exits
-# on that probe. Placeholders are used until the real IPs are supplied:
+# addresses. The two lab probes are the defaults below, so the script needs no
+# arguments here. A name MUST match what that probe reports as its hostname, or
+# the daemon exits on it -- so override the defaults when pointing this dataset
+# at different probes:
 #
-#   PSSID_QA_PROBE1=10.0.0.11 PSSID_QA_PROBE2=10.0.0.12 \
-#   PSSID_QA_DEST1=<url> PSSID_QA_DEST2=<url> bash QA/seed-qa.sh
+#   PSSID_QA_PROBE1=<probe-1-ip> PSSID_QA_PROBE2=<probe-2-ip> \
+#   PSSID_QA_DEST1=<url> PSSID_QA_DEST2=<url> bash umich/QA/seed-qa.sh
 #
 # Safe to re-run: it removes only the documents it owns (by name, including
 # probes a previous run put in the rpi4 group) before inserting them again.
 set -euo pipefail
 
 # Resolve the repository root from this script's own location, so it works
-# whether it is run as `bash QA/seed-qa.sh` from the root, via `make seed-qa`,
-# or from inside the QA/ folder. The .env read below is relative to the root.
+# whether it is run as `bash umich/QA/seed-qa.sh` from the root, via
+# `make seed-qa`, or from inside the umich/QA/ folder. The .env read below is
+# relative to the root, which is two levels up from umich/QA.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR/.."
+cd "$SCRIPT_DIR/../.."
 
 DB_NAME="gui"
 
-# The two lab probes. Their hostnames are IP addresses at this site; the
-# placeholders below stand in until the QA operator supplies the real IPs
-# (which also keeps internal addresses out of the committed repository).
-PSSID_QA_PROBE1="${PSSID_QA_PROBE1:-Probe-IP-address-1}"
-PSSID_QA_PROBE2="${PSSID_QA_PROBE2:-Probe-IP-address-2}"
+# The two lab probes. Their hostnames are IP addresses at this site, so these
+# are the addresses themselves; override them for any other pair of probes.
+PSSID_QA_PROBE1="${PSSID_QA_PROBE1:-198.111.226.186}"
+PSSID_QA_PROBE2="${PSSID_QA_PROBE2:-198.111.226.189}"
 
 # Same metadata KEY on both hosts, a DIFFERENT value each. This is what
 # $external_dest resolves to per probe, and checking that each probe gets its own
@@ -76,8 +95,8 @@ PSSID_QA_DEST1="${PSSID_QA_DEST1:-www.google.com}"
 PSSID_QA_DEST2="${PSSID_QA_DEST2:-www.reddit.com}"
 
 # Values are passed into mongosh through the environment (never spliced into the
-# script text), so validate them only for sanity. The pattern accepts both an IP
-# address and the placeholder names; it is the same shape a host name must have.
+# script text), so validate them only for sanity. The pattern accepts an IP
+# address or a DNS name; it is the same shape a host name must have.
 for v in "$PSSID_QA_PROBE1" "$PSSID_QA_PROBE2"; do
   if ! [[ "$v" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
     echo "Invalid probe hostname: '$v'" >&2
@@ -156,10 +175,10 @@ const ownedNames = {
                   // so an existing QA database upgrades cleanly.
                   'test-http-to-MWireless'],
   jobs:          ['job-comprehensive-1', 'job-comprehensive-2',
-                  'job-group-1', 'job-host-1',
+                  'job-group-1', 'job-host-1', 'job-tie-1',
                   // Earlier QA job names.
                   'job-MWagree', 'job-MWireless'],
-  batches:       ['batch-comprehensive', 'batch-host', 'batch-group',
+  batches:       ['batch-comprehensive', 'batch-host', 'batch-group', 'batch-tie',
                   // Earlier QA batch name.
                   'BatchMW'],
   host_groups:   ['rpi4'],
@@ -183,9 +202,10 @@ const eduroamId = db.ssid_profiles.findOne({ name: 'eduroam' })._id;
 
 // ---- tests ----------------------------------------------------------------------
 // $external_dest is a METADATA REFERENCE: the daemon substitutes it per host from
-// that host's effective metadata, so each probe tests its own destination. The key
-// uses an underscore, not a hyphen: $-substitution stops at a hyphen, so
-// "$external-dest" would resolve as "$external" followed by a literal "-dest".
+// the data of that host and of its groups, so each probe tests its own
+// destination. The key uses an underscore, not a hyphen: $-substitution stops at
+// a hyphen, so "$external-dest" would resolve as "$external" followed by a
+// literal "-dest".
 //
 // Between them these cover every spec field type the GUI can produce: text,
 // number, singleselect, and a user-defined optional key/value pair (an entry with
@@ -219,8 +239,10 @@ const tIds = db.tests.insertMany([
 // ---- jobs -------------------------------------------------------------------------
 // job-comprehensive-1: http only, and the job that USES METADATA ($external_dest).
 // job-comprehensive-2: rtt plus a DIFFERENT http test (a fixed target).
-// job-group-1 / job-host-1: one rtt test each, so the three batches stay distinct
-// in the generated config and are easy to tell apart when checking priority.
+// job-group-1 / job-host-1 / job-tie-1: distinct test sets, so the four batches
+// stay distinguishable in the generated config and are easy to tell apart when
+// checking priority -- particularly job-group-1 vs job-tie-1, whose batches share
+// a priority and must still be identifiable in probe logs.
 const jIds = db.jobs.insertMany([
   { name: 'job-comprehensive-1', parallel: 'True',  'continue-if': 'true',  backoff: 'PT1S',
     tests: ['test-http-to-external'],                     test_ids: [tIds[0]] },
@@ -232,6 +254,8 @@ const jIds = db.jobs.insertMany([
   { name: 'job-host-1',          parallel: 'True',  'continue-if': 'true',  backoff: 'PT1S',
     tests: ['test-dns-to-external', 'test-trace-to-external'],
     test_ids: [tIds[3], tIds[4]] },
+  { name: 'job-tie-1',           parallel: 'False', 'continue-if': 'true',  backoff: 'PT1S',
+    tests: ['test-http-to-example'],                      test_ids: [tIds[1]] },
 ]).insertedIds;
 
 // ---- schedules: reused from the pre-load by name -----------------------------------
@@ -240,10 +264,16 @@ const s5min = sched('Every 5 minutes');
 const s1hr  = sched('Every 1 hour');
 
 // ---- batches ------------------------------------------------------------------------
-// Lower priority number = higher priority. All three share BOTH schedules, so they
-// are due at the same instant every 5 minutes and again on the hour: a deliberate
-// collision, so QA can confirm the probe honors priority
-// (batch-comprehensive 0 > batch-host 1 > batch-group 2).
+// Lower number has higher precedence in the event of a scheduling conflict. All
+// four share BOTH schedules, so they are due at the same instant every 5 minutes
+// and again on the hour: a deliberate collision, so QA can confirm the probe
+// honors precedence (batch-comprehensive 0 before batch-host 1 before the two at 2).
+//
+// batch-group and batch-tie are both priority 2 ON PURPOSE. Two batches due at
+// the same instant with the same precedence is the ambiguous case: the config
+// expresses no preference between them, so their order is left to the scheduler
+// and must not be relied on. Seeding it lets QA observe the state rather than
+// meet it for the first time in production.
 const bIds = db.batches.insertMany([
   { name: 'batch-comprehensive', priority: 0, test_interface: '$ifacename',
     ssid_profiles: ['eduroam'],   ssid_profile_ids: [eduroamId],
@@ -257,14 +287,21 @@ const bIds = db.batches.insertMany([
     ssid_profiles: ['MWireless'], ssid_profile_ids: [mwId],
     schedules: ['Every 1 hour', 'Every 5 minutes'], schedule_ids: [s1hr._id, s5min._id],
     jobs: ['job-group-1'],        job_ids: [jIds[2]] },
+  // Same priority as batch-group, same two schedules, same group: the identical
+  // precedence case.
+  { name: 'batch-tie',           priority: 2, test_interface: '$ifacename',
+    ssid_profiles: ['MWireless'], ssid_profile_ids: [mwId],
+    schedules: ['Every 1 hour', 'Every 5 minutes'], schedule_ids: [s1hr._id, s5min._id],
+    jobs: ['job-tie-1'],          job_ids: [jIds[4]] },
 ]).insertedIds;
 
 // ---- hosts: the lab probes ----------------------------------------------------------
-// Same metadata KEY on every probe, a DIFFERENT value each, so $external_dest
-// resolves per host. batch-comprehensive and batch-group reach both probes
-// through the "all" and rpi4 groups; batch-host is attached directly to probe 1
-// only, so at least one probe exercises the plain host-level attachment path
-// (and so probe 1, not probe 2, is the one that sees all three batches).
+// Same metadata KEY in every probe's data, a DIFFERENT value each, so
+// $external_dest resolves per host. batch-comprehensive, batch-group and
+// batch-tie reach both probes through the "all" and rpi4 groups; batch-host is
+// attached directly to probe 1 only, so at least one probe exercises the plain
+// host-level attachment path (and so probe 1, not probe 2, is the one that sees
+// all four batches).
 const hIds = db.hosts.insertMany(
   PROBES.map((name, i) => ({
     name,
@@ -276,12 +313,15 @@ const hIds = db.hosts.insertMany(
 
 // ---- host group: rpi4 ---------------------------------------------------------------
 // Members are listed BY NAME -- what the GUI's "Select all" produces -- rather than
-// by regex. That distinction matters: group metadata reaches hosts listed by name
-// only, never hosts matched by a pattern, so listing them is what delivers
-// ifacename=wlan0 (which $ifacename in every batch resolves to).
+// by regex, so the dataset covers both membership styles ("all" uses .*). Either
+// style delivers the group's data: ifacename=wlan0 here, which $ifacename in every
+// batch resolves to.
+//
+// It carries BOTH priority-2 batches, so the identical-precedence collision is
+// visible on every probe in the group, not just on probe 1.
 db.host_groups.insertOne({
   name: 'rpi4',
-  batches: ['batch-group'], batch_ids: [bIds[2]],
+  batches: ['batch-group', 'batch-tie'], batch_ids: [bIds[2], bIds[3]],
   hosts: PROBES.slice(), host_ids: Object.values(hIds),
   hosts_regex: [],
   data: { ifacename: 'wlan0' },
@@ -364,12 +404,12 @@ EOF
 # authenticated database with missing .env credentials. Check the net effect and
 # report an explicit error, so a "Done" banner never appears over an unchanged
 # database. The
-# pre-load leaves zero batches; this dataset adds three, so a batch count below
-# three means the seed did not take. (Same guard as scripts/seed-defaults.sh.)
+# pre-load leaves zero batches; this dataset adds four, so a batch count below
+# four means the seed did not take. (Same guard as scripts/seed-defaults.sh.)
 # shellcheck disable=SC2086
 BATCH_COUNT="$(docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" --eval 'db.batches.countDocuments()' | tail -n1 | tr -dc '0-9')"
-if [ "${BATCH_COUNT:-0}" -lt 3 ]; then
-  echo "error: QA seeding did not complete (batches=${BATCH_COUNT:-0}, expected 3+)." >&2
+if [ "${BATCH_COUNT:-0}" -lt 4 ]; then
+  echo "error: QA seeding did not complete (batches=${BATCH_COUNT:-0}, expected 4+)." >&2
   echo "Run the pre-load first (bash scripts/seed-defaults.sh), and if database" >&2
   echo "authentication is enabled ensure .env has MONGO_USERNAME/MONGO_PASSWORD." >&2
   exit 1
@@ -393,20 +433,28 @@ Done. The QA scenario is wired as follows:
   batch-comprehensive  priority 0  eduroam    via the "all" group's .* regex
   batch-host           priority 1  MWireless  attached directly to $PSSID_QA_PROBE1
   batch-group          priority 2  MWireless  via the rpi4 group
+  batch-tie            priority 2  MWireless  via the rpi4 group
 
-  $PSSID_QA_PROBE1 sees all three batches (0, 1, 2); $PSSID_QA_PROBE2 sees only
-  batch-comprehensive and batch-group (0, 2) -- that difference is deliberate,
-  so priority is only fully observable on probe 1.
+  $PSSID_QA_PROBE1 sees all four batches (0, 1, 2, 2); $PSSID_QA_PROBE2 sees
+  three (0, 2, 2) -- that difference is deliberate, so the full precedence
+  ordering is only observable on probe 1.
 
-  rpi4 lists both probes BY NAME (the GUI's "Select all"), which is what
-  delivers the group metadata ifacename=wlan0 that \$ifacename resolves to.
+  batch-group and batch-tie share priority 2 ON PURPOSE. Lower number has higher
+  precedence in the event of a scheduling conflict, but two batches at the SAME
+  number express no preference at all: their relative order is left to the
+  scheduler and is not something the configuration decides. Give two batches
+  different priorities whenever the order between them matters.
+
+  rpi4 lists both probes BY NAME (the GUI's "Select all"); "all" matches by
+  regex. Either way the group's data reaches its members, which is what delivers
+  ifacename=wlan0 that \$ifacename resolves to.
 
   Each probe carries its own external_dest, so \$external_dest resolves to a
   different destination per host.
 
-  All three batches share both schedules, so they collide every 5 minutes and
-  on the hour: that is how QA checks the probe honors priority.
+  All four batches share both schedules, so they collide every 5 minutes and
+  on the hour: that is how QA checks the probe honors precedence.
 
 Next: Settings > Configuration > Preview. The full walkthrough and the
-expected output are in QA/QA.md.
+expected output are in umich/QA/QA.md.
 MSG

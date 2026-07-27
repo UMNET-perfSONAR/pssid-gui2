@@ -15,8 +15,8 @@
 #   - hosts:         none; hosts are site-specific
 #
 # Batches, hosts and the rpi4 group belong to the QA dataset
-# (QA/seed-qa.sh), which layers on top of this one WITHOUT disturbing
-# anything loaded here. See QA/QA.md for the full walkthrough.
+# (umich/QA/seed-qa.sh), which layers on top of this one WITHOUT disturbing
+# anything loaded here. See umich/QA/QA.md for the full walkthrough.
 #
 # It also retires the legacy example_script test type: the template file is
 # deleted from the server container's plugins directory (a persistent bind mount
@@ -236,4 +236,4 @@ echo "job-comprehensive, and the 'all' host group (regex .*)."
 echo ""
 echo "No batches, hosts or rpi4 group: those belong to the QA dataset, which"
 echo "layers on top of this one without disturbing it. Run it with:"
-echo "    bash QA/seed-qa.sh        (see QA/QA.md)"
+echo "    bash umich/QA/seed-qa.sh  (see umich/QA/QA.md)"

@@ -85,6 +85,11 @@
               </VueMultiselect>
             </div>
             <label class="form-group-label"> Metadata </label>
+            <small class="text-muted" style="display:block; margin:0.15rem 0 0.5rem;">
+              Key/value pairs this probe resolves <code>$key</code> references from,
+              in batches and tests. A key set here beats the same key on any group
+              the probe belongs to.
+            </small>
             <dynamic_add_data :addedData="form.meta"></dynamic_add_data>
           </fieldset>
         </form>

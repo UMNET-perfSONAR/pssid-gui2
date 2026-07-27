@@ -124,6 +124,26 @@ When the playbook is not running from inside a checkout on the target, it
 clones the repository to `/opt/pssid-gui` (configurable) and deploys from
 there.
 
+## Site inventories
+
+A site that deploys the same hosts repeatedly is better served by a committed
+inventory than by a growing list of `-e` flags. Put the inventory and a
+`group_vars/` directory beside each other; Ansible loads the variables
+automatically because they sit next to the inventory file, so the deploy command
+stays a single line.
+
+[`../umich/`](../umich/README.md) is the worked example and the University of
+Michigan's live deployment: [`inventory.ini`](../umich/inventory.ini) names the
+controllers and [`group_vars/pssid_gui.yml`](../umich/group_vars/pssid_gui.yml)
+supplies the hostname, Okta issuer, edition, TLS mode, and Docker storage path.
+
+```bash
+ansible-playbook -i ../umich/inventory.ini site.yml --ask-vault-pass
+```
+
+Those files set only the generic variables documented below — a site inventory
+never introduces a variable of its own, so there is exactly one code path.
+
 ## Variables
 
 All variables and their defaults are documented in
@@ -135,7 +155,7 @@ The most common:
 |---|---|---|
 | `pssid_gui_mode` | `prod` | `prod` (HTTPS stack) or `dev` (hot reload) |
 | `pssid_gui_hostname` | machine FQDN | Public hostname users will visit |
-| `pssid_gui_edition` | `default` | Interface edition id (see `services/client/src/edition/`) |
+| `pssid_gui_edition` | `default` | Interface edition id: `default`, `umich`, or another entry in `services/client/src/edition/editions.ts` |
 | `pssid_gui_tls` | `self-signed` | `self-signed`, `letsencrypt`, or `none` |
 | `pssid_gui_sso` | `false` | Enable OIDC single sign-on |
 | `pssid_gui_version` | `main` | Branch or tag to deploy when cloning |

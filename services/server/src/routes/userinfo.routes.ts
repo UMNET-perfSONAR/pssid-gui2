@@ -1,26 +1,29 @@
 import express, { Request, Response } from 'express';
-import { requiresAuth } from 'express-openid-connect';
-import { isSsoEnabled, isOpenWrite } from '../shared/accessControl';
+import {
+  isSsoEnabled,
+  isOpenWrite,
+  resolveRequestGroups,
+  effectiveAccessLevel,
+} from '../shared/accessControl';
 
 const router = express.Router();
 
-// Resolved through isSsoEnabled(), NOT the compiled config.ENABLE_SSO: the
-// posture can be switched by environment variable without a rebuild, which is
-// the whole point of shipping prebuilt images (install.sh --pull). Reading the
-// compiled default here instead would desynchronise this route from the rest of
+// No requiresAuth() guard here, and no OIDC-dependent branch at module load.
+//
+// This endpoint is how the browser discovers whether anyone is signed in, which
+// makes it the one place that must answer usefully when nobody is. index.ts
+// already gates /api/* with requireApiAuthentication when SSO is on, so an
+// anonymous caller never reaches this handler in that posture; with SSO off there
+// is no identity to report and the posture below is the whole answer.
+//
+// It is also resolved through isSsoEnabled() rather than the compiled
+// config.ENABLE_SSO, because the posture can be switched by environment variable
+// without a rebuild -- the point of shipping prebuilt images (install.sh --pull).
+// Reading the compiled default would desynchronise this route from the rest of
 // the app on a pulled image: the OIDC middleware would authenticate the user
 // while this endpoint still reported "nobody is signed in", and the client would
 // fall back to the OPEN_WRITE policy for a user who actually has a session.
-//
-// With SSO disabled there is no authenticated identity (write access is governed
-// by OPEN_WRITE instead), so skip the OIDC guard. Applying requiresAuth() then
-// would throw "req.oidc is not found", because the auth middleware is only
-// mounted when SSO is on.
-const guard = isSsoEnabled()
-  ? requiresAuth()
-  : (_req: Request, _res: Response, next: Function) => next();
-
-router.get('/', guard, async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     // The EFFECTIVE auth posture, resolved from the environment, travels with
     // every identity response. The client compiles shared/config.ts into its
@@ -34,22 +37,42 @@ router.get('/', guard, async (req: Request, res: Response) => {
 
     // No SSO: return an empty identity rather than erroring; the client treats
     // this as "no signed-in user" and falls back to the OPEN_WRITE policy.
-    // Same env-aware resolution as the guard above, for the same reason.
+    // Same env-aware resolution as above, for the same reason.
     if (!isSsoEnabled()) {
-      return res.json({ name: null, sub: null, groups: [], ...posture });
+      return res.json({
+        name: null,
+        sub: null,
+        groups: [],
+        // effectiveAccessLevel, not a local `isOpenWrite() ? ...` expression:
+        // that would be a second implementation of the write policy, and the
+        // whole point of reporting a level is that the interface and the API
+        // cannot disagree about it.
+        access_level: effectiveAccessLevel(req),
+        ...posture,
+      });
     }
 
-    const user = req.oidc.user;
+    const user = req.oidc?.user;
 
     if (!user) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      return res.status(401).json({ error: 'User not authenticated', login_url: '/login' });
     }
 
-    // Support both the eduPerson edumember claim and the standard groups claim.
+    // resolveRequestGroups, the same resolution authorize() uses: it prefers the
+    // list resolved at sign-in (which may have come from the provider's userinfo
+    // endpoint rather than the ID token) and falls back to the token's claims.
+    // Reporting anything else here would show an empty group list to a user the
+    // API is happily authorizing.
+    const groups = resolveRequestGroups(req);
+
     res.json({
       name: user.name,
       sub: user.sub,
-      groups: user.edumember_is_member_of || user.groups || [],
+      email: user.email,
+      groups,
+      // Computed server-side from the same mapping authorize() uses, so the
+      // interface and the API can never disagree about what this user may do.
+      access_level: effectiveAccessLevel(req),
       ...posture,
     });
   } catch (err) {

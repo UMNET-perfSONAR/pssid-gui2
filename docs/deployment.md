@@ -16,7 +16,7 @@ examples are placeholders to replace with your own.
 - [What the installer does](#what-the-installer-does)
 - [Everyday operations](#everyday-operations)
 - [Starter data](#starter-data)
-- [QA walkthrough](../QA/QA.md)
+- [QA walkthrough](../umich/QA/QA.md)
 - [Single sign-on](#single-sign-on)
 - [TLS](#tls)
 - [Editions](#editions)
@@ -329,7 +329,9 @@ To run it without prompts, pass the answers as flags:
 
 It checks for Docker, Docker Compose, and OpenSSL, then collects the edition,
 hostname, SSO, and TLS settings. From those it writes `services/server/.env` (the
-Mongo and Redis URLs, `BASE_URL`, `COOKIE_DOMAIN`, a random `SECRET`, and the OIDC
+Mongo and Redis URLs, `BASE_URL`, an empty `COOKIE_DOMAIN` — which gives a
+host-only session cookie, sent to exactly the host that set it rather than to
+every subdomain — a random `SECRET`, and the OIDC
 values when SSO is on) and a root `.env` recording the edition and a generated
 MongoDB username and password. The database runs with authentication enabled, and
 the server connects with those credentials. It applies the SSO flag and base URL
@@ -364,7 +366,9 @@ The Makefile wraps the common commands:
 | `make dev` | Local development stack on `http://localhost:8888` |
 | `make backup` / `make restore` | Back up or restore MongoDB |
 | `make seed-defaults` | Load the pre-load starter data (fresh installs) |
-| `make seed-qa` | Add the QA dataset on top of the pre-load (see [QA/QA.md](../QA/QA.md)) |
+| `make seed-qa` | Add the QA dataset on top of the pre-load (see [umich/QA/QA.md](../umich/QA/QA.md)) |
+| `make sso-status` | Show whether single sign-on is on, in config and on the running stack |
+| `make sso-on` / `make sso-off` | Turn single sign-on on or off (see [Single sign-on](#single-sign-on)) |
 | `make doctor` | Check prerequisites and ports |
 | `make test` | Run every unit test (server and client; no stack needed) |
 | `make smoke` | Walk every user action against a running stack |
@@ -431,37 +435,41 @@ group (those belong to the QA dataset), and it removes the retired
 `example_script` test type. The `all` group is upserted rather than replaced, so
 re-running the pre-load never detaches a batch assigned to it.
 
-The QA dataset lives under [`QA/`](../QA/), deliberately outside the deployment
-path: neither the bootstrap nor the installer runs it. Apply it by hand with
-`bash QA/seed-qa.sh` (or `make seed-qa`). It layers on top of the pre-load: the
-MWireless profile, five more tests (including `test-http-to-external`, whose url
-is the metadata reference `$external_dest`), four more jobs, three batches
-(`batch-comprehensive` at priority 0 on eduroam, `batch-host` at 1 on MWireless
-and `batch-group` at 2 on MWireless), two probe hosts, and the `rpi4` group carrying
-group metadata `ifacename=wlan0`.
+The QA dataset lives under [`umich/QA/`](../umich/QA/), deliberately outside the
+deployment path: neither the bootstrap nor the installer runs it. It is
+site-specific (campus SSIDs, the two lab probes), which is why it sits with the
+rest of the UMich material — see [`umich/README.md`](../umich/README.md). Apply it
+by hand with `bash umich/QA/seed-qa.sh` (or `make seed-qa`). It layers on top of
+the pre-load: the MWireless profile, five more tests (including
+`test-http-to-external`, whose url is the metadata reference `$external_dest`),
+five more jobs, four batches (`batch-comprehensive` at priority 0 on eduroam,
+`batch-host` at 1 on MWireless, and `batch-group` and `batch-tie` **both at 2** on
+MWireless), two probe hosts, and the `rpi4` group carrying group `data`
+`ifacename=wlan0`.
 
 It wires every assignment path: a group batch via the `all` regex, a group batch
 via members selected by name in `rpi4`, a batch attached directly to a host
 (`batch-host`, on the first probe only), host metadata (`external_dest`, the
 same key with a different value on each probe), and group metadata. Because
-`batch-host` reaches only that one probe, it is also the only host all three
-batches reach. All three share the same two schedules so they collide
-deliberately, which is how QA checks that priority is honored (lower number
-wins).
+`batch-host` reaches only that one probe, it is also the only host all four
+batches reach. They all share the same two schedules so they collide
+deliberately, which is how QA checks that priority is honored (lower number has
+higher precedence in the event of a scheduling conflict). `batch-group` and
+`batch-tie` deliberately share priority 2, so the dataset also covers the
+degenerate case where two due batches have **identical** precedence and nothing
+in the configuration decides between them.
 
 Supply the two probe IPs (and, optionally, the destinations) with
 `PSSID_QA_PROBE1`/`PSSID_QA_PROBE2` and `PSSID_QA_DEST1`/`PSSID_QA_DEST2`; the
 probe names must match the probes' real hostnames.
 
-**[QA/QA.md](../QA/QA.md) is the full walkthrough and demonstration**, with the
-expected output for every section and how to roll back afterwards.
+**[umich/QA/QA.md](../umich/QA/QA.md) is the full walkthrough and demonstration**,
+with the expected output for every section and how to roll back afterwards.
 
 A batch's **test interface** may be a literal interface (`wlan0`) or a metadata
-reference (`$ifacename`), resolved per host by the daemon from that host's
-effective metadata. Metadata can be assigned in two places: on the host and on a
-host group. Group metadata reaches the hosts a group lists **by name** (host
-keys win on collision); regex membership assigns the group's batches but not its
-metadata.
+reference (`$ifacename`), which the daemon resolves per host from the `data`
+blocks of that host and of the groups it belongs to (by name or by regex). Host
+keys win over group keys; see [Metadata](#metadata) for the full order.
 
 ### Running the seeders with bootstrap
 
@@ -475,13 +483,13 @@ curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/boo
   PSSID_HOSTNAME=pssid.example.edu bash
 ```
 
-`QA/seed-qa.sh` is intentionally NOT wired into the bootstrap or the installer:
+`umich/QA/seed-qa.sh` is intentionally NOT wired into the bootstrap or the installer:
 it needs the real probe hostnames, and QA data does not belong on a normal
 deployment. Run it by hand on the VM after bootstrap finishes:
 
 ```bash
 cd /opt/pssid-gui   # or wherever bootstrap deployed to; see below
-PSSID_QA_PROBE1=<probe-1-ip> PSSID_QA_PROBE2=<probe-2-ip> bash QA/seed-qa.sh
+PSSID_QA_PROBE1=<probe-1-ip> PSSID_QA_PROBE2=<probe-2-ip> bash umich/QA/seed-qa.sh
 ```
 
 The probe names must exactly match what each probe reports as its hostname (their
@@ -500,9 +508,42 @@ order: the pre-load owns no batches, hosts or `rpi4` group, and upserts the
 
 To roll back to the pre-load afterwards, restore a backup taken before seeding
 (`make backup` / `make restore`); re-running `seed-defaults.sh` deliberately does
-not remove QA data. [QA/QA.md](../QA/QA.md) covers the whole cycle.
+not remove QA data. [umich/QA/QA.md](../umich/QA/QA.md) covers the whole cycle.
 
 ## Single sign-on
+
+### The on/off switch
+
+Single sign-on is one binary flag, `ENABLE_SSO`, and it **ships off**. A
+deployment can go live unauthenticated and have SSO turned on later, once the
+provider side is registered, without reinstalling.
+
+```bash
+make sso-status         # what is the posture right now?
+make sso-on             # turn it on
+make sso-off            # turn it back off
+```
+
+The flag lives in two places, and the targets above move both together:
+the root `.env` (read by Docker Compose and resolved by the server at runtime)
+and `shared/config.ts` (the default compiled into the browser bundle). Moving
+only one desynchronises the API from the interface — the server would
+authenticate a user the browser still believes is anonymous. Because the value
+is compiled into the bundle, switching rebuilds the client image; `make ps`
+showing `client` healthy means the change is live.
+
+`make sso-on` **refuses** when the OIDC values are not yet in
+`services/server/.env` (`ISSUER_BASE_URL`, `CLIENT_ID`, `CLIENT_SECRET`,
+`SECRET`), and names the ones that are missing. That guard matters: the server
+deliberately fails closed on an incomplete OIDC config, so flipping the flag
+early would stop it booting and take the site down. Fill those values in — the
+rest of this section is how — then run `make sso-on`.
+
+While SSO is off, `OPEN_WRITE` in the root `.env` decides whether the interface
+is read-only or writable. It also ships closed (read-only), so an unauthenticated
+deployment is not writable by accident.
+
+### Configuring the provider
 
 The server uses generic OIDC (`express-openid-connect`), so any compliant provider
 works (Okta, Entra ID, Keycloak, Google, and others). Register a web application
@@ -510,6 +551,14 @@ with your provider, set the redirect URI to `https://<your-hostname>/callback` a
 the sign-out URI to `https://<your-hostname>`, and make sure the ID token includes
 a groups claim. Run the installer with `--sso=true` and supply the issuer URL,
 client ID, and client secret, or answer the prompts.
+
+```bash
+./install.sh --hostname=pssid.example.edu --sso=true \
+  --issuer=https://idp.example.com --client-id=... --tls=letsencrypt
+```
+
+Omit `--client-secret` to be prompted for it, which keeps it out of your shell
+history.
 
 Map the provider's group names to permissions in
 [`shared/auth-groups.config.json`](../shared/auth-groups.config.json):
@@ -523,31 +572,159 @@ Map the provider's group names to permissions in
 }
 ```
 
+The keys are group names **exactly as the provider emits them**. Matching ignores
+case and surrounding whitespace but is otherwise exact: there is no prefix or
+suffix matching, so mapping `pssid-gui` does not also grant `pssid-gui-readonly`.
+A user in several groups gets the highest level among them, and a group that is
+not listed grants nothing.
+
+The server re-reads this file while it runs, so a group change needs no restart —
+**but** compose bind-mounts it as a single file, and such a mount follows the
+inode rather than the path. An editor that writes a temporary file and renames it
+over the original, which is what `sed -i` and vim do by default, leaves the
+container reading the old copy. Either edit in place (`cat > shared/auth-groups.config.json`)
+or, more simply, run `docker compose restart server` afterwards and confirm the
+result with `/api/userinfo`.
+
 With SSO off, access is governed by `OPEN_WRITE` in `shared/config.ts`: `true`
 allows anyone to read and write, `false` makes the interface read-only.
+
+### It fails closed
+
+With SSO enabled the server **validates its configuration at startup and refuses
+to start** if anything is wrong, naming the setting at fault. Every case it
+rejects would otherwise present as a working deployment that authenticates nobody,
+loops at sign-in, or denies every user — failures that are easy to misread as an
+application bug. The checks cover the issuer and base URL (absolute, HTTPS, no
+stray path), a `COOKIE_DOMAIN` that does not match the site hostname (the usual
+cause of an endless sign-in redirect), a `SECRET` shorter than 32 characters, an
+unauthenticated `REDIS_URL`, placeholder credentials left in place, incoherent
+session lifetimes, and a group mapping that is missing, malformed, or empty.
+
+Check what actually came up with:
+
+```bash
+docker compose logs server | grep -E 'SSO enabled|REFUSING TO START' -A3
+```
+
+Authorization is also enforced **at sign-in**, not just per request: an
+authenticated user whose token carries no group mapped in
+`auth-groups.config.json` is refused with an explanation instead of reaching an
+interface that rejects every action. Set `SSO_REQUIRE_GROUP=false` temporarily to
+diagnose a groups claim that is not arriving, then set it back.
+
+### Group claims
+
+Providers disagree about where group membership goes. All of these are read and
+merged, so one build works against any of them:
+
+| Claim | Typical source |
+|---|---|
+| `groups` | Okta, Entra ID, Keycloak |
+| `edumember_is_member_of` | federated higher-education (eduPerson) |
+| `isMemberOf` | Shibboleth / Grouper |
+
+The **requested scope** is what differs, and it is configurable because a scope
+the provider does not define fails the whole authorization request with
+`invalid_scope`. The default, `openid profile email groups`, is what Okta and
+Entra ID want. A federated eduPerson tenant sets:
+
+```
+SSO_SCOPE=openid profile email edumember groups
+```
+
+### Session and hardening settings
+
+These live in `services/server/.env`, which the installer writes root-owned mode
+640. Change one and `make restart`; each is validated at startup.
+[`services/server/.env.example`](../services/server/.env.example) documents every
+one of them, and the table below is the summary.
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `SSO_SCOPE` | `openid profile email groups` | Requested scope (see above). |
+| `SESSION_ABSOLUTE_SECONDS` | `7200` | Hard session ceiling from login, regardless of activity. |
+| `SESSION_IDLE_SECONDS` | `1800` | Inactivity timeout. Must not exceed the absolute value. |
+| `SSO_REQUIRE_GROUP` | `true` | Refuse sign-in without a mapped group. |
+| `SSO_PAR` | `false` | Pushed Authorization Requests. The provider must advertise the endpoint or the server will not start. |
+| `SSO_BACKCHANNEL_LOGOUT` | `false` | Accept provider-initiated logout at `<BASE_URL>/backchannel-logout`. |
+| `HSTS_ENABLED` | set by installer | `true` only with a CA-issued certificate. |
+| `BODY_LIMIT` | `256kb` | Largest accepted request body. |
+| `RATE_LIMIT_API_PER_MIN` | `200` | Per-IP ceiling on API requests. |
+| `RATE_LIMIT_WRITE_PER_MIN` | `120` | Per-IP ceiling on state-changing requests. |
+| `RATE_LIMIT_LOGIN_PER_MIN` | `60` | Per-IP ceiling on `/login`. Loose on purpose: one office can share an egress address. |
+| `AUTH_GROUPS_FILE` | — | Read the group mapping from a path outside the source tree. When set it is the **only** path consulted: if the file is missing the server refuses to start rather than falling back to the copy inside the image. |
+
+The session itself needs no configuration to be sound: Authorization Code flow
+with PKCE, RS256 pinned for the ID token, no token in the browser, and a
+`Secure` / `HttpOnly` / `SameSite=Lax` cookie whose Redis store key is signed so
+a session cannot be hijacked by guessing an id.
 
 ### Example: Okta
 
 1. Sign in to your Okta tenant with an admin account, go to Applications, then
    Create App Integration, and choose OIDC (OpenID Connect) followed by Web
-   Application. Set the sign-in redirect URI to `https://<your-hostname>/callback`
-   and the sign-out redirect URI to `https://<your-hostname>`. Save, and note the
+   Application. Leave **Authorization Code** as the only grant type — uncheck
+   Implicit. Set the sign-in redirect URI to `https://<your-hostname>/callback`
+   and the sign-out redirect URI to `https://<your-hostname>`. Under Assignments,
+   limit access to your own groups rather than Everyone. Save, and note the
    client ID and client secret.
-2. Under Sign On, open the OpenID Connect ID Token section, set the groups claim
-   type to Filter, and set a filter that matches your groups (for example, starts
-   with `pssid`). A federated higher-education tenant may instead pass the
-   eduPerson `edumember_is_member_of` attribute from the directory; where that is
-   configured the claim arrives on its own and no filter is needed. The
-   application reads either `edumember_is_member_of` or the standard `groups`
-   claim.
+2. Release the groups claim, which Okta does not do by default. Under Security →
+   API → Authorization Servers → your server → Claims, add a claim named
+   `groups`, included in the **ID Token** and set to **Always** (not "Userinfo /
+   id_token request"), value type **Groups**, with a **Filter** that matches your
+   groups — for example, starts with `pssid`. Prefer a filter to a `.*` regex:
+   there is no reason to hand this application a user's entire directory
+   membership. Confirm it with Token Preview on the same authorization server
+   before deploying; if `groups` is missing there, nothing downstream can
+   compensate. (A federated higher-education tenant may release the eduPerson
+   `edumember_is_member_of` attribute instead, in which case the claim arrives on
+   its own and only `SSO_SCOPE` needs changing.)
 3. Use the Okta org authorization server as the issuer, for example
    `ISSUER_BASE_URL=https://<your-tenant>.okta.com`. The discovery document is at
-   `<ISSUER_BASE_URL>/.well-known/openid-configuration`. Do not append
-   `/oauth2/default`; that path is for Okta custom authorization servers and is
-   not used here.
+   `<ISSUER_BASE_URL>/.well-known/openid-configuration`. Appending
+   `/oauth2/default` selects a custom authorization server instead, which does
+   work, but its groups claim has to be configured on that server; the installer
+   warns when it sees one.
 4. Set the group permissions in
    [`shared/auth-groups.config.json`](../shared/auth-groups.config.json), for
    example `"pssid-gui": "write"` and `"pssid-gui-users": "read"`.
+5. Require MFA for the application in its Okta authentication policy, and keep
+   the Okta global session lifetime no longer than
+   `SESSION_ABSOLUTE_SECONDS`. This is a network configuration tool; neither is
+   optional in a production tenant.
+
+### Verifying the posture
+
+`make security-check` ([`scripts/security-check.sh`](../scripts/security-check.sh))
+checks a **running** deployment from the outside, the way an auditor would: TLS
+versions, every security header, whether unauthenticated reads and writes are
+refused, whether a cross-origin write is refused, CORS, rate limiting, the mode of
+the secret file, and each container's privileges. A hardening setting that is
+present in a config file but not in effect on the live site is worth nothing, and
+this is the difference. It exits non-zero on a failure, so it can be run from cron
+or a pipeline as well as by hand.
+
+```bash
+make security-check                              # uses BASE_URL from the env file
+make security-check SECURITY_URL=https://host     # or an explicit target
+```
+
+Warnings do not fail the run: each flags something legitimate in some deployments
+(a self-signed certificate in a lab, open writes on an access-controlled network)
+that should nonetheless never be a surprise.
+
+### A worked runbook for a tenant you do not administer
+
+Where the identity provider is run by a central IT group rather than by you, the
+work splits into "ask them for these values" and "apply them here". `umich/QA/SSOwithOkta.md`
+is that runbook, including a ready-to-send request covering the two things only a
+tenant administrator can do (release the groups claim, require MFA).
+
+That file is **deliberately untracked** (see `.gitignore`): it is a working
+document an operator fills in with their own tenant name, application id, group
+names and hostname. This section is the tracked reference and is complete on its
+own.
 
 ## TLS
 
@@ -650,24 +827,58 @@ site once and reference it from tests, instead of duplicating a test per machine
 type. Typical uses: the network interface name (which can differ across hardware
 even on the same OS) or a per-group test destination.
 
-- **Where it is defined:** on hosts and on host groups.
-- **Preference and override:** a host's effective metadata is its group metadata
-  with the host's own metadata layered on top, so **host keys win** on collision.
-  Collisions between two groups a host belongs to are order-dependent and
-  therefore **indeterminate** by contract; avoid defining the same key on
-  overlapping groups.
-- **Where it is used:** the generated `pssid_config.json` carries each host's
-  effective metadata under a `metadata` key, and the daemon substitutes `$key`
-  references from it per host (an unresolved `$key` invalidates the batch on
-  that host). The QA data shows the pattern: all three batches set the test
-  interface to `$ifacename` (supplied by the `rpi4` group as `ifacename=wlan0`),
-  and `test-http-to-external` targets `$external_dest` (supplied by each probe's
-  own host metadata, the same key with a different value per probe). Use an
-  underscore, not a hyphen: `$`-substitution stops at a hyphen, so
-  `$external-dest` would resolve as `$external` followed by a literal `-dest`.
-- **Group metadata reaches named hosts only:** a group's metadata applies to
-  the hosts the group lists by name. A host matched only by the group's regex
-  still receives the group's **batches**, but not its metadata.
+#### `data` is the input; `metadata` is the resolved view
+
+Two different keys appear in the generated `pssid_config.json`, and only one of
+them is an input:
+
+| Key | On | What it is |
+|---|---|---|
+| `data` | each host, each host group | What you typed in the Metadata section. **This is the only field the daemon reads.** |
+| `metadata` | each host | The resolved result the GUI computes from those `data` blocks, so you can see per host what `$key` will become. Informational: the daemon ignores it and re-derives the same values itself. |
+
+So a generated config for a probe in a group with `ifacename=wlan0`, carrying its
+own `external_dest`, contains both:
+
+```json
+{ "name": "probe-01",
+  "data":     { "external_dest": "www.example.edu" },
+  "metadata": { "external_dest": "www.example.edu", "ifacename": "wlan0" } }
+```
+
+`data` is what the probe acts on. `metadata` is the same answer precomputed for
+the reader, and it is what the GUI shows in a host's **Probe configuration**
+panel.
+
+#### How a `$key` reference resolves
+
+The daemon (`process_gui_conf` in `pssid-daemon.py`) builds one metadata set per
+probe and substitutes `$key` in batch and test fields from it. An unresolved
+`$key` invalidates that batch on that host. The set is assembled in this order,
+and **the first definition of a key wins**:
+
+1. **The host's own `data`** — so a host key always beats every group.
+2. **Each group the host belongs to**, in the order the groups appear in the
+   config. Between two groups the earlier one wins, which makes a collision
+   across overlapping groups fragile: avoid defining the same key on groups that
+   share hosts.
+
+A group contributes its metadata to a host it selects **by name or by regex** —
+the daemon adds group metadata in the same step that it adds group batches, so
+pattern-matched membership carries both. The GUI reproduces exactly this order
+([`applyMetadata`](../services/server/src/services/config.service.ts)), which is
+why the panel and the probe agree.
+
+#### Writing references
+
+Use an underscore, not a hyphen: `$`-substitution stops at a hyphen, so
+`$external-dest` would resolve as `$external` followed by a literal `-dest`.
+`$external_dest` is the correct form.
+
+The QA dataset shows both patterns: every batch sets its test interface to
+`$ifacename` (supplied by the `rpi4` group as `ifacename=wlan0`), and
+`test-http-to-external` targets `$external_dest` (supplied by each probe's own
+`data`, the same key with a different value per probe).
 
 ## Provisioning and automation
 
@@ -763,9 +974,33 @@ A few common issues:
   on the internal Docker network. The development stack publishes 8888.
 - The certificate warning under `--tls=self-signed` is expected; choose Advanced,
   then Proceed.
+- **The server container will not stay up with SSO on** → it is refusing to start
+  on a configuration fault, on purpose, and the reason names the setting:
+  `docker compose logs server | grep -A3 'REFUSING TO START'`. See
+  [it fails closed](#it-fails-closed).
 - For an SSO redirect loop, check that `BASE_URL` and `COOKIE_DOMAIN` in
   `services/server/.env` match the hostname in the browser, and that the
-  provider's redirect URI is exactly `https://<host>/callback`.
+  provider's redirect URI is exactly `https://<host>/callback`. A mismatched
+  `COOKIE_DOMAIN` is now rejected at startup rather than looping, so a loop that
+  survives that check usually means plain HTTP (the session cookie is
+  `Secure`-only) or a skewed host clock (`timedatectl`), which fails token
+  validation.
+- **Sign-in works but every form is greyed out, or "not a member of any group"** →
+  the groups claim is missing or unmapped, not an interface fault. Open
+  `/api/userinfo` while signed in: it reports the `groups` the provider actually
+  sent and the `access_level` the server computed from them. An empty `groups`
+  means the provider is not releasing the claim (see
+  [group claims](#group-claims)); a populated one that still yields `none` means
+  those names are not in
+  [`shared/auth-groups.config.json`](../shared/auth-groups.config.json).
+- **A new hostname returns nothing at all** → nginx answers an unrecognised
+  `Host` header with 444 and no response. Add the name to `server_name` in
+  `nginx.conf`, or re-run the installer with the right `--hostname`. The loopback
+  names are always served, so `curl -k https://localhost/api/health` keeps
+  working.
+- **`403 Cross-origin request refused`** on a write → the request's
+  `Origin`/`Referer` is not this deployment. Use the deployment's own hostname
+  rather than adding a CORS exception.
 - **Healthy on the host but "This site can't be reached" in the browser** →
   a firewall/reachability gap, not an application problem (see
   [provisioning checklist](#provisioning-checklist-for-the-vm-administrator)).

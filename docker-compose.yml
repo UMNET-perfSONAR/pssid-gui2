@@ -6,8 +6,42 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "5"
 
+# Container-runtime hardening applied to EVERY service via the *hardened anchor.
+#
+# `no-new-privileges` blocks the setuid/setgid escalation path outright: a process
+# in the container cannot gain privileges it did not start with, so a setuid
+# binary that finds its way into an image (or a base image update that adds one)
+# is inert. It is safe for every service here because none of them escalate
+# deliberately -- the entrypoints that do change user, mongo's and redis's, drop
+# privileges rather than gain them, which this does not prevent.
+#
+# `pids_limit` bounds fork-bomb behaviour, deliberate or accidental (a runaway
+# provisioning loop), so one container cannot exhaust the host's process table
+# and take the other services down with it. 1024 rather than something tighter
+# because the cgroup pids controller counts THREADS, not just processes: Node
+# runs a small thread pool and MongoDB allocates a thread per connection, so a
+# few hundred is normal operation for this stack, not abuse.
+#
+# `read_only` is applied per service rather than here, because each one needs a
+# different set of writable tmpfs paths and getting that set wrong stops the
+# container starting. Every path below was determined by running the stack, not
+# by reading documentation. The point of a read-only root is that code execution
+# in a container does not become persistence: an attacker cannot drop a payload,
+# replace application files, or leave anything behind a restart. The tmpfs mounts
+# are the deliberate exceptions, and they are `noexec,nosuid` and size-capped so
+# they cannot be used to stage a binary or fill the host's memory.
+x-hardened: &hardened
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 1024
+
 services:
   redis:
+    <<: *hardened
+    # /data is the volume below; nothing else is written.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
     image: redis:7
     profiles:
       - sso
@@ -55,6 +89,18 @@ services:
     networks:
       - internal
   client:
+    <<: *hardened
+    # This image only reads a pre-built static bundle off disk and answers HTTP on
+    # an unprivileged port, so it needs no Linux capabilities at all. Dropping
+    # them removes the whole class of container escape that starts from one.
+    cap_drop:
+      - ALL
+    # Nothing is ever written: the bundle is baked into the image and served
+    # as-is. A read-only root means the pages this serves cannot be rewritten by
+    # anything that gets execution inside the container.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
     # PSSID_IMAGE_PREFIX/PSSID_IMAGE_TAG let a deployment pull prebuilt images
     # from a registry (install.sh --pull) instead of building on the VM; the
     # defaults keep the local build-from-source names unchanged. The client has
@@ -91,6 +137,21 @@ services:
           - client
 
   server:
+    <<: *hardened
+    # Node listening on an unprivileged port, reading and writing bind-mounted
+    # files as its own uid. No capability is required for any of that; the
+    # supplementary gid below (group_add) is how it reads the secret file, and
+    # that is a group membership, not a capability.
+    cap_drop:
+      - ALL
+    # Everything this process writes goes to a bind mount (bin, plugins, output),
+    # which stays writable under a read-only root. The entrypoint's `mkdir -p` on
+    # those paths is a no-op because the image already created them, and its
+    # `npm install` branch is skipped when NODE_ENV=production, which the runtime
+    # stage sets -- so nothing touches the image's own filesystem at start.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
     image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_server:${PSSID_IMAGE_TAG:-latest}
     restart: unless-stopped
     logging: *default-logging
@@ -129,8 +190,10 @@ services:
       - /usr/lib/exec/pssid:/usr/src/app/server/bin
       - /var/lib/pssid/plugins:/usr/src/app/server/plugins
       - /var/lib/pssid/output:/usr/src/app/server/output
-      # Group -> permission mapping, re-read at runtime so it can change
-      # without a rebuild.
+      # Group -> permission mapping, re-read at runtime so it can change without
+      # a rebuild. Note this is a SINGLE-FILE mount, which follows the inode: an
+      # editor that saves by replacing the file leaves this container reading the
+      # old copy, so restart the service after editing (see shared/accessControl.ts).
       - ./shared/auth-groups.config.json:/usr/src/app/server/src/shared/auth-groups.config.json:ro
       - ./certs:/etc/letsencrypt:ro
     expose:
@@ -149,6 +212,16 @@ services:
         aliases:
           - server
   mongo:
+    # No cap_drop here, unlike client and server: this image's entrypoint runs as
+    # root to chown the data directory and then steps DOWN to the mongodb user,
+    # which needs CHOWN, SETUID, SETGID, FOWNER and DAC_OVERRIDE. Dropping them
+    # leaves the database unable to start. Same for redis, nginx and certbot.
+    <<: *hardened
+    # /data/db is the volume below. /data/configdb must also exist and be
+    # writable (the image creates it), and mongod puts its unix socket in /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=64m
     image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_mongo:${PSSID_IMAGE_TAG:-latest}
     build: ./services/database
     restart: unless-stopped
@@ -173,8 +246,26 @@ services:
       - internal
     volumes:
       - mongo_db:/data/db
+      # A volume, not tmpfs: the image's entrypoint chowns this path, and under a
+      # read-only root it has to exist as a writable mount or mongod will not
+      # start. Unused by a standalone deployment, but it must be there.
+      - mongo_configdb:/data/configdb
 
   nginx:
+    <<: *hardened
+    # The only container reachable from outside the host, so the one where a
+    # read-only root matters most. The three tmpfs paths are what nginx was
+    # compiled to use: the pid file, and the temp directories for request bodies
+    # and proxied responses (nginx -V shows --pid-path and --http-*-temp-path).
+    # The image's entrypoint tries to sed /etc/nginx/conf.d/default.conf for IPv6
+    # and logs "can not modify ... (read-only file system?)" -- that file is not
+    # included by this configuration and the script continues, so it is noise
+    # rather than a fault.
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:rw,noexec,nosuid,size=64m
+      - /run:rw,noexec,nosuid,size=16m
+      - /tmp:rw,noexec,nosuid,size=16m
     image: nginx:stable-alpine
     restart: unless-stopped
     logging: *default-logging
@@ -195,6 +286,17 @@ services:
       - web
 
   certbot:
+    <<: *hardened
+    # Issued certificates go to /etc/letsencrypt, which is a bind mount and stays
+    # writable. Its working and log directories are NOT persisted today (nothing
+    # mounts them), so backing them with tmpfs changes no behaviour while keeping
+    # the rest of the filesystem read-only. noexec is deliberately omitted from
+    # the working directory: certbot may place hook scripts there.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/lib/letsencrypt:rw,nosuid,size=32m
+      - /var/log/letsencrypt:rw,noexec,nosuid,size=16m
     image: certbot/certbot
     restart: unless-stopped
     logging: *default-logging
@@ -213,6 +315,12 @@ services:
   # Dumps the gui database to ./mongo-backups on a schedule and prunes old files.
   # Set-and-forget: no host cron, no operator action after enabling.
   backup:
+    <<: *hardened
+    # Dumps land in /backups, a bind mount. mongodump needs scratch space in /tmp
+    # for a large archive.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
     image: ${PSSID_IMAGE_PREFIX:-pssid-gui2}_mongo:${PSSID_IMAGE_TAG:-latest}
     profiles:
       - backup
@@ -244,6 +352,8 @@ services:
 
 volumes:
   mongo_db:
+  # Required by the read-only mongo container; see the mongo service above.
+  mongo_configdb:
   redis_data:
 
 networks:

@@ -103,20 +103,24 @@ establishes the baseline and the QA dataset layers on top without disturbing it.
   `job-comprehensive`, and the `all` host group (regex `.*`). No batches or
   hosts. The installer runs this once on first install, and it can also be run
   by hand.
-- `QA/seed-qa.sh` (or `make seed-qa`) is for testing, and lives in
-  [`QA/`](QA/) so it stays out of the deployment path: it adds the MWireless
-  profile, five more tests, four more jobs, three batches at different
-  priorities, two probes carrying per-host metadata, and the `rpi4` group
-  (metadata `ifacename=wlan0`). Between them these exercise every batch and
-  metadata assignment path. Supply the two probe IPs with `PSSID_QA_PROBE1`
-  and `PSSID_QA_PROBE2`. The [QA walkthrough](QA/QA.md) has the full
-  demonstration and the expected output.
+- `umich/QA/seed-qa.sh` (or `make seed-qa`) is for testing. It is site-specific,
+  so it lives with the rest of the UMich material in [`umich/`](umich/) and stays
+  out of the deployment path: it adds the MWireless profile, five more tests,
+  five more jobs, four batches (two of which deliberately share a priority),
+  two probes carrying per-host `data`, and the `rpi4` group (`ifacename=wlan0`).
+  Between them these exercise every batch and metadata assignment path. Supply
+  the two probe IPs with `PSSID_QA_PROBE1` and `PSSID_QA_PROBE2`. The
+  [QA walkthrough](umich/QA/QA.md) has the full demonstration and the expected
+  output.
 
 ## Documentation
 
 The [deployment guide](docs/deployment.md) covers installation, single sign-on
 (with an Okta example), TLS, editions, and the provisioning pipeline. The
-[Ansible guide](ansible/README.md) covers the role-based deployment.
+[Ansible guide](ansible/README.md) covers the role-based deployment. Everything
+specific to the University of Michigan deployment — its master Ansible
+inventory, its variables, and the QA dataset — is in
+[`umich/`](umich/README.md); the rest of the repository is vendor-neutral.
 
 ## System overview
 
@@ -165,9 +169,31 @@ sign-on enabled, users sign in through an OIDC provider, and group membership ma
 to read or write access in
 [`shared/auth-groups.config.json`](shared/auth-groups.config.json). With SSO
 disabled, access is open, and `OPEN_WRITE` decides whether unauthenticated users
-have read-only or read-write access. The installer sets these values; the
+have read-only or read-write access. Both ship closed: SSO off, writes refused.
+The installer sets these values; the
 [deployment guide](docs/deployment.md#single-sign-on) covers provider-specific
-setup.
+setup, including a worked Okta example.
+
+The authorization model fails closed throughout. With SSO on, the server
+**validates its configuration at startup and refuses to start** on a fault that
+would otherwise present as a working deployment which authenticates nobody or
+denies everyone — a session secret too short to be safe, a cookie domain that
+would loop sign-in forever, an unauthenticated session store, a group mapping that
+is missing or malformed. Entitlement is checked at sign-in as well as per request,
+so a user with no mapped group is refused with an explanation rather than reaching
+an interface that rejects every action. Group membership is read from whichever
+claim the provider uses (`groups`, `edumember_is_member_of`, `isMemberOf`) and
+matched exactly, never by prefix.
+
+Every API endpoint carries an explicit `read` or `write` guard, and a unit test
+fails the build if an endpoint is ever added without one. Beyond authorization:
+Authorization Code flow with PKCE and no token in the browser, signed
+Redis-backed sessions with both idle and absolute timeouts, cross-origin write
+refusal, tiered per-IP rate limits, a hardened TLS and security-header policy at
+nginx, unprivileged capability-dropped containers on read-only root filesystems,
+and a structured audit line for
+every state-changing request, every denial and every sign-in — never including a
+request body. `make test` and the CI `security` job cover these.
 
 ## Further reading
 
@@ -181,8 +207,9 @@ setup.
 ## Testing
 
 ```bash
-make test     # all unit tests (config generation contract, validators)
-make smoke    # every user action, end to end, against a running stack
+make test            # all unit tests (config generation contract, validators, access control)
+make smoke           # every user action, end to end, against a running stack
+make security-check  # posture of a running deployment (TLS, headers, auth, containers)
 ```
 
 Both are wired into CI; the [deployment guide](docs/deployment.md#everyday-operations)

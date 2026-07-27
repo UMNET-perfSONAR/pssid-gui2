@@ -223,8 +223,55 @@ if [ "$SSO" = "true" ]; then
   [ -n "$ISSUER" ]        || prompt ISSUER "OIDC issuer base URL" ""
   [ -n "$CLIENT_ID" ]     || prompt CLIENT_ID "OIDC client id" ""
   [ -n "$CLIENT_SECRET" ] || prompt_secret CLIENT_SECRET "OIDC client secret (input hidden)"
+  [ -n "$ISSUER" ]        || die "ISSUER is required when SSO is enabled (e.g. https://your-tenant.okta.com)."
   [ -n "$CLIENT_ID" ]     || die "CLIENT_ID is required when SSO is enabled."
   [ -n "$CLIENT_SECRET" ] || die "CLIENT_SECRET is required when SSO is enabled."
+
+  # Normalize and check the issuer here rather than letting the server discover
+  # the problem at startup. Every fault below produces the same symptom -- a
+  # sign-in that fails at the provider with an opaque error -- and the operator
+  # is standing right here with the value in hand.
+  ISSUER="${ISSUER%/}"
+  case "$ISSUER" in
+    https://*) ;;
+    http://*) die "ISSUER must use https, not http: $ISSUER" ;;
+    *) die "ISSUER must be an absolute https URL (e.g. https://your-tenant.okta.com), got: $ISSUER" ;;
+  esac
+  case "$ISSUER" in
+    */.well-known*|*/.well-known/*)
+      die "ISSUER is the issuer base URL, not the discovery document. Drop the
+  /.well-known/openid-configuration suffix: ${ISSUER%%/.well-known*}" ;;
+  esac
+  # Okta's ORG authorization server is the issuer this project documents. A
+  # /oauth2/<id> path is a CUSTOM authorization server, which also works, but its
+  # groups claim has to be configured separately on that server -- so this is a
+  # warning, not an error: the operator may well mean it.
+  case "$ISSUER" in
+    *.okta.com/oauth2/*|*.oktapreview.com/oauth2/*)
+      warn "ISSUER points at an Okta CUSTOM authorization server ($ISSUER)."
+      warn "That works, but the groups claim must be configured on THAT server,"
+      warn "not on the org server. See docs/deployment.md if sign-in yields no groups." ;;
+  esac
+  ok "OIDC issuer: $ISSUER"
+
+  # With SSO on, the group -> permission mapping is the only thing between an
+  # authenticated stranger and this deployment's data, and the server refuses to
+  # start if it grants nothing. Say so now, while it is still cheap to fix.
+  AUTH_GROUPS_PRECHECK="shared/auth-groups.config.json"
+  if [ ! -f "$AUTH_GROUPS_PRECHECK" ]; then
+    die "SSO is enabled but $AUTH_GROUPS_PRECHECK is missing. The server will not
+  start without it: it maps your provider's groups to read/write access."
+  fi
+  if ! grep -q '"write"' "$AUTH_GROUPS_PRECHECK"; then
+    warn "No group in $AUTH_GROUPS_PRECHECK is mapped to \"write\"."
+    warn "The deployment will come up READ-ONLY for everyone. Add your admin"
+    warn "group before handing it over. See docs/deployment.md."
+  fi
+  if grep -qE '"(pssid-gui|pssid-gui-users)"' "$AUTH_GROUPS_PRECHECK"; then
+    warn "$AUTH_GROUPS_PRECHECK still contains the shipped example group names."
+    warn "Replace them with YOUR provider's group names, exactly as it emits them,"
+    warn "or nobody will have access."
+  fi
 fi
 
 case "$TLS" in
@@ -243,6 +290,12 @@ fi
 
 SCHEME="https"; [ "$TLS" = "none" ] && SCHEME="http"
 BASE_URL="${SCHEME}://${HOSTNAME_INPUT}"
+
+# HSTS, for the header helmet sends on API responses. Same rule as the nginx
+# header in section 6, and for the same reason: HSTS makes a certificate error
+# NON-BYPASSABLE, so with a self-signed certificate it locks every user out for
+# the whole max-age. CA-issued certificates only.
+HSTS_ENABLED="false"; [ "$TLS" = "letsencrypt" ] && HSTS_ENABLED="true"
 
 # ─── 3. Server environment (.env) ────────────────────────────────────────────
 step "Writing server environment"
@@ -297,12 +350,55 @@ chmod 600 "$SERVER_ENV" 2>/dev/null || warn "Could not chmod $SERVER_ENV"
   echo "MONGODB_URI=${MONGODB_URI}"
   echo "REDIS_URL=${REDIS_URL}"
   echo "BASE_URL=${BASE_URL}"
-  echo "COOKIE_DOMAIN=${HOSTNAME_INPUT}"
+  # Deliberately EMPTY, which gives a host-only session cookie.
+  #
+  # Setting it to the hostname works, but is strictly worse in two ways. A cookie
+  # with an explicit Domain is also sent to every SUBDOMAIN of it, so anything
+  # that can get a name under this domain receives the session; host-only sends
+  # it to exactly the host that set it. And a pinned domain breaks the loopback
+  # access path -- nginx serves this application on localhost too (the health
+  # checks depend on it), and a browser used on the VM would have the cookie
+  # rejected as a domain mismatch and loop at sign-in forever.
+  #
+  # Set it only for a deployment that genuinely needs one session across several
+  # hostnames; the server validates that it matches BASE_URL if you do.
+  echo "COOKIE_DOMAIN="
   echo "SECRET=${SECRET}"
+  echo "HSTS_ENABLED=${HSTS_ENABLED}"
   if [ "$SSO" = "true" ]; then
     echo "ISSUER_BASE_URL=${ISSUER}"
     echo "CLIENT_ID=${CLIENT_ID}"
     echo "CLIENT_SECRET=${CLIENT_SECRET}"
+    echo ""
+    echo "# --- SSO tunables. Edit and 'make restart' to change; the server"
+    echo "# validates every one of these at startup and refuses to boot on a bad"
+    echo "# value rather than running with a silently weakened setting."
+    echo ""
+    echo "# Scope requested at login. 'groups' is what Okta and Entra ID need in"
+    echo "# order to release group membership. A provider that does not define a"
+    echo "# scope by that name rejects the whole request with invalid_scope; a"
+    echo "# federated eduPerson tenant wants \"openid profile email edumember groups\"."
+    echo "SSO_SCOPE=openid profile email groups"
+    echo ""
+    echo "# Session lifetime. Absolute is the hard ceiling from the moment of"
+    echo "# login; idle ends a session left open on an unattended workstation."
+    echo "SESSION_ABSOLUTE_SECONDS=7200"
+    echo "SESSION_IDLE_SECONDS=1800"
+    echo ""
+    echo "# Deny sign-in to an identity with no group mapped in"
+    echo "# shared/auth-groups.config.json. Keep true: with it false, unentitled"
+    echo "# users get a session and a dead interface instead of a clear refusal."
+    echo "# Set false only to debug a groups claim that is not arriving."
+    echo "SSO_REQUIRE_GROUP=true"
+    echo ""
+    echo "# Pushed Authorization Requests. Keeps authorization parameters out of"
+    echo "# the browser URL entirely. The provider must advertise"
+    echo "# pushed_authorization_request_endpoint or the server will not start."
+    echo "SSO_PAR=false"
+    echo ""
+    echo "# Accept provider-initiated back-channel logout tokens. Requires the"
+    echo "# provider to support it and to be pointed at <BASE_URL>/backchannel-logout."
+    echo "SSO_BACKCHANNEL_LOGOUT=false"
   fi
 } > "$SERVER_ENV"
 # This file holds the session secret, the OIDC client secret and the MongoDB URI
@@ -410,6 +506,120 @@ fi
 # ─── 6. TLS material + nginx config ──────────────────────────────────────────
 step "Configuring TLS and nginx"
 mkdir -p certs
+# Hardening shared by both renders below, kept in one place so the HTTPS and
+# plain-HTTP variants cannot drift apart. Mirrors the committed reference
+# nginx.conf; change both together.
+
+# Host names this deployment answers to. The public hostname, plus the loopback
+# names, because `https://localhost/api/health` is how the health poll below,
+# the Ansible role's wait, upgrade-controller.sh and the troubleshooting docs all
+# check the stack -- and with the strict default server added below, a Host that
+# is not listed here gets no response at all. Deduplicated because the installer
+# default for the hostname is `localhost`, and nginx warns on a repeated name.
+NGINX_SERVER_NAMES="${HOSTNAME_INPUT}"
+for extra in localhost 127.0.0.1; do
+  case " ${NGINX_SERVER_NAMES} " in
+    *" ${extra} "*) ;;
+    *) NGINX_SERVER_NAMES="${NGINX_SERVER_NAMES} ${extra}" ;;
+  esac
+done
+
+NGINX_HTTP_HARDENING="\
+    # Never advertise the nginx version: it turns a version-specific CVE
+    # announcement into a list of hosts worth trying.
+    server_tokens off;
+
+    # Slow-request defences. A connection that dribbles out a body or header a
+    # byte at a time holds a worker indefinitely otherwise. Deliberately NOT a
+    # per-IP connection cap, which would also throttle a whole office behind one
+    # NAT address.
+    client_header_timeout 12s;
+    client_body_timeout   12s;
+    send_timeout          10s;
+    keepalive_timeout     30s;
+
+    # The server enforces its own 256kb JSON ceiling and answers with a JSON 413;
+    # this drops anything wildly oversized at the edge instead.
+    client_max_body_size 1m;
+
+    # Volumetric shedding in front of the application's own per-IP limits (see
+    # services/server/src/services/security.middleware.ts). Set ABOVE those on
+    # purpose: policy lives in one place, this only absorbs a flood.
+    limit_req_zone \$binary_remote_addr zone=api_zone:10m  rate=20r/s;
+    limit_req_zone \$binary_remote_addr zone=auth_zone:10m rate=2r/s;
+    limit_req_status 429;"
+
+# Security response headers, shared. \$1 is appended (the HSTS line, or nothing).
+nginx_headers() {
+  cat <<EOF
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        # frame-ancestors in the CSP is the modern control; this covers a browser
+        # old enough to lack it, at no cost.
+        add_header X-Frame-Options "DENY" always;
+        # This application uses none of these APIs, so a permission prompt
+        # appearing in it would be evidence of injected content, not a feature.
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), usb=(), payment=(), display-capture=()" always;
+        add_header Cross-Origin-Opener-Policy "same-origin" always;
+        # A network configuration tool has nothing to gain from being indexed.
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        # nginx is the single authority for the headers above. add_header APPENDS
+        # to what the upstream sent, and the API server runs helmet, which sets
+        # four of these itself -- so without hiding them every /api/ response
+        # carried two values of each, and for X-Frame-Options and Referrer-Policy
+        # the two disagreed. Browsers do not resolve a conflicting
+        # X-Frame-Options consistently; some discard it entirely.
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Referrer-Policy;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_hide_header Cross-Origin-Opener-Policy;
+        proxy_hide_header Strict-Transport-Security;
+        proxy_hide_header X-Powered-By;
+EOF
+}
+
+# The OIDC endpoints, shared. /login and /logout are rate limited so a redirect
+# loop cannot turn this deployment into a battering ram against the identity
+# provider. /callback is deliberately NOT limited: it is already bound to a
+# single-use state, nonce and PKCE verifier, and a user retrying a failed
+# sign-in must not be locked out. /backchannel-logout must be proxied even when
+# the feature is off, or it falls through to the client container and the
+# provider's logout token is delivered to a static file server.
+nginx_oidc_locations() {
+  cat <<EOF
+        location /login {
+            limit_req zone=auth_zone burst=10 nodelay;
+            proxy_pass http://server:8000/login;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+        location /logout {
+            limit_req zone=auth_zone burst=10 nodelay;
+            proxy_pass http://server:8000/logout;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+        location /callback {
+            proxy_pass http://server:8000/callback;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+        location /backchannel-logout {
+            proxy_pass http://server:8000/backchannel-logout;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+EOF
+}
+
 gen_nginx_https() { # $1 cert path, $2 key path, $3 "hsts" to enable HSTS
   # HSTS is opt-in per TLS mode, and only ever enabled for a CA-issued
   # certificate. It is genuinely dangerous with a self-signed one: HSTS makes
@@ -417,36 +627,79 @@ gen_nginx_https() { # $1 cert path, $2 key path, $3 "hsts" to enable HSTS
   # "Advanced -> Proceed" and every user is locked out of the site for the whole
   # max-age, with no server-side way to take it back. Trusted cert only.
   local hsts_header=""
+  local stapling=""
   if [ "${3:-}" = "hsts" ]; then
     hsts_header='
         # One year, subdomains included. No `preload`: that is a submission to a
         # browser-vendor list which is slow and difficult to reverse.
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;'
+    # OCSP stapling saves every visitor a round trip to the CA and stops the CA
+    # learning who visits this site. Only meaningful for a CA-issued
+    # certificate; with a self-signed one nginx logs a warning and ignores it.
+    # The resolver is Docker's embedded DNS, which is what this container has.
+    stapling='
+        ssl_stapling on;
+        ssl_stapling_verify on;
+        resolver 127.0.0.11 valid=300s;
+        resolver_timeout 5s;'
   fi
   cat > nginx.conf <<EOF
 events {}
 
 http {
+${NGINX_HTTP_HARDENING}
+
+    # A request whose Host this deployment does not serve is refused without a
+    # response (444), and at the TLS layer for HTTPS, so the real hostname's
+    # certificate is never presented to a client that did not ask for it by name.
+    server {
+        listen 80 default_server;
+        server_name _;
+        return 444;
+    }
+    server {
+        listen 443 ssl default_server;
+        server_name _;
+        ssl_reject_handshake on;
+    }
+
     server {
         listen 80;
-        server_name ${HOSTNAME_INPUT};
-        location /.well-known/acme-challenge/ { root /var/www/certbot; }
+        server_name ${NGINX_SERVER_NAMES};
+        # \`^~\` stops the dotfile regex location below from capturing this path
+        # (it contains \`/.\`) and 404ing every certificate renewal.
+        location ^~ /.well-known/acme-challenge/ { root /var/www/certbot; }
         location / { return 301 https://\$host\$request_uri; }
     }
 
     server {
         listen 443 ssl;
-        server_name ${HOSTNAME_INPUT};
+        http2 on;
+        server_name ${NGINX_SERVER_NAMES};
+
+        ssl_certificate ${1};
+        ssl_certificate_key ${2};
+
+        # TLS 1.2 floor (1.0/1.1 are deprecated by RFC 8996), forward-secret AEAD
+        # suites only, so a future key compromise cannot decrypt traffic captured
+        # today. Session tickets are off because nginx cannot rotate the ticket
+        # key, and one un-rotated key decrypts every session it issued.
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 1d;
+        ssl_session_tickets off;${stapling}
 
         add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header X-Content-Type-Options "nosniff" always;${hsts_header}
+$(nginx_headers)${hsts_header}
         proxy_busy_buffers_size 512k;
         proxy_buffers 4 512k;
         proxy_buffer_size 256k;
 
-        ssl_certificate ${1};
-        ssl_certificate_key ${2};
+        # Dotfiles are never content: this stops a stray .env, .git or editor
+        # backup from being served if one is ever left in a served path.
+        location ~ /\\. { deny all; return 404; }
 
         location = / {
             proxy_pass http://server:8000/;
@@ -461,9 +714,14 @@ http {
             proxy_set_header Upgrade \$http_upgrade;
             proxy_set_header Connection "upgrade";
             proxy_set_header Host \$host;
-            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            # One value only. This used to set \$scheme and then override it with
+            # a literal https, so the upstream was told the protocol twice.
+            proxy_set_header X-Forwarded-Proto \$scheme;
         }
         location /api/ {
+            limit_req zone=api_zone burst=40 nodelay;
             proxy_pass http://server:8000;
             proxy_http_version 1.1;
             proxy_set_header Host \$host;
@@ -471,9 +729,7 @@ http {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
-        location /login    { proxy_pass http://server:8000/login;    proxy_set_header Host \$host; proxy_set_header X-Forwarded-Proto \$scheme; }
-        location /logout   { proxy_pass http://server:8000/logout;   proxy_set_header Host \$host; proxy_set_header X-Forwarded-Proto \$scheme; }
-        location /callback { proxy_pass http://server:8000/callback; proxy_set_header Host \$host; proxy_set_header X-Forwarded-Proto \$scheme; }
+$(nginx_oidc_locations)
     }
 }
 EOF
@@ -483,18 +739,29 @@ gen_nginx_http() {
 events {}
 
 http {
+${NGINX_HTTP_HARDENING}
+
+    server {
+        listen 80 default_server;
+        server_name _;
+        return 444;
+    }
+
     server {
         listen 80;
-        server_name ${HOSTNAME_INPUT};
+        server_name ${NGINX_SERVER_NAMES};
 
         # No upgrade-insecure-requests here: this variant serves plain HTTP.
         add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header X-Content-Type-Options "nosniff" always;
+$(nginx_headers)
+
+        location ~ /\\. { deny all; return 404; }
 
         location = / {
             proxy_pass http://server:8000/;
             proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
         }
         location / {
@@ -503,14 +770,19 @@ http {
             proxy_set_header Upgrade \$http_upgrade;
             proxy_set_header Connection "upgrade";
             proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
         }
         location /api/ {
+            limit_req zone=api_zone burst=40 nodelay;
             proxy_pass http://server:8000;
             proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
         }
-        location /login    { proxy_pass http://server:8000/login;    proxy_set_header Host \$host; }
-        location /logout   { proxy_pass http://server:8000/logout;   proxy_set_header Host \$host; }
-        location /callback { proxy_pass http://server:8000/callback; proxy_set_header Host \$host; }
+$(nginx_oidc_locations)
     }
 }
 EOF
@@ -665,17 +937,39 @@ printf "  ${C_BOLD}Edition:${C_RESET} %s\n" "$EDITION"
 printf "  ${C_BOLD}SSO:${C_RESET}   %s\n" "$SSO"
 [ "$TLS" = "self-signed" ] && printf "  ${C_DIM}(self-signed cert; your browser will warn. Choose Advanced, then Proceed.)${C_RESET}\n"
 
-# Security posture: with SSO off, write access is governed by OPEN_WRITE in
-# shared/config.ts. The shipped default is OPEN_WRITE=true, so ANYONE who can
-# reach this site can change the probe configuration. Make that unmistakable so
-# running without SSO is a deliberate choice, not a silent open door.
+# Security posture: with SSO off, write access is governed by OPEN_WRITE, and
+# open writes mean ANYONE who can reach this site can change the probe
+# configuration. Make that unmistakable so running without SSO is a deliberate
+# choice, not a silent open door.
+#
+# Read $OPEN_WRITE, the value resolved in section 4 and written to .env, NOT the
+# compiled default in shared/config.ts. Compose passes OPEN_WRITE to the server,
+# where it overrides the compiled value -- so parsing config.ts here reported
+# "false" and stayed silent on a deployment whose server was accepting writes
+# from anyone, which is precisely the case this warning exists to catch.
 if [ "$SSO" = "false" ]; then
-  OPEN_WRITE_VAL="$(sed -n -E 's/.*OPEN_WRITE:[[:space:]]*(true|false).*/\1/p' "$CONFIG_TS" 2>/dev/null | head -n1)"
-  if [ "${OPEN_WRITE_VAL:-true}" != "false" ]; then
+  if [ "$OPEN_WRITE" = "true" ]; then
     printf "\n  ${C_YELLOW}${C_BOLD}! Security:${C_RESET} ${C_YELLOW}SSO is off and writes are open (OPEN_WRITE=true).${C_RESET}\n"
     printf "  ${C_YELLOW}  Anyone who can reach %s can change the probe configuration.${C_RESET}\n" "$BASE_URL"
     printf "  ${C_YELLOW}  Restrict access at the network layer, or enable SSO, before relying on this.${C_RESET}\n"
-    printf "  ${C_DIM}  (For a read-only deployment, set OPEN_WRITE: false in shared/config.ts and run 'make up'.)${C_RESET}\n"
+    printf "  ${C_DIM}  (For a read-only deployment: ./install.sh --open-write=false)${C_RESET}\n"
+  else
+    printf "\n  ${C_DIM}  SSO is off and writes are refused: the interface is read-only.${C_RESET}\n"
+    printf "  ${C_DIM}  Enable writes with --open-write=true, or SSO with --sso=true.${C_RESET}\n"
+  fi
+else
+  # SSO on. The server validates every OIDC setting at startup and refuses to
+  # start on a bad one, so the first thing to check is that it came up at all.
+  printf "\n  ${C_BOLD}Next, verify single sign-on:${C_RESET}\n"
+  printf "    ${C_CYAN}docker compose logs server | grep -E 'SSO enabled|REFUSING TO START' -A3${C_RESET}\n"
+  printf "  ${C_DIM}  Expect a line starting \"SSO enabled:\" reporting the posture in force.${C_RESET}\n"
+  printf "  ${C_DIM}  \"REFUSING TO START\" names the setting at fault; fix it and 'make restart'.${C_RESET}\n"
+  printf "    ${C_CYAN}%s/api/userinfo${C_RESET}  ${C_DIM}(signed in: confirms your groups and access level)${C_RESET}\n" "$BASE_URL"
+  printf "  ${C_DIM}  Empty \"groups\" means the provider is not releasing the claim -- see${C_RESET}\n"
+  printf "  ${C_DIM}  docs/deployment.md#single-sign-on (step 2 of the Okta example).${C_RESET}\n"
+  if ! grep -q '"write"' shared/auth-groups.config.json 2>/dev/null; then
+    printf "\n  ${C_YELLOW}${C_BOLD}! Security:${C_RESET} ${C_YELLOW}No group is mapped to \"write\"; nobody can edit anything.${C_RESET}\n"
+    printf "  ${C_YELLOW}  Add your admin group to shared/auth-groups.config.json (no restart needed).${C_RESET}\n"
   fi
 fi
 printf "\n  Manage with: ${C_CYAN}make up${C_RESET} | ${C_CYAN}make down${C_RESET} | ${C_CYAN}make logs${C_RESET} | ${C_CYAN}make doctor${C_RESET}\n\n"

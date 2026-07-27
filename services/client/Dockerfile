@@ -49,6 +49,14 @@ RUN npm install -g http-server@14.1.1 && npm cache clean --force
 
 COPY --from=build /usr/src/app/client/dist ./dist
 
+# Drop root. This stage only reads the bundle above and answers HTTP on 8080, an
+# unprivileged port, so nothing here needs to be root -- and the process that
+# faces every request should be the least privileged one in the stack, not the
+# most. The bundle is world-readable and owned by root, which is what we want: the
+# serving user can read it and cannot rewrite what it serves. Paired with
+# `cap_drop: ALL` on this service in docker-compose.yml.
+USER node
+
 EXPOSE 8080
 
 # Serve the pre-built bundle. http-server is the sole PID 1 (exec form), so it

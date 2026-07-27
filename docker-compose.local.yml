@@ -4,8 +4,20 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "3"
 
+# The one piece of the production hardening that costs a developer nothing.
+# Blocking setuid/setgid escalation does not interfere with the watch toolchain,
+# so there is no reason for the dev stack to run without it -- and having it here
+# means `make security-check` against this stack does not report a difference
+# that is not real. Deliberately NOT copied from production: pids_limit (the
+# watchers legitimately spawn more processes) and cap_drop (the dev images are
+# not the slim runtime ones).
+x-dev-hardened: &dev-hardened
+  security_opt:
+    - no-new-privileges:true
+
 services:
   client:
+    <<: *dev-hardened
     image: pssid-gui2_client-dev:latest
     build:
       context: .
@@ -42,6 +54,7 @@ services:
           - client
 
   server:
+    <<: *dev-hardened
     image: pssid-gui2_server-dev:latest
     restart: on-failure
     logging: *default-logging
@@ -75,6 +88,7 @@ services:
           - server
 
   mongo:
+    <<: *dev-hardened
     image: pssid-gui2_mongo:latest
     build: ./services/database
     logging: *default-logging
@@ -92,6 +106,7 @@ services:
       - mongo_db:/data/db
 
   nginx:
+    <<: *dev-hardened
     image: nginx:stable-alpine
     logging: *default-logging
     ports:

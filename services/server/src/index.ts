@@ -2,16 +2,34 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import { connectToMongoDB, ensureIndexes } from './services/database.service';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 
-import { auth } from 'express-openid-connect';
-import { requiresAuth } from 'express-openid-connect';
+import { auth, requiresAuth } from 'express-openid-connect';
 import { createClient } from 'redis';
 import { RedisStore } from 'connect-redis';
 
-import config from './shared/config'; // shared/config will appear in docker container
-import { isSsoEnabled } from './shared/accessControl';
+import {
+  isSsoEnabled,
+  isOpenWrite,
+  validatePermissionMapping,
+  permissionMappingStatus,
+} from './shared/accessControl'; // shared/* appears in the docker container
 import { auditLog } from './services/audit.service';
+import {
+  resolveSsoSettings,
+  buildAuthConfig,
+  describeSsoPosture,
+  SsoAccessDeniedError,
+  SsoConfigError,
+  type SsoSettings,
+} from './services/oidc.service';
+import {
+  enforceSameOrigin,
+  noStore,
+  requireApiAuthentication,
+  apiLimiter,
+  writeLimiter,
+  authLimiter,
+} from './services/security.middleware';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -36,9 +54,33 @@ process.on('uncaughtException', (err) => {
 // Read once here, after dotenv.config() above has populated process.env.
 const ENABLE_SSO = isSsoEnabled();
 
-// either use authentication or proceed with application
-function useAuth () {
-  return ENABLE_SSO ? requiresAuth() : (_req: Request, _res: Response, next: Function) => next();
+// ─── Fail closed before the first request ────────────────────────────────────
+//
+// Every check below has a failure mode that is worse than not starting: an
+// unreadable group mapping denies every user, a wrong COOKIE_DOMAIN loops
+// sign-in forever, a missing SECRET signs sessions with nothing. Each of those
+// looks like a working deployment from the outside, which is how a security
+// control ends up switched off without anyone noticing. Refusing to boot, with a
+// message that names the setting, is the only outcome that cannot be missed.
+function refuseToStart(reason: string): never {
+  console.error('\n  REFUSING TO START\n');
+  console.error(`  ${reason}\n`);
+  console.error('  See docs/deployment.md#single-sign-on, or umich/QA/SSOwithOkta.md for');
+  console.error('  the provider-side steps. Fix the setting and restart.\n');
+  process.exit(1);
+}
+
+const mappingProblem = validatePermissionMapping();
+if (mappingProblem) refuseToStart(mappingProblem);
+
+let ssoSettings: SsoSettings | null = null;
+if (ENABLE_SSO) {
+  try {
+    ssoSettings = resolveSsoSettings();
+  } catch (err) {
+    if (err instanceof SsoConfigError) refuseToStart(err.message);
+    throw err;
+  }
 }
 
 // The stack runs behind a single nginx reverse proxy, so trust exactly one hop.
@@ -47,15 +89,50 @@ function useAuth () {
 // which would let clients spoof X-Forwarded-For to bypass IP rate limiting
 // (express-rate-limit ERR_ERL_PERMISSIVE_TRUST_PROXY).
 app.set('trust proxy', 1);
-// Security headers (HSTS, X-Content-Type-Options, frameguard, etc.). CSP is left
-// to nginx and disabled here so the SPA's assets aren't blocked; CORP is disabled
-// so it doesn't interfere with the existing CORS/SSO configuration below.
+// Belt and braces: helmet already removes this, but the header leaks the stack
+// in use and there is no reason for any code path to reinstate it.
+app.disable('x-powered-by');
+
+// Security headers (X-Content-Type-Options, frameguard, etc.). CSP is left to
+// nginx (see nginx.conf) and disabled here so the SPA's assets aren't blocked;
+// CORP is disabled so it doesn't interfere with the CORS/SSO configuration below.
+//
+// HSTS is opt-in through the environment, and off by default, because it is
+// genuinely harmful on the self-signed certificate the installer generates by
+// default: HSTS makes a certificate error NON-BYPASSABLE, so a browser that has
+// seen the header stops offering "Advanced -> Proceed" and every user is locked
+// out for the whole max-age with no server-side way to take it back. install.sh
+// sets HSTS_ENABLED=true only for the Let's Encrypt (CA-issued) TLS mode, the
+// same rule it applies to the nginx-level header.
+const hstsEnabled = /^(1|true|yes|on)$/i.test((process.env.HSTS_ENABLED ?? '').trim());
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginResourcePolicy: false,
+  hsts: hstsEnabled ? { maxAge: 31536000, includeSubDomains: true, preload: false } : false,
+  // These two are set BECAUSE nginx sets them, and they are set to the SAME
+  // values. nginx's add_header appends to whatever the upstream sent, so with
+  // helmet's defaults every /api/ response carried two conflicting values of
+  // each: X-Frame-Options SAMEORIGIN (helmet) alongside DENY (nginx), and
+  // Referrer-Policy no-referrer alongside strict-origin-when-cross-origin.
+  // A duplicated X-Frame-Options with conflicting values is not merely untidy --
+  // browsers disagree about how to resolve it, and some discard the header
+  // entirely, which turns two framing protections into none. nginx additionally
+  // hides the upstream copies (proxy_hide_header) so exactly one of each is sent;
+  // matching the values here means the policy is still correct for anyone who
+  // reaches the server directly, bypassing nginx, as a port-forward for
+  // debugging does.
+  frameguard: { action: 'deny' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+
+// Explicit body size ceilings. The default is already 100kb, but stating it here
+// means a future change of body parser cannot silently make this unbounded, and
+// every request body this API legitimately accepts (a form's worth of JSON) is
+// orders of magnitude smaller. Oversized bodies are rejected before they are
+// parsed, so a large payload costs no CPU.
+const BODY_LIMIT = (process.env.BODY_LIMIT ?? '256kb').trim();
+app.use(bodyParser.json({ limit: BODY_LIMIT }));
+app.use(bodyParser.urlencoded({ extended: true, limit: BODY_LIMIT }));
 // The SPA is served from this same origin (nginx serves the bundle and proxies
 // /api/ on one hostname), so cross-origin access is never needed in normal
 // operation. `|| false` makes that explicit and FAILS CLOSED: passing an
@@ -69,23 +146,17 @@ app.use(cors({
   credentials: ENABLE_SSO
 }));
 
-// Rate limiting: 200 requests per minute per IP across all /api routes
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many requests, please try again later.' }
-});
+// Rate limiting. The broad per-IP ceiling for everything under /api; the tighter
+// write and sign-in buckets are mounted further down, next to what they protect.
 app.use('/api/', apiLimiter);
 
 // Health check, used by Docker and monitoring to verify the server + DB are
-// reachable. Registered HERE, deliberately ahead of the OIDC middleware below:
-// `auth({ authRequired: true })` protects every route registered after it, so
-// with SSO on this would answer 302-to-the-IdP instead of 200. That breaks the
-// container healthcheck (docker-compose.yml), which fails the server, which
-// stops nginx starting via `depends_on: service_healthy`, which fails the
-// Ansible health wait. It exposes no data (liveness only), so it stays public.
+// reachable. Registered HERE, deliberately ahead of the OIDC and authentication
+// middleware below: anything that requires a session would answer this with a
+// 302 or a 401 instead of 200. That breaks the container healthcheck
+// (docker-compose.yml), which fails the server, which stops nginx starting via
+// `depends_on: service_healthy`, which fails the Ansible health wait. It exposes
+// no data (liveness only), so it stays public.
 app.get('/api/health', async (_req: Request, res: Response) => {
   try {
     const client = await connectToMongoDB();
@@ -96,47 +167,25 @@ app.get('/api/health', async (_req: Request, res: Response) => {
   }
 });
 
-// create a redis database to store user sessions (prevents sessions from being deleted after redirect)
+// Session storage for the OIDC flow. Redis rather than a cookie: an ID token
+// with a real groups claim does not fit in one, and a cookie-only session would
+// also mean a server restart signs everybody out.
 const redisClient = createClient({ url: process.env.REDIS_URL });
-const store = new RedisStore({
-  client: redisClient,
-  ttl: 3600
-});
+redisClient.on('error', (err) => console.error('Redis client error:', err));
 
-if (ENABLE_SSO) {
-  app.use(
-    auth({
-      issuerBaseURL: process.env.ISSUER_BASE_URL,
-      baseURL: process.env.BASE_URL,
-      clientID: process.env.CLIENT_ID,
-      clientSecret: process.env.CLIENT_SECRET,
-      secret: process.env.SECRET,
-      clientAuthMethod:'client_secret_post',
-      idpLogout: true,
-      authRequired: true,
-      authorizationParams: {
-        response_type: 'code',
-        // 'groups' is the standard OIDC group claim; 'edumember' is the
-        // eduPerson equivalent that federated higher-education identity
-        // providers issue instead. Requesting both ensures group membership
-        // arrives regardless of which claim the provider returns
-        // (edumember_is_member_of or groups); accessControl.ts and
-        // userinfo.routes.ts handle both transparently.
-        scope: 'openid profile email edumember groups',
-      },
-      // OIDC flow will create a session for the user
-      session: {
-        absoluteDuration: 7200,
-        store: store as any,
-        cookie: {
-          sameSite: 'Lax',
-          secure: true,
-          httpOnly: true,
-          domain: process.env.COOKIE_DOMAIN,
-        },
-      },
-    })
-  );
+if (ENABLE_SSO && ssoSettings) {
+  const store = new RedisStore({
+    client: redisClient,
+    // Match the session's absolute lifetime. A shorter TTL evicts live sessions
+    // early and signs users out mid-task for no reason -- which is what the
+    // previous fixed 3600 did to the 7200-second session it was paired with.
+    ttl: ssoSettings.absoluteSeconds,
+  });
+
+  // The sign-in routes come from this middleware, so the limiter has to be
+  // mounted ahead of it.
+  app.use(['/login', '/logout'], authLimiter);
+  app.use(auth(buildAuthConfig(ssoSettings, store)));
 }
 
 const hostroute=require("./routes/hosts.routes");
@@ -151,10 +200,27 @@ const layerscriptroute=require("./routes/layer_scripts.routes");
 const provisionroute=require("./routes/provision.routes");
 const settingsroute=require("./routes/settings.routes");
 
+// Nothing under /api/ may be cached: responses carry this deployment's
+// configuration and, from /api/userinfo, the caller's identity.
+app.use('/api/', noStore);
+
 // Audit trail. Mounted here deliberately: after the OIDC middleware above, so
-// the acting identity is resolvable, and before every API route, so no
-// state-changing request and no denial can bypass it by being added later.
+// the acting identity is resolvable, and before every API route and every guard
+// below, so no state-changing request and no denial -- including a refused
+// cross-origin request or an unauthenticated call -- can escape the record.
 app.use('/api/', auditLog);
+
+// CSRF: refuse a state-changing request whose provenance is another origin.
+app.use('/api/', enforceSameOrigin);
+
+// Tighter per-IP ceiling on writes only (reads are metered by apiLimiter above).
+app.use('/api/', writeLimiter);
+
+// With SSO on, an unauthenticated API call gets a 401 carrying the sign-in URL
+// rather than a redirect the browser's fetch() cannot follow. Each route still
+// enforces its own access level through authorize(); this only makes the failure
+// legible to the client. /api/health is registered above, so it stays public.
+app.use('/api/', requireApiAuthentication);
 
 // Auto-provision: successful writes to daemon-affecting routers (below) request
 // a debounced provision when the operator has enabled it in Settings.
@@ -172,30 +238,65 @@ app.use('/api/layer-scripts', layerscriptroute);
 app.use('/api/provision', provisionroute);
 app.use('/api/settings', settingsroute);
 
-// Root redirect to the dashboard. With SSO enabled, useAuth() requires an IdP
-// login first; the handler is async for the OIDC userinfo call.
-app.get('/', useAuth(), async (req: Request, res: Response) => {
-  if (ENABLE_SSO) {
-    const userInfo = await req.oidc.fetchUserInfo();
-  }
-  res.redirect((process.env.BASE_URL || '') + '/dashboard');
-});
+// Root redirect to the dashboard. With SSO enabled this is a page navigation, so
+// requiresAuth() is the right guard here: it sends an anonymous visitor to the
+// identity provider, which is exactly what a browser should do with a top-level
+// GET (and is why /api/* is gated separately, above, with a 401 instead).
+app.get('/', ENABLE_SSO ? requiresAuth() : (_req: Request, _res: Response, next: NextFunction) => next(),
+  (_req: Request, res: Response) => {
+    res.redirect((process.env.BASE_URL || '') + '/dashboard');
+  });
 
 // Unknown API routes return a clean JSON 404 (never an HTML/stack response).
 app.use('/api', (_req: Request, res: Response) => {
   res.status(404).json({ message: 'Not found' });
 });
 
-// Central error handler, must be last. Turns malformed JSON bodies into a 400
-// and any other unexpected error into a generic 500, never leaking internals
-// (stack traces) to the client.
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+// Central error handler, must be last.
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
     return res.status(400).json({ message: 'Invalid request body' });
   }
+  // Request body larger than BODY_LIMIT.
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({ message: 'Request body too large' });
+  }
+
+  // A successful authentication by a user this deployment does not permit. This
+  // arrives on the OIDC callback -- a browser navigation -- so an HTML page is
+  // what the person actually sees. It is not a server fault and must not be
+  // reported as one: the cause is a group mapping or a provider claim, and the
+  // message says which, because the alternative is a support ticket that reads
+  // "it says 500".
+  if (err instanceof SsoAccessDeniedError) {
+    console.warn(`SSO access denied: ${err.message}`);
+    if (req.accepts('html')) {
+      return res.status(403).type('html').send(
+        `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
+        `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+        `<title>Access denied</title><style>` +
+        `body{font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;` +
+        `margin:0;display:grid;place-items:center;min-height:100vh;background:#f6f8fa;color:#1e293b}` +
+        `main{max-width:34rem;padding:2rem;background:#fff;border:1px solid #e2e8f0;border-radius:12px;` +
+        `box-shadow:0 2px 12px rgba(0,0,0,.06)}h1{font-size:1.35rem;margin:0 0 .75rem}` +
+        `p{margin:0 0 1rem}a{color:#0369a1}</style></head><body><main>` +
+        `<h1>Access denied</h1><p>${escapeHtml(err.message)}</p>` +
+        `<p><a href="/logout">Sign out</a></p></main></body></html>`
+      );
+    }
+    return res.status(403).json({ error: err.message });
+  }
+
   console.error('Unhandled request error:', err);
   res.status(500).json({ message: 'Server error' });
 });
+
+/** Minimal HTML escaping for the one place a message is rendered into markup. */
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string)
+  );
+}
 
 // first connect to MongoDB(), then communicate with the web app
 connectToMongoDB()
@@ -210,6 +311,20 @@ connectToMongoDB()
   .then(() => {
     app.listen(port, () => {
       console.log(`HTTP server running at http://localhost:${port}`);
+      // The posture actually in force, recoverable from `docker compose logs`
+      // without reading a root-owned env file.
+      if (ENABLE_SSO && ssoSettings) {
+        console.log(describeSsoPosture(ssoSettings));
+      } else {
+        // isOpenWrite(), not config.OPEN_WRITE: the environment OVERRIDES the
+        // compiled default, so combining the two would misreport the posture
+        // whenever they disagree -- exactly the case worth logging accurately.
+        const { groups } = permissionMappingStatus();
+        console.log(
+          `SSO disabled: writes are ${isOpenWrite() ? 'OPEN to unauthenticated callers' : 'refused (read-only)'}` +
+          `; ${groups} group mapping(s) loaded but unused in this posture.`
+        );
+      }
     });
   })
   .catch((error: Error) => {

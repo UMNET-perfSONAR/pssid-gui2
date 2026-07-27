@@ -75,10 +75,34 @@
           </ul>
         </div>
 
+        <!-- Signed-in identity and the way out of it. Only rendered when single
+             sign-on is actually in force: with SSO off there is no identity to
+             show and no session to end, so a "Sign out" control would be a lie. -->
+        <div v-if="showAccount" class="nav-account">
+          <span
+            v-if="accessLevel === 'read'"
+            class="nav-readonly"
+            title="Your group membership grants read access; edits are refused."
+          >Read-only</span>
+          <span class="nav-user" :title="accountTitle">
+            <span class="material-icons nav-user-icon" aria-hidden="true">account_circle</span>
+            <span class="nav-user-name">{{ accountName }}</span>
+          </span>
+          <button type="button" class="nav-signout" @click="userStore.signOut()">Sign out</button>
+        </div>
+
         <span class="nav-version">{{ edition.version }}</span>
       </div>
     </nav>
     <main id="main-content" class="container mt-4" tabindex="-1">
+      <!-- Sign-in could not complete and retrying would loop. Surfaced here
+           rather than in the console because the fix is an operator's, and the
+           person seeing it is the one who will report it. -->
+      <div v-if="userStore.authError" class="alert alert-danger" role="alert">
+        <strong>Sign-in did not complete.</strong>
+        {{ userStore.authError }}
+        <a href="/login" class="alert-link">Try again</a>.
+      </div>
       <router-view />
     </main>
     <!-- Screen-reader announcement of the active appearance. -->
@@ -90,6 +114,8 @@
 import ToastNotification from './components/ToastNotification.vue'
 import { activeEdition } from './edition'
 import { getTheme, setTheme } from './theme'
+import { useUserStore } from './stores/user.store'
+import config from './shared/config'
 
 // The three appearance modes, with the icon and label shown in the menu.
 // 'contrast' (a circle with one half filled solid) is the standard high-contrast
@@ -130,11 +156,40 @@ export default {
   computed: {
     currentTheme() {
       return this.themeOptions.find(o => o.value === this.theme) || this.themeOptions[0];
-    }
+    },
+    userStore() {
+      return useUserStore();
+    },
+    // The server's report wins over the value compiled into the bundle, for the
+    // same reason it does everywhere else: ENABLE_SSO can be set in the
+    // environment of a prebuilt image, and the bundle would not know.
+    showAccount() {
+      return (this.userStore.ssoEnabled ?? config.ENABLE_SSO) === true;
+    },
+    accessLevel() {
+      return this.userStore.accessLevel;
+    },
+    accountName() {
+      const user = this.userStore.user;
+      if (!user) return 'Not signed in';
+      return user.name || user.email || user.sub || 'Signed in';
+    },
+    accountTitle() {
+      const user = this.userStore.user;
+      if (!user) return 'Not signed in';
+      const groups = (user.groups || []).join(', ');
+      return groups ? `${this.accountName} - groups: ${groups}` : this.accountName;
+    },
   },
-  mounted() {
+  async mounted() {
     document.addEventListener('click', this.onDocumentClick);
     document.addEventListener('keydown', this.onDocumentKeydown);
+    // Resolve the identity once for the whole application. Every page also calls
+    // this on its own mount (they gate their forms on it), but doing it here too
+    // means the navbar knows who is signed in on the very first paint, and an
+    // unauthenticated visitor is sent to the provider from wherever they landed
+    // rather than only from a page that happens to ask.
+    await this.userStore.fetchUser();
   },
   beforeUnmount() {
     document.removeEventListener('click', this.onDocumentClick);
@@ -349,6 +404,61 @@ export default {
   color: var(--ok);
   flex-shrink: 0;
   width: 1.1rem;
+}
+/* ─── Signed-in identity ──────────────────────────────────────── */
+.nav-account {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.75rem;
+}
+.nav-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  /* 0.78 white on the navy navbar is the same tone the inactive nav links use,
+     which clears AA at this size; the name is supplementary to the Sign out
+     control beside it, never the only cue. */
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.8rem;
+  font-weight: 500;
+  max-width: 14rem;
+}
+.nav-user-icon { font-size: 1.1rem; }
+.nav-user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Read-only is a state the operator needs to notice before spending time in a
+   form that will refuse to save, so it is a badge rather than a tooltip. */
+.nav-readonly {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.nav-signout {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.nav-signout:hover,
+.nav-signout:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.6);
 }
 .nav-version {
   background: rgba(var(--accent-rgb), 0.15);

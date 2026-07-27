@@ -463,26 +463,44 @@ export function stripConfigMetadata(configStr: string | null): string {
 }
 
 /**
- * Metadata (v1): host- and group-level key/value data, stored in the `data`
- * field on hosts and host_groups. For each host, the effective metadata layers
- * the metadata of every group the host belongs to underneath the host's own, so
- * host keys win on collision. Collisions between two groups are order-dependent
- * and therefore indeterminate by contract. The result is attached as `metadata`
- * on each host in the generated config so the daemon can resolve references (for
- * example a test destination or an interface name) per host.
+ * Metadata. Operators author it in the `data` field of a host or a host group,
+ * and `data` is the ONLY field the daemon reads: `process_gui_conf` in
+ * pssid-daemon.py builds its own metadata set from `host["data"]` and then from
+ * `group["data"]` for every group the host belongs to, and resolves `$key`
+ * references in batches and tests against that set.
+ *
+ * This function reproduces that resolution and attaches the result to each host
+ * as `metadata`, so the GUI's per-host view and Preview show the same values the
+ * daemon will compute on the probe. The `metadata` key is therefore a RESOLVED
+ * VIEW, not an input: the daemon ignores it and re-derives the same thing from
+ * `data` at run time.
+ *
+ * The daemon's precedence rules, mirrored exactly here:
+ *  - the host's own `data` is added first, and `add_metadata` skips a key that
+ *    is already held, so **host keys win** over every group;
+ *  - groups are then walked in config order under the same skip rule, so on a
+ *    collision between two groups the **first group wins** (config order is the
+ *    order host_groups appear in the generated file);
+ *  - a group contributes its metadata when the host matches it **by name or by
+ *    its regex** - the daemon adds group metadata inside the same branch that
+ *    adds group batches, so pattern-matched membership carries metadata too.
  */
 export function applyMetadata(host_data: any, host_group_data: any) {
   const asObject = (d: any): Record<string, any> =>
     (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
-  const groupMetaByHost: Record<string, Record<string, any>> = {};
-  for (const group of host_group_data.host_groups ?? []) {
-    const gmeta = asObject(group.data);
-    for (const hostName of group.hosts ?? []) {
-      groupMetaByHost[hostName] = { ...(groupMetaByHost[hostName] || {}), ...gmeta };
-    }
-  }
+  const groups = host_group_data.host_groups ?? [];
   for (const host of host_data.hosts ?? []) {
-    host.metadata = { ...(groupMetaByHost[host.name] || {}), ...asObject(host.data) };
+    const meta: Record<string, any> = { ...asObject(host.data) };
+    for (const group of groups) {
+      const isMember =
+        (group.hosts ?? []).includes(host.name) ||
+        (group.hosts_regex ?? []).some((p: string) => matchesHostPattern(p, host.name));
+      if (!isMember) continue;
+      for (const [key, value] of Object.entries(asObject(group.data))) {
+        if (!(key in meta)) meta[key] = value;   // first definition wins, as in the daemon
+      }
+    }
+    host.metadata = meta;
   }
 }
 

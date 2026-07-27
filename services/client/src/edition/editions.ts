@@ -49,6 +49,32 @@ export interface Edition {
 
 export const editions: Record<string, Edition> = {
   /**
+   * University of Michigan edition: the navy/maize identity, selected by the
+   * UMich deployment through `pssid_gui_edition: umich` (see
+   * ../../../../umich/group_vars/pssid_gui.yml). The palette is the only
+   * UMich-specific thing in the application source; everything else about that
+   * deployment lives in /umich.
+   */
+  umich: {
+    id: 'umich',
+    productName: 'pSSID GUI · University of Michigan',
+    shortName: 'pSSID',
+    emphasis: 'GUI',
+    org: 'University of Michigan',
+    tagline: 'Wireless measurement orchestration for the University of Michigan.',
+    glyph: 'wifi',
+    version: 'v1',
+    colors: {
+      primary: '#00274C',
+      primaryDark: '#001e3d',
+      primaryRgb: '0,39,76',
+      accent: '#FFCB05',
+      accentRgb: '255,203,5',
+      accentText: '#00274C',
+    },
+  },
+
+  /**
    * Neutral, vendor-agnostic edition. A secure deep-navy + cyan identity that
    * reads as a trustworthy wireless/networking product for any organization.
    *

@@ -213,6 +213,50 @@ describe('applyMetadata', () => {
     applyMetadata(hosts, groups);
     expect((hosts.hosts[0] as any).metadata).toEqual({});
   });
+
+  // The daemon adds a group's metadata in the same branch that adds its
+  // batches, and that branch is entered on a name match OR a regex match. A
+  // host matched only by pattern therefore receives the group's metadata too.
+  it('delivers group metadata to a host matched by regex, not just by name', () => {
+    const hosts = { hosts: [{ name: 'probe-01', data: {} }] };
+    const groups = {
+      host_groups: [{ name: 'all', hosts: [], hosts_regex: ['probe-.*'], data: { iface: 'wlan0' } }],
+    };
+    applyMetadata(hosts, groups);
+    expect((hosts.hosts[0] as any).metadata).toEqual({ iface: 'wlan0' });
+  });
+
+  it('leaves a host that matches neither the name list nor the regex untouched', () => {
+    const hosts = { hosts: [{ name: 'sensor-1', data: { a: 1 } }] };
+    const groups = {
+      host_groups: [{ name: 'probes', hosts: ['probe-01'], hosts_regex: ['probe-.*'], data: { iface: 'wlan0' } }],
+    };
+    applyMetadata(hosts, groups);
+    expect((hosts.hosts[0] as any).metadata).toEqual({ a: 1 });
+  });
+
+  // add_metadata in the daemon skips a key it already holds, so the FIRST group
+  // to define a key is the one that supplies it.
+  it('gives the first group in config order the key when two groups collide', () => {
+    const hosts = { hosts: [{ name: 'p1', data: {} }] };
+    const groups = {
+      host_groups: [
+        { name: 'g1', hosts: ['p1'], data: { iface: 'wlan0' } },
+        { name: 'g2', hosts: ['p1'], data: { iface: 'wlan1' } },
+      ],
+    };
+    applyMetadata(hosts, groups);
+    expect((hosts.hosts[0] as any).metadata).toEqual({ iface: 'wlan0' });
+  });
+
+  it('lets a host key beat a group the host joined by regex', () => {
+    const hosts = { hosts: [{ name: 'probe-01', data: { iface: 'eth0' } }] };
+    const groups = {
+      host_groups: [{ name: 'all', hosts: [], hosts_regex: ['.*'], data: { iface: 'wlan0' } }],
+    };
+    applyMetadata(hosts, groups);
+    expect((hosts.hosts[0] as any).metadata).toEqual({ iface: 'eth0' });
+  });
 });
 
 describe('buildIniContent', () => {
