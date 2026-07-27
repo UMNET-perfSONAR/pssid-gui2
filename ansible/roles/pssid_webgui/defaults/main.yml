@@ -18,7 +18,14 @@ pssid_gui_tls: self-signed
 pssid_gui_letsencrypt_email: ""
 
 # Single sign-on (OIDC). Supply the issuer and client values when enabling.
-pssid_gui_sso: false
+#
+# Empty (the default) means "leave this host's current posture alone", exactly as
+# pssid_gui_open_write does: the installer then keeps whatever ENABLE_SSO is
+# already in the host's .env and falls back to off on a first install. That is
+# what lets `make sso-on` survive an upgrade -- passing --sso on every run would
+# reassert this value and silently switch an authenticated site back to anonymous.
+# Set it to true/false here to force a posture on every run.
+pssid_gui_sso: ""
 pssid_gui_oidc_issuer: ""
 pssid_gui_oidc_client_id: ""
 pssid_gui_oidc_client_secret: ""

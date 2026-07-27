@@ -97,6 +97,20 @@ describe('resolveSsoSettings: a valid environment', () => {
     setEnv({ COOKIE_DOMAIN: '.example.edu' });
     expect(resolveSsoSettings().cookieDomain).toBe('example.edu');
   });
+
+  // The parent-domain rule alone would accept a public suffix: "edu" IS a suffix
+  // of pssid.example.edu. A browser discards a cookie scoped to one, so this
+  // would pass validation and then loop at sign-in -- the exact failure the
+  // COOKIE_DOMAIN checks exist to catch before the deployment is handed over.
+  it('rejects a single-label cookie domain, even one the host ends with', () => {
+    setEnv({ COOKIE_DOMAIN: 'edu' });
+    expect(() => resolveSsoSettings()).toThrow(/single label/);
+  });
+
+  it('rejects a bare hostname with no dot', () => {
+    setEnv({ COOKIE_DOMAIN: 'localhost' });
+    expect(() => resolveSsoSettings()).toThrow(/single label/);
+  });
 });
 
 describe('resolveSsoSettings: the issuer', () => {

@@ -235,6 +235,19 @@ export function resolveSsoSettings(): SsoSettings {
           `(for example ${baseHost}).`
       );
     }
+    // A single-label domain is always wrong: a browser refuses a cookie scoped
+    // to a public suffix (`edu`, `com`) or to a bare name, so the parent-domain
+    // test below would happily accept COOKIE_DOMAIN=edu for pssid.example.edu
+    // and produce exactly the sign-in loop this validation exists to prevent.
+    // Two labels is the floor, not a full public-suffix check: a multi-label
+    // suffix such as co.uk still passes here and would fail in the browser.
+    if (!normalized.includes('.')) {
+      throw new SsoConfigError(
+        `COOKIE_DOMAIN="${rawCookieDomain}" is a single label. A browser discards a ` +
+          `cookie scoped to a bare name or a public suffix, so sign-in would loop. ` +
+          `Set COOKIE_DOMAIN=${baseHost}, or leave it empty for a host-only cookie.`
+      );
+    }
     const host = baseHost.toLowerCase();
     if (host !== normalized && !host.endsWith(`.${normalized}`)) {
       throw new SsoConfigError(

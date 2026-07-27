@@ -143,8 +143,9 @@
       {{ ['bash', 'install.sh', '-y',
           '--edition=' ~ pssid_gui_edition,
           '--hostname=' ~ pssid_gui_hostname,
-          '--tls=' ~ pssid_gui_tls,
-          '--sso=' ~ (pssid_gui_sso | bool | string | lower)]
+          '--tls=' ~ pssid_gui_tls]
+         + ((pssid_gui_sso | string | length > 0) | ternary(
+              ['--sso=' ~ (pssid_gui_sso | bool | string | lower)], []))
          + ((pssid_gui_sso | bool) | ternary(
               ['--issuer=' ~ pssid_gui_oidc_issuer,
                '--client-id=' ~ pssid_gui_oidc_client_id,

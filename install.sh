@@ -212,6 +212,38 @@ ok "Edition: $EDITION"
 [ -n "$HOSTNAME_INPUT" ] || prompt HOSTNAME_INPUT "Public hostname (e.g. pssid.example.edu)" "localhost"
 ok "Hostname: $HOSTNAME_INPUT"
 
+# ─── Carry the auth posture across re-runs and upgrades ──────────────────────
+#
+# This script truncates BOTH .env and services/server/.env further down, so any
+# setting not resolved here is destroyed on every run. That is exactly how a
+# hand-enabled SSO used to disappear on the next `make upgrade` -- silently
+# returning an authenticated site to anonymous, which is the same class of fault
+# OPEN_WRITE already carries a guard against below, and a worse one. Precedence,
+# deliberately identical to that guard:
+#   1. --sso / --issuer / --client-id / --client-secret: explicit, this run
+#   2. the values already on this host, so an operator's setting survives upgrade
+#   3. the shipped default (SSO off)
+#
+# The OIDC values are preserved whatever the posture, and written back below the
+# same way. That is what makes "configure the provider now, switch SSO on later"
+# work: the credentials sit inert (the server only reads them when SSO is on)
+# instead of being erased by every intervening deployment.
+EXISTING_SERVER_ENV="services/server/.env"
+if [ -z "$SSO" ] && [ -f .env ] && grep -q '^ENABLE_SSO=' .env; then
+  SSO="$(sed -n 's/^ENABLE_SSO=//p' .env | tail -1)"
+  info "Preserving ENABLE_SSO=${SSO} from the existing .env"
+fi
+if [ -r "$EXISTING_SERVER_ENV" ]; then
+  [ -n "$ISSUER" ]        || ISSUER="$(sed -n 's/^ISSUER_BASE_URL=//p' "$EXISTING_SERVER_ENV" | tail -1)"
+  [ -n "$CLIENT_ID" ]     || CLIENT_ID="$(sed -n 's/^CLIENT_ID=//p' "$EXISTING_SERVER_ENV" | tail -1)"
+  [ -n "$CLIENT_SECRET" ] || CLIENT_SECRET="$(sed -n 's/^CLIENT_SECRET=//p' "$EXISTING_SERVER_ENV" | tail -1)"
+  # A plain `[ ... ] && info ...` would evaluate to false when there is nothing
+  # to preserve, and under `set -e` that ends the install right here.
+  if [ -n "$ISSUER" ]; then
+    info "Preserving the OIDC settings already in $EXISTING_SERVER_ENV"
+  fi
+fi
+
 if [ -z "$SSO" ]; then
   prompt SSO "Enable Single Sign-On? (true/false)" "false"
 fi
@@ -365,7 +397,13 @@ chmod 600 "$SERVER_ENV" 2>/dev/null || warn "Could not chmod $SERVER_ENV"
   echo "COOKIE_DOMAIN="
   echo "SECRET=${SECRET}"
   echo "HSTS_ENABLED=${HSTS_ENABLED}"
-  if [ "$SSO" = "true" ]; then
+  # Written whenever the provider details are known, NOT only when SSO is on.
+  # This block truncates the file, so gating the write on the posture meant that
+  # deploying with SSO off erased the credentials an operator had put in ready to
+  # switch it on -- and `make sso-on` then refused, pointing at values it had
+  # just destroyed. They are inert while SSO is off: the server reads them only
+  # through resolveSsoSettings(), which runs behind the same flag.
+  if [ -n "$ISSUER" ]; then
     echo "ISSUER_BASE_URL=${ISSUER}"
     echo "CLIENT_ID=${CLIENT_ID}"
     echo "CLIENT_SECRET=${CLIENT_SECRET}"

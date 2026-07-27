@@ -25,6 +25,10 @@
 
 # Single sign-on (OIDC). Store the secret in an Ansible Vault file rather than
 # here in plain text when committing inventories.
+#
+# Leave this UNSET to keep whatever posture the host already has (off on a first
+# install), which is what lets `make sso-on` survive an upgrade. Setting it
+# forces that posture on every run.
 # pssid_gui_sso: true
 # pssid_gui_oidc_issuer: https://idp.example.com
 # pssid_gui_oidc_client_id: ...

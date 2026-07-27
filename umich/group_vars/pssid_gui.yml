@@ -17,10 +17,17 @@ pssid_gui_edition: umich
 # registered with ITS in Okta, or sign-in fails.
 pssid_gui_hostname: pssid-web-dev.miserver.it.umich.edu
 
-# Okta single sign-on through the ITS tenant. The client id and secret are
-# issued by ITS; keep them in the vault file described in ../README.md rather
-# than here, since this file is committed.
-pssid_gui_sso: true
+# Okta single sign-on through the ITS tenant.
+#
+# Left EMPTY on purpose while the Okta application is still being registered.
+# Empty means "do not change this host's posture", so the deployment ships
+# unauthenticated and each run leaves it that way; setting it to true here would
+# enable SSO with no client credentials and the server would refuse to boot.
+#
+# When ITS returns the application: put the id and secret in the vault file
+# (../README.md), turn it on with `make sso-on` on the host to try it, and once
+# it is settled set this to true so every future run asserts it.
+pssid_gui_sso: ""
 pssid_gui_oidc_issuer: https://umich.okta.com
 
 # With SSO on, group membership decides read vs write (see

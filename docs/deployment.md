@@ -539,6 +539,21 @@ deliberately fails closed on an incomplete OIDC config, so flipping the flag
 early would stop it booting and take the site down. Fill those values in — the
 rest of this section is how — then run `make sso-on`.
 
+**The switch survives upgrades.** `install.sh` keeps the posture and the OIDC
+settings a host already has whenever they are not passed on the command line
+(the same rule `OPEN_WRITE` follows), and the Ansible role passes `--sso` only
+when `pssid_gui_sso` is explicitly set. Two consequences worth knowing:
+
+- Provider credentials are written to `services/server/.env` and preserved
+  **whether or not SSO is on**, so you can register the application, put the
+  values in, deploy several more times, and flip the switch whenever you are
+  ready. They are inert while SSO is off — the server only reads them behind the
+  same flag.
+- If you set `pssid_gui_sso: true` (or `false`) in your inventory, that wins on
+  every run and overrides `make sso-on`/`make sso-off`. Leave it empty to let
+  the host's own posture stand; set it once the arrangement is settled, so a
+  rebuilt host comes up the way you expect.
+
 While SSO is off, `OPEN_WRITE` in the root `.env` decides whether the interface
 is read-only or writable. It also ships closed (read-only), so an unauthenticated
 deployment is not writable by accident.
