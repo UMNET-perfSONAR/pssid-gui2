@@ -124,7 +124,14 @@ SERVER_ENV := services/server/.env
 sso-status: ## Show whether SSO is on, in config, in .env, and on the running stack
 	@printf "  shared/config.ts  "; grep -oE 'ENABLE_SSO:[[:space:]]*(true|false)' shared/config.ts 2>/dev/null || echo "(not found)"
 	@printf "  root .env         "; grep -oE '^ENABLE_SSO=.*' .env 2>/dev/null || echo "ENABLE_SSO= (unset -> compiled default)"
-	@printf "  running server    "; curl -sk https://localhost/api/userinfo 2>/dev/null | grep -oE '"sso_enabled":(true|false)' || echo "(stack not reachable)"
+	@printf "  running server    "; body="$$(curl -sk https://localhost/api/userinfo 2>/dev/null)"; \
+	  case "$$body" in \
+	    *'"sso_enabled":true'*)  echo '"sso_enabled":true' ;; \
+	    *'"sso_enabled":false'*) echo '"sso_enabled":false' ;; \
+	    *login_url*|*'not authenticated'*) echo 'on (/api requires authentication, so anonymous curl gets 401)' ;; \
+	    "") echo "(stack not reachable)" ;; \
+	    *) echo "(unrecognised response)" ;; \
+	  esac
 
 sso-on: ## Turn single sign-on ON (needs the OIDC values in services/server/.env)
 	@$(MAKE) --no-print-directory _set-sso SSO=true
@@ -134,9 +141,19 @@ sso-off: ## Turn single sign-on OFF (site is unauthenticated; OPEN_WRITE governs
 
 _set-sso:
 	@if [ "$(SSO)" = "true" ]; then \
+	  if [ ! -e $(SERVER_ENV) ]; then \
+	    echo "Refusing to turn SSO on: $(SERVER_ENV) does not exist."; \
+	    echo "Run ./install.sh first -- it generates that file."; \
+	    exit 1; \
+	  fi; \
+	  if [ ! -r $(SERVER_ENV) ]; then \
+	    echo "Cannot read $(SERVER_ENV) (install.sh leaves it root-owned, mode 640)."; \
+	    echo "Re-run as root so the OIDC values can be checked:  sudo make sso-on"; \
+	    exit 1; \
+	  fi; \
 	  missing=""; \
 	  for k in ISSUER_BASE_URL CLIENT_ID CLIENT_SECRET SECRET; do \
-	    v="$$(sed -n "s/^$$k=//p" $(SERVER_ENV) 2>/dev/null)"; \
+	    v="$$(sed -n "s/^$$k=//p" $(SERVER_ENV))"; \
 	    case "$$v" in \
 	      ""|*your-client*|*replace-with*|*idp.example.com*) missing="$$missing $$k" ;; \
 	    esac; \

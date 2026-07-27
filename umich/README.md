@@ -44,12 +44,18 @@ the full deployment reference.
 ## The Okta secret
 
 `group_vars/pssid_gui.yml` is committed, so the client secret does not belong in
-it. Keep it in an encrypted vault file alongside, which Ansible loads from the
-same directory and which `.gitignore` keeps untracked:
+it. Keep it in an encrypted vault file, which `.gitignore` keeps untracked:
 
 ```bash
-ansible-vault create umich/group_vars/vault.yml
+ansible-vault create umich/group_vars/all/vault.yml
 ```
+
+The `all/` subdirectory is not decoration. Ansible maps a file
+`group_vars/<name>.yml` to a **group** called `<name>`, so a file named
+`group_vars/vault.yml` would be read as variables for a group called `vault` —
+which does not exist, so it would be **silently ignored** and the deploy would
+run with no client credentials. `group_vars/all/` is a directory form: every file
+in it applies to every host in this inventory, whatever it is called.
 
 ```yaml
 ---

@@ -31,7 +31,8 @@ ansible/inventories/remote.ini
 
 # Ansible Vault files holding a deployment's OIDC client id and secret. The
 # inventories and group_vars beside them ARE tracked; the credentials are not.
-**/group_vars/vault.yml
+# Matches group_vars/all/vault.yml and group_vars/<group>/vault.yml alike.
+**/vault.yml
 
 # Okta/SSO configuration runbook. Deliberately untracked: it is a working
 # document an operator fills in with their own tenant name, application ids,
