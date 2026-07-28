@@ -45,19 +45,29 @@ fi
 # rejected on an authenticated database: mongosh reading a script from stdin
 # prints the per-statement errors but still exits 0, so the seeding "succeeds"
 # while the site starts empty.
-AUTH=""
-if [ -f .env ] && grep -q '^MONGO_PASSWORD=' .env; then
-  MONGO_USERNAME="$(sed -n 's/^MONGO_USERNAME=//p' .env)"
-  MONGO_PASSWORD="$(sed -n 's/^MONGO_PASSWORD=//p' .env)"
-  if [ -n "$MONGO_PASSWORD" ]; then
-    AUTH="-u $MONGO_USERNAME -p $MONGO_PASSWORD --authenticationDatabase admin"
-  fi
+# Is database authentication enabled? The .env decides; the PASSWORD ITSELF is
+# never read here. Interpolating it into the `docker exec` line below put the
+# MongoDB root password into a host process's argv, where any local user could
+# read it with `ps aux`. The mongo container already has the same credentials in
+# its own environment (docker-compose.yml sets MONGO_INITDB_ROOT_* from this very
+# .env), so the snippets below are SINGLE-quoted and expand them inside the
+# container. See scripts/backup.sh for the same treatment.
+NEEDS_AUTH=false
+if [ -f .env ] && grep -q '^MONGO_PASSWORD=.\+' .env; then
+  NEEDS_AUTH=true
 fi
 
 echo "Loading pre-load data into '$DB_NAME' via container '$MONGO_CONTAINER'..."
 
-# shellcheck disable=SC2086
-docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" <<'EOF'
+# The heredoc on stdin still reaches mongosh: docker exec -i forwards it to the
+# container's shell, which execs mongosh in place.
+docker exec -i "$MONGO_CONTAINER" sh -c '
+  if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ "$2" = "true" ]; then
+    exec mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" \
+      --authenticationDatabase admin "$1"
+  fi
+  exec mongosh --quiet "$1"
+' _ "$DB_NAME" "$NEEDS_AUTH" <<'EOF'
 // ---- names this script owns, current and historical --------------------------
 // Two roles below. CURRENT names are upserted, preserving each document's _id so
 // cross-script references survive a re-run (the QA seeder stores THIS eduroam's
@@ -207,8 +217,13 @@ EOF
 # effect and report an explicit error rather than letting an empty site appear
 # seeded. The
 # Ansible role only writes its once-only marker when this script succeeds.
-# shellcheck disable=SC2086
-SCHEDULE_COUNT="$(docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" --eval 'db.schedules.countDocuments()' | tail -n1 | tr -dc '0-9')"
+SCHEDULE_COUNT="$(docker exec -i "$MONGO_CONTAINER" sh -c '
+  if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ "$3" = "true" ]; then
+    exec mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" \
+      --authenticationDatabase admin "$1" --eval "$2"
+  fi
+  exec mongosh --quiet "$1" --eval "$2"
+' _ "$DB_NAME" 'db.schedules.countDocuments()' "$NEEDS_AUTH" | tail -n1 | tr -dc '0-9')"
 if [ "${SCHEDULE_COUNT:-0}" -lt 1 ]; then
   echo "error: seeding wrote nothing (schedules=0). If database authentication is" >&2
   echo "enabled, credentials must be present in .env (MONGO_USERNAME/MONGO_PASSWORD)." >&2

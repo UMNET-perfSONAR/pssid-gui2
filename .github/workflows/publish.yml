@@ -6,12 +6,15 @@ name: Publish images
 #
 # Images (public once the packages are set to public in the repo settings):
 #   ghcr.io/<owner>/pssid-gui2_client:latest   (+ :sha-<commit>)
+#   ghcr.io/<owner>/pssid-gui2_client:umich    (+ :umich-sha-<commit>)
 #   ghcr.io/<owner>/pssid-gui2_server:latest
 #   ghcr.io/<owner>/pssid-gui2_mongo:latest
 #
-# The client bundle has its edition baked in at build time, so an organization
-# publishing a branded edition adds a build step here with its own
-# VITE_EDITION and image tag (see services/client/src/edition/).
+# The client bundle has its edition baked in at build time, so every edition in
+# services/client/src/edition/editions.ts needs its own build step and tag here.
+# install.sh --pull maps --edition=default to :latest and any other edition to a
+# tag of its own name, so an edition with no step below cannot be pulled at all --
+# the installer falls back to building from source on the VM.
 
 on:
   push:
@@ -52,6 +55,28 @@ jobs:
           tags: |
             ${{ steps.prefix.outputs.prefix }}_client:latest
             ${{ steps.prefix.outputs.prefix }}_client:sha-${{ github.sha }}
+
+      # The UMich edition, published under its own tag because the brand is
+      # compiled into the bundle and cannot be switched at container start.
+      #
+      # install.sh --pull derives the client tag from --edition: `default` maps
+      # to :latest, anything else to a tag of its own name. Without this step
+      # that pull 404s and the installer falls back to building from source --
+      # which needs ~8-10 GB of Docker storage instead of ~4 GB, on precisely the
+      # small-disk VM that chose --pull in the first place. It would still
+      # deploy, just slowly and with a disk requirement nobody planned for.
+      - name: Build and push client (umich edition)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/client/Dockerfile
+          target: runtime
+          build-args: |
+            VITE_EDITION=umich
+          push: true
+          tags: |
+            ${{ steps.prefix.outputs.prefix }}_client:umich
+            ${{ steps.prefix.outputs.prefix }}_client:umich-sha-${{ github.sha }}
 
       - name: Build and push server
         uses: docker/build-push-action@v6

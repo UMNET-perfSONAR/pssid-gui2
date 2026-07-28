@@ -269,6 +269,22 @@ services:
     image: nginx:stable-alpine
     restart: unless-stopped
     logging: *default-logging
+    # Reload every 6 hours so a RENEWED CERTIFICATE is actually served.
+    #
+    # nginx reads its certificates once, at startup or on reload, and keeps them
+    # in memory. The certbot container beside this one renews into ./certs on
+    # schedule, but it is a separate container and cannot signal this one, so
+    # without this loop the renewal succeeds, the files on disk are valid, and
+    # nginx carries on presenting the OLD certificate until something happens to
+    # restart it. On a deployment that is otherwise left alone, that means TLS
+    # breaks for every user about 90 days in, while `certbot renew` reports
+    # success -- the failure and its cause look completely unrelated.
+    #
+    # `nginx -s reload` is graceful (no dropped connections), and 6 hours is well
+    # inside the 30-day margin certbot renews with. The pid file it needs lives
+    # in /run, which is tmpfs above, so this works under the read-only root.
+    command: >
+      /bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
     ports:
       - "80:80"
       - "443:443"

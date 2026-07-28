@@ -40,18 +40,23 @@ if [ ! -f "$BACKUP_DIR/$BACKUP_FILE" ]; then
   exit 1
 fi
 
-# Use credentials from .env when database authentication is enabled.
-AUTH=""
-if [ -f .env ] && grep -q '^MONGO_PASSWORD=' .env; then
-  MONGO_USERNAME="$(sed -n 's/^MONGO_USERNAME=//p' .env)"
-  MONGO_PASSWORD="$(sed -n 's/^MONGO_PASSWORD=//p' .env)"
-  if [ -n "$MONGO_PASSWORD" ]; then
-    AUTH="-u $MONGO_USERNAME -p $MONGO_PASSWORD --authenticationDatabase admin"
-  fi
+# Is database authentication enabled? The .env decides; the PASSWORD ITSELF is
+# never read here -- see the note in scripts/backup.sh. Interpolating it into the
+# command line below published the MongoDB root password to every local user via
+# `ps aux`; the container already has the same credentials in its environment.
+NEEDS_AUTH=false
+if [ -f .env ] && grep -q '^MONGO_PASSWORD=.\+' .env; then
+  NEEDS_AUTH=true
 fi
 
 echo "Restoring from backup: $BACKUP_FILE"
 cat "$BACKUP_DIR/$BACKUP_FILE" \
-  | docker exec -i "$DB_CONTAINER" sh -c "mongorestore $AUTH --archive --gzip --drop --db=$DB_NAME"
+  | docker exec -i "$DB_CONTAINER" sh -c '
+      if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ "$2" = "true" ]; then
+        exec mongorestore -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" \
+          --authenticationDatabase admin --archive --gzip --drop --db="$1"
+      fi
+      exec mongorestore --archive --gzip --drop --db="$1"
+    ' _ "$DB_NAME" "$NEEDS_AUTH"
 
 echo "Restore complete."

@@ -13,6 +13,19 @@ import { create_config_file } from './config.service';
 import { getSettings } from './settings.service';
 
 // Quiet window: collapse rapid successive edits into one provision run.
+//
+// The timer RESTARTS on every edit and has no maximum wait, so a burst of
+// changes arriving closer together than this postpones provisioning until the
+// burst ends -- a bulk import could defer it for as long as the import runs.
+//
+// That is deliberate and accepted: how long provisioning takes to happen is not
+// a constraint for this deployment, and one run after the last edit is preferred
+// to a series of runs against half-applied state. Nothing is lost by waiting --
+// an edit that lands mid-run schedules another pass (see runAutoProvision), so
+// the probes always end up at the latest configuration.
+//
+// Please do not add a max-wait or a "provision at least every N seconds" rule to
+// this; it would trade the property above for a speed nobody asked for.
 const DEBOUNCE_MS = 5000;
 
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -63,6 +76,22 @@ async function runAutoProvision(): Promise<void> {
 }
 
 /**
+ * Is this the router's own explicit provisioning endpoint (POST /config on the
+ * hosts and host-groups routers)? Those provision already, so auto-firing after
+ * them would duplicate the run.
+ *
+ * Matches a whole path SEGMENT, never a substring. The path given here is
+ * relative to the router's mount point, and seven of these routes are
+ * `DELETE /:name` -- so the object's own name IS the path. A substring test
+ * silently skipped auto-provisioning for anything an operator happened to call
+ * "config-probe-1" or "test-provisioning", leaving those probes stale while
+ * identical edits to differently-named objects went through.
+ */
+export function isExplicitProvisionPath(path: string): boolean {
+  return /^\/(config|provision)(\/|$)/i.test(path);
+}
+
+/**
  * Express middleware: after a successful write request to a daemon-affecting
  * router, request an auto-provision. Mount it ahead of those routers in
  * index.ts. Read requests and the explicit provisioning endpoints are skipped.
@@ -70,9 +99,7 @@ async function runAutoProvision(): Promise<void> {
 export function autoProvisionOnWrite(req: Request, res: Response, next: NextFunction): void {
   const method = req.method.toUpperCase();
   const isWrite = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
-  // Skip the explicit provisioning endpoints (e.g. /config), they already
-  // provision, so auto-firing would be redundant.
-  const isProvisionEndpoint = /config|provision/i.test(req.path);
+  const isProvisionEndpoint = isExplicitProvisionPath(req.path);
 
   if (isWrite && !isProvisionEndpoint) {
     res.on('finish', () => {

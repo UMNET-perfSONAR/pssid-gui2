@@ -17,7 +17,7 @@
 
 set -uo pipefail
 
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 if [ -t 1 ]; then
   R='\033[31m'; G='\033[32m'; Y='\033[33m'; D='\033[2m'; B='\033[1m'; N='\033[0m'
@@ -223,7 +223,14 @@ case "$UNKNOWN" in
   000|444|421|404)
     pass "an unrecognised Host header is refused (HTTP ${UNKNOWN/000/none})" ;;
   200)
-    fail "an unrecognised Host header is refused" \
+    # prod_only, like the header and TLS expectations above: nginx.local.conf
+    # deliberately omits the strict default server, and says so in a comment.
+    # Adding one there is not free -- it would answer 444 for a developer
+    # reaching the stack as http://127.0.0.1:8888 rather than localhost -- so on
+    # the dev stack this is a note. On a real deployment it stays a failure: the
+    # app serving content under an attacker-chosen hostname is exactly what
+    # enforceSameOrigin's CSRF reasoning assumes nginx has already prevented.
+    prod_only "an unrecognised Host header is refused" \
       "The application answered 200 for Host: not-this-deployment.example. Check server_name and the default server in nginx.conf." ;;
   *)
     warn "an unrecognised Host header returned HTTP $UNKNOWN" \

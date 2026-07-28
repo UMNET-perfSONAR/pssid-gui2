@@ -104,12 +104,25 @@ describe('resolveSsoSettings: a valid environment', () => {
   // COOKIE_DOMAIN checks exist to catch before the deployment is handed over.
   it('rejects a single-label cookie domain, even one the host ends with', () => {
     setEnv({ COOKIE_DOMAIN: 'edu' });
-    expect(() => resolveSsoSettings()).toThrow(/single label/);
+    expect(() => resolveSsoSettings()).toThrow(/public suffix/);
   });
 
   it('rejects a bare hostname with no dot', () => {
     setEnv({ COOKIE_DOMAIN: 'localhost' });
-    expect(() => resolveSsoSettings()).toThrow(/single label/);
+    expect(() => resolveSsoSettings()).toThrow(/public suffix/);
+  });
+
+  // "Two labels" is not sufficient on its own: co.uk is a suffix, not a domain
+  // anyone controls, and a cookie scoped to it is discarded exactly like one
+  // scoped to `uk`.
+  it('rejects a multi-label public suffix the host ends with', () => {
+    setEnv({ BASE_URL: 'https://pssid.example.co.uk', COOKIE_DOMAIN: 'co.uk' });
+    expect(() => resolveSsoSettings()).toThrow(/public suffix/);
+  });
+
+  it('still accepts a real registrable domain under such a suffix', () => {
+    setEnv({ BASE_URL: 'https://pssid.example.co.uk', COOKIE_DOMAIN: 'example.co.uk' });
+    expect(resolveSsoSettings().cookieDomain).toBe('example.co.uk');
   });
 });
 

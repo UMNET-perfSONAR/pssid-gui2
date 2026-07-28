@@ -563,9 +563,30 @@ export async function build_config_payload(
   assertDaemonValid(obj);
 
   const inventory = buildIniContent(obj);
-  const clean_object = removeIdsProperties(obj);
+  const clean_object = stripResolvedMetadata(removeIdsProperties(obj));
   const config = JSON.stringify(clean_object, null, 2) + '\n';
   return { config, inventory };
+}
+
+/**
+ * Drop the per-host `metadata` key from the config that is written or previewed.
+ *
+ * `data` and `metadata` carried the same values twice: `data` is what the
+ * operator authored and the ONLY field the daemon reads, while `metadata` was
+ * this application's resolved view of it (the host's own keys plus the ones its
+ * groups contribute). Emitting both put a field in the daemon's own config file
+ * that the daemon ignores -- so a probe's `external_dest` appeared once as input
+ * and again as a derived copy, and anyone editing the derived one by hand would
+ * see no effect at all.
+ *
+ * The resolution itself is not lost: applyMetadata still computes it, and the
+ * per-host "Probe configuration" panel still reports it (build_host_view slices
+ * the in-memory object, which this function does not touch). It simply stops
+ * being written into a file whose reader has no use for it.
+ */
+export function stripResolvedMetadata(obj: any): any {
+  for (const host of obj?.hosts ?? []) delete host.metadata;
+  return obj;
 }
 
 /**

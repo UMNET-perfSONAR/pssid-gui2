@@ -35,9 +35,10 @@
 # METADATA: operators author it in the "data" field of a host or a group, and
 # "data" is the only field the daemon reads. It resolves $key per probe from that
 # host's own data first (so a host key always wins) and then from every group the
-# host belongs to, whether it joined BY NAME or BY REGEX. The generated config
-# also carries a "metadata" key per host: that is the GUI's precomputed view of
-# the same answer, for reading, not an input.
+# host belongs to, whether it joined BY NAME or BY REGEX. Each value appears in
+# the generated config exactly once, in the "data" block that holds it; the
+# resolved per-probe view is shown in the GUI's Probe configuration panel rather
+# than written into the file a second time.
 #
 # PRIORITY: lower number has higher precedence in the event of a scheduling
 # conflict. All four batches share the "Every 5 minutes" and "Every 1 hour"
@@ -116,28 +117,33 @@ if [ -z "$MONGO_CONTAINER" ]; then
   exit 1
 fi
 
-# Use credentials from .env when database authentication is enabled (the
-# production installer generates them; the dev stack runs without auth). Same
-# pattern as scripts/backup.sh.
-AUTH=""
-if [ -f .env ] && grep -q '^MONGO_PASSWORD=' .env; then
-  MONGO_USERNAME="$(sed -n 's/^MONGO_USERNAME=//p' .env)"
-  MONGO_PASSWORD="$(sed -n 's/^MONGO_PASSWORD=//p' .env)"
-  if [ -n "$MONGO_PASSWORD" ]; then
-    AUTH="-u $MONGO_USERNAME -p $MONGO_PASSWORD --authenticationDatabase admin"
-  fi
+# Is database authentication enabled (the production installer generates
+# credentials; the dev stack runs without)? The .env decides; the PASSWORD ITSELF
+# is never read here, so it cannot reach a host command line where `ps aux` would
+# show it. The container expands its own MONGO_INITDB_ROOT_* below. Same pattern
+# as scripts/backup.sh.
+NEEDS_AUTH=false
+if [ -f .env ] && grep -q '^MONGO_PASSWORD=.\+' .env; then
+  NEEDS_AUTH=true
 fi
 
 echo "Seeding QA data into '$DB_NAME' via container '$MONGO_CONTAINER'..."
 echo "  probes: $PSSID_QA_PROBE1, $PSSID_QA_PROBE2"
 
-# shellcheck disable=SC2086
+# The probe names and destinations DO travel as -e values: they are addresses,
+# not secrets, and the mongosh script below reads them from process.env.
 docker exec -i \
   -e PSSID_QA_PROBE1="$PSSID_QA_PROBE1" \
   -e PSSID_QA_PROBE2="$PSSID_QA_PROBE2" \
   -e PSSID_QA_DEST1="$PSSID_QA_DEST1" \
   -e PSSID_QA_DEST2="$PSSID_QA_DEST2" \
-  "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" <<'EOF'
+  "$MONGO_CONTAINER" sh -c '
+    if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ "$2" = "true" ]; then
+      exec mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" \
+        --authenticationDatabase admin "$1"
+    fi
+    exec mongosh --quiet "$1"
+  ' _ "$DB_NAME" "$NEEDS_AUTH" <<'EOF'
 const PROBES = [
   process.env.PSSID_QA_PROBE1,
   process.env.PSSID_QA_PROBE2,
@@ -407,7 +413,13 @@ EOF
 # pre-load leaves zero batches; this dataset adds four, so a batch count below
 # four means the seed did not take. (Same guard as scripts/seed-defaults.sh.)
 # shellcheck disable=SC2086
-BATCH_COUNT="$(docker exec -i "$MONGO_CONTAINER" mongosh --quiet $AUTH "$DB_NAME" --eval 'db.batches.countDocuments()' | tail -n1 | tr -dc '0-9')"
+BATCH_COUNT="$(docker exec -i "$MONGO_CONTAINER" sh -c '
+  if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ "$3" = "true" ]; then
+    exec mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" \
+      --authenticationDatabase admin "$1" --eval "$2"
+  fi
+  exec mongosh --quiet "$1" --eval "$2"
+' _ "$DB_NAME" 'db.batches.countDocuments()' "$NEEDS_AUTH" | tail -n1 | tr -dc '0-9')"
 if [ "${BATCH_COUNT:-0}" -lt 4 ]; then
   echo "error: QA seeding did not complete (batches=${BATCH_COUNT:-0}, expected 4+)." >&2
   echo "Run the pre-load first (bash scripts/seed-defaults.sh), and if database" >&2

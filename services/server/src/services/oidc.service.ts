@@ -3,7 +3,7 @@
 //
 // The server speaks generic OIDC through express-openid-connect, so any
 // compliant provider works. Okta is the reference provider and the one
-// QA/SSOwithOkta.md walks through end to end; nothing in here is Okta-specific.
+// umich/QA/SSOwithOkta.md walks through end to end; nothing in here is Okta-specific.
 //
 // Two responsibilities:
 //
@@ -116,6 +116,28 @@ export interface SsoSettings {
  * either claim, so only the request side differs.
  */
 const DEFAULT_SCOPE = 'openid profile email groups';
+
+/**
+ * Multi-label public suffixes a deployment might plausibly mistake for its own
+ * domain. Single-label suffixes (`edu`, `com`) need no list -- they are caught by
+ * "contains no dot" -- so only the two-label forms appear here, weighted towards
+ * the higher-education and government tenants this application is deployed into.
+ */
+const PUBLIC_SUFFIXES = new Set([
+  'co.uk', 'ac.uk', 'org.uk', 'gov.uk', 'net.uk', 'sch.uk',
+  'co.jp', 'ac.jp', 'go.jp', 'or.jp',
+  'com.au', 'edu.au', 'gov.au', 'net.au', 'org.au',
+  'co.nz', 'ac.nz', 'govt.nz',
+  'com.br', 'edu.br', 'gov.br',
+  'co.in', 'ac.in', 'edu.in', 'gov.in',
+  'co.za', 'ac.za', 'gov.za',
+  'com.cn', 'edu.cn', 'gov.cn',
+  'com.mx', 'edu.mx', 'gob.mx',
+  'com.sg', 'edu.sg', 'gov.sg',
+  'co.kr', 'ac.kr', 'go.kr',
+  'com.tr', 'edu.tr', 'gov.tr',
+  'com.hk', 'edu.hk', 'gov.hk',
+]);
 
 /** Normalize a URL-ish setting: trim, drop a trailing slash, reject junk. */
 function requireUrl(name: string, raw: string | undefined, opts: { requireHttps: boolean }): string {
@@ -235,17 +257,24 @@ export function resolveSsoSettings(): SsoSettings {
           `(for example ${baseHost}).`
       );
     }
-    // A single-label domain is always wrong: a browser refuses a cookie scoped
-    // to a public suffix (`edu`, `com`) or to a bare name, so the parent-domain
-    // test below would happily accept COOKIE_DOMAIN=edu for pssid.example.edu
-    // and produce exactly the sign-in loop this validation exists to prevent.
-    // Two labels is the floor, not a full public-suffix check: a multi-label
-    // suffix such as co.uk still passes here and would fail in the browser.
-    if (!normalized.includes('.')) {
+    // A cookie scoped to a public suffix is discarded by every browser, so the
+    // parent-domain test below would accept COOKIE_DOMAIN=edu for
+    // pssid.example.edu and produce exactly the sign-in loop this validation
+    // exists to prevent. Two checks, because a suffix is not always one label:
+    //
+    //   * anything with no dot at all (`edu`, `com`, a bare hostname), and
+    //   * the multi-label suffixes common in this application's audience --
+    //     university and government deployments outside the US.
+    //
+    // Deliberately NOT a full Public Suffix List: that is a ~10k-entry file with
+    // its own update cadence, and pulling it in to validate one optional setting
+    // would be a dependency worth more than the check. This catches the
+    // plausible mistakes; an exotic suffix would still fail in the browser.
+    if (!normalized.includes('.') || PUBLIC_SUFFIXES.has(normalized)) {
       throw new SsoConfigError(
-        `COOKIE_DOMAIN="${rawCookieDomain}" is a single label. A browser discards a ` +
-          `cookie scoped to a bare name or a public suffix, so sign-in would loop. ` +
-          `Set COOKIE_DOMAIN=${baseHost}, or leave it empty for a host-only cookie.`
+        `COOKIE_DOMAIN="${rawCookieDomain}" is a public suffix, not a domain you ` +
+          `control. A browser discards a cookie scoped to one, so sign-in would ` +
+          `loop. Set COOKIE_DOMAIN=${baseHost}, or leave it empty for a host-only cookie.`
       );
     }
     const host = baseHost.toLowerCase();
@@ -488,7 +517,7 @@ export function buildAuthConfig(settings: SsoSettings, store: unknown): ConfigPa
           throw new SsoAccessDeniedError(
             'Your identity provider released no group membership for this application. ' +
               'An administrator needs to add a groups claim to the application\'s ID token ' +
-              '(see QA/SSOwithOkta.md, "Release the groups claim"). ' +
+              '(see umich/QA/SSOwithOkta.md, "Release the groups claim"). ' +
               `No group claim was present in the ID token or the userinfo response for ${subject}.`
           );
         }

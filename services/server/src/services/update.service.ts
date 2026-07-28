@@ -1,55 +1,103 @@
-import { Collection, FindCursor, MongoClient, WithId } from 'mongodb';
+import { MongoClient } from 'mongodb';
 
 /**
- * Updates the "outdated" collection to match the changes made in corresponding source-of-truth collection
- *      i.e update host_groups collection when a document in hosts collection is updated to maintain consistency
- * 
- * @param truth_col_name_name - name of collection serving as source of truth
- * @param outdated_col_name - name of collection that requires updating 
- * @param client - MongoClient instance connected to localhost://21707 
- * 
- */
-export async function updateCollection(outdated_col: string, truth_col_name:string, client:Promise<MongoClient>) {
-  const  outdated_collection = (await client).db('gui').collection(outdated_col);
-  const truth_collection = (await client).db('gui').collection(truth_col_name);
-  const allOutdatedDocs = outdated_collection.find();
-  for await (const outdated_col_doc of allOutdatedDocs) {
-    var matched_items = item(outdated_col_doc, truth_collection, truth_col_name);
-    const item_names = (await matched_items).map((host: { name: string; }) => host.name);     // extract hostname values 
-    await outdated_collection.updateOne(                        // update item_names for each document
-      {_id: outdated_col_doc._id},          
-      {$set: { [`${truth_col_name}`]:  item_names}}
-    )
-  }
-}
-/**
- * Enables templating of updateCollection() function above.
- *      Returns the matched documents between the current outdated document and the truth collection based off of _id
+ * Which parallel id array carries the references for a given source collection.
  *
- * @param outdated_col_doc - Current document we are iterating over
- * @param truth_collection - Reference to collection we are using as "source-of-truth"
- * @param truth_col_name - Name of source of truth collection
- * 
+ * A map rather than an if/else chain: the chain's fall-through returned an empty
+ * match list, which the caller then wrote back as the name array -- so a
+ * collection name nobody had added a branch for would silently WIPE every
+ * reference to it instead of failing. An unknown name now throws.
  */
-async function item (outdated_col_doc: &any, truth_collection: &Collection, truth_col_name:string) {
-  var matched_items: any[] = [];
-  if (truth_col_name === 'hosts') {
-    matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.host_ids}}).toArray();
+const ID_FIELD: Record<string, string> = {
+  hosts: 'host_ids',
+  batches: 'batch_ids',
+  ssid_profiles: 'ssid_profile_ids',
+  schedules: 'schedule_ids',
+  jobs: 'job_ids',
+  tests: 'test_ids',
+};
+
+/**
+ * Rebuild a document's (names, ids) reference pair from its id array.
+ *
+ * Pure, and exported for its tests: this is where the ORDER comes from, and
+ * order is load-bearing twice over.
+ *
+ *  * It is user-visible. A batch runs its jobs in the order they are listed, and
+ *    the interface says so. Re-deriving the names in any other order silently
+ *    changes what the probe executes.
+ *  * The two arrays are matched by INDEX everywhere else -- delete.service.ts
+ *    finds a name's position and splices the id at the same position. Let them
+ *    drift and deleting one object removes a different object's id, which leaves
+ *    a dangling reference and blocks config generation.
+ *
+ * Both arrays are rebuilt together, in id order, dropping any id whose document
+ * no longer exists, so the pair cannot come out of step.
+ */
+export function alignReferences<T>(
+  ids: T[],
+  nameById: Map<string, string>
+): { names: string[]; ids: T[] } {
+  const names: string[] = [];
+  const keptIds: T[] = [];
+  for (const id of ids) {
+    const name = nameById.get(String(id));
+    if (name === undefined) continue; // referent is gone; drop the pair
+    names.push(name);
+    keptIds.push(id);
   }
-  else if (truth_col_name === 'batches') {
-    matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.batch_ids}}).toArray();
+  return { names, ids: keptIds };
+}
+
+/**
+ * Refresh the denormalised name arrays in `outdated_col` from the current
+ * contents of `truth_col_name` -- for example rewriting every batch's `jobs`
+ * after a job is renamed.
+ *
+ * The ids are the source of truth; the names are a copy kept for the generated
+ * config, which the daemon reads by name.
+ *
+ * @param outdated_col - collection whose name arrays need refreshing (e.g. 'batches')
+ * @param truth_col_name - collection the references point at (e.g. 'jobs')
+ * @param client - connected MongoClient
+ */
+export async function updateCollection(
+  outdated_col: string,
+  truth_col_name: string,
+  client: Promise<MongoClient>
+) {
+  const idField = ID_FIELD[truth_col_name];
+  if (!idField) {
+    throw new Error(
+      `updateCollection: no id field is known for "${truth_col_name}". Add it to ID_FIELD.`
+    );
   }
-  else if (truth_col_name === 'ssid_profiles') {
-    matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.ssid_profile_ids}}).toArray();
+
+  const db = (await client).db('gui');
+  const outdated_collection = db.collection(outdated_col);
+  const truth_collection = db.collection(truth_col_name);
+
+  for await (const doc of outdated_collection.find()) {
+    const ids = (doc as any)?.[idField];
+    // Tolerated rather than fatal, matching delete.service.ts: a document
+    // written before ids were tracked has no such field, and `$in: undefined`
+    // is a hard MongoDB error ("$in needs an array") that would abort the whole
+    // pass over the collection.
+    if (!Array.isArray(ids)) continue;
+
+    // find({_id: {$in: [...]}}) returns documents in the collection's natural
+    // order, NOT in the order of the array it was given, so this result is a
+    // lookup table rather than an ordered list.
+    const matched = await truth_collection.find({ _id: { $in: ids } }).toArray();
+    const nameById = new Map<string, string>(
+      matched.map((d) => [String(d._id), d.name as string])
+    );
+
+    const aligned = alignReferences(ids, nameById);
+
+    await outdated_collection.updateOne(
+      { _id: doc._id },
+      { $set: { [truth_col_name]: aligned.names, [idField]: aligned.ids } }
+    );
   }
-  else if (truth_col_name === 'schedules') {
-    matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.schedule_ids}}).toArray();
-  }
-  else if (truth_col_name === 'jobs') {
-    matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.job_ids}}).toArray();
-  }
-  else if (truth_col_name === 'tests') {
-    matched_items = await truth_collection.find({_id: {$in: outdated_col_doc.test_ids}}).toArray();
-  }
-  return matched_items; 
 }

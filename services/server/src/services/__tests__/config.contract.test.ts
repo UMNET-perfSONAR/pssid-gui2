@@ -10,6 +10,7 @@ import {
   stripLegacyArchivers,
   sanitizeSsidMethods,
   stripConfigMetadata,
+  stripResolvedMetadata,
   matchesHostPattern,
   sliceHostView,
 } from '../config.service';
@@ -256,6 +257,41 @@ describe('applyMetadata', () => {
     };
     applyMetadata(hosts, groups);
     expect((hosts.hosts[0] as any).metadata).toEqual({ iface: 'eth0' });
+  });
+});
+
+describe('stripResolvedMetadata', () => {
+  // The generated file carried each value twice: once in `data` (authored, and
+  // the only field the daemon reads) and again in `metadata` (this app's
+  // resolved view). The derived copy is dropped before the file is written, so
+  // the daemon's config contains no field the daemon ignores.
+  it('removes the derived metadata key and keeps the authored data', () => {
+    const obj = {
+      hosts: [
+        { name: 'p1', data: { external_dest: 'a.example.edu' },
+          metadata: { external_dest: 'a.example.edu', ifacename: 'wlan0' } },
+        { name: 'p2', data: { external_dest: 'b.example.edu' },
+          metadata: { external_dest: 'b.example.edu', ifacename: 'wlan0' } },
+      ],
+    };
+    stripResolvedMetadata(obj);
+    expect(obj.hosts.every((h: any) => h.metadata === undefined)).toBe(true);
+    expect(obj.hosts[0].data).toEqual({ external_dest: 'a.example.edu' });
+    expect(obj.hosts[1].data).toEqual({ external_dest: 'b.example.edu' });
+  });
+
+  it('leaves group data alone -- the daemon reads that too', () => {
+    const obj = {
+      hosts: [{ name: 'p1', data: {}, metadata: { ifacename: 'wlan0' } }],
+      host_groups: [{ name: 'rpi4', data: { ifacename: 'wlan0' } }],
+    };
+    stripResolvedMetadata(obj);
+    expect((obj.host_groups[0] as any).data).toEqual({ ifacename: 'wlan0' });
+  });
+
+  it('is safe on a config with no hosts at all', () => {
+    expect(() => stripResolvedMetadata({})).not.toThrow();
+    expect(() => stripResolvedMetadata({ hosts: [] })).not.toThrow();
   });
 });
 

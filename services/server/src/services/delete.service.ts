@@ -26,19 +26,38 @@ export async function deleteDocument(
   for await (const doc of allOutdatedDocs) {
     const names = doc?.[truth_col_name];
     if (!Array.isArray(names)) continue;
-
-    const index = names.indexOf(deleted_item);
-    if (index === -1) continue;
-
-    names.splice(index, 1);
-    const update: Record<string, unknown> = { [truth_col_name]: names };
+    if (!names.includes(deleted_item)) continue;
 
     const ids = doc?.[name_ids];
-    if (Array.isArray(ids) && index < ids.length) {
-      ids.splice(index, 1);
-      update[name_ids] = ids;
-    }
+    const haveIds = Array.isArray(ids) && ids.length === names.length;
 
-    await outdated_collection.updateOne({ name: doc.name }, { $set: update });
+    // Rebuild both arrays in one pass, dropping EVERY occurrence.
+    //
+    // Removing only the first (indexOf + splice) left a second reference to the
+    // same object behind whenever a document legitimately listed it twice -- a
+    // batch that runs one job twice, say -- and that leftover name is a dangling
+    // reference, which blocks config generation for the whole deployment.
+    //
+    // The ids array is only touched when it is exactly as long as the names, so
+    // the index correspondence the two arrays rely on is known to hold. A
+    // shorter or absent one is left alone rather than spliced at an index that
+    // means nothing in it (see update.service.ts, which keeps the pair aligned).
+    const keptNames: unknown[] = [];
+    const keptIds: unknown[] = [];
+    names.forEach((name: unknown, i: number) => {
+      if (name === deleted_item) return;
+      keptNames.push(name);
+      if (haveIds) keptIds.push(ids[i]);
+    });
+
+    const update: Record<string, unknown> = { [truth_col_name]: keptNames };
+    if (haveIds) update[name_ids] = keptIds;
+
+    // By _id rather than by name. A unique sparse index on `name` does exist on
+    // every one of these collections, so matching by name is not ambiguous
+    // today -- but _id is the key this document was just read by, it cannot be
+    // edited, and it needs no index to stay correct. update.service.ts writes
+    // through _id for the same reason.
+    await outdated_collection.updateOne({ _id: doc._id }, { $set: update });
   }
 }

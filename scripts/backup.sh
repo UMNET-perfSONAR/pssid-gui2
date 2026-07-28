@@ -20,17 +20,31 @@ if [ -z "$DB_CONTAINER" ]; then
   exit 1
 fi
 
-# Use credentials from .env when database authentication is enabled.
-AUTH=""
-if [ -f .env ] && grep -q '^MONGO_PASSWORD=' .env; then
-  MONGO_USERNAME="$(sed -n 's/^MONGO_USERNAME=//p' .env)"
-  MONGO_PASSWORD="$(sed -n 's/^MONGO_PASSWORD=//p' .env)"
-  if [ -n "$MONGO_PASSWORD" ]; then
-    AUTH="-u $MONGO_USERNAME -p $MONGO_PASSWORD --authenticationDatabase admin"
-  fi
+# Is database authentication enabled? The .env decides; the PASSWORD ITSELF is
+# never read here.
+#
+# It used to be, and was then interpolated into the `docker exec ... sh -c "..."`
+# command line below -- which put the MongoDB root password into the argv of a
+# process on the host, readable by any local user with `ps aux` for as long as
+# the dump ran. The mongo container already holds the same credentials in its own
+# environment (docker-compose.yml sets MONGO_INITDB_ROOT_* from this same .env),
+# so the script below is SINGLE-quoted and expands them inside the container,
+# where /proc/<pid>/environ is not world-readable.
+NEEDS_AUTH=false
+if [ -f .env ] && grep -q '^MONGO_PASSWORD=.\+' .env; then
+  NEEDS_AUTH=true
 fi
 
-docker exec "$DB_CONTAINER" sh -c "mongodump $AUTH --archive --gzip --db=$DB_NAME" \
+# "$DB_NAME" is passed as a positional argument (not interpolated) so the
+# container script stays single-quoted; a database name is not a secret, but
+# keeping one substitution style avoids a quoting mistake later.
+docker exec "$DB_CONTAINER" sh -c '
+  if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ "$2" = "true" ]; then
+    exec mongodump -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" \
+      --authenticationDatabase admin --archive --gzip --db="$1"
+  fi
+  exec mongodump --archive --gzip --db="$1"
+' _ "$DB_NAME" "$NEEDS_AUTH" \
   > "$BACKUP_DIR/backup-$TIMESTAMP.gz"
 
 echo "Backup created: $BACKUP_DIR/backup-$TIMESTAMP.gz"

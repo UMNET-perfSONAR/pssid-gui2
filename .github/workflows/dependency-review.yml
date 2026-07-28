@@ -1,0 +1,37 @@
+name: Dependency review
+
+# Blocks a pull request that ADDS a dependency with a known vulnerability, or one
+# whose licence this project cannot ship.
+#
+# This is not the same check as CI's `npm audit`. That one audits the whole
+# installed tree on every run, which means a newly disclosed advisory in an
+# existing dependency turns the build red on an unrelated pull request, and the
+# pressure is then to ignore it. This one looks only at what the pull request
+# ITSELF introduces, so its verdict is always actionable by the person reading
+# it: you added this, here is what comes with it.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  # Needed to post the summary comment on the pull request.
+  pull-requests: write
+
+jobs:
+  review:
+    name: Review dependency changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          # Fail on a newly introduced moderate-or-worse advisory. The existing
+          # npm audit gate in CI is set at the same line for production deps.
+          fail-on-severity: moderate
+          # Copyleft licences would change the terms this product ships under.
+          # Flagged rather than silently accepted; remove an entry here only with
+          # a deliberate decision about distribution.
+          deny-licenses: AGPL-3.0, GPL-3.0, GPL-2.0
+          comment-summary-in-pr: on-failure

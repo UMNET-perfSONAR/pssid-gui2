@@ -232,22 +232,42 @@ jobs:
         run: |
           bash -n bootstrap.sh install.sh
           for f in scripts/*.sh umich/QA/*.sh; do bash -n "$f"; done
+      # ShellCheck catches what `bash -n` cannot: unquoted expansions, a `[ x = y ]`
+      # that silently succeeds on an empty variable, a `local` that swallows an
+      # exit status. These scripts run as root and write the deployment's
+      # secrets, so a quoting slip there is a real fault, not style.
+      - name: Shell lint (shellcheck)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck -S warning bootstrap.sh install.sh scripts/*.sh umich/QA/*.sh
+      # Structural consistency that neither tests nor a syntax check can express:
+      # links and operator-facing paths that survived a rename, Ansible vars files
+      # whose NAME excludes them from ever loading, Makefile targets referenced
+      # but never defined. Each of these has been a real fault here.
+      - name: Repository consistency
+        run: bash scripts/check-repo-consistency.sh
 
   smoke:
     name: End-to-end smoke (full stack)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # The compose file bind-mounts this env file; create it before `up` so
-      # Docker does not materialize a directory in its place.
-      # OPEN_WRITE: the shipped default is read-only (shared/config.ts), so
-      # without this the smoke suite's create/update/delete checks all 403.
-      # Set here rather than in the committed config so the safe default stands.
-      - name: Write the dev server environment
-        run: |
-          printf 'MONGODB_URI=mongodb://mongo:27017\nBASE_URL=http://localhost:8888\nOPEN_WRITE=true\n' \
-            > services/server/.env
+      # OPEN_WRITE through the ENVIRONMENT, not a written services/server/.env.
+      #
+      # The dev compose used to bind-mount that file, which meant CI had to
+      # create it first so Docker would not materialize a DIRECTORY in its place
+      # -- a workaround that quietly left the same trap for anyone running
+      # `make dev` on a fresh checkout, where the resulting directory then aborts
+      # install.sh. The mount is gone; the compose file reads OPEN_WRITE from the
+      # environment instead, so this is now the same one-variable override an
+      # operator uses on a prebuilt image.
+      #
+      # Set here rather than in the committed config: the shipped default is
+      # read-only (shared/config.ts), and it must stay that way, but without an
+      # override every create/update/delete check below would 403.
       - name: Build and start the dev stack
+        env:
+          OPEN_WRITE: "true"
         run: docker compose -f docker-compose.local.yml up -d --build
       # Wait for the stack to be STABLE, not merely to answer once.
       #
@@ -275,6 +295,19 @@ jobs:
           echo "Stack never became stably healthy"; exit 1
       - name: Run the end-to-end smoke suite (every user action)
         run: bash scripts/smoke-test.sh http://localhost:8888
+      # The posture of the RUNNING stack, checked from the outside the way an
+      # auditor would: security headers, Host handling, JSON-only API errors,
+      # cross-origin write refusal, rate-limit headers, and container
+      # privileges. Complements the `security` job, which reads configuration
+      # files -- this one can only be answered by a live deployment.
+      #
+      # The script detects the dev stack from the running image tags and reports
+      # production-only expectations (TLS policy, HSTS, the strict default
+      # server) as notes rather than failures, so it is meaningful here without
+      # standing up certificates. Warnings do not fail it; the two expected here
+      # are "SSO disabled" and "OPEN_WRITE=true", both deliberate for CI.
+      - name: Verify the running stack's security posture
+        run: bash scripts/security-check.sh http://localhost:8888
       - name: Show container state and logs on failure
         if: failure()
         run: |

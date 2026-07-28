@@ -367,6 +367,7 @@ The Makefile wraps the common commands:
 | `make backup` / `make restore` | Back up or restore MongoDB |
 | `make seed-defaults` | Load the pre-load starter data (fresh installs) |
 | `make seed-qa` | Add the QA dataset on top of the pre-load (see [umich/QA/QA.md](../umich/QA/QA.md)) |
+| `sudo scripts/provision-probes.sh` | Deliver the generated config to the probes (see [Delivering the config to the probes](#delivering-the-config-to-the-probes)) |
 | `make sso-status` | Show whether single sign-on is on, in config and on the running stack |
 | `make sso-on` / `make sso-off` | Turn single sign-on on or off (see [Single sign-on](#single-sign-on)) |
 | `make doctor` | Check prerequisites and ports |
@@ -842,28 +843,27 @@ site once and reference it from tests, instead of duplicating a test per machine
 type. Typical uses: the network interface name (which can differ across hardware
 even on the same OS) or a per-group test destination.
 
-#### `data` is the input; `metadata` is the resolved view
+#### `data` is the input, and the only thing in the file
 
-Two different keys appear in the generated `pssid_config.json`, and only one of
-them is an input:
-
-| Key | On | What it is |
-|---|---|---|
-| `data` | each host, each host group | What you typed in the Metadata section. **This is the only field the daemon reads.** |
-| `metadata` | each host | The resolved result the GUI computes from those `data` blocks, so you can see per host what `$key` will become. Informational: the daemon ignores it and re-derives the same values itself. |
-
-So a generated config for a probe in a group with `ifacename=wlan0`, carrying its
-own `external_dest`, contains both:
+Metadata appears in the generated `pssid_config.json` exactly once, as the `data`
+block on each host and host group — what you typed in the Metadata section, and
+the only field the daemon reads:
 
 ```json
 { "name": "probe-01",
-  "data":     { "external_dest": "www.example.edu" },
-  "metadata": { "external_dest": "www.example.edu", "ifacename": "wlan0" } }
+  "data": { "external_dest": "www.example.edu" } }
 ```
 
-`data` is what the probe acts on. `metadata` is the same answer precomputed for
-the reader, and it is what the GUI shows in a host's **Probe configuration**
-panel.
+A probe in a group carrying `ifacename=wlan0` still resolves `$ifacename`: the
+daemon reads that group's own `data` block from the same file and merges it
+itself, per the order below.
+
+The **resolved** view — this host's own keys plus the ones its groups contribute,
+which is what `$key` will actually become — is not written into the file. It
+would repeat every value a second time in a field the daemon ignores, so a
+`external_dest` edited in the derived copy would appear to change something and
+change nothing. That view is still computed, and you can see it per host in the
+**Probe configuration** panel on the Hosts page, which is where it is useful.
 
 #### How a `$key` reference resolves
 
@@ -933,20 +933,60 @@ the database, and it is intentional: fix the flagged host to clear its own
 warning, and clear every host's warnings (or check Preview directly) before
 relying on the whole file being valid.
 
-Delivering those files to real probes is a separate step performed by
-`bin/provision` (an Ansible-based script that copies the config out and restarts
-the daemon). The copy shipped in this repository,
-`services/server/starters/provision`, is a placeholder that only logs; a
-deployment must drop a real provision script at the path in `paths_config.json`
-(`/usr/lib/exec/pssid/provision`) for provisioning to reach the probes. Until
-then the GUI's job ends at generating and validating a correct config file.
+### Delivering the config to the probes
 
-**Generate** writes the files and stops there: it runs `bin/provision`, which
-today is the placeholder above, so nothing reaches a probe yet. The `settings`
-collection's `autoProvision` flag (served at `GET`/`PUT /api/settings`) and the
-per-host/per-group provision endpoints remain in the server for when a real
-provision script is in place, but the GUI exposes only the single **Generate**
-action, not per-item provision buttons or an auto-provision toggle.
+Generation and delivery are separate on purpose, and the split is not
+cosmetic — it is where the fleet's root credentials live.
+
+**Generate** validates the configuration and writes `pssid_config.json` and
+`hosts.ini` to the controller. It then runs `bin/provision` inside the server
+container, which records the request and stops there. That container cannot
+deliver anything: the image has no `ssh`, `scp` or `ansible`, its root filesystem
+is read-only so none can be installed at run time, and it runs as uid 1000 with
+every capability dropped. Nor should it be able to — delivery needs a key with
+root on every probe, and the one process that must never hold that key is the
+internet-facing web application. A single remote-code-execution bug there would
+otherwise be root on the entire fleet.
+
+Delivery therefore runs on the **controller host**:
+
+```bash
+sudo scripts/provision-probes.sh                  # every probe in the inventory
+sudo scripts/provision-probes.sh --limit rpi4     # one host group
+sudo scripts/provision-probes.sh --limit 10.0.0.5 # one probe
+sudo scripts/provision-probes.sh --dry-run        # show the plan, touch nothing
+```
+
+It reads the generated `hosts.ini`, copies `pssid_config.json` to each probe over
+SSH, and moves it into place atomically, so a probe never reads a half-written
+file. Settings come from the environment, all optional:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PSSID_SSH_USER` | `root` | Account on the probe |
+| `PSSID_SSH_KEY` | (agent/default) | Private key to authenticate with |
+| `PSSID_CONFIG_DEST` | `/etc/pssid/pssid_config.json` | Where the daemon reads its config |
+| `PSSID_OUTPUT_DIR` | `/var/lib/pssid/output` | Where Generate wrote the files |
+| `PSSID_SSH_OPTS` | (none) | Extra `ssh`/`scp` options. Use `-o Port=2222`, not `-p`, since `scp` spells the port flag differently |
+
+It exits non-zero if any probe failed, names the ones that did, and records the
+outcome in `last-delivery.json` beside the config — readable from the server
+container, since that directory is a bind mount.
+
+**What it does not claim.** It does not restart the daemon and it does not verify
+that the probe adopted the file, because nothing on the controller can observe
+either. The result says the file was *delivered*, which is the only thing this
+side honestly knows; when and how the daemon picks it up is the probe's business.
+
+To have delivery follow generation automatically, watch
+`/var/lib/pssid/output/provision-request.json` — written by `bin/provision` on
+every Generate — with a systemd path unit or a cron entry that runs the script
+above. That keeps the credentials on the host while still being hands-off.
+
+The `settings` collection's `autoProvision` flag (served at `GET`/`PUT
+/api/settings`) and the per-host/per-group provision endpoints remain in the
+server, but the GUI exposes only the single **Generate** action, not per-item
+provision buttons or an auto-provision toggle.
 
 For working on the code itself, the development stack reloads the client and
 server as you edit:

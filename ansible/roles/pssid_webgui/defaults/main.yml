@@ -27,8 +27,12 @@ pssid_gui_letsencrypt_email: ""
 # Set it to true/false here to force a posture on every run.
 pssid_gui_sso: ""
 pssid_gui_oidc_issuer: ""
-pssid_gui_oidc_client_id: ""
-pssid_gui_oidc_client_secret: ""
+pssid_gui_oidc_client_id: "{{ lookup('env', 'PSSID_OIDC_CLIENT_ID') }}"
+# Falls back to the controller's environment so bootstrap.sh does not have to
+# pass the secret as `-e pssid_gui_oidc_client_secret=...`, which would put it in
+# the ansible-playbook command line for any local user to read. Set it normally
+# (inventory, vault, or -e) and that wins, as with any default.
+pssid_gui_oidc_client_secret: "{{ lookup('env', 'PSSID_OIDC_CLIENT_SECRET') }}"
 
 # Write access when SSO is off: "true" allows anyone who can reach the site to
 # change the configuration, "false" makes it read-only. Empty (the default)

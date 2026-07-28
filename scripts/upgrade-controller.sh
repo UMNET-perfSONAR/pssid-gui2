@@ -121,7 +121,7 @@ echo "==> Waiting for the health check"
 # 150 x 2s = 5 min to cover server + database startup, exiting on first success.
 urls=("${PSSID_HEALTH_URL:-}" "https://localhost/api/health" "http://localhost/api/health")
 healthy=""
-for i in $(seq 1 150); do
+for _ in $(seq 1 150); do
   for url in "${urls[@]}"; do
     [ -n "$url" ] || continue
     if curl -fsk "$url" 2>/dev/null | grep -q '"status"'; then healthy="$url"; break 2; fi

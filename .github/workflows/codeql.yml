@@ -1,0 +1,61 @@
+name: CodeQL
+
+# Static analysis of the application code itself, which the CI workflow does not
+# do: its `security` job validates CONFIGURATION (nginx, compose, the shipped
+# defaults, committed secrets), and the unit tests assert behaviour that someone
+# thought to write a test for. CodeQL looks for the classes of defect nobody
+# writes a test for -- an unsanitised value reaching a sink, a path built from
+# request input, a comparison that leaks timing, a regular expression that can be
+# made to backtrack exponentially by the string it is matching.
+#
+# Results land in the repository's Security tab, and on a pull request the new
+# ones are annotated inline.
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+  schedule:
+    # Weekly, so a newly published query finds an old defect without waiting for
+    # somebody to touch the file it lives in.
+    - cron: "17 3 * * 1"
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to upload the results to the Security tab.
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both services and the shared auth code are TypeScript; the client also
+        # carries Vue single-file components, which this pack understands.
+        language: [javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          language: ${{ matrix.language }}
+          # security-extended adds the lower-severity and higher-noise queries.
+          # Worth it here: this deployment handles session cookies, an OIDC
+          # exchange and a group-to-permission mapping, where a "minor" finding
+          # is often the whole vulnerability.
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

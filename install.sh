@@ -106,6 +106,18 @@ HOSTNAME_INPUT="${HOSTNAME_INPUT:-${HOSTNAME_OVERRIDE:-}}"
 ISSUER="${ISSUER:-${PSSID_ISSUER:-}}"
 OPEN_WRITE="${OPEN_WRITE:-${PSSID_OPEN_WRITE:-}}"
 
+# The OIDC client id and secret, by environment as well as by flag -- and the
+# environment is the PREFERRED route for the secret.
+#
+# A value passed as --client-secret=... sits in this process's argv, which on
+# Linux is world-readable through /proc/<pid>/cmdline: any local user can read it
+# with a bare `ps aux` for as long as the install runs. The environment is not:
+# /proc/<pid>/environ is readable only by the process owner. The Ansible role
+# therefore hands the secret over this way, and --client-secret is kept for
+# interactive use (where prompt_secret already avoids shell history).
+CLIENT_ID="${CLIENT_ID:-${PSSID_OIDC_CLIENT_ID:-}}"
+CLIENT_SECRET="${CLIENT_SECRET:-${PSSID_OIDC_CLIENT_SECRET:-}}"
+
 prompt() { # prompt VAR "Question" "default"
   local __var="$1" __q="$2" __def="${3:-}" __ans
   if [ "$NON_INTERACTIVE" = "true" ]; then
@@ -270,7 +282,7 @@ if [ "$SSO" = "true" ]; then
     *) die "ISSUER must be an absolute https URL (e.g. https://your-tenant.okta.com), got: $ISSUER" ;;
   esac
   case "$ISSUER" in
-    */.well-known*|*/.well-known/*)
+    */.well-known*)
       die "ISSUER is the issuer base URL, not the discovery document. Drop the
   /.well-known/openid-configuration suffix: ${ISSUER%%/.well-known*}" ;;
   esac
@@ -375,6 +387,16 @@ SERVER_ENV="services/server/.env"
 # `>` redirect creates with the umask default (usually 0644), so the MongoDB
 # password and session secret would sit world-readable for the window between
 # the first write and the chmod below.
+# A DIRECTORY here is not an operator mistake, it is Docker's doing: a bind mount
+# whose source does not exist is created as a directory, and an older dev compose
+# mounted this path. The truncate below would then abort the whole install with a
+# bare "Is a directory", after secrets have already been generated. It can only
+# ever be empty (nothing writes into it), so replacing it loses nothing.
+if [ -d "$SERVER_ENV" ]; then
+  rmdir "$SERVER_ENV" 2>/dev/null \
+    || die "$SERVER_ENV is a non-empty directory. Expected a file; move it aside and re-run."
+  info "Replaced an empty directory at $SERVER_ENV (left by a Docker bind mount) with a file"
+fi
 : > "$SERVER_ENV"
 chmod 600 "$SERVER_ENV" 2>/dev/null || warn "Could not chmod $SERVER_ENV"
 {
@@ -766,6 +788,14 @@ $(nginx_headers)${hsts_header}
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
+            # Provisioning runs Ansible against every probe and has no time limit
+            # of its own -- how long it takes is not a constraint here. nginx's
+            # DEFAULT proxy_read_timeout is 60s, which would return 504 to the
+            # browser part way through while the run carried on server-side:
+            # the operator sees a failure, retries, and starts a second run over
+            # the first. Wait for the real answer instead.
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
         }
 $(nginx_oidc_locations)
     }

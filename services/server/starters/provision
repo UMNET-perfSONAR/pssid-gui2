@@ -1,5 +1,52 @@
 #!/bin/bash
+# Called by the server after it writes pssid_config.json and hosts.ini.
+#
+# It runs INSIDE the server container, which cannot deliver anything to a probe
+# and is not meant to: the image has no ssh, scp or ansible, the root filesystem
+# is read-only so none can be installed at run time, it runs as uid 1000 with
+# every capability dropped, and above all it is the internet-facing process. The
+# key that can write /etc/pssid on every probe must not live here -- one RCE in
+# the web application would otherwise be root on the whole fleet.
+#
+# So this records the REQUEST, and delivery happens on the controller host:
+#
+#     sudo scripts/provision-probes.sh                # every probe
+#     sudo scripts/provision-probes.sh --limit rpi4   # one group
+#
+# Both this file and the output directory are bind mounts from the host
+# (/usr/lib/exec/pssid and /var/lib/pssid/output), so the request written below
+# is visible to a host-side watcher -- a systemd path unit or a cron entry -- if
+# you want delivery to follow generation automatically. See
+# docs/deployment.md#delivering-the-config-to-the-probes.
+#
+# Replace this script if your site delivers configuration some other way. The
+# arguments are: <context> <name> <caller> <caller_role>.
+set -u
 
-echo "Current PATH: $PATH" >> log 2>&1
+CONTEXT="${1:-unknown}"
+NAME="${2:-*}"
+CALLER="${3:-unauthenticated}"
+CALLER_ROLE="${4:-unauthenticated}"
 
-echo "Running tests on ${1}: ${2} at $(date)\n" >> log 2>&1
+OUTPUT_DIR="${PSSID_OUTPUT_DIR:-./output}"
+REQUEST="$OUTPUT_DIR/provision-request.json"
+
+mkdir -p "$OUTPUT_DIR" 2>/dev/null || true
+
+# Written to a temporary file and moved into place, so a watcher never reads a
+# half-written request.
+TMP="$REQUEST.$$"
+cat > "$TMP" <<EOF
+{
+  "requested_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "context": "$CONTEXT",
+  "name": "$NAME",
+  "caller": "$CALLER",
+  "caller_role": "$CALLER_ROLE",
+  "note": "Config generated on the controller. Delivery to the probes is a separate, host-side step: scripts/provision-probes.sh"
+}
+EOF
+mv -f "$TMP" "$REQUEST" 2>/dev/null || { rm -f "$TMP"; exit 1; }
+
+echo "Provision requested (context=$CONTEXT name=$NAME by=$CALLER)."
+echo "Config written to $OUTPUT_DIR. Deliver it with: sudo scripts/provision-probes.sh --limit $NAME"

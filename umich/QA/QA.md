@@ -191,27 +191,25 @@ it is verified against the shipped pipeline, so these are exact expectations.
 `batch-tie` (all arriving via `all`/`rpi4`). `batch-host` reaches probe 1 alone,
 by direct host attachment rather than a group. See section 5 for why.
 
-**`data` vs `metadata`.** Both appear per host, and they are not the same thing:
-
-- `data` is what was typed into the Metadata section of the host (or the group).
-  **It is the only field the daemon reads.**
-- `metadata` is the resolved answer the GUI computed from those `data` blocks —
-  a convenience for the reader. The daemon ignores it and re-derives the same
-  values itself.
-
-So each probe carries its own `data` and the merged `metadata`:
+**Metadata appears once, as `data`.** Each probe carries the value that was typed
+into its Metadata section, and nothing else:
 
 ```json
-"198.111.226.186": { "data": { "external_dest": "www.google.com" },
-                        "metadata": { "external_dest": "www.google.com", "ifacename": "wlan0" } }
-"198.111.226.189": { "data": { "external_dest": "www.reddit.com" },
-                        "metadata": { "external_dest": "www.reddit.com", "ifacename": "wlan0" } }
+"198.111.226.186": { "data": { "external_dest": "www.google.com" } }
+"198.111.226.189": { "data": { "external_dest": "www.reddit.com" } }
 ```
 
-`ifacename` comes from the `rpi4` group's `data`, `external_dest` from each
-host's own. Same key, different value per probe, which is the point of this part
-of the dataset. A host key would win over a group key of the same name; nothing
-in this dataset collides, so both survive.
+Same key, a different value per probe, which is the point of this part of the
+dataset. `ifacename` is **not** repeated on the hosts: it lives once in the
+`rpi4` group's own `data` block, and the daemon merges it per probe when it
+resolves `$ifacename`.
+
+Check that no host carries a second, resolved copy of these values — a
+`"metadata"` key beside `"data"` would be the same values written twice into a
+field the daemon ignores, and editing that copy would appear to change something
+and change nothing. The resolved view still exists where it is useful: open a
+host's **Probe configuration** panel (section 3) and it shows `external_dest`
+together with the inherited `ifacename`.
 
 **Metadata references stay literal.** `"url": "$external_dest"` and
 `"test_interface": "$ifacename"` are **not** substituted in this file; the daemon
@@ -361,7 +359,7 @@ its own documents, by design. Restoring from a backup is the way back.
 | Batch via **host**, attached directly | `batch-host`, on `198.111.226.186` only (optionally re-exercised by hand in section 3) |
 | Group metadata | `ifacename=wlan0` on `rpi4` → `$ifacename` |
 | Host metadata, same key, different values | `external_dest` per probe → `$external_dest` |
-| Metadata layering | host `data` over group `data`, resolved per host into `metadata` |
+| Metadata layering | host `data` over group `data`, resolved per host in the Probe configuration panel |
 | Priority collision | four batches, shared schedules, priorities 0/1/2/2 |
 | **Identical** precedence | `batch-group` and `batch-tie`, both priority 2, both due together |
 | Test field types | text, number, singleselect, optional key/value |

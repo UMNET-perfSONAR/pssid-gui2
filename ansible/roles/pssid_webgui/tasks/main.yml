@@ -147,9 +147,7 @@
          + ((pssid_gui_sso | string | length > 0) | ternary(
               ['--sso=' ~ (pssid_gui_sso | bool | string | lower)], []))
          + ((pssid_gui_sso | bool) | ternary(
-              ['--issuer=' ~ pssid_gui_oidc_issuer,
-               '--client-id=' ~ pssid_gui_oidc_client_id,
-               '--client-secret=' ~ pssid_gui_oidc_client_secret], []))
+              ['--issuer=' ~ pssid_gui_oidc_issuer], []))
          + ((pssid_gui_open_write | length > 0) | ternary(
               ['--open-write=' ~ pssid_gui_open_write], []))
          + ((pssid_gui_tls == 'letsencrypt' and (pssid_gui_letsencrypt_email | length > 0)) | ternary(
@@ -157,17 +155,31 @@
          + ((pssid_gui_no_build | bool) | ternary(['--no-build'], []))
          + ((pssid_gui_pull | bool) | ternary(['--pull'], [])) }}
   when: pssid_gui_mode == 'prod'
-  no_log: "{{ pssid_gui_sso | bool }}"
+  # No no_log: the argv above no longer carries the client secret (it goes
+  # through the environment on the next task), so hiding it would only make a
+  # failed deploy harder to diagnose.
 
 - name: Run the pSSID GUI installer (config, certificates, containers)
   ansible.builtin.command:
     argv: "{{ pssid_gui_installer_argv }}"
     chdir: "{{ pssid_gui_src }}"
+  # The OIDC client id and secret travel in the ENVIRONMENT, not in argv above.
+  #
+  # A command line is world-readable on Linux (/proc/<pid>/cmdline), so
+  # `--client-secret=...` let any local user read the secret with `ps aux` for
+  # the length of the install. /proc/<pid>/environ is readable only by the owner,
+  # which here is root. install.sh accepts both, preferring these.
+  environment:
+    PSSID_OIDC_CLIENT_ID: "{{ pssid_gui_oidc_client_id }}"
+    PSSID_OIDC_CLIENT_SECRET: "{{ pssid_gui_oidc_client_secret }}"
   when: pssid_gui_mode == 'prod'
   changed_when: true
-  # Never print the OIDC client secret. On failure, re-run install.sh by hand
-  # in the source directory to see its full output.
-  no_log: "{{ pssid_gui_sso | bool }}"
+  # Never print the OIDC client secret. Keyed on the secret actually being set
+  # rather than on pssid_gui_sso, which is now empty by default ("leave this
+  # host's posture alone") and so would leave this false on exactly the runs
+  # where a vault supplies a secret. On failure, re-run install.sh by hand in the
+  # source directory to see its full output.
+  no_log: "{{ (pssid_gui_oidc_client_secret | default('', true) | length > 0) or (pssid_gui_sso | bool) }}"
 
 # ---- Development: hot-reload stack ------------------------------------------
 

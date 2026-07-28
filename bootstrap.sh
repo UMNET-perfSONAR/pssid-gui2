@@ -115,7 +115,19 @@ step "Checking prerequisites"
 
 # Pull mode (PSSID_PULL=true) fetches prebuilt images instead of building, so
 # it needs ~4 GB rather than the ~8-10 GB a from-source build does.
-if [ "${PSSID_PULL:-false}" = "true" ]; then
+#
+# Normalized once, here, and every later test uses PULL_MODE. A literal
+# comparison against "true" silently dropped PSSID_PULL=1/yes/TRUE: the operator
+# got the STRICTER build-size disk thresholds (so a VM sized for a pull could be
+# refused outright) and no pssid_gui_pull, i.e. the exact opposite of what they
+# asked for, with no message. The other settings do not behave this way --
+# PSSID_SSO is handed to Ansible, whose `| bool` accepts all of these spellings.
+case "$(printf '%s' "${PSSID_PULL:-}" | tr '[:upper:]' '[:lower:]')" in
+  true|1|yes|on) PULL_MODE=true ;;
+  *)             PULL_MODE=false ;;
+esac
+
+if [ "$PULL_MODE" = "true" ]; then
   DISK_MIN_KB=4194304;  DISK_WARN_KB=8388608   # 4 / 8 GiB
   DISK_NEED_TEXT="pulling the prebuilt images (needs ~4 GB)"
 else
@@ -189,19 +201,27 @@ check_disk_target() {
 # suggest_volume: print "<free_gb> <mountpoint>" of the roomiest writable local
 # filesystem. Exclude pseudo, network, boot, and read-only filesystems.
 suggest_volume() {
-  local candidate
-  while IFS= read -r candidate; do
-    [ -n "$candidate" ] || continue
-    [ -w "${candidate#* }" ] || continue
-    printf '%s\n' "$candidate"
+  local gb mp
+  # Tab-separated, and split on tab alone: a mount point may contain spaces
+  # (removable media and some LVM layouts do), and splitting on whitespace would
+  # truncate the path -- then silently suggest a directory that does not exist.
+  while IFS=$'\t' read -r gb mp; do
+    [ -n "$mp" ] || continue
+    [ -w "$mp" ] || continue
+    printf '%s\t%s\n' "$gb" "$mp"
     return 0
-  done < <(df -PTk 2>/dev/null | awk '
+  done < <(df -PTk 2>/dev/null | awk -v OFS='\t' '
     NR>1 &&
     $2 !~ /^(tmpfs|devtmpfs|overlay|squashfs|iso9660|efivarfs|autofs|nfs|nfs4|cifs|smb3|9p|ceph|glusterfs)$/ &&
     $2 !~ /^fuse\./ &&
-    $7 !~ /^\/boot(\/|$)/ &&
     $5 ~ /^[0-9]+$/ {
-      print int($5/1024/1024), $7
+      # The mount point is the LAST field and may contain spaces, so rejoin
+      # everything from $7 on. Reading $7 alone truncates such a path at its
+      # first space and yields a directory that does not exist.
+      mp = $7
+      for (i = 8; i <= NF; i++) mp = mp " " $i
+      if (mp ~ /^\/boot(\/|$)/) next
+      print int($5/1024/1024), mp
     }' | sort -rn)
 }
 
@@ -209,10 +229,12 @@ suggest_volume() {
 # PSSID_DOCKER_DATA_ROOT suggestion when a roomier volume exists.
 disk_die() {
   local path="$1" sugg sugg_gb sugg_mp sugg_root hint=""
-  [ "${PSSID_PULL:-false}" = "true" ] || hint="
+  [ "$PULL_MODE" = "true" ] || hint="
   Tip: PSSID_PULL=true pulls prebuilt images instead of building and needs only ~4 GB."
   sugg="$(suggest_volume)"
-  sugg_gb="${sugg%% *}"; sugg_mp="${sugg#* }"
+  # Tab-separated, matching suggest_volume: splitting on a space would truncate
+  # a mount point that contains one.
+  sugg_gb="${sugg%%$'\t'*}"; sugg_mp="${sugg#*$'\t'}"
   if [ "$sugg_mp" = "/var/lib/docker" ]; then
     sugg_root="$sugg_mp"
   else
@@ -285,7 +307,10 @@ ok "git: $(git --version | cut -d' ' -f3)"
 
 if ! command -v ansible-playbook >/dev/null 2>&1; then
   step "Installing Ansible"
-  # Package name differs across distributions; EL ships ansible-core.
+  # Package name differs across distributions; EL ships ansible-core. The first
+  # attempt is quietened because "no such package" is the EXPECTED outcome there
+  # and its error would be noise -- but only the first: if the fallback fails
+  # too, that error is the one the operator needs, so it is left visible.
   install_pkgs ansible 2>/dev/null || install_pkgs ansible-core
 fi
 ok "ansible: $(ansible-playbook --version | head -n1)"
@@ -301,7 +326,16 @@ else
   step "Fetching pSSID GUI to $INSTALL_DIR"
   if [ -d "$INSTALL_DIR/.git" ]; then
     git -C "$INSTALL_DIR" fetch --quiet origin "$VERSION"
-    git -C "$INSTALL_DIR" checkout --quiet "$VERSION"
+    # Handled, not fatal, for the same reason the pull below is: install.sh
+    # rewrites nginx.conf and shared/config.ts in place, so a deployed checkout
+    # ALWAYS has local edits to tracked files, and switching version can refuse
+    # rather than discard them. Aborting here on `set -e` would end the bootstrap
+    # with a raw git error where the pull two lines down would have explained
+    # itself and carried on.
+    if ! git -C "$INSTALL_DIR" checkout --quiet "$VERSION" 2>/dev/null; then
+      warn "Could not switch $INSTALL_DIR to '$VERSION' (local edits to tracked files)."
+      warn "Staying on $(git -C "$INSTALL_DIR" rev-parse --abbrev-ref HEAD)."
+    fi
     # Report the real outcome. The deploy still proceeds on the existing
     # checkout when the fast-forward is refused (a local edit to a tracked file
     # is enough), but claiming "Updated" regardless is how a VM ends up running
@@ -331,10 +365,15 @@ EXTRA=()
 [ -n "${PSSID_SSO:-}" ]                && EXTRA+=(-e "pssid_gui_sso=${PSSID_SSO}")
 [ -n "${PSSID_OIDC_ISSUER:-}" ]        && EXTRA+=(-e "pssid_gui_oidc_issuer=${PSSID_OIDC_ISSUER}")
 [ -n "${PSSID_OIDC_CLIENT_ID:-}" ]     && EXTRA+=(-e "pssid_gui_oidc_client_id=${PSSID_OIDC_CLIENT_ID}")
-[ -n "${PSSID_OIDC_CLIENT_SECRET:-}" ] && EXTRA+=(-e "pssid_gui_oidc_client_secret=${PSSID_OIDC_CLIENT_SECRET}")
+# NOT passed with -e: an ansible-playbook command line is world-readable through
+# /proc/<pid>/cmdline, so `-e pssid_gui_oidc_client_secret=...` published the
+# secret to every local user for the length of the run. It is already in this
+# script's environment (the sudo re-exec preserves it), ansible-playbook inherits
+# that, and the role's default reads it with lookup('env', ...). Nothing to do
+# here but leave it alone.
 [ -n "${PSSID_OPEN_WRITE:-}" ]         && EXTRA+=(-e "pssid_gui_open_write=${PSSID_OPEN_WRITE}")
 [ -n "${PSSID_DOCKER_DATA_ROOT:-}" ]   && EXTRA+=(-e "pssid_gui_docker_data_root=${PSSID_DOCKER_DATA_ROOT}")
-[ "${PSSID_PULL:-false}" = "true" ]    && EXTRA+=(-e "pssid_gui_pull=true")
+[ "$PULL_MODE" = "true" ]              && EXTRA+=(-e "pssid_gui_pull=true")
 
 # ─── Deploy ───────────────────────────────────────────────────────────────────
 step "Deploying (Ansible: docker + pssid_webgui roles)"
