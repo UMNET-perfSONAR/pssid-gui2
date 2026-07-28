@@ -73,7 +73,7 @@
 
             <div class="form-group">
               <label id="job-tests-label"> Tests </label>
-              <small id="job-tests-help" class="text-muted" style="display:block; margin:0.15rem 0 0.5rem;">
+              <small id="job-tests-help" class="text-muted form-help">
                 The tests in a job are not guaranteed to run in any particular order.
                 Put a test in its own job if something must run before something else.
               </small>

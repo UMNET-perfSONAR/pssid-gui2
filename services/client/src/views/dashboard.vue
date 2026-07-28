@@ -210,12 +210,19 @@ export default {
 </script>
 
 <style scoped>
+/* Keep the status close to the header divider on Overview only:
+   0.9rem is three fifths of the shared 1.5rem page-header gap. */
+:deep(.page-header) {
+  margin-bottom: 0.9rem;
+}
+
 .status-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 320px));
   justify-content: start;
   gap: 1rem;
   margin-bottom: 1.5rem;
+  container-type: inline-size;
 }
 .status-pill {
   display: flex;
@@ -246,8 +253,8 @@ export default {
    treatment reads well in light, dark and high-contrast themes. */
 .hint {
   position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
+  top: 50%;
+  left: calc(100% + 10px);
   z-index: 20;
   width: max-content;
   max-width: 320px;
@@ -265,18 +272,19 @@ export default {
   text-align: left;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-4px);
+  transform: translate(-4px, -50%);
   transition: opacity .12s ease, transform .12s ease, visibility .12s;
   pointer-events: none;
 }
-/* Little caret pointing up at the pill that raised it. */
+/* Little caret pointing left at the pill that raised it. */
 .hint::before {
   content: '';
   position: absolute;
-  bottom: 100%;
-  left: 20px;
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
   border: 6px solid transparent;
-  border-bottom-color: rgba(17, 24, 39, 0.92);
+  border-right-color: rgba(17, 24, 39, 0.92);
 }
 /* On/Off shown as a monospace chip, matching the code tokens used elsewhere. */
 .hint code {
@@ -291,7 +299,31 @@ export default {
 .status-pill.has-hint:focus-within .hint {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: translate(0, -50%);
+}
+
+/* When the content region is narrow there is not enough room beside the pill,
+   so keep the explanation within it by placing the tooltip underneath. */
+@container (max-width: 680px) {
+  .hint {
+    top: calc(100% + 10px);
+    left: 0;
+    max-width: min(320px, calc(100vw - 2rem));
+    transform: translateY(-4px);
+  }
+  .hint::before {
+    top: auto;
+    right: auto;
+    bottom: 100%;
+    left: 20px;
+    transform: none;
+    border-right-color: transparent;
+    border-bottom-color: rgba(17, 24, 39, 0.92);
+  }
+  .status-pill.has-hint:hover .hint,
+  .status-pill.has-hint:focus-within .hint {
+    transform: translateY(0);
+  }
 }
 
 /* Persistent explanation, shown only when the system is unhealthy. */

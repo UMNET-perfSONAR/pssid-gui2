@@ -357,6 +357,23 @@ body * {
   letter-spacing: 0.055em;
   margin-bottom: 0.35rem;
 }
+/* Help text sitting directly under a label. It reads as a continuation of the
+   label rather than the next item in the form, so it sits tight against it and
+   carries the gap down to the control instead: the 0.35rem above is the
+   label-to-CONTROL gap, and stacking the two put the label adrift from its own
+   description. Where :has() is unavailable this degrades to 0.35rem, still
+   closer than the 0.5rem these used to set inline. */
+.form-help {
+  display: block;
+  margin: 0 0 0.5rem;
+}
+.form-group > label:has(+ .form-help),
+.form-group-label:has(+ .form-help) {
+  margin-bottom: 0.15rem;
+}
+.label-note {
+  font-weight: 400;
+}
 fieldset[disabled] {
   opacity: 0.6;
 }

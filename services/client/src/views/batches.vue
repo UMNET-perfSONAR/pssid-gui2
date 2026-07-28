@@ -98,7 +98,7 @@
             </div>
             <div class="form-group">
               <label for="batch-priority"> Priority </label>
-              <small id="batch-priority-help" class="text-muted" style="display:block; margin:0.15rem 0 0.5rem;">
+              <small id="batch-priority-help" class="text-muted form-help">
                 Lower number has higher precedence in the event of a scheduling conflict.
               </small>
               <input
@@ -114,7 +114,9 @@
               <small v-if="priorityError" id="batch-priority-error" class="text-danger" role="alert">{{ priorityError }}</small>
             </div>
             <div class="form-group">
-              <label id="batch-jobs-label"> Jobs (run in the listed order) </label>
+              <label id="batch-jobs-label">
+                Jobs <span class="label-note">(run in the listed order)</span>
+              </label>
               <VueMultiselect
                 v-model="form.jobs"
                 :multiple="true"

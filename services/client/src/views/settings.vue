@@ -60,7 +60,7 @@
         <div v-if="settingsStore.preview" class="preview-result" aria-live="polite">
           <div class="preview-status valid">
             <span class="material-icons" aria-hidden="true">check_circle</span>
-            <span>No validation problems found.</span>
+            <span>No validation problems found</span>
           </div>
 
           <div class="preview-toolbar">
@@ -166,7 +166,7 @@
 
         <div v-if="settingsStore.generated" class="preview-status valid" role="status" aria-live="polite">
           <span class="material-icons" aria-hidden="true">check_circle</span>
-          <span>Files written to the controller.</span>
+          <span>Files written to the controller</span>
         </div>
       </section>
     </template>
@@ -377,13 +377,11 @@ export default {
   gap: 0.25rem;
 }
 .preview-tabs button {
+  position: relative;
   background: transparent;
-  /* Transparent (not a gray --border): an inactive tab's outline floating above
-     the dark code panel read as a stray gray line. The 1px keeps the box size
-     stable so the active tab still aligns; the active rule colors it in.
-     border-top is 2px in both states (transparent here) so recoloring it on
-     .active below doesn't shift the tab's height. */
-  border: 1px solid transparent;
+  /* A quiet theme-aware outline keeps both file sections defined against the
+     card. The active tab draws its cyan top stroke over this border below. */
+  border: 1px solid var(--border);
   border-top-width: 2px;
   border-bottom: none;
   border-radius: 6px 6px 0 0;
@@ -405,12 +403,30 @@ export default {
    "boxed tab popping off the card" cue that works in light mode nearly
    vanishes in dark mode. The accent top border is theme-independent (the
    edition accent color, not a neutral token) and stays visible regardless of
-   how close --surface lands to the panel's fixed dark value. */
+   how close --surface lands to the panel's fixed dark value.
+
+   The accent is a shallow rounded outline instead of border-top-color. A
+   separately colored top border gets split diagonally where it meets the dark
+   side borders, stopping short of the rounded corners. This stroke follows the
+   whole top curve, reaches each edge, and stops before it can outline the tab's
+   straight sides. */
 .preview-tabs button.active {
   color: #e2e8f0;
   background: #0f172a;
-  border-color: #0f172a;
-  border-top-color: var(--accent);
+  border-color: var(--border);
+}
+.preview-tabs button.active::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -1px;
+  left: -1px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 2px solid var(--accent);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  pointer-events: none;
 }
 .preview-pane {
   position: relative;
