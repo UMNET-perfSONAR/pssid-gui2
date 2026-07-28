@@ -11,9 +11,12 @@ describe('forLog', () => {
     expect(forLog('*')).toBe('*');
   });
 
-  it('neutralises the newlines that would forge a second log entry', () => {
-    expect(forLog('probe\nAUDIT {"actor":"admin"}')).toBe('probe?AUDIT {"actor":"admin"}');
-    expect(forLog('a\r\nb')).toBe('a??b');
+  it('removes the newlines that would forge a second log entry', () => {
+    // Dropped, not substituted. That is deliberate and load-bearing: it is the
+    // one shape CodeQL accepts as a log-injection barrier (see log.service.ts).
+    expect(forLog('probe\nAUDIT {"actor":"admin"}')).toBe('probeAUDIT {"actor":"admin"}');
+    expect(forLog('a\r\nb')).toBe('ab');
+    expect(forLog('a\rb\nc')).toBe('abc');
   });
 
   it('neutralises terminal escape sequences', () => {

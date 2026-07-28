@@ -16,17 +16,37 @@
 /** Longest a single interpolated value may be before it is truncated. */
 const MAX_LOGGED_LENGTH = 200;
 
-/** C0 controls (CR and LF among them) and DEL. */
+/**
+ * Everything other than a line break in the C0 range, plus DEL: a tab faking a
+ * column, or the ESC that opens a terminal escape sequence aimed at whoever is
+ * tailing the output. The range still spans CR and LF, which is harmless -- the
+ * pass in forLog() has already removed those by the time this one runs.
+ */
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS = /[\x00-\x1F\x7F]/g;
 
 /**
- * Render a value safe to interpolate into a log line: control characters
- * replaced, and the result bounded so one oversized field cannot push the rest
- * of a line out of a reader's view.
+ * Render a value safe to interpolate into a log line: line breaks dropped, the
+ * remaining control characters replaced, and the result bounded so one oversized
+ * field cannot push the rest of a line out of a reader's view.
  */
 export function forLog(value: unknown): string {
-  const cleaned = String(value).replace(CONTROL_CHARS, '?');
+  const cleaned = String(value)
+    // Line breaks -- the characters that actually forge a log entry -- dropped
+    // rather than substituted, and written out here rather than hoisted to a
+    // named constant next to CONTROL_CHARS.
+    //
+    // The exact shape matters. CodeQL's js/log-injection recognises one barrier
+    // of this kind and only one: a String.prototype.replace whose replaced
+    // string is a newline and whose replacement is the EMPTY string. The first
+    // version of this file folded line breaks into the sweep below and put a
+    // '?' in their place -- just as safe at runtime, and invisible to the
+    // analysis on both counts, since a character RANGE has no constant value to
+    // compare against and '?' is not ''. Every call site stayed flagged. So:
+    // two passes, this replacement stays empty, and the pattern stays inline
+    // where the analysis can see it is the argument.
+    .replace(/\r\n|\r|\n/g, '')
+    .replace(CONTROL_CHARS, '?');
   return cleaned.length > MAX_LOGGED_LENGTH
     ? cleaned.slice(0, MAX_LOGGED_LENGTH) + '...'
     : cleaned;
