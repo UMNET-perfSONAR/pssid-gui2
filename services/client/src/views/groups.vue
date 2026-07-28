@@ -96,7 +96,7 @@
               </VueMultiselect>
             </div>
             <label class="form-group-label"> Metadata </label>
-            <dynamic_add_data :addedData="form.meta"></dynamic_add_data>
+            <dynamic_add_data class="metadata-fields" :addedData="form.meta"></dynamic_add_data>
           </fieldset>
         </form>
       </div>

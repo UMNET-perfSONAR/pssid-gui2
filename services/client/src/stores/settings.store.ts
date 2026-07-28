@@ -10,6 +10,39 @@ function authOptions(): RequestInit {
   return config.ENABLE_SSO ? { credentials: 'include' } : {};
 }
 
+/**
+ * How long a busy state stays on screen at minimum, in milliseconds.
+ *
+ * Preview and Generate usually answer in well under 100ms on a controller
+ * talking to a MongoDB on the same host, and a spinner that appears and
+ * disappears inside a frame or two is not read as "it worked" -- it is not read
+ * at all. The button flickers, the panel looks untouched, and the natural
+ * response is to click Refresh again and wonder whether anything is wired up.
+ *
+ * 400ms is chosen from the two perception thresholds either side of it: below
+ * ~100ms a change is perceived as instantaneous (so the spinner may as well not
+ * have rendered), and around ~1s a wait starts to be felt as a delay. 400ms sits
+ * clear of both -- long enough to register as a completed action, short enough
+ * that nobody is waiting on it.
+ *
+ * This only ever ADDS time to a fast response. A request slower than this is
+ * already visible on its own and is not held any further.
+ */
+export const MIN_BUSY_MS = 400;
+
+/**
+ * Resolve no earlier than MIN_BUSY_MS after `startedAt`.
+ *
+ * Awaited in the `finally` of each action, so the busy flag is lowered on the
+ * success and failure paths alike -- a validation error that flashes past is
+ * exactly as unreadable as a success that does.
+ */
+function holdBusy(startedAt: number): Promise<void> {
+  const remaining = MIN_BUSY_MS - (Date.now() - startedAt);
+  if (remaining <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, remaining));
+}
+
 async function responseMessage(res: Response, fallback: string): Promise<string> {
   const text = await res.text();
   if (!text) return fallback;
@@ -80,6 +113,7 @@ export const useSettingsStore = defineStore('settings', {
      */
     async previewConfig() {
       if (this.previewLoading) return;
+      const startedAt = Date.now();
       try {
         this.previewLoading = true;
         this.previewError = '';
@@ -97,6 +131,10 @@ export const useSettingsStore = defineStore('settings', {
         this.preview = null;
         this.previewError = 'Failed to build preview';
       } finally {
+        // The result is already in state, so the panel below updates under the
+        // scrim and is revealed complete when the flag drops -- rather than the
+        // reverse, where content changes first and the spinner trails it.
+        await holdBusy(startedAt);
         this.previewLoading = false;
       }
     },
@@ -113,6 +151,7 @@ export const useSettingsStore = defineStore('settings', {
      */
     async generateConfig() {
       if (this.generateLoading) return;
+      const startedAt = Date.now();
       try {
         this.generateLoading = true;
         this.generated = false;
@@ -133,6 +172,7 @@ export const useSettingsStore = defineStore('settings', {
         console.error(err);
         this.generateError = 'Failed to generate config files';
       } finally {
+        await holdBusy(startedAt);
         this.generateLoading = false;
       }
     },

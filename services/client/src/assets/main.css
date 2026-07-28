@@ -374,6 +374,11 @@ body * {
 .label-note {
   font-weight: 400;
 }
+/* Metadata sits directly under its section label, so its first action needs
+   less separation than the reusable dynamic-data component's default. */
+.metadata-fields > .btn {
+  margin-top: 0.25rem !important;
+}
 fieldset[disabled] {
   opacity: 0.6;
 }

@@ -1,8 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useSettingsStore } from '../settings.store';
+import { useSettingsStore, MIN_BUSY_MS } from '../settings.store';
 
 const fetchMock = vi.fn();
+
+/**
+ * Await an action to completion, letting its minimum-busy timer elapse.
+ *
+ * The actions hold their busy flag for MIN_BUSY_MS so a fast response is still
+ * visible (see settings.store.ts). Under fake timers that hold never expires on
+ * its own, so a bare `await store.previewConfig()` would sit here forever.
+ * runAllTimersAsync drains the queue AND flushes microtasks between timers, so
+ * it also covers the timer the action only schedules once its fetch resolves.
+ */
+async function settle<T>(action: Promise<T>): Promise<T> {
+  await vi.runAllTimersAsync();
+  return action;
+}
 const ok = (body: any): Response =>
   ({ ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response);
 // `raw` overrides the body text, to simulate a non-JSON error page.
@@ -27,7 +41,7 @@ describe('settings store', () => {
       const preview = { proposed: { config: '{}', inventory: '' } };
       fetchMock.mockResolvedValueOnce(ok(preview));
       const store = useSettingsStore();
-      await store.previewConfig();
+      await settle(store.previewConfig());
       expect(store.preview).toEqual(preview);
       expect(store.previewError).toBe('');
       expect(store.previewLoading).toBe(false);
@@ -36,7 +50,7 @@ describe('settings store', () => {
     it('surfaces a 422 validation message inline (not just a toast)', async () => {
       fetchMock.mockResolvedValueOnce(fail(422, { message: 'batch "b": ssid_profiles must be a non-empty list' }));
       const store = useSettingsStore();
-      await store.previewConfig();
+      await settle(store.previewConfig());
       expect(store.preview).toBeNull();
       expect(store.previewError).toBe('batch "b": ssid_profiles must be a non-empty list');
     });
@@ -44,14 +58,14 @@ describe('settings store', () => {
     it('returns the raw text when the error body is not JSON', async () => {
       fetchMock.mockResolvedValueOnce(fail(502, {}, '<html>502 Bad Gateway</html>'));
       const store = useSettingsStore();
-      await store.previewConfig();
+      await settle(store.previewConfig());
       expect(store.previewError).toBe('<html>502 Bad Gateway</html>');
     });
 
     it('falls back to the `error` field on an authorization failure', async () => {
       fetchMock.mockResolvedValueOnce(fail(403, { error: 'Write access denied: SSO disabled and OPEN_WRITE false' }));
       const store = useSettingsStore();
-      await store.previewConfig();
+      await settle(store.previewConfig());
       expect(store.previewError).toBe('Write access denied: SSO disabled and OPEN_WRITE false');
     });
 
@@ -64,7 +78,7 @@ describe('settings store', () => {
       const store = useSettingsStore();
 
       fetchMock.mockResolvedValueOnce(ok(first));
-      await store.previewConfig();
+      await settle(store.previewConfig());
 
       let release: (res: Response) => void = () => {};
       fetchMock.mockReturnValueOnce(new Promise<Response>((resolve) => { release = resolve; }));
@@ -73,18 +87,53 @@ describe('settings store', () => {
       expect(store.preview).toEqual(first);
 
       release(ok(second));
-      await inFlight;
+      await settle(inFlight);
       expect(store.preview).toEqual(second);
+      expect(store.previewLoading).toBe(false);
+    });
+
+    // A controller answers this in a few milliseconds, which is fast enough that
+    // the spinner would render and clear inside a frame or two -- indistinguishable
+    // from a button that does nothing. The busy state is held so the action is
+    // legible as having happened.
+    it('holds the busy state long enough to be seen on a fast response', async () => {
+      fetchMock.mockResolvedValueOnce(ok({ proposed: { config: '{}', inventory: '' } }));
+      const store = useSettingsStore();
+
+      const inFlight = store.previewConfig();
+      // Let the fetch itself settle: the response has landed, and the flag must
+      // deliberately NOT follow it straight back down.
+      await vi.advanceTimersByTimeAsync(MIN_BUSY_MS - 50);
+      expect(store.previewLoading).toBe(true);
+
+      await settle(inFlight);
+      expect(store.previewLoading).toBe(false);
+    });
+
+    // Nothing is ever held back: the minimum only ever pads a fast response.
+    it('does not delay a response that already took longer than the minimum', async () => {
+      let release: (res: Response) => void = () => {};
+      fetchMock.mockReturnValueOnce(new Promise<Response>((resolve) => { release = resolve; }));
+      const store = useSettingsStore();
+
+      const inFlight = store.previewConfig();
+      await vi.advanceTimersByTimeAsync(MIN_BUSY_MS * 3);
+      release(ok({ proposed: { config: '{}', inventory: '' } }));
+
+      // No further timer advance: the hold is already spent, so this resolves on
+      // microtasks alone. A test that hung here would mean time was being added
+      // to a request that was slow to begin with.
+      await inFlight;
       expect(store.previewLoading).toBe(false);
     });
 
     it('drops the stale result when a refresh comes back invalid', async () => {
       const store = useSettingsStore();
       fetchMock.mockResolvedValueOnce(ok({ proposed: { config: '{}', inventory: '' } }));
-      await store.previewConfig();
+      await settle(store.previewConfig());
 
       fetchMock.mockResolvedValueOnce(fail(422, { message: 'batch "b": ssid_profiles must be a non-empty list' }));
-      await store.previewConfig();
+      await settle(store.previewConfig());
 
       // Not left underneath the error: those files are no longer on offer.
       expect(store.preview).toBeNull();
@@ -94,7 +143,7 @@ describe('settings store', () => {
     it('is a no-op while a preview is already in flight (Preview and Refresh share it)', async () => {
       const store = useSettingsStore();
       store.previewLoading = true;
-      await store.previewConfig();
+      await settle(store.previewConfig());
       expect(fetchMock).not.toHaveBeenCalled();
     });
   });
@@ -103,7 +152,7 @@ describe('settings store', () => {
     it('POSTs an empty-array body and marks generated on success', async () => {
       fetchMock.mockResolvedValueOnce(ok({}));
       const store = useSettingsStore();
-      await store.generateConfig();
+      await settle(store.generateConfig());
       expect(store.generated).toBe(true);
       expect(store.generateError).toBe('');
       const [url, opts] = fetchMock.mock.calls[0];
@@ -115,7 +164,7 @@ describe('settings store', () => {
     it('shows a validation failure inline in generateError', async () => {
       fetchMock.mockResolvedValueOnce(fail(422, { message: 'invalid config' }));
       const store = useSettingsStore();
-      await store.generateConfig();
+      await settle(store.generateConfig());
       expect(store.generated).toBe(false);
       expect(store.generateError).toBe('invalid config');
     });
@@ -123,7 +172,7 @@ describe('settings store', () => {
     it('is a no-op while a generate is already in flight (re-entrancy guard)', async () => {
       const store = useSettingsStore();
       store.generateLoading = true;
-      await store.generateConfig();
+      await settle(store.generateConfig());
       expect(fetchMock).not.toHaveBeenCalled();
     });
   });
