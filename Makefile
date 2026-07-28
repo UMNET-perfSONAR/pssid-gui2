@@ -26,7 +26,7 @@ EDITION ?= $(shell [ -f .env ] && sed -n 's/^EDITION=//p' .env || echo default)
 
 .PHONY: help install deploy deploy-umich upgrade upgrade-umich refresh up down restart logs ps build dev dev-down \
         seed-defaults seed-qa edition-default edition-umich backup restore \
-        sso-on sso-off sso-status \
+        sso-on sso-off sso-status writes-on writes-off \
         doctor clean test smoke security-check
 
 help: ## Show this help
@@ -132,11 +132,18 @@ _set-edition:
 # If only one moves, the API and the interface disagree about who may do what.
 # These targets move both and rebuild, so turning SSO on later is one command
 # rather than a full re-run of install.sh.
+#
+# OPEN_WRITE is the second switch, and it only applies while SSO is OFF: it says
+# whether the unauthenticated site is read-only or writable, and it ships closed.
+# writes-on/writes-off below flip it, because otherwise "turn SSO off" leaves a
+# read-only site with no way back short of re-running the installer -- which is
+# a working deployment where nothing can be edited and nothing says why.
 SERVER_ENV := services/server/.env
 
-sso-status: ## Show whether SSO is on, in config, in .env, and on the running stack
+sso-status: ## Show the auth posture: SSO, and the write policy that applies while it is off
 	@printf "  shared/config.ts  "; grep -oE 'ENABLE_SSO:[[:space:]]*(true|false)' shared/config.ts 2>/dev/null || echo "(not found)"
 	@printf "  root .env         "; grep -oE '^ENABLE_SSO=.*' .env 2>/dev/null || echo "ENABLE_SSO= (unset -> compiled default)"
+	@printf "  writes (.env)     "; grep -oE '^OPEN_WRITE=.*' .env 2>/dev/null || echo "OPEN_WRITE= (unset -> compiled default: read-only)"
 	@printf "  running server    "; body="$$(curl -sk https://localhost/api/userinfo 2>/dev/null)"; \
 	  case "$$body" in \
 	    *'"sso_enabled":true'*)  echo '"sso_enabled":true' ;; \
@@ -144,6 +151,15 @@ sso-status: ## Show whether SSO is on, in config, in .env, and on the running st
 	    *login_url*|*'not authenticated'*) echo 'on (/api requires authentication, so anonymous curl gets 401)' ;; \
 	    "") echo "(stack not reachable)" ;; \
 	    *) echo "(unrecognised response)" ;; \
+	  esac
+	@printf "  running writes    "; body="$$(curl -sk https://localhost/api/userinfo 2>/dev/null)"; \
+	  case "$$body" in \
+	    *'"access_level":"write"'*) echo 'writable ("access_level":"write")' ;; \
+	    *'"access_level":"read"'*)  echo 'READ-ONLY ("access_level":"read") -- "make writes-on" opens it' ;; \
+	    *'"access_level":"none"'*)  echo 'no access ("access_level":"none")' ;; \
+	    *login_url*|*'not authenticated'*) echo '(SSO on: group membership decides, not OPEN_WRITE)' ;; \
+	    "") echo "(stack not reachable)" ;; \
+	    *) echo "(not reported by this server)" ;; \
 	  esac
 
 sso-on: ## Turn single sign-on ON (needs the OIDC values in services/server/.env)
@@ -204,8 +220,61 @@ _set-sso:
 	@$(COMPOSE) -f docker-compose.yml restart nginx 2>/dev/null || true
 	@echo ""
 	@echo "Done. Verify with 'make sso-status' once 'make ps' shows client healthy."
-	@echo "With SSO off, OPEN_WRITE in the root .env decides whether the interface"
-	@echo "is read-only or writable."
+	@if [ "$(SSO)" = "false" ]; then \
+	  ow="$$(sed -n 's/^OPEN_WRITE=//p' .env | tail -1)"; \
+	  if printf '%s' "$$ow" | grep -qiE '^(1|true|yes|on)$$'; then \
+	    echo "SSO is off and OPEN_WRITE=true: anyone who can reach the site can edit it,"; \
+	    echo "so the network in front of it is now the access control. 'make writes-off'"; \
+	    echo "returns it to read-only."; \
+	  else \
+	    echo "SSO is off and OPEN_WRITE=$${ow:-<unset, defaults false>}, so the site is"; \
+	    echo "READ-ONLY: every form is greyed out and every save returns 403. Run"; \
+	    echo "'make writes-on' to make the interface usable while SSO is off."; \
+	  fi; \
+	fi
+
+# The other half of the posture: who may WRITE while SSO is off.
+#
+# Deliberately not symmetrical with _set-sso above, in two ways:
+#
+#   * Only the root .env moves. shared/config.ts keeps OPEN_WRITE=false, which CI
+#     asserts, and that is not a desync: the browser prefers the access_level the
+#     SERVER reports through /api/userinfo, resolved from this environment
+#     variable per request (services/client/src/utils/formControl.ts). The
+#     compiled value is only the fallback for a server too old to report one.
+#   * No client rebuild, for the same reason -- the bundle carries no copy of this
+#     decision. Recreating the server is enough for compose to pass the new value,
+#     and nginx is restarted after it because it caches the upstream address and
+#     a recreated container has a new one (the 502 `make refresh` also works around).
+writes-on: ## Allow writes while SSO is off (OPEN_WRITE=true; the site is then unauthenticated AND writable)
+	@$(MAKE) --no-print-directory _set-open-write OPEN_WRITE=true
+
+writes-off: ## Make the site read-only while SSO is off (OPEN_WRITE=false, the shipped default)
+	@$(MAKE) --no-print-directory _set-open-write OPEN_WRITE=false
+
+_set-open-write:
+	@touch .env
+	@if sed -n 's/^ENABLE_SSO=//p' .env | tail -1 | grep -qiE '^(1|true|yes|on)$$'; then \
+	  echo "Note: SSO is ON, and OPEN_WRITE is never consulted in that posture --"; \
+	  echo "group membership decides read vs write (shared/auth-groups.config.json)."; \
+	  echo "Setting it anyway, so it is already right if SSO is turned off later."; \
+	fi
+	@grep -q '^OPEN_WRITE=' .env && sed -i.bak -E 's/^OPEN_WRITE=.*/OPEN_WRITE=$(OPEN_WRITE)/' .env || echo "OPEN_WRITE=$(OPEN_WRITE)" >> .env
+	@rm -f .env.bak
+	@echo "OPEN_WRITE=$(OPEN_WRITE) in the root .env."
+	@echo "Recreating the server so compose passes it the new value..."
+	@EDITION=$(EDITION) $(PROD) up -d --no-deps --force-recreate server
+	@echo "Restarting nginx so it re-resolves the new container address (avoids 502)..."
+	@$(PROD) restart nginx 2>/dev/null || true
+	@echo ""
+	@if [ "$(OPEN_WRITE)" = "true" ]; then \
+	  echo "Done. The interface is writable to anyone who can reach it. Reload the"; \
+	  echo "browser (Ctrl/Cmd+Shift+R) and the forms come alive."; \
+	else \
+	  echo "Done. The interface is read-only. Reload the browser to see the forms"; \
+	  echo "greyed out."; \
+	fi
+	@echo "Verify with 'make sso-status', or: curl -sk https://localhost/api/userinfo"
 
 backup: ## Back up the MongoDB database
 	@bash scripts/backup.sh

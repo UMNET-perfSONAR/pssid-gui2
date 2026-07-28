@@ -70,7 +70,7 @@ These ship closed, and CI fails if that changes:
 | | Default |
 |---|---|
 | `ENABLE_SSO` | `false` (turn on with `make sso-on`, which refuses until the OIDC values are set) |
-| `OPEN_WRITE` | `false` (read-only) |
+| `OPEN_WRITE` | `false` (read-only; `make writes-on` opens writes while SSO is off, and says so) |
 | Session | 2 h absolute, 30 min idle, `Secure` + `HttpOnly` + `SameSite=Lax`, signed, server-side in Redis |
 | Sign-in without a mapped group | Refused (`SSO_REQUIRE_GROUP=true`) |
 | Containers | Non-root where the image allows, `no-new-privileges`, read-only root, capabilities dropped from client and server |

@@ -368,8 +368,9 @@ The Makefile wraps the common commands:
 | `make seed-defaults` | Load the pre-load starter data (fresh installs) |
 | `make seed-qa` | Add the QA dataset on top of the pre-load (see [umich/QA/QA.md](../umich/QA/QA.md)) |
 | `sudo scripts/provision-probes.sh` | Deliver the generated config to the probes (see [Delivering the config to the probes](#delivering-the-config-to-the-probes)) |
-| `make sso-status` | Show whether single sign-on is on, in config and on the running stack |
+| `make sso-status` | Show the auth posture: single sign-on, and the write policy that applies while it is off |
 | `make sso-on` / `make sso-off` | Turn single sign-on on or off (see [Single sign-on](#single-sign-on)) |
+| `make writes-on` / `make writes-off` | While SSO is off, allow or refuse writes (`OPEN_WRITE`) |
 | `make doctor` | Check prerequisites and ports |
 | `make test` | Run every unit test (server and client; no stack needed) |
 | `make smoke` | Walk every user action against a running stack |
@@ -555,9 +556,30 @@ when `pssid_gui_sso` is explicitly set. Two consequences worth knowing:
   the host's own posture stand; set it once the arrangement is settled, so a
   rebuilt host comes up the way you expect.
 
-While SSO is off, `OPEN_WRITE` in the root `.env` decides whether the interface
-is read-only or writable. It also ships closed (read-only), so an unauthenticated
-deployment is not writable by accident.
+### Writes while SSO is off
+
+`OPEN_WRITE` in the root `.env` decides whether the unauthenticated interface is
+read-only or writable, and it also ships closed. That is deliberate — a
+deployment is never unauthenticated-writable by accident — but it has a
+consequence worth stating plainly: **a site that has just been switched to
+`make sso-off` greys out every form until writes are opened.** Reads work,
+nothing can be saved, and the interface itself does not explain why.
+
+```bash
+make writes-on          # allow writes while SSO is off
+make writes-off         # back to read-only
+```
+
+Unlike the SSO flag, this one needs no rebuild. The server resolves it per
+request and reports the result to the browser through `/api/userinfo`, so
+recreating the server container is enough; reload the page and the forms come
+alive. `make sso-status` shows both switches together, including what the
+running server actually reports.
+
+Opening writes means anyone who can reach the hostname can change the probe
+configuration, so the network in front of the site becomes its access control.
+That is a reasonable interim posture on a private network while a provider is
+being registered — it is not one to leave in place on a reachable host.
 
 ### Configuring the provider
 
@@ -602,13 +624,13 @@ container reading the old copy. Either edit in place (`cat > shared/auth-groups.
 or, more simply, run `docker compose restart server` afterwards and confirm the
 result with `/api/userinfo`.
 
-With SSO off, access is governed by `OPEN_WRITE`: `true` allows anyone who can
-reach the site to read and write, `false` makes the interface read-only. Set it
-in the **root `.env`** (`./install.sh --open-write=true`, or
-`pssid_gui_open_write` in your inventory), which is what compose passes to the
-server. The `OPEN_WRITE` in `shared/config.ts` is only the compiled default the
-environment overrides, and it ships `false` so that a deployment is never
-unauthenticated-writable by accident.
+None of this applies while SSO is off — group membership is not consulted, and
+[`OPEN_WRITE`](#writes-while-sso-is-off) governs instead. It is set in the **root
+`.env`**, which is what compose passes to the server: `make writes-on` on a
+running host, `./install.sh --open-write=true` at install time, or
+`pssid_gui_open_write` in your inventory to assert it on every deploy. The
+`OPEN_WRITE` in `shared/config.ts` is only the compiled default that the
+environment overrides, and it ships `false`.
 
 ### It fails closed
 
@@ -1053,6 +1075,11 @@ A few common issues:
   [group claims](#group-claims)); a populated one that still yields `none` means
   those names are not in
   [`shared/auth-groups.config.json`](../shared/auth-groups.config.json).
+- **There is no sign-in at all, pages load, and nothing can be saved** → SSO is
+  off and the deployment is in its shipped read-only posture. `make sso-status`
+  reports `"sso_enabled":false` with `READ-ONLY`; `make writes-on` opens writes,
+  and the forms come alive on the next page load. See
+  [writes while SSO is off](#writes-while-sso-is-off).
 - **A new hostname returns nothing at all** → nginx answers an unrecognised
   `Host` header with 444 and no response. Add the name to `server_name` in
   `nginx.conf`, or re-run the installer with the right `--hostname`. The loopback

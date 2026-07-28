@@ -37,11 +37,18 @@ Writes must be enabled or every GUI edit is refused and the forms stay grayed
 out. With SSO off that means `OPEN_WRITE=true`:
 
 ```bash
-cd /opt/pssid-gui && curl -sk https://localhost/api/userinfo; echo
+cd /opt/pssid-gui && make sso-status
 ```
 
-Expect `"open_write":true`. If it is false, see
-[../../docs/deployment.md](../../docs/deployment.md#single-sign-on).
+Expect `"sso_enabled":false` and `writable ("access_level":"write")`. If it
+reports READ-ONLY, open writes and reload the browser:
+
+```bash
+make writes-on
+```
+
+Background on both switches:
+[../../docs/deployment.md](../../docs/deployment.md#writes-while-sso-is-off).
 
 Take a restore point first. This is what section 7 rolls back to:
 

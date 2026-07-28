@@ -306,7 +306,7 @@ else
     # 400 means the request got past authorization and into validation, i.e. a
     # well-formed one would have been accepted. Nothing was created either way.
     warn "unauthenticated writes are ACCEPTED (OPEN_WRITE=true)" \
-      "Anyone who can reach $BASE can change the probe configuration. Restrict at the network layer or enable SSO."
+      "Anyone who can reach $BASE can change the probe configuration. Restrict at the network layer, enable SSO, or close writes with 'make writes-off'."
   fi
 fi
 

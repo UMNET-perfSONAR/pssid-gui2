@@ -158,6 +158,7 @@ The most common:
 | `pssid_gui_edition` | `default` | Interface edition id: `default`, `umich`, or another entry in `services/client/src/edition/editions.ts` |
 | `pssid_gui_tls` | `self-signed` | `self-signed`, `letsencrypt`, or `none` |
 | `pssid_gui_sso` | `""` | Enable OIDC single sign-on. Empty leaves the host's current posture alone (off on a first install), so `make sso-on` survives an upgrade; `true`/`false` forces it on every run |
+| `pssid_gui_open_write` | `""` | Whether the site is writable **while SSO is off**. Empty leaves the host's own setting alone (read-only on a first install, so a fresh SSO-off deploy greys out every form until `make writes-on` or `true` here); `true`/`false` forces it on every run. Never consulted while SSO is on |
 | `pssid_gui_version` | `main` | Branch or tag to deploy when cloning |
 | `pssid_gui_docker_data_root` | auto | Local filesystem with sufficient space for Docker + containerd; a dedicated `/var/lib/docker` mount is detected automatically |
 | `pssid_gui_pull` | `false` | Pull prebuilt images (~4 GB minimum) instead of building (~6 GB minimum, ~12 GB recommended) |
