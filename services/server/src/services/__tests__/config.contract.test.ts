@@ -311,6 +311,23 @@ describe('buildIniContent', () => {
     expect(ini).toContain('[all]\n');
     expect(ini).toContain('#Regex [all] [.*]');
   });
+
+  // assertDaemonValid runs first and treats a missing hosts/hosts_regex array as
+  // "no entries" rather than an error, so a group document written straight into
+  // MongoDB without them reaches here. Dereferencing .length on that made
+  // Generate fail with a bare 500 that named nothing.
+  it('treats a group with no hosts or hosts_regex arrays as an empty section', () => {
+    const ini = buildIniContent({
+      hosts: [{ name: 'p1' }],
+      host_groups: [{ name: 'bare' }],
+    });
+    expect(ini).toContain('[bare]\n');
+    expect(ini).not.toContain('#Regex');
+  });
+
+  it('tolerates a config with no hosts and no groups at all', () => {
+    expect(() => buildIniContent({})).not.toThrow();
+  });
 });
 
 describe('removeIdsProperties', () => {

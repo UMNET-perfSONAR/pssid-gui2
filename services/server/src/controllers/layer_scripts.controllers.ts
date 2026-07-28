@@ -15,14 +15,19 @@ const getDefaultsConfig = (): any => {
 const readScriptNames = (dirPath: string, res: Response) => {
   fs.readdir(dirPath, function(err, files) {
     if (err) {
-      return res.send([]);
+      return res.json([]);
     }
     // Only .json files are methods; anything else in the directory (editor
     // backups, hidden files) must not appear as a selectable option.
     const fileArray = files
       .filter(file => file.endsWith('.json'))
       .map(file => path.parse(file).name);
-    res.send(fileArray);
+    // res.json, not res.send: these names come off the filesystem, and a file
+    // named after markup would be a stored XSS the moment anything renders this
+    // response as a document (CodeQL js/stored-xss). res.json pins the body to
+    // application/json, which a browser will not sniff as HTML. The bytes on
+    // the wire are unchanged -- Express already JSON-encoded the array.
+    res.json(fileArray);
   });
 };
 

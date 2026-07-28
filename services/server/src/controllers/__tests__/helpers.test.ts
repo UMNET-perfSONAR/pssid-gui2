@@ -11,6 +11,7 @@ import {
   isNameArray,
   isPlainObjectOrAbsent,
   isValidCron,
+  sendDeleted,
 } from '../helpers';
 
 // These are the API-level floor rules. The client forms enforce the same or
@@ -112,4 +113,30 @@ describe('isValidCron (schedule repeat)', () => {
   });
   it.each(['', '60 * * * *', '* * * *', '* * * * * *', 'a b c d e'])(
     'rejects %j', (v) => expect(isValidCron(v)).toBe(false));
+});
+
+describe('sendDeleted (the response every delete handler sends)', () => {
+  const fakeRes = () => {
+    const calls: unknown[] = [];
+    return { json: (body: unknown) => { calls.push(body); }, calls };
+  };
+
+  it('answers with a JSON object, never a bare string', () => {
+    // res.send(string) makes Express label the body text/html, which is what
+    // made an echoed name a reflected XSS. Anything other than a plain object
+    // here means that has crept back in.
+    const res = fakeRes();
+    sendDeleted(res as any, 'host', 'probe-01');
+    expect(res.calls).toEqual([{ message: 'host probe-01 was deleted' }]);
+  });
+
+  it('echoes a hostile name inertly, as a JSON string value', () => {
+    const res = fakeRes();
+    sendDeleted(res as any, 'host', '<img src=x onerror=alert(1)>');
+    const body = res.calls[0] as { message: string };
+    expect(body.message).toBe('host <img src=x onerror=alert(1)> was deleted');
+    // The point is the container, not the content: JSON.stringify escapes this
+    // into a string literal that no browser parses as markup.
+    expect(JSON.stringify(body)).not.toContain('<img src=x onerror=alert(1)>"');
+  });
 });

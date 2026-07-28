@@ -148,8 +148,8 @@
               ['--sso=' ~ (pssid_gui_sso | bool | string | lower)], []))
          + ((pssid_gui_sso | bool) | ternary(
               ['--issuer=' ~ pssid_gui_oidc_issuer], []))
-         + ((pssid_gui_open_write | length > 0) | ternary(
-              ['--open-write=' ~ pssid_gui_open_write], []))
+         + ((pssid_gui_open_write | string | length > 0) | ternary(
+              ['--open-write=' ~ (pssid_gui_open_write | bool | string | lower)], []))
          + ((pssid_gui_tls == 'letsencrypt' and (pssid_gui_letsencrypt_email | length > 0)) | ternary(
               ['--email=' ~ pssid_gui_letsencrypt_email], []))
          + ((pssid_gui_no_build | bool) | ternary(['--no-build'], []))

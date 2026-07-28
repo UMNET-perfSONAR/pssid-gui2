@@ -2,6 +2,7 @@
 // Ansible inventory from the current database state.
 import { MongoClient } from 'mongodb';
 import { connectToMongoDB } from './database.service';
+import { forLog } from './log.service';
 import { execFile } from 'node:child_process';
 
 import path from 'path';
@@ -54,19 +55,28 @@ export function removeIdsProperties(obj:any) {
  * @param obj config file contents
  */
 export function buildIniContent(obj:any): string {
+  // Every array is guarded rather than dereferenced. A group document written
+  // straight into MongoDB (a seeder, a hand-fixed record) can legitimately lack
+  // `hosts` or `hosts_regex`, and assertDaemonValid -- which runs first --
+  // treats a missing array as "no entries" rather than an error. Reading
+  // `.length` off it here turned that tolerated shape into a TypeError, which
+  // surfaced as a bare 500 on Generate with nothing naming the group at fault.
+  const list = (v: any): any[] => (Array.isArray(v) ? v : []);
+
   let iniContent = ''
   // print all hosts first
-  for (const host of obj.hosts.map((item:{name:string})=> item.name)) {
+  for (const host of list(obj?.hosts).map((item:{name:string})=> item.name)) {
     iniContent += host + '\n';
   }
   iniContent += '\n';
 
-  for (const group of obj.host_groups) {
+  for (const group of list(obj?.host_groups)) {
     iniContent += `[${group.name}]` + '\n'
-    if (group.hosts_regex.length !== 0) {
-      iniContent += '#Regex ' + `[${group.name}] [` + group.hosts_regex + ']\n';
+    const patterns = list(group.hosts_regex);
+    if (patterns.length !== 0) {
+      iniContent += '#Regex ' + `[${group.name}] [` + patterns + ']\n';
     }
-    for (const host of group.hosts) {
+    for (const host of list(group.hosts)) {
       iniContent += host + '\n';
     }
     iniContent += '\n';
@@ -757,12 +767,25 @@ export async function create_config_file(name: string, click_context: string, ca
 
   // Pass arguments as a vector (no shell) so a host/group name can never be
   // interpreted as shell syntax (command injection).
-  console.log(`Executing provision script: ${shellscript_path} ${click_context} ${name} ${caller} ${caller_role}`);
+  //
+  // The same four values reach the log through forLog() and a fixed format
+  // string. `name` is a request URL segment and `caller` an identity-provider
+  // claim, so interpolating either straight into console.log let a newline in
+  // one forge an extra log line, and a `%s` in one consume the NEXT argument --
+  // which for the failure below is the error object, silently deleting the
+  // reason the provisioning failed from the only record of it.
+  console.log(
+    'Executing provision script: %s %s %s %s %s',
+    shellscript_path, forLog(click_context), forLog(name), forLog(caller), forLog(caller_role)
+  );
   execFile(shellscript_path as string, [click_context, name, caller, caller_role], (err) => {
     if (err) {
-      console.error(`Provision script failed: context=${click_context} name=${name}`, err);
+      console.error('Provision script failed: context=%s name=%s', forLog(click_context), forLog(name), err);
     } else {
-      console.log(`Provision script completed: context=${click_context} name=${name} caller=${caller} role=${caller_role}`);
+      console.log(
+        'Provision script completed: context=%s name=%s caller=%s role=%s',
+        forLog(click_context), forLog(name), forLog(caller), forLog(caller_role)
+      );
     }
   });
 

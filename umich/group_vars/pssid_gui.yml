@@ -19,22 +19,30 @@ pssid_gui_hostname: pssid-web-dev.miserver.it.umich.edu
 
 # Okta single sign-on through the ITS tenant.
 #
-# Left EMPTY on purpose while the Okta application is still being registered.
-# Empty means "do not change this host's posture", so the deployment ships
-# unauthenticated and each run leaves it that way; setting it to true here would
-# enable SSO with no client credentials and the server would refuse to boot.
+# Pinned OFF while ITS is still registering the Okta application. There are no
+# client credentials yet, and `true` without them makes the server refuse to
+# boot, so this asserts the unauthenticated posture on every run rather than
+# leaving it to whatever the host happens to have. (Empty would mean "do not
+# change this host's posture", which is not the same guarantee: a host somebody
+# had experimented with would keep its old setting.)
 #
 # When ITS returns the application: put the id and secret in the vault file
-# (../README.md), turn it on with `make sso-on` on the host to try it, and once
-# it is settled set this to true so every future run asserts it.
-pssid_gui_sso: ""
+# (../README.md), set this to true, and deploy. `make sso-on` on the host is the
+# way to try it before committing the change here.
+pssid_gui_sso: "false"
 pssid_gui_oidc_issuer: https://umich.okta.com
 
-# With SSO on, group membership decides read vs write (see
-# ../../shared/auth-groups.config.json), so this setting is not consulted. It is
-# pinned to read-only anyway, so that turning SSO off for troubleshooting cannot
-# leave the site unauthenticated-writable.
-pssid_gui_open_write: "false"
+# Write access WHILE SSO IS OFF. True, because with no identity provider yet
+# this is the only thing that keeps the interface usable: with it false every
+# form is greyed out and every save returns 403, which is a read-only demo
+# rather than a working controller.
+#
+# The tradeoff is explicit and temporary: anyone who can reach the hostname can
+# change the probe configuration, so the site's access control is currently the
+# network in front of it. Setting pssid_gui_sso to true above makes this
+# setting irrelevant -- with SSO on, group membership decides read vs write
+# (see ../../shared/auth-groups.config.json) and this is never consulted.
+pssid_gui_open_write: "true"
 
 # MiServer VMs have a small /var/lib partition; put Docker and containerd on the
 # roomier volume so an image build does not fill the root filesystem.

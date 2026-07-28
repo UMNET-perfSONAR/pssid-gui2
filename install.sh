@@ -625,15 +625,18 @@ nginx_headers() {
         add_header X-Robots-Tag "noindex, nofollow" always;
         # nginx is the single authority for the headers above. add_header APPENDS
         # to what the upstream sent, and the API server runs helmet, which sets
-        # four of these itself -- so without hiding them every /api/ response
+        # five of these itself -- so without hiding them every /api/ response
         # carried two values of each, and for X-Frame-Options and Referrer-Policy
         # the two disagreed. Browsers do not resolve a conflicting
-        # X-Frame-Options consistently; some discard it entirely.
+        # X-Frame-Options consistently; some discard it entirely. Two CSPs are
+        # worse still: they are enforced as their INTERSECTION, so the API
+        # server's default-src 'none' would apply to the whole site.
         proxy_hide_header X-Frame-Options;
         proxy_hide_header Referrer-Policy;
         proxy_hide_header X-Content-Type-Options;
         proxy_hide_header Cross-Origin-Opener-Policy;
         proxy_hide_header Strict-Transport-Security;
+        proxy_hide_header Content-Security-Policy;
         proxy_hide_header X-Powered-By;
 EOF
 }

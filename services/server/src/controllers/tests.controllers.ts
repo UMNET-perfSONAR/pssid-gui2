@@ -5,7 +5,7 @@ import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
 import fs from 'fs';
 import path from 'path';
-import { isNameInDB, isValidObjectName } from './helpers';
+import { isNameInDB, isValidObjectName, sendDeleted } from './helpers';
 
 var client = connectToMongoDB();
 
@@ -86,7 +86,7 @@ const getTests = (async (req: Request, res: Response) =>{
     (await client).connect();
     const collection = (await client).db('gui').collection('tests');
     const response = await collection.find().project({_id:0}).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -102,7 +102,7 @@ const getOneTest = (async (req: Request, res: Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('tests');
     var response = await collection.find({"name": name}).project({_id:0}).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -124,7 +124,7 @@ const deleteTest = (async (req:Request, res:Response) => {
     
     await test_col.findOneAndDelete({ "name" : name });       
     
-    res.send('test ' + name + ' was deleted')
+    sendDeleted(res, 'test', name);
   }
   catch(error) {
     console.error(error);
@@ -216,7 +216,9 @@ const readFileNames = ((req:Request, res:Response) => {
       const fileArray = files
         .filter((file) => file.endsWith('.json'))
         .map((file) => path.parse(file).name);
-      res.send(fileArray);
+      // res.json, not res.send: see the same call in layer_scripts.controllers.ts.
+      // Filesystem-derived names must not be served as a sniffable document.
+      res.json(fileArray);
     })
   }
   catch(error) {

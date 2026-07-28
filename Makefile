@@ -3,7 +3,20 @@
 
 # Detect the compose command (plugin vs standalone).
 COMPOSE ?= $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
-PROD  := $(COMPOSE) -f docker-compose.yml
+
+# The compose profile the current auth posture requires.
+#
+# redis is profile-gated to `sso` (docker-compose.yml) and it holds the session
+# store, so with SSO on the server connects to it at startup and EXITS when it
+# cannot -- the container then crash-loops and nginx has no upstream. Bringing
+# the stack up without this flag therefore takes an authenticated site down,
+# which is what `make up`, `make restart` and `make refresh` all used to do
+# after install.sh had correctly started redis with `--profile sso`.
+#
+# Read from the root .env, the file install.sh and _set-sso both write, so the
+# profile follows the posture automatically and no target has to remember it.
+SSO_PROFILE := $(shell [ -f .env ] && sed -n 's/^ENABLE_SSO=//p' .env | tail -1 | grep -qiE '^(1|true|yes|on)$$' && echo --profile sso)
+PROD  := $(COMPOSE) -f docker-compose.yml $(SSO_PROFILE)
 LOCAL := $(COMPOSE) -f docker-compose.local.yml
 
 # Edition comes from the root .env (EDITION=...). Default to "default".
@@ -139,6 +152,17 @@ sso-on: ## Turn single sign-on ON (needs the OIDC values in services/server/.env
 sso-off: ## Turn single sign-on OFF (site is unauthenticated; OPEN_WRITE governs writes)
 	@$(MAKE) --no-print-directory _set-sso SSO=false
 
+# The posture this run is SETTING, which is not the one $(SSO_PROFILE) above
+# read: that was resolved when make parsed this file, and the recipe below
+# rewrites .env before it brings anything up. Recursively expanded (=) so both
+# read $(SSO) from the sub-make.
+NEW_SSO_PROFILE = $(if $(filter true,$(SSO)),--profile sso)
+# redis is named explicitly. `up --no-deps --force-recreate <services>` starts
+# only the services listed, profile active or not, so turning SSO on without it
+# leaves the server with no session store -- and the server exits at startup
+# when it cannot reach one.
+NEW_SSO_SERVICES = $(if $(filter true,$(SSO)),redis client server,client server)
+
 _set-sso:
 	@if [ "$(SSO)" = "true" ]; then \
 	  if [ ! -e $(SERVER_ENV) ]; then \
@@ -174,10 +198,10 @@ _set-sso:
 	@echo "ENABLE_SSO=$(SSO) in both the root .env and shared/config.ts."
 	@echo "The flag is compiled into the browser bundle, so rebuilding the client"
 	@echo "(a bare recreate would keep the old posture)..."
-	@EDITION=$(EDITION) $(PROD) build client
-	@echo "Recreating the client and server containers..."
-	@EDITION=$(EDITION) $(PROD) up -d --no-deps --force-recreate client server
-	@$(PROD) restart nginx 2>/dev/null || true
+	@EDITION=$(EDITION) $(COMPOSE) -f docker-compose.yml $(NEW_SSO_PROFILE) build client
+	@echo "Recreating the containers this posture needs..."
+	@EDITION=$(EDITION) $(COMPOSE) -f docker-compose.yml $(NEW_SSO_PROFILE) up -d --no-deps --force-recreate $(NEW_SSO_SERVICES)
+	@$(COMPOSE) -f docker-compose.yml restart nginx 2>/dev/null || true
 	@echo ""
 	@echo "Done. Verify with 'make sso-status' once 'make ps' shows client healthy."
 	@echo "With SSO off, OPEN_WRITE in the root .env decides whether the interface"

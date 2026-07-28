@@ -41,6 +41,25 @@ and waits for the health check. See [`../ansible/README.md`](../ansible/README.m
 for what the roles do and [`../docs/deployment.md`](../docs/deployment.md) for
 the full deployment reference.
 
+## Current posture: SSO off, writes open
+
+ITS has not returned the Okta application yet, so
+[`group_vars/pssid_gui.yml`](group_vars/pssid_gui.yml) pins
+`pssid_gui_sso: "false"` and `pssid_gui_open_write: "true"`. Every deploy
+asserts that pair, so the controller comes up unauthenticated and fully usable —
+every form editable, Generate working — rather than as a read-only demo.
+
+The consequence is worth stating plainly: **anyone who can reach
+`pssid-web-dev.miserver.it.umich.edu` can change the probe configuration.** The
+network in front of it is the only access control until Okta is in place. Keep
+it off the public internet, or set `pssid_gui_open_write: "false"` and accept a
+read-only interface in the meantime.
+
+Turning SSO on is one edit to that file (plus the credentials below) — nothing
+else about the deployment changes, and `pssid_gui_open_write` stops being
+consulted the moment SSO is on. `make sso-status` on the host reports what is
+actually in force.
+
 ## The Okta secret
 
 `group_vars/pssid_gui.yml` is committed, so the client secret does not belong in

@@ -10,6 +10,14 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege for GITHUB_TOKEN, workflow-wide. Without an explicit block the
+# token's scopes come from the repository default, which can be read/write on
+# every scope -- so a compromised dependency pulled in by any `npm ci` below
+# would be handed a token that can push to this repo. Nothing here writes
+# anything back: every job checks out, builds and asserts.
+permissions:
+  contents: read
+
 jobs:
   server:
     name: Server (typecheck + tests)

@@ -4,7 +4,7 @@ import { updateCollection } from '../services/update.service';
 import { get_batch_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
 import { create_config_file, build_host_view } from '../services/config.service';
-import { isNameInDB, isValidHostEntry, isNameArray, isPlainObjectOrAbsent } from './helpers';
+import { isNameInDB, isValidHostEntry, isNameArray, isPlainObjectOrAbsent, sendDeleted } from './helpers';
 
 /**
  * Field rules for a host payload beyond the name. Returns an error message,
@@ -30,7 +30,7 @@ const getHosts = (async (req: Request, res: Response) =>{
     (await client).connect();
     const collection = (await client).db('gui').collection('hosts');
     const response = await collection.find().project({_id:0}).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -47,7 +47,7 @@ const getOneHost = (async (req: Request, res: Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('hosts');
     var response = await collection.find({"name": name}).project({_id:0}).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -71,7 +71,7 @@ const deleteHost = (async (req:Request, res:Response) => {
     // Remove from collection
     await hosts_col.findOneAndDelete({ "name" : name });
 
-    res.send('host ' + name + ' was deleted')
+    sendDeleted(res, 'host', name);
   }
   catch(error) {
     console.error(error);
@@ -90,7 +90,7 @@ const deleteAll = (async (req:Request, res:Response) => {
     // Clear now-dangling host references so host groups don't point at deleted hosts.
     await host_groups_col.updateMany({}, { $set: { hosts: [], host_ids: [] } });
 
-    res.send('all hosts were deleted')
+    res.json({ message: 'all hosts were deleted' });
   }
   catch(error) {
     console.error(error);
@@ -206,7 +206,7 @@ const createConfig = (async (req: Request, res: Response) =>{
     const caller: string = oidcUser?.sub || oidcUser?.email || 'unauthenticated';
     const caller_role: string = oidcUser ? 'authenticated' : 'unauthenticated';
     await create_config_file(name, 'host', caller, caller_role);
-    res.send('Config file created');
+    res.json({ message: 'Config file created' });
   }
   catch(error) {
     // A daemon-validation failure is a real, specific answer (the current data

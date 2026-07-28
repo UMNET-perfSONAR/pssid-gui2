@@ -10,6 +10,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { create_config_file } from './config.service';
+import { forLog } from './log.service';
 import { getSettings } from './settings.service';
 
 // Quiet window: collapse rapid successive edits into one provision run.
@@ -65,7 +66,9 @@ async function runAutoProvision(): Promise<void> {
   }
   running = true;
   try {
-    console.log(`Auto-provision firing (reason: ${lastReason}, caller: ${lastCaller})`);
+    // forLog: the reason is a request URL and the caller an identity-provider
+    // claim, neither of which may be trusted to stay on one log line.
+    console.log('Auto-provision firing (reason: %s, caller: %s)', forLog(lastReason), forLog(lastCaller));
     // Provision all hosts ('*') from the current DB state.
     await create_config_file('*', 'auto', lastCaller, lastCallerRole);
   } catch (err) {

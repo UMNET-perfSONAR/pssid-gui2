@@ -4,7 +4,7 @@ import path from 'path';
 import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
-import { isNameInDB, isValidRfc1123Name, isValidSsidName } from './helpers';
+import { isNameInDB, isValidRfc1123Name, isValidSsidName, sendDeleted } from './helpers';
 
 var client = connectToMongoDB();
 
@@ -41,7 +41,7 @@ const getSSIDProfiles = (async (req: Request, res: Response) =>{
     (await client).connect();
     const collection = (await client).db('gui').collection('ssid_profiles');
     const response = await collection.find().project({_id:0}).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -59,7 +59,7 @@ const getOneSSIDProfile = (async (req: Request, res: Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('ssid_profiles');
     var response = await collection.find({"name": name}).project({_id:0}).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -83,7 +83,7 @@ const deleteSSIDProfile = (async (req:Request, res:Response) => {
     
     await ssid_profile_col.findOneAndDelete({ "name" : name });                           // remove from collection 
     
-    res.send('ssid_profile ' + name + ' was deleted')
+    sendDeleted(res, 'ssid_profile', name);
   }
 
   catch(error) {

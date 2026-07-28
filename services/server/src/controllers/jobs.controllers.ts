@@ -3,7 +3,7 @@ import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { get_test_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
-import { isNameInDB, isValidObjectName, isValidIso8601Duration, isValidJqExpression, isNameArray } from './helpers';
+import { isNameInDB, isValidObjectName, isValidIso8601Duration, isValidJqExpression, isNameArray, sendDeleted } from './helpers';
 
 /**
  * Field rules for a job payload beyond the name, shared by create and update.
@@ -34,7 +34,7 @@ const getJobs = (async (req: Request, res: Response) =>{
     (await client).connect();
     const collection = (await client).db('gui').collection('jobs');
     const response = await collection.find().project({_id:0}).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -51,7 +51,7 @@ const getOneJob = (async (req: Request, res: Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('jobs');
     var response = await collection.find({"name": name}).project({_id:0}).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -75,7 +75,7 @@ const deleteJob = (async (req:Request, res:Response) => {
 
     await job_col.findOneAndDelete({ "name" : name });
 
-    res.send('job ' + name + ' was deleted');
+    sendDeleted(res, 'job', name);
   }
   catch(error) {
     console.error(error);

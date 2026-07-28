@@ -35,6 +35,13 @@ is_generated() {
 # A moved file leaves the link behind, and nothing notices until a reader
 # follows it. Anchors, external URLs and mailto: are out of scope.
 section "Markdown links resolve"
+# The `while | while` below runs its body in a subshell, so `fail=1` set inside
+# would not survive; a marker file carries the result out instead. Created fresh
+# each run: a leftover from an interrupted run would otherwise report broken
+# links forever, on a repository with none. mktemp rather than a fixed name in
+# /tmp, so a stale or hostile file of that name cannot decide the outcome.
+BROKEN_LINKS="$(mktemp "${TMPDIR:-/tmp}/repo-consistency.XXXXXX")"
+trap 'rm -f "$BROKEN_LINKS"' EXIT
 while IFS= read -r md; do
   # Extract the target of every [text](target) on the page.
   grep -oE '\]\([^)#][^)]*\)' "$md" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//' | while IFS= read -r target; do
@@ -48,12 +55,11 @@ while IFS= read -r md; do
     full="$(printf '%s' "$full" | sed -E ':a; s#[^/]+/\.\./##; ta; s#^\./##')"
     if ! is_generated "$full" && [ ! -e "$full" ]; then
       echo "  FAIL  $md -> $target (resolves to $full, which does not exist)" >&2
-      echo "broken" >> /tmp/.repo_consistency_broken
+      echo "broken" >> "$BROKEN_LINKS"
     fi
   done
 done < <(git ls-files '*.md')
-if [ -s /tmp/.repo_consistency_broken ]; then fail=1; fi
-rm -f /tmp/.repo_consistency_broken
+if [ -s "$BROKEN_LINKS" ]; then fail=1; fi
 [ "$fail" -eq 0 ] && echo "  ok    every markdown link resolves"
 
 # ── 2. Repo paths named in code comments and operator messages ───────────────

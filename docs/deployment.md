@@ -602,8 +602,13 @@ container reading the old copy. Either edit in place (`cat > shared/auth-groups.
 or, more simply, run `docker compose restart server` afterwards and confirm the
 result with `/api/userinfo`.
 
-With SSO off, access is governed by `OPEN_WRITE` in `shared/config.ts`: `true`
-allows anyone to read and write, `false` makes the interface read-only.
+With SSO off, access is governed by `OPEN_WRITE`: `true` allows anyone who can
+reach the site to read and write, `false` makes the interface read-only. Set it
+in the **root `.env`** (`./install.sh --open-write=true`, or
+`pssid_gui_open_write` in your inventory), which is what compose passes to the
+server. The `OPEN_WRITE` in `shared/config.ts` is only the compiled default the
+environment overrides, and it ships `false` so that a deployment is never
+unauthenticated-writable by accident.
 
 ### It fails closed
 

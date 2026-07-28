@@ -3,7 +3,7 @@ import { MongoClient, Db, MongoServerError, Collection } from "mongodb";
 import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
-import { isNameInDB, isValidObjectName, isValidCron } from './helpers';
+import { isNameInDB, isValidObjectName, isValidCron, sendDeleted } from './helpers';
 
 var client = connectToMongoDB();
 
@@ -15,7 +15,7 @@ const getSchedules = (async (req: Request, res: Response) =>{
     (await client).connect();
     var collection = (await client).db("gui").collection("schedules");
     const schedules = await collection.find().project({_id:0}).toArray();
-    res.send(schedules);
+    res.json(schedules);
   }
   catch(error) {
     console.error(error);
@@ -41,7 +41,7 @@ const deleteSchedule = (async (req:Request, res:Response) => {
 
     await schedule_col.findOneAndDelete({ "name" : name });       
 
-    res.send('schedule ' + name + ' was deleted');
+    sendDeleted(res, 'schedule', name);
   }
   catch(error) {
     console.error(error);

@@ -85,10 +85,15 @@
               separate step.
             </div>
           </div>
+          <!-- Generate WRITES files on the controller, so it is gated on write
+               access like every form on every other page. Preview above is a
+               read, and stays available: inspecting the configuration is
+               exactly what a read-only account is for. -->
           <button
             type="button"
             class="btn btn-primary"
-            :disabled="settingsStore.generateLoading"
+            :disabled="settingsStore.generateLoading || isReadOnly"
+            :title="isReadOnly ? 'Generating writes files on the controller, which needs write access.' : ''"
             @click="generateConfig"
           >
             <span class="material-icons btn-icon" aria-hidden="true">description</span>
@@ -115,7 +120,7 @@
 import PageHeader from '../components/PageHeader.vue'
 import { useSettingsStore } from '../stores/settings.store'
 import { useUserStore } from '../stores/user.store'
-import config from '../shared/config'
+import { isFormDisabled } from '../utils/formControl.ts'
 
 export default {
   name: 'Settings',
@@ -124,11 +129,15 @@ export default {
     return {
       settingsStore: useSettingsStore(),
       userStore: useUserStore(),
-      enable_sso: config.ENABLE_SSO,
       previewTab: 'config',
     }
   },
   computed: {
+    // The same verdict every other page's forms use, so this button and they
+    // are never in disagreement about what the server would accept.
+    isReadOnly() {
+      return isFormDisabled();
+    },
     previewText() {
       if (!this.settingsStore.preview) return '';
       return this.previewTab === 'config'

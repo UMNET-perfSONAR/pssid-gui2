@@ -31,8 +31,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Third-party actions are pinned to a commit SHA, not a tag. A tag is
+      # mutable: whoever controls the action's repository can repoint v3 at new
+      # code, and that code runs here with the GHCR push token in its
+      # environment. The trailing comment is the version the SHA is; bump both
+      # together.
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -44,7 +49,7 @@ jobs:
         run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/pssid-gui2" >> "$GITHUB_OUTPUT"
 
       - name: Build and push client (default edition)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: services/client/Dockerfile
@@ -66,7 +71,7 @@ jobs:
       # small-disk VM that chose --pull in the first place. It would still
       # deploy, just slowly and with a disk requirement nobody planned for.
       - name: Build and push client (umich edition)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: services/client/Dockerfile
@@ -79,7 +84,7 @@ jobs:
             ${{ steps.prefix.outputs.prefix }}_client:umich-sha-${{ github.sha }}
 
       - name: Build and push server
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           # Repo-root context so the image can COPY shared/ alongside the app.
           context: .
@@ -91,7 +96,7 @@ jobs:
             ${{ steps.prefix.outputs.prefix }}_server:sha-${{ github.sha }}
 
       - name: Build and push mongo
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: services/database
           push: true

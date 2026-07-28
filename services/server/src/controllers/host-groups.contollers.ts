@@ -3,7 +3,7 @@ import { MongoClient, Db, MongoServerError, Collection, ObjectId } from "mongodb
 import { connectToMongoDB } from '../services/database.service';
 import { get_batch_ids, get_host_ids } from '../services/utility.services';
 import { create_config_file } from '../services/config.service';
-import { isNameInDB, isValidRfc1123Name, isNameArray, isPlainObjectOrAbsent } from './helpers';
+import { isNameInDB, isValidRfc1123Name, isNameArray, isPlainObjectOrAbsent, sendDeleted } from './helpers';
 
 /**
  * Field rules for a host group payload beyond the name. hosts_regex entries
@@ -37,7 +37,7 @@ const getHostGroups = (async (req: Request, res: Response) =>{
     (await client).connect();
     const collection = (await client).db('gui').collection('host_groups');
     const response = await collection.find().project({_id:0}).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -54,7 +54,7 @@ const getOneHostGroup = (async (req: Request, res: Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('host_groups');
     var response = await collection.find({"name": host_group}).project({_id:0}).toArray();
-    res.send(response); 
+    res.json(response); 
   }
   catch(error) {
     console.error(error);
@@ -71,7 +71,7 @@ const deleteHostGroup = (async (req:Request, res:Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('host_groups');
     await collection.findOneAndDelete({ "name" : host_group });
-    res.send('Host group ' + host_group + ' was deleted!')
+    sendDeleted(res, 'host group', host_group);
   }
   catch(error) {
     console.error(error);
@@ -167,7 +167,7 @@ const createConfig = (async (req: Request, res: Response) =>{
     const caller: string = oidcUser?.sub || oidcUser?.email || 'unauthenticated';
     const caller_role: string = oidcUser ? 'authenticated' : 'unauthenticated';
     await create_config_file(name, 'host_group', caller, caller_role);
-    res.send('Config file created');
+    res.json({ message: 'Config file created' });
   }
   catch(error) {
     // Surface a daemon-validation failure as a specific 422 (matching the hosts

@@ -79,8 +79,10 @@ done
 req POST /api/schedules/create-schedule '{"name":"smoke-canary","repeat":"* * * * *"}'
 if [ "$STATUS" = "403" ]; then
   printf "\n${R}The stack at %s is read-only (writes return 403).${N}\n" "$BASE"
-  printf "For a local dev stack, set OPEN_WRITE: true in shared/config.ts (never commit it)\n"
-  printf "or sign in with a write-enabled account when SSO is on, then re-run.\n"
+  printf "Set OPEN_WRITE=true in the environment and restart, then re-run:\n"
+  printf "  dev stack:  OPEN_WRITE=true docker compose -f docker-compose.local.yml up -d\n"
+  printf "  installed:  ./install.sh --open-write=true\n"
+  printf "With SSO on, sign in with a write-enabled account instead.\n"
   exit 2
 fi
 check "write access available (canary schedule)" 200 "$STATUS" '' "$BODY"

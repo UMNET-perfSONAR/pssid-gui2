@@ -93,8 +93,8 @@ app.set('trust proxy', 1);
 // in use and there is no reason for any code path to reinstate it.
 app.disable('x-powered-by');
 
-// Security headers (X-Content-Type-Options, frameguard, etc.). CSP is left to
-// nginx (see nginx.conf) and disabled here so the SPA's assets aren't blocked;
+// Security headers (X-Content-Type-Options, frameguard, etc.).
+//
 // CORP is disabled so it doesn't interfere with the CORS/SSO configuration below.
 //
 // HSTS is opt-in through the environment, and off by default, because it is
@@ -106,7 +106,40 @@ app.disable('x-powered-by');
 // same rule it applies to the nginx-level header.
 const hstsEnabled = /^(1|true|yes|on)$/i.test((process.env.HSTS_ENABLED ?? '').trim());
 app.use(helmet({
-  contentSecurityPolicy: false,
+  // The policy for what THIS server serves, which is JSON and nothing else --
+  // every route below answers with res.json(), and the two exceptions are a
+  // redirect (no body) and the SSO access-denied page further down. So the
+  // honest policy is "load nothing", far stricter than the SPA's policy in
+  // nginx.conf, which has to permit a script bundle and a font host.
+  //
+  // This used to be `false`. The reasoning was that nginx sets the app's CSP
+  // and a second one here could only get in the SPA's way -- but nginx serves
+  // the SPA from the client container, so a policy set here was never going to
+  // reach those assets in the first place, and switching the feature off left
+  // /api/ responses with no policy at all on any path that bypasses nginx
+  // (a port-forward for debugging, or anything that reaches :8000 directly).
+  // nginx now hides this header the way it already hides the other four it
+  // sets itself (proxy_hide_header Content-Security-Policy), so a proxied
+  // response still
+  // carries exactly one CSP -- the SPA's -- and scripts/security-check.sh
+  // enforces that count from the outside.
+  //
+  // useDefaults: false so the directive list is exactly what is written here;
+  // helmet's defaults would add upgrade-insecure-requests, which is wrong for
+  // the plain-HTTP dev stack (docker-compose.local.yml).
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'none'"],
+      // The access-denied page carries one inline <style> block. It renders
+      // through nginx under the SPA's policy, which allows this; the allowance
+      // here is what keeps it readable on a direct connection.
+      styleSrc: ["'unsafe-inline'"],
+      baseUri: ["'none'"],
+      formAction: ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  },
   crossOriginResourcePolicy: false,
   hsts: hstsEnabled ? { maxAge: 31536000, includeSubDomains: true, preload: false } : false,
   // These two are set BECAUSE nginx sets them, and they are set to the SAME

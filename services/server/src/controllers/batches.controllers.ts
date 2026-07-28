@@ -3,7 +3,7 @@ import { connectToMongoDB } from '../services/database.service';
 import { get_ssid_profile_ids, get_schedule_ids, get_job_ids } from '../services/utility.services'
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
-import { isNameInDB, isValidObjectName, isValidInterfaceName, isWholeNumber, isNameArray } from './helpers';
+import { isNameInDB, isValidObjectName, isValidInterfaceName, isWholeNumber, isNameArray, sendDeleted } from './helpers';
 
 /**
  * Field rules for a batch payload beyond the name, shared by create and
@@ -36,7 +36,7 @@ const getBatches = (async (req: Request, res: Response) =>{
     const response = await collection.find().project({_id:0,  
                                                       "ssid_profile_ids":0}
                                                     ).toArray();
-    res.send(response);
+    res.json(response);
   }
   catch(error) {
     console.error(error);
@@ -53,7 +53,7 @@ const getOneBatch = (async (req: Request, res: Response) => {
     (await client).connect();
     var collection = (await client).db('gui').collection('batches');
     var response = await collection.find({"name": batch}).project({_id:0}).toArray();
-    res.send(response); 
+    res.json(response); 
   }
   catch(error) {
     console.error(error);
@@ -76,7 +76,7 @@ const deleteBatch = (async (req:Request, res:Response) => {
       await deleteDocument(outdated_collection, 'batches', 'batch_ids', deleted?.name); 
     }
     await batch_col.findOneAndDelete({ "name" : batch });                           // remove from collection 
-    res.send('batch ' + batch + ' was deleted!');
+    sendDeleted(res, 'batch', batch);
   }
   catch(error) {
     console.error(error);

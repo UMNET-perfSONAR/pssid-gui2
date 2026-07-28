@@ -1,4 +1,23 @@
+import { Response } from 'express';
 import { Collection } from 'mongodb';
+
+/**
+ * The response to a successful delete, for every collection that has one.
+ *
+ * JSON rather than `res.send('<thing> ' + name + ' was deleted')`, which is
+ * what these all used to be. Express labels a STRING body `text/html`, so a
+ * name echoed back that way is markup as far as the browser is concerned --
+ * and the name comes straight off the request URL. Talk a signed-in browser
+ * into DELETEing `<img src=x onerror=...>` and that script runs on this
+ * origin, with this deployment's session (CodeQL js/reflected-xss). A JSON
+ * body is never sniffed as HTML, so the echo is inert.
+ *
+ * Nothing reads the text: every client store checks `response.ok` and shows a
+ * message of its own (see e.g. services/client/src/stores/host_store.ts).
+ */
+export const sendDeleted = (res: Response, subject: string, name: string): void => {
+  res.json({ message: `${subject} ${name} was deleted` });
+};
 
 export const isNameInDB = async (collection: Collection, name: string): Promise<boolean> => {
   // Coerce to a string so a request body like {"name": {"$ne": null}} can't turn
