@@ -96,11 +96,6 @@
               </VueMultiselect>
             </div>
             <label class="form-group-label"> Metadata </label>
-            <small class="text-muted form-help">
-              Key/value pairs every member of this group inherits, whether it was
-              selected by name or matched by a regex. A host's own metadata wins on
-              a collision; between two groups that share a host, avoid reusing a key.
-            </small>
             <dynamic_add_data :addedData="form.meta"></dynamic_add_data>
           </fieldset>
         </form>
