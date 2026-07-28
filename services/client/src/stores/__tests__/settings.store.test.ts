@@ -54,6 +54,49 @@ describe('settings store', () => {
       await store.previewConfig();
       expect(store.previewError).toBe('Write access denied: SSO disabled and OPEN_WRITE false');
     });
+
+    // The Refresh button lives ON the preview panel, so clearing the result at
+    // the start of a rebuild would remove the control that was just clicked and
+    // collapse the reader's scroll position in a file longer than the viewport.
+    it('keeps the previous result on screen while a refresh is in flight', async () => {
+      const first = { proposed: { config: '{"v":1}', inventory: 'old' } };
+      const second = { proposed: { config: '{"v":2}', inventory: 'new' } };
+      const store = useSettingsStore();
+
+      fetchMock.mockResolvedValueOnce(ok(first));
+      await store.previewConfig();
+
+      let release: (res: Response) => void = () => {};
+      fetchMock.mockReturnValueOnce(new Promise<Response>((resolve) => { release = resolve; }));
+      const inFlight = store.previewConfig();
+      expect(store.previewLoading).toBe(true);
+      expect(store.preview).toEqual(first);
+
+      release(ok(second));
+      await inFlight;
+      expect(store.preview).toEqual(second);
+      expect(store.previewLoading).toBe(false);
+    });
+
+    it('drops the stale result when a refresh comes back invalid', async () => {
+      const store = useSettingsStore();
+      fetchMock.mockResolvedValueOnce(ok({ proposed: { config: '{}', inventory: '' } }));
+      await store.previewConfig();
+
+      fetchMock.mockResolvedValueOnce(fail(422, { message: 'batch "b": ssid_profiles must be a non-empty list' }));
+      await store.previewConfig();
+
+      // Not left underneath the error: those files are no longer on offer.
+      expect(store.preview).toBeNull();
+      expect(store.previewError).toBe('batch "b": ssid_profiles must be a non-empty list');
+    });
+
+    it('is a no-op while a preview is already in flight (Preview and Refresh share it)', async () => {
+      const store = useSettingsStore();
+      store.previewLoading = true;
+      await store.previewConfig();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
   });
 
   describe('generateConfig', () => {

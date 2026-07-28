@@ -31,11 +31,25 @@
             type="button"
             class="btn btn-secondary"
             :disabled="settingsStore.previewLoading"
+            :aria-busy="settingsStore.previewLoading"
             @click="previewConfig"
           >
-            <span class="material-icons btn-icon" aria-hidden="true">visibility</span>
+            <span v-if="settingsStore.previewLoading" class="inline-spinner" aria-hidden="true"></span>
+            <span v-else class="material-icons btn-icon" aria-hidden="true">visibility</span>
             {{ settingsStore.previewLoading ? 'Previewing...' : 'Preview' }}
           </button>
+        </div>
+
+        <!-- Only for the FIRST preview, when there is no panel yet: a refresh
+             keeps the panel below on screen and shows its busy state there. -->
+        <div
+          v-if="settingsStore.previewLoading && !settingsStore.preview"
+          class="loading-state"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="spinner"></div>
+          <span>Building preview…</span>
         </div>
 
         <p v-if="settingsStore.previewError" class="preview-error" role="alert">
@@ -49,27 +63,55 @@
             <span>No validation problems found.</span>
           </div>
 
-          <div class="preview-tabs" role="tablist" aria-label="Preview file">
+          <div class="preview-toolbar">
+            <div class="preview-tabs" role="tablist" aria-label="Preview file">
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="previewTab === 'config'"
+                :class="{ active: previewTab === 'config' }"
+                @click="previewTab = 'config'"
+              >
+                pssid_config.json
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="previewTab === 'inventory'"
+                :class="{ active: previewTab === 'inventory' }"
+                @click="previewTab = 'inventory'"
+              >
+                hosts.ini
+              </button>
+            </div>
+            <!-- Rebuilds this panel in place. The Preview button that opened it
+                 is a scroll away once a real config is on screen, and the state
+                 it was built from changes on every other page. Read-only, like
+                 Preview, so it is not gated on write access. -->
             <button
               type="button"
-              role="tab"
-              :aria-selected="previewTab === 'config'"
-              :class="{ active: previewTab === 'config' }"
-              @click="previewTab = 'config'"
+              class="btn-refresh"
+              :disabled="settingsStore.previewLoading"
+              :aria-busy="settingsStore.previewLoading"
+              @click="previewConfig"
             >
-              pssid_config.json
-            </button>
-            <button
-              type="button"
-              role="tab"
-              :aria-selected="previewTab === 'inventory'"
-              :class="{ active: previewTab === 'inventory' }"
-              @click="previewTab = 'inventory'"
-            >
-              hosts.ini
+              <span v-if="settingsStore.previewLoading" class="inline-spinner" aria-hidden="true"></span>
+              <span v-else class="material-icons" aria-hidden="true">refresh</span>
+              {{ settingsStore.previewLoading ? 'Refreshing...' : 'Refresh' }}
             </button>
           </div>
-          <pre class="preview-pre">{{ previewText }}</pre>
+          <div class="preview-pane">
+            <pre class="preview-pre">{{ previewText }}</pre>
+            <!-- The outgoing file stays visible under the scrim rather than
+                 being replaced by a blank box, so the panel keeps its height
+                 and the page does not jump while the rebuild is in flight. -->
+            <!-- No role="status": .preview-result already carries aria-live,
+                 and a nested live region announces this twice. -->
+            <div v-if="settingsStore.previewLoading" class="preview-busy">
+              <span class="inline-spinner" aria-hidden="true"></span>
+              <span>Rebuilding…</span>
+            </div>
+          </div>
         </div>
 
         <div class="setting-divider" role="separator"></div>
@@ -93,12 +135,28 @@
             type="button"
             class="btn btn-primary"
             :disabled="settingsStore.generateLoading || isReadOnly"
+            :aria-busy="settingsStore.generateLoading"
             :title="isReadOnly ? 'Generating writes files on the controller, which needs write access.' : ''"
             @click="generateConfig"
           >
-            <span class="material-icons btn-icon" aria-hidden="true">description</span>
+            <span v-if="settingsStore.generateLoading" class="inline-spinner" aria-hidden="true"></span>
+            <span v-else class="material-icons btn-icon" aria-hidden="true">description</span>
             {{ settingsStore.generateLoading ? 'Generating...' : 'Generate' }}
           </button>
+        </div>
+
+        <!-- Generate runs the provision script on the controller, which is the
+             slowest thing this page does and produces nothing until it is over.
+             The button's own spinner is easy to miss once it has been clicked
+             and the pointer has moved away. -->
+        <div
+          v-if="settingsStore.generateLoading"
+          class="loading-state"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="spinner"></div>
+          <span>Writing files to the controller…</span>
         </div>
 
         <p v-if="settingsStore.generateError" class="preview-error" role="alert">
@@ -278,10 +336,45 @@ export default {
   font-size: 1.1rem;
   flex-shrink: 0;
 }
+/* Tabs and Refresh share a row, with the -1px that pulls the tab strip flush
+   against the panel moved up here so it applies to the whole row. align-items:
+   flex-end keeps Refresh sitting on the tabs' baseline rather than stretching. */
+.preview-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: -1px;
+}
+.btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.7rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.btn-refresh:hover:not(:disabled) {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.btn-refresh:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+.btn-refresh .material-icons {
+  font-size: 0.95rem;
+}
 .preview-tabs {
   display: flex;
   gap: 0.25rem;
-  margin-bottom: -1px;
 }
 .preview-tabs button {
   background: transparent;
@@ -318,6 +411,47 @@ export default {
   background: #0f172a;
   border-color: #0f172a;
   border-top-color: var(--accent);
+}
+.preview-pane {
+  position: relative;
+}
+/* Scrim over the outgoing file while a refresh is in flight. The panel is
+   deliberately dark in every theme (see .preview-pre), so these are fixed
+   light-on-dark values rather than theme tokens -- the same reasoning as the
+   active tab above. */
+.preview-busy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  border-radius: 0 6px 6px 6px;
+}
+/* One spinner for the buttons and the scrim both. It takes its color from the
+   text beside it, so it stays visible on a filled primary button, a ghost
+   button and the dark panel without a per-context override, and is sized in em
+   so it tracks whatever label it sits next to. pssid-spin is the global
+   keyframe from main.css, where the reduced-motion rule also applies. */
+.inline-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  opacity: 0.9;
+  animation: pssid-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+/* .btn is inline-block, not flex, so the spinner needs the same nudge and gap
+   .btn-icon uses to sit on the label's line. */
+.btn .inline-spinner {
+  vertical-align: -0.12em;
+  margin-right: 0.35rem;
 }
 .preview-pre {
   margin: 0;

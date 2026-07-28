@@ -65,21 +65,36 @@ export const useSettingsStore = defineStore('settings', {
       }
     },
 
+    /**
+     * Build the preview. Also the Refresh button on the preview panel itself,
+     * which is why the previous result is NOT cleared up front: blanking it
+     * would take the panel -- and the button that was just clicked -- off the
+     * screen for the length of the request, and drop the reader's scroll
+     * position in a file that is usually longer than the viewport. The panel
+     * stays put and shows its own busy state (settings.vue) until this returns.
+     *
+     * It is still cleared on both failure paths below: an error means the
+     * current database state produces no config, and leaving the last good one
+     * on screen underneath the message would read as though those files were
+     * still on offer.
+     */
     async previewConfig() {
+      if (this.previewLoading) return;
       try {
         this.previewLoading = true;
-        this.preview = null;
         this.previewError = '';
         const res = await fetch('/api/provision/preview', authOptions());
         if (!res.ok) {
           // A validation failure (422) is a real, specific answer, not an
           // error to toast and forget - show it inline so it stays visible.
+          this.preview = null;
           this.previewError = await responseMessage(res, 'Failed to build preview');
           return;
         }
         this.preview = await res.json();
       } catch (err) {
         console.error(err);
+        this.preview = null;
         this.previewError = 'Failed to build preview';
       } finally {
         this.previewLoading = false;
