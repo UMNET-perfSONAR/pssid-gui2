@@ -13,9 +13,20 @@
 # Navy/maize interface. See ../../services/client/src/edition/editions.ts.
 pssid_gui_edition: umich
 
-# Public hostname users visit. Must match the DNS name and the redirect URIs
-# registered with ITS in Okta, or sign-in fails.
-pssid_gui_hostname: pssid-web-dev.miserver.it.umich.edu
+# Public hostname users visit. Must match the DNS name and, once SSO is on, the
+# redirect URIs registered with ITS in Okta, or sign-in fails.
+#
+# Each host is named by its own FQDN in ../inventory.ini, and that name IS the
+# hostname it serves, so this resolves per host rather than pinning one literal.
+# A literal here would apply to EVERY host in the group -- the installer would
+# write another machine's name into nginx's server_name and BASE_URL, and that
+# host would then answer 444 to its own address (nginx refuses a Host it does
+# not serve) while redirecting anyone who did reach it to a different VM.
+#
+# inventory_hostname rather than the role's ansible_fqdn default: this is the
+# name an operator typed and can see, not whatever `hostname -f` happens to
+# report on a VM whose /etc/hosts is incomplete.
+pssid_gui_hostname: "{{ inventory_hostname }}"
 
 # Okta single sign-on through the ITS tenant.
 #

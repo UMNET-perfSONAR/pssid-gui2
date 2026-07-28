@@ -49,11 +49,12 @@ ITS has not returned the Okta application yet, so
 asserts that pair, so the controller comes up unauthenticated and fully usable —
 every form editable, Generate working — rather than as a read-only demo.
 
-The consequence is worth stating plainly: **anyone who can reach
-`pssid-web-dev.miserver.it.umich.edu` can change the probe configuration.** The
-network in front of it is the only access control until Okta is in place. Keep
-it off the public internet, or set `pssid_gui_open_write: "false"` and accept a
-read-only interface in the meantime.
+The consequence is worth stating plainly: **anyone who can reach any of the
+controllers in [`inventory.ini`](inventory.ini) — the dev host or the three QA
+hosts — can change its probe configuration.** The network in front of them is
+the only access control until Okta is in place. Keep them off the public
+internet, or set `pssid_gui_open_write: "false"` and accept a read-only
+interface in the meantime.
 
 Turning SSO on is one edit to that file (plus the credentials below) — nothing
 else about the deployment changes, and `pssid_gui_open_write` stops being
