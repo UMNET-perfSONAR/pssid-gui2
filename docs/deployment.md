@@ -664,17 +664,30 @@ merged, so one build works against any of them:
 | Claim | Typical source |
 |---|---|
 | `groups` | Okta, Entra ID, Keycloak |
-| `edumember_is_member_of` | federated higher-education (eduPerson) |
+| `edumember_ismemberof` | eduPerson released by Okta |
+| `edumember_is_member_of` | eduPerson released by other federated IdPs |
 | `isMemberOf` | Shibboleth / Grouper |
 
-The **requested scope** is what differs, and it is configurable because a scope
-the provider does not define fails the whole authorization request with
-`invalid_scope`. The default, `openid profile email groups`, is what Okta and
-Entra ID want. A federated eduPerson tenant sets:
+Both spellings of the eduPerson attribute are read, because providers disagree
+about how to snake_case `isMemberOf` into a claim name and matching is exact.
+Carrying only one is a trap worth knowing about: the tenant using the other
+spelling authenticates every user and then denies them all, because membership
+resolves to an empty list — a symptom identical to the claim never having been
+released, which costs a round trip with the identity team to tell apart.
+
+The **requested scope** is what differs between tenants, and it is configurable
+because a scope the provider does not define fails the whole authorization
+request with `invalid_scope`, before the user ever sees a password prompt. The
+default, `openid profile email groups`, is what Okta and Entra ID want. A
+federated eduPerson tenant sets:
 
 ```
-SSO_SCOPE=openid profile email edumember groups
+SSO_SCOPE=openid profile email edumember
 ```
+
+Set it at install time with `--sso-scope="..."` (or `pssid_gui_sso_scope` in an
+inventory); the value is preserved across upgrades like the rest of the OIDC
+settings. `PSSID_SSO_SCOPE` works with the bootstrap script.
 
 ### Session and hardening settings
 
@@ -721,8 +734,8 @@ a session cannot be hijacked by guessing an id.
    membership. Confirm it with Token Preview on the same authorization server
    before deploying; if `groups` is missing there, nothing downstream can
    compensate. (A federated higher-education tenant may release the eduPerson
-   `edumember_is_member_of` attribute instead, in which case the claim arrives on
-   its own and only `SSO_SCOPE` needs changing.)
+   attribute instead — Okta names that claim `edumember_ismemberof` — in which
+   case the claim arrives on its own and only `SSO_SCOPE` needs changing.)
 3. Use the Okta org authorization server as the issuer, for example
    `ISSUER_BASE_URL=https://<your-tenant>.okta.com`. The discovery document is at
    `<ISSUER_BASE_URL>/.well-known/openid-configuration`. Appending

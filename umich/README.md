@@ -41,71 +41,101 @@ and waits for the health check. See [`../ansible/README.md`](../ansible/README.m
 for what the roles do and [`../docs/deployment.md`](../docs/deployment.md) for
 the full deployment reference.
 
-## Current posture: SSO off, writes open
+## Current posture: SSO on, one group, writes by membership
 
-ITS has not returned the Okta application yet, so
-[`group_vars/pssid_gui.yml`](group_vars/pssid_gui.yml) pins
-`pssid_gui_sso: "false"` and `pssid_gui_open_write: "true"`. Every deploy
-asserts that pair, so the controller comes up unauthenticated and fully usable —
-every form editable, Generate working — rather than as a read-only demo.
+ITS registered the OIDC application **ITS - pssid development**, and everything
+it returned is configured. The whole posture is in
+[`group_vars/pssid_gui.yml`](group_vars/pssid_gui.yml) and
+[`inventory.ini`](inventory.ini); the only value not in git is the client secret.
 
-The consequence is worth stating plainly: **anyone who can reach any of the
-controllers in [`inventory.ini`](inventory.ini) — the dev host or the three QA
-hosts — can change its probe configuration.** The network in front of them is
-the only access control until Okta is in place. Keep them off the public
-internet, or set `pssid_gui_open_write: "false"` and accept a read-only
-interface in the meantime.
+| What | Value | Where |
+|---|---|---|
+| Application type | **OIDC** web application, Authorization Code + PKCE, `client_secret_post` | Okta (AMP) |
+| Client id | `0oa25hltopzoZr4XR1d8` — not a credential, committed on purpose | `pssid_gui_oidc_client_id` |
+| Client secret | *not in git* | `group_vars/all/vault.yml` |
+| Issuer | `https://umich.okta.com` — **unconfirmed, see below** | `pssid_gui_oidc_issuer` |
+| Group claim | `edumember_ismemberof` | read automatically, no setting |
+| Group released | `pssid-gui-users` → **write** | `pssid_gui_auth_groups` |
+| Scope | `openid profile email edumember` | `pssid_gui_sso_scope` |
+| SSO enabled on | dev, qa6, qa8 (the registered redirect URIs) | per host in `inventory.ini` |
 
-`pssid_gui_open_write` stops being consulted the moment SSO is on, and
-`make sso-status` on a host reports what is actually in force.
+**One group means one tier.** ITS releases only `pssid-gui-users`, so everyone who
+can sign in gets **write**. Mapping it to `read` instead would authenticate
+everybody into an interface where nothing can be saved, which is not safer, only
+broken. So membership of the `pssid-gui-users` MCommunity group *is* the access
+control — treat adding someone to it as granting them the ability to reconfigure
+the probes. For a viewer tier, ask ITS to release a second group and map it to
+`read`.
+
+`pssid_gui_open_write` is now `false`. It is never consulted on a host with SSO
+on, so it governs only unregistered hosts — and those cannot authenticate anyone,
+so read-only is the right resting state. `make sso-status` on a host reports
+what is actually in force.
 
 ## Turning SSO on
 
-Four values arrive from ITS and each has exactly one home. Nothing else about
-the deployment changes.
-
-| # | From ITS | Goes in |
-|---|---|---|
-| 1 | Issuer URL | `pssid_gui_oidc_issuer` — **already set** to `https://umich.okta.com`; change only for a custom `/oauth2/...` authorization server |
-| 2 | Client id | `group_vars/all/vault.yml` (below) |
-| 3 | Client secret | `group_vars/all/vault.yml` (below) |
-| 4 | The two group strings, **exactly as they appear in a token** | `pssid_gui_auth_groups` in [`group_vars/pssid_gui.yml`](group_vars/pssid_gui.yml) — a commented block is waiting there |
-
-Then two switches in the same file:
-
-```yaml
-pssid_gui_sso: "true"
-pssid_gui_open_write: "false"   # ignored while SSO is on; correct resting state
-```
-
-Deploy **one host first**, so a mistake costs one controller rather than four:
+It is already on in configuration. Two things remain: the secret in a vault, and
+a first deploy.
 
 ```bash
-make deploy-umich ANSIBLE_ARGS="--limit pssid-gui-qa7.miserver.it.umich.edu --ask-vault-pass"
+ansible-vault create umich/group_vars/all/vault.yml
 ```
 
-Verify on that host before rolling out the rest:
+```yaml
+---
+pssid_gui_oidc_client_secret: <the secret from ITS>
+```
+
+The client id is **not** in there — it is committed, because a client id travels
+in the browser's URL bar on every sign-in and protecting it protects nothing.
+Keeping the vault to a single value removes any doubt about what actually matters.
+
+Deploy **one host first**, so a mistake costs one controller rather than three:
+
+```bash
+make deploy-umich ANSIBLE_ARGS="--limit pssid-gui-qa6.miserver.it.umich.edu --ask-vault-pass"
+```
+
+Verify on that host before the others:
 
 1. Sign in — Okta, then back to the dashboard with your name in the navigation bar.
-2. Open `/api/userinfo`. `groups` must list your Okta groups and `access_level`
-   must be `write`. **An empty `groups` means ITS has not released the claim** —
-   that is the single most common failure, and no amount of redeploying fixes it.
-3. A read-only user sees the badge and greyed forms.
-4. Sign out, revisit, and you are asked to authenticate again.
-5. `make security-check` passes.
+2. Open `/api/userinfo`. `groups` must contain `pssid-gui-users` and
+   `access_level` must be `write`.
+3. Sign out, revisit, and you are asked to authenticate again.
+4. `make security-check` passes.
 
-Then drop the `--limit` and deploy the other three.
+Then drop the `--limit`.
 
-If the server will not stay up, it is refusing a bad setting on purpose and the
-log names which one:
+### The three things most likely to go wrong
+
+Each has a different symptom, so the symptom tells you which one it is.
+
+**`invalid_scope` at Okta, before any password prompt.** The tenant does not
+define a scope named in `pssid_gui_sso_scope`. We send
+`openid profile email edumember` because ITS releases the eduPerson claim; if
+their authorization server wants something else, ask which scope releases
+`edumember_ismemberof` and set it. `openid profile email` alone is the safe
+fallback — sign-in will work, and step 2 above then tells you whether the claim
+arrived anyway.
+
+**The server refuses to start.** It is rejecting a setting on purpose and names
+which:
 
 ```bash
 docker compose logs server | grep -E 'SSO enabled|REFUSING TO START' -A3
 ```
 
-To see what Okta actually sent without locking yourself out, set
-`SSO_REQUIRE_GROUP=false` in `services/server/.env` and `make restart`; sign-in
-then succeeds and `/api/userinfo` shows the raw claim. **Set it back to `true`.**
+The likely culprit is the **issuer**, which is the one value the AMP screens never
+showed. If ITS gave a custom authorization server (a URL with an `/oauth2/...`
+path), set it in `pssid_gui_oidc_issuer` — and confirm with them that
+`edumember_ismemberof` is released on *that* server, since claims configured on
+the org authorization server are not emitted by a custom one.
+
+**Sign-in works, then "not a member of any group permitted".** The claim did not
+arrive, or its contents do not match `pssid-gui-users`. To see exactly what Okta
+sent without locking yourself out, set `SSO_REQUIRE_GROUP=false` in
+`services/server/.env`, `make restart`, sign in, and read `/api/userinfo`.
+**Set it back to `true` afterwards.**
 
 ## The Okta secret
 
@@ -125,17 +155,41 @@ in it applies to every host in this inventory, whatever it is called.
 
 ```yaml
 ---
-pssid_gui_oidc_client_id: <from ITS>
 pssid_gui_oidc_client_secret: <from ITS>
 ```
 
-Then deploy with `--ask-vault-pass` as shown above. To deploy without a vault,
-pass the two values on the command line instead:
+One value, not two: the client id is committed in
+[`group_vars/pssid_gui.yml`](group_vars/pssid_gui.yml).
+
+Then deploy with `--ask-vault-pass` as shown above. Where it lands, and what
+touches it on the way:
+
+| Stage | Handling |
+|---|---|
+| Ansible → installer | The **environment**, never argv. `/proc/<pid>/cmdline` is world-readable, so `--client-secret=…` would let any local user read it with `ps` for the length of the install |
+| Ansible output | `no_log` on that task — never printed, even on failure |
+| At rest | `services/server/.env`, root-owned **mode 640**, readable only by the server container's supplementary gid |
+| Later runs | Preserved automatically; upgrades neither erase it nor need it re-supplied |
+
+**Do not** pass it as `-e pssid_gui_oidc_client_secret=...`. That puts it in your
+shell history and in `ps` output for every local user. If you must deploy without
+a vault, export it instead — the role reads it from the environment:
 
 ```bash
-ansible-playbook -i ../umich/inventory.ini site.yml \
-  -e pssid_gui_oidc_client_id=... -e pssid_gui_oidc_client_secret=...
+read -rs PSSID_OIDC_CLIENT_SECRET && export PSSID_OIDC_CLIENT_SECRET
+make deploy-umich ANSIBLE_ARGS="--limit pssid-gui-qa6.miserver.it.umich.edu"
 ```
+
+**Rotation.** Have ITS issue the new secret *while the old one still works*,
+update the vault, redeploy, confirm a real sign-in, then ask them to retire the
+old one. The reverse order takes every host down in between.
+
+**If it leaks.** Rotate as above and tell ITS. It is not a password: the
+Authorization Code flow still requires a code delivered to one of the three
+registered redirect URIs, PKCE means an intercepted code cannot be redeemed
+without the verifier, and no grant type is enabled that would let the secret mint
+a token on its own. Serious hygiene failure, not an access breach — but if it ever
+reached a git commit, rotation is mandatory and rewriting history does not help.
 
 Requesting the application from ITS in the first place — which values they need
 from you and which they return — is `QA/SSOwithOkta.md`. That file is

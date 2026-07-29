@@ -262,12 +262,26 @@ export function validatePermissionMapping(): string | null {
 /**
  * Claims that carry group membership, in the order they are trusted. Providers
  * disagree: `groups` is what Okta and Entra ID emit once a groups claim is added
- * to the token, `edumember_is_member_of` is the eduPerson attribute a federated
- * higher-education IdP releases instead, and `isMemberOf` is what a
+ * to the token, the two `edumember_*` spellings are the eduPerson attribute a
+ * federated higher-education IdP releases instead, and `isMemberOf` is what a
  * Shibboleth/Grouper deployment sends. Reading all of them means the same build
  * works against any of these without a provider-specific branch.
  */
-const GROUP_CLAIMS = ['groups', 'edumember_is_member_of', 'isMemberOf'] as const;
+const GROUP_CLAIMS = [
+  'groups',
+  // BOTH spellings of the eduPerson attribute, deliberately. The attribute is
+  // `isMemberOf` and providers disagree about how to snake_case it into a claim
+  // name: some emit `edumember_is_member_of`, and Okta emits
+  // `edumember_ismemberof` (no separators inside "ismemberof"). Matching is
+  // exact, so carrying only one spelling means the other tenant authenticates
+  // every user and then denies them all -- membership resolves to an empty list,
+  // which maps to no permission. That is indistinguishable from "the provider
+  // never released the claim", and it costs a round trip with the identity team
+  // to find out otherwise.
+  'edumember_ismemberof',
+  'edumember_is_member_of',
+  'isMemberOf',
+] as const;
 
 /**
  * The session cookie / request property name. Shared so oidc.service (which

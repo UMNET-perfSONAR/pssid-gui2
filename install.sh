@@ -40,6 +40,15 @@ TLS="self-signed"
 ISSUER=""
 CLIENT_ID=""
 CLIENT_SECRET=""
+# Scope requested at sign-in. Empty means "decide below", the same rule the SSO
+# posture and OPEN_WRITE follow: reuse whatever the host's existing
+# services/server/.env has so an operator's edit survives an upgrade, and fall
+# back to the shipped default on a first install. It needs to be settable
+# because the right value is a property of the TENANT, not of this application:
+# a provider that does not define a scope named `groups` rejects the entire
+# authorization request with invalid_scope, and a federated eduPerson tenant
+# releases membership through `edumember` instead.
+SSO_SCOPE_INPUT=""
 # Write access when SSO is off. Empty here means "decide below": reuse whatever
 # the existing .env has, so an operator's choice survives an upgrade, and fall
 # back to the shipped read-only default on a first install.
@@ -64,6 +73,11 @@ Options:
   --issuer=URL           OIDC issuer base URL          (SSO only)
   --client-id=ID         OIDC client id                (SSO only)
   --client-secret=SECRET OIDC client secret            (SSO only)
+  --sso-scope="..."      Scope requested at sign-in. Preserved across upgrades;
+                         defaults to "openid profile email groups". A tenant that
+                         does not define a scope named 'groups' rejects the whole
+                         request with invalid_scope, and a federated eduPerson
+                         tenant releases membership through 'edumember' instead
   --open-write=true|false  Allow writes when SSO is off. Preserved across
                          upgrades; defaults to false (read-only) on a new install
   --tls=MODE             self-signed | letsencrypt | none          (default: self-signed)
@@ -89,6 +103,7 @@ for arg in "$@"; do
     --issuer=*)        ISSUER="${arg#*=}" ;;
     --client-id=*)     CLIENT_ID="${arg#*=}" ;;
     --client-secret=*) CLIENT_SECRET="${arg#*=}" ;;
+    --sso-scope=*)     SSO_SCOPE_INPUT="${arg#*=}" ;;
     --open-write=*)    OPEN_WRITE="${arg#*=}" ;;
     --tls=*)           TLS="${arg#*=}" ;;
     --email=*)         LE_EMAIL="${arg#*=}" ;;
@@ -117,6 +132,7 @@ OPEN_WRITE="${OPEN_WRITE:-${PSSID_OPEN_WRITE:-}}"
 # interactive use (where prompt_secret already avoids shell history).
 CLIENT_ID="${CLIENT_ID:-${PSSID_OIDC_CLIENT_ID:-}}"
 CLIENT_SECRET="${CLIENT_SECRET:-${PSSID_OIDC_CLIENT_SECRET:-}}"
+SSO_SCOPE_INPUT="${SSO_SCOPE_INPUT:-${PSSID_SSO_SCOPE:-}}"
 
 prompt() { # prompt VAR "Question" "default"
   local __var="$1" __q="$2" __def="${3:-}" __ans
@@ -249,12 +265,19 @@ if [ -r "$EXISTING_SERVER_ENV" ]; then
   [ -n "$ISSUER" ]        || ISSUER="$(sed -n 's/^ISSUER_BASE_URL=//p' "$EXISTING_SERVER_ENV" | tail -1)"
   [ -n "$CLIENT_ID" ]     || CLIENT_ID="$(sed -n 's/^CLIENT_ID=//p' "$EXISTING_SERVER_ENV" | tail -1)"
   [ -n "$CLIENT_SECRET" ] || CLIENT_SECRET="$(sed -n 's/^CLIENT_SECRET=//p' "$EXISTING_SERVER_ENV" | tail -1)"
+  # The scope follows the same rule: the correct value belongs to the tenant, so
+  # an operator who had to change it must not have that change erased by the next
+  # deployment. This block truncates services/server/.env further down.
+  [ -n "$SSO_SCOPE_INPUT" ] || SSO_SCOPE_INPUT="$(sed -n 's/^SSO_SCOPE=//p' "$EXISTING_SERVER_ENV" | tail -1)"
   # A plain `[ ... ] && info ...` would evaluate to false when there is nothing
   # to preserve, and under `set -e` that ends the install right here.
   if [ -n "$ISSUER" ]; then
     info "Preserving the OIDC settings already in $EXISTING_SERVER_ENV"
   fi
 fi
+# Shipped default: what Okta and Entra ID need in order to release group
+# membership. Overridden per deployment with --sso-scope / PSSID_SSO_SCOPE.
+SSO_SCOPE_EFFECTIVE="${SSO_SCOPE_INPUT:-openid profile email groups}"
 
 if [ -z "$SSO" ]; then
   prompt SSO "Enable Single Sign-On? (true/false)" "false"
@@ -437,8 +460,9 @@ chmod 600 "$SERVER_ENV" 2>/dev/null || warn "Could not chmod $SERVER_ENV"
     echo "# Scope requested at login. 'groups' is what Okta and Entra ID need in"
     echo "# order to release group membership. A provider that does not define a"
     echo "# scope by that name rejects the whole request with invalid_scope; a"
-    echo "# federated eduPerson tenant wants \"openid profile email edumember groups\"."
-    echo "SSO_SCOPE=openid profile email groups"
+    echo "# federated eduPerson tenant wants \"openid profile email edumember\"."
+    echo "# Set at install time with --sso-scope=... and preserved on upgrade."
+    echo "SSO_SCOPE=${SSO_SCOPE_EFFECTIVE}"
     echo ""
     echo "# Session lifetime. Absolute is the hard ceiling from the moment of"
     echo "# login; idle ends a session left open on an unattended workstation."

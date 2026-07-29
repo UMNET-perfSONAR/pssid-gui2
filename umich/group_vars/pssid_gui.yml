@@ -30,60 +30,88 @@ pssid_gui_hostname: "{{ inventory_hostname }}"
 
 # Okta single sign-on through the ITS tenant.
 #
-# Pinned OFF while ITS is still registering the Okta application. There are no
-# client credentials yet, and `true` without them makes the server refuse to
-# boot, so this asserts the unauthenticated posture on every run rather than
-# leaving it to whatever the host happens to have. (Empty would mean "do not
-# change this host's posture", which is not the same guarantee: a host somebody
-# had experimented with would keep its old setting.)
+# Set PER HOST in ../inventory.ini, not here, because SSO only works on a host
+# whose redirect URI is registered in the Okta application. ITS registered three
+# (dev, qa6, qa8); a host not on that list would reach Okta and be turned away
+# with "redirect_uri did not match", so switching it on for the whole group would
+# break exactly the hosts it could not help.
 #
-# When ITS returns the application: put the id and secret in the vault file
-# (../README.md), set this to true, and deploy. `make sso-on` on the host is the
-# way to try it before committing the change here.
-pssid_gui_sso: "false"
+# Empty here therefore means "each host decides", and the inventory says which.
+# `make sso-on` / `make sso-off` on a host still work for trying it before
+# committing a change.
+pssid_gui_sso: ""
 
-# ─── The four values ITS returns ────────────────────────────────────────────
+# Client id of the "ITS - pssid development" OIDC application.
 #
-# Everything needed to turn SSO on lives here or in the vault. Nothing else
-# about the deployment changes. See ../README.md#turning-sso-on for the order.
+# Committed deliberately. A client id is not a credential: it travels in the
+# browser's URL bar on every sign-in, and the OIDC threat model assumes the
+# attacker has it. Keeping it here rather than in the vault means the deployment
+# needs the vault for exactly one value -- the secret -- so there is no doubt
+# about what actually has to be protected.
+pssid_gui_oidc_client_id: 0oa25hltopzoZr4XR1d8
+
+# Issuer: the tenant, not a per-application value.
 #
-# 1. Issuer. Already set, because it is the tenant, not a per-app value. Change
-#    it only if ITS gives a CUSTOM authorization server (a URL with an
-#    /oauth2/... path) -- the groups claim then has to be configured on that
-#    server rather than the org one, which is worth confirming with them.
+# NOT independently confirmed. The AMP registration screens show the client id,
+# the claim and the redirect URIs but never the issuer, and this is the one value
+# a wrong guess makes fail loudly at startup rather than quietly: the server runs
+# OIDC discovery against it and refuses to boot if it does not resolve.
+#
+# If ITS instead gave a CUSTOM authorization server -- a URL with an /oauth2/...
+# path -- put that here, and confirm with them that edumember_ismemberof is
+# released on THAT server rather than the org one. Claims configured on the org
+# authorization server are not emitted by a custom one.
 pssid_gui_oidc_issuer: https://umich.okta.com
 
-# 2 & 3. Client id and secret do NOT belong in this file -- it is committed.
-#    They go in an encrypted vault, which .gitignore keeps untracked:
-#      ansible-vault create ../umich/group_vars/all/vault.yml
-#    holding pssid_gui_oidc_client_id and pssid_gui_oidc_client_secret.
+# Scope requested at sign-in.
 #
-# 4. The group -> permission mapping. Fill in the two strings EXACTLY as they
-#    appear in the token (Okta's Token Preview shows them), not the groups'
-#    display names: the match folds case and trims whitespace but is otherwise
-#    literal, so `pssid-gui` will not also match `pssid-gui-readonly`.
+# NOT the shipped default, deliberately. ITS releases membership through the
+# eduPerson `edumember_ismemberof` claim, and the default `openid profile email
+# groups` asks for a scope named `groups` -- which a tenant that does not define
+# one rejects outright with invalid_scope, failing every sign-in before the user
+# reaches a password prompt. `edumember` is the eduPerson convention that matches
+# the claim ITS actually configured.
 #
-#    This is set here rather than edited into shared/auth-groups.config.json on
-#    each host: the role discards deploy-time edits to tracked files before it
-#    pulls, so a hand edit would survive until the next upgrade and then revert
-#    to the shipped placeholders -- denying every user on a site that had been
-#    working. Set here, all four controllers get the same mapping every run.
-#
-# pssid_gui_auth_groups:
-#   <write-group-string-from-ITS>: write
-#   <read-group-string-from-ITS>: read
+# This is the second value to check if sign-in fails: see ../README.md#turning-sso-on.
+pssid_gui_sso_scope: "openid profile email edumember"
 
-# Write access WHILE SSO IS OFF. True, because with no identity provider yet
-# this is the only thing that keeps the interface usable: with it false every
-# form is greyed out and every save returns 403, which is a read-only demo
-# rather than a working controller.
+# Group -> permission mapping.
 #
-# The tradeoff is explicit and temporary: anyone who can reach the hostname can
-# change the probe configuration, so the site's access control is currently the
-# network in front of it. Setting pssid_gui_sso to true above makes this
-# setting irrelevant -- with SSO on, group membership decides read vs write
-# (see ../../shared/auth-groups.config.json) and this is never consulted.
-pssid_gui_open_write: "true"
+# ITS releases exactly ONE group, `pssid-gui-users` (AMP: Attribute Release), so
+# there is no read-only tier to map: this single group is every person who can
+# sign in at all, and it must grant WRITE or the deployment authenticates
+# everyone into an interface where every form is greyed out and every save is
+# refused -- which is not a safer configuration, just a broken one.
+#
+# The consequence, stated plainly: anyone in pssid-gui-users can change the probe
+# configuration. Membership of that MCommunity group IS the access control. To
+# separate operators from viewers later, ask ITS to release a second group and
+# map it to `read` here.
+#
+# Set here rather than edited into shared/auth-groups.config.json on each host:
+# the role discards deploy-time edits to tracked files before it pulls, so a hand
+# edit would survive until the next upgrade and then revert to the shipped
+# placeholders -- denying every user on a site that had been working.
+#
+# The string is what appears in the CLAIM, not a display name. Matching folds
+# case and trims whitespace but is otherwise exact, with no prefix matching.
+pssid_gui_auth_groups:
+  pssid-gui-users: write
+
+# Write access WHILE SSO IS OFF. Never consulted on a host with SSO on -- group
+# membership decides there -- so this now governs only the hosts whose redirect
+# URI ITS has not registered.
+#
+# FALSE, now that SSO exists. It was true while there was no identity provider,
+# because the alternative was a read-only demo; that justification is gone for
+# any host that can authenticate, and leaving it true would mean an
+# unauthenticated writable site the moment anyone ran `make sso-off`.
+#
+# A consequence worth knowing: an unregistered host (see ../inventory.ini) is now
+# read-only. That is the correct default -- it cannot authenticate anyone, so the
+# only alternative is anonymous write access -- but it means editing on such a
+# host needs `make writes-on` deliberately, or its redirect URI registered.
+pssid_gui_open_write: "false"
 
 # MiServer VMs have a small /var/lib partition; put Docker and containerd on the
 # roomier volume so an image build does not fill the root filesystem.

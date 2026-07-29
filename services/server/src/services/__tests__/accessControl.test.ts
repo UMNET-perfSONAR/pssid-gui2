@@ -78,6 +78,17 @@ describe('resolveUserGroups', () => {
     expect(resolveUserGroups({ edumember_is_member_of: ['staff'] })).toEqual(['staff']);
   });
 
+  // Okta writes the same eduPerson attribute WITHOUT separators inside
+  // "ismemberof". Matching is exact, so carrying only the other spelling let a
+  // real tenant authenticate every user and then deny them all: membership
+  // resolved to an empty list, which maps to no permission, and the symptom is
+  // identical to the provider never having released the claim at all.
+  it("reads Okta's spelling of the eduPerson claim", async () => {
+    const { resolveUserGroups } = await loadModule();
+    expect(resolveUserGroups({ edumember_ismemberof: ['pssid-gui-users'] }))
+      .toEqual(['pssid-gui-users']);
+  });
+
   it('reads the Shibboleth/Grouper isMemberOf claim', async () => {
     const { resolveUserGroups } = await loadModule();
     expect(resolveUserGroups({ isMemberOf: ['wifi-eng'] })).toEqual(['wifi-eng']);
@@ -88,8 +99,13 @@ describe('resolveUserGroups', () => {
     // would silently drop the membership that grants access.
     const { resolveUserGroups } = await loadModule();
     expect(
-      resolveUserGroups({ groups: ['a'], edumember_is_member_of: ['b'], isMemberOf: ['c'] })
-    ).toEqual(['a', 'b', 'c']);
+      resolveUserGroups({
+        groups: ['a'],
+        edumember_ismemberof: ['b'],
+        edumember_is_member_of: ['c'],
+        isMemberOf: ['d'],
+      })
+    ).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('accepts a single string, which some providers send instead of an array', async () => {

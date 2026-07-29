@@ -34,6 +34,15 @@ pssid_gui_oidc_client_id: "{{ lookup('env', 'PSSID_OIDC_CLIENT_ID') }}"
 # (inventory, vault, or -e) and that wins, as with any default.
 pssid_gui_oidc_client_secret: "{{ lookup('env', 'PSSID_OIDC_CLIENT_SECRET') }}"
 
+# Scope requested at sign-in. Empty leaves the host's existing value alone (the
+# installer's shipped default, "openid profile email groups", on a first
+# install). The right value is a property of the TENANT, not of this
+# application: a provider that does not define a scope named `groups` rejects
+# the entire authorization request with invalid_scope, and a federated eduPerson
+# tenant releases membership through `edumember` instead. Set it here once the
+# identity team confirms which one their authorization server honours.
+pssid_gui_sso_scope: ""
+
 # Group -> permission mapping, written to shared/auth-groups.config.json (the
 # file the server reads to turn OIDC group membership into read or write).
 # Keys are group names EXACTLY as the provider emits them in the token -- the
