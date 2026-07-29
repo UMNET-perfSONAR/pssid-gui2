@@ -56,10 +56,56 @@ the only access control until Okta is in place. Keep them off the public
 internet, or set `pssid_gui_open_write: "false"` and accept a read-only
 interface in the meantime.
 
-Turning SSO on is one edit to that file (plus the credentials below) — nothing
-else about the deployment changes, and `pssid_gui_open_write` stops being
-consulted the moment SSO is on. `make sso-status` on the host reports what is
-actually in force.
+`pssid_gui_open_write` stops being consulted the moment SSO is on, and
+`make sso-status` on a host reports what is actually in force.
+
+## Turning SSO on
+
+Four values arrive from ITS and each has exactly one home. Nothing else about
+the deployment changes.
+
+| # | From ITS | Goes in |
+|---|---|---|
+| 1 | Issuer URL | `pssid_gui_oidc_issuer` — **already set** to `https://umich.okta.com`; change only for a custom `/oauth2/...` authorization server |
+| 2 | Client id | `group_vars/all/vault.yml` (below) |
+| 3 | Client secret | `group_vars/all/vault.yml` (below) |
+| 4 | The two group strings, **exactly as they appear in a token** | `pssid_gui_auth_groups` in [`group_vars/pssid_gui.yml`](group_vars/pssid_gui.yml) — a commented block is waiting there |
+
+Then two switches in the same file:
+
+```yaml
+pssid_gui_sso: "true"
+pssid_gui_open_write: "false"   # ignored while SSO is on; correct resting state
+```
+
+Deploy **one host first**, so a mistake costs one controller rather than four:
+
+```bash
+make deploy-umich ANSIBLE_ARGS="--limit pssid-gui-qa7.miserver.it.umich.edu --ask-vault-pass"
+```
+
+Verify on that host before rolling out the rest:
+
+1. Sign in — Okta, then back to the dashboard with your name in the navigation bar.
+2. Open `/api/userinfo`. `groups` must list your Okta groups and `access_level`
+   must be `write`. **An empty `groups` means ITS has not released the claim** —
+   that is the single most common failure, and no amount of redeploying fixes it.
+3. A read-only user sees the badge and greyed forms.
+4. Sign out, revisit, and you are asked to authenticate again.
+5. `make security-check` passes.
+
+Then drop the `--limit` and deploy the other three.
+
+If the server will not stay up, it is refusing a bad setting on purpose and the
+log names which one:
+
+```bash
+docker compose logs server | grep -E 'SSO enabled|REFUSING TO START' -A3
+```
+
+To see what Okta actually sent without locking yourself out, set
+`SSO_REQUIRE_GROUP=false` in `services/server/.env` and `make restart`; sign-in
+then succeeds and `/api/userinfo` shows the raw claim. **Set it back to `true`.**
 
 ## The Okta secret
 

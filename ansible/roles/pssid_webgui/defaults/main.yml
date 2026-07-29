@@ -34,6 +34,25 @@ pssid_gui_oidc_client_id: "{{ lookup('env', 'PSSID_OIDC_CLIENT_ID') }}"
 # (inventory, vault, or -e) and that wins, as with any default.
 pssid_gui_oidc_client_secret: "{{ lookup('env', 'PSSID_OIDC_CLIENT_SECRET') }}"
 
+# Group -> permission mapping, written to shared/auth-groups.config.json (the
+# file the server reads to turn OIDC group membership into read or write).
+# Keys are group names EXACTLY as the provider emits them in the token -- the
+# match folds case and trims whitespace but is otherwise literal, with no prefix
+# matching. Values are "write", "read" or "none"; a group not listed grants
+# nothing, and a user in several groups gets the highest level among them.
+#
+#   pssid_gui_auth_groups:
+#     your-write-group: write
+#     your-read-group: read
+#
+# Empty (the default) leaves the checkout's own file untouched, so a deployment
+# that edits it by hand keeps working. Setting it here is what a multi-host
+# inventory needs: the role discards deploy-time edits to tracked files before
+# pulling (see "Discard deploy-time edits" in tasks/main.yml), so a mapping typed
+# into the checkout survives until the next upgrade and then reverts to the
+# shipped placeholders -- locking every real user out of a working deployment.
+pssid_gui_auth_groups: {}
+
 # Write access when SSO is off: "true" allows anyone who can reach the site to
 # change the configuration, "false" makes it read-only. Empty (the default)
 # leaves the decision to the installer, which preserves whatever the host's

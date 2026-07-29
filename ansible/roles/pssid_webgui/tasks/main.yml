@@ -137,6 +137,24 @@
 
 # ---- Production: run the installer ------------------------------------------
 
+# Group -> permission mapping, when the inventory supplies one. Runs after the
+# pull above, so the fresh checkout does not overwrite it, and before the
+# installer, whose precheck reads this file.
+- name: Write the OIDC group -> permission mapping
+  ansible.builtin.copy:
+    dest: "{{ pssid_gui_src }}/shared/auth-groups.config.json"
+    content: "{{ {'permissions': pssid_gui_auth_groups} | to_nice_json }}\n"
+    mode: "0644"
+    # In place, NOT Ansible's usual write-a-temp-file-and-rename: compose mounts
+    # this as a SINGLE FILE, and such a mount follows the inode. A rename leaves
+    # the running container reading the copy it started with, so the new mapping
+    # would be invisible however often the server re-read it (the same trap
+    # `sed -i` and vim set, documented in shared/accessControl.ts).
+    unsafe_writes: true
+  when:
+    - pssid_gui_mode == 'prod'
+    - pssid_gui_auth_groups | length > 0
+
 - name: Assemble the installer arguments
   ansible.builtin.set_fact:
     pssid_gui_installer_argv: >-

@@ -41,7 +41,37 @@ pssid_gui_hostname: "{{ inventory_hostname }}"
 # (../README.md), set this to true, and deploy. `make sso-on` on the host is the
 # way to try it before committing the change here.
 pssid_gui_sso: "false"
+
+# ─── The four values ITS returns ────────────────────────────────────────────
+#
+# Everything needed to turn SSO on lives here or in the vault. Nothing else
+# about the deployment changes. See ../README.md#turning-sso-on for the order.
+#
+# 1. Issuer. Already set, because it is the tenant, not a per-app value. Change
+#    it only if ITS gives a CUSTOM authorization server (a URL with an
+#    /oauth2/... path) -- the groups claim then has to be configured on that
+#    server rather than the org one, which is worth confirming with them.
 pssid_gui_oidc_issuer: https://umich.okta.com
+
+# 2 & 3. Client id and secret do NOT belong in this file -- it is committed.
+#    They go in an encrypted vault, which .gitignore keeps untracked:
+#      ansible-vault create ../umich/group_vars/all/vault.yml
+#    holding pssid_gui_oidc_client_id and pssid_gui_oidc_client_secret.
+#
+# 4. The group -> permission mapping. Fill in the two strings EXACTLY as they
+#    appear in the token (Okta's Token Preview shows them), not the groups'
+#    display names: the match folds case and trims whitespace but is otherwise
+#    literal, so `pssid-gui` will not also match `pssid-gui-readonly`.
+#
+#    This is set here rather than edited into shared/auth-groups.config.json on
+#    each host: the role discards deploy-time edits to tracked files before it
+#    pulls, so a hand edit would survive until the next upgrade and then revert
+#    to the shipped placeholders -- denying every user on a site that had been
+#    working. Set here, all four controllers get the same mapping every run.
+#
+# pssid_gui_auth_groups:
+#   <write-group-string-from-ITS>: write
+#   <read-group-string-from-ITS>: read
 
 # Write access WHILE SSO IS OFF. True, because with no identity provider yet
 # this is the only thing that keeps the interface usable: with it false every
