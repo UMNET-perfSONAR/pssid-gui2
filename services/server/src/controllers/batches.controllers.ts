@@ -154,7 +154,7 @@ const updateBatch = (async (req:Request, res:Response) => {
     // handful of indexed lookups, and it self-heals documents whose stored
     // *_ids drifted from the names (an old fast-path bug wrote names into the
     // ids array, which silently broke rename propagation).
-    await collection.updateOne({
+    const updated = await collection.updateOne({
       // String-coerce so an operator object can't turn this filter into a
       // NoSQL query targeting an arbitrary document (new_batchname is checked).
       "name": String(data.old_batchname)
@@ -167,6 +167,11 @@ const updateBatch = (async (req:Request, res:Response) => {
               "job_ids": await get_job_ids(client, data),
              }
        });
+
+    // See hosts.controllers.ts: a filter that matched nothing is not a save.
+    if (updated.matchedCount === 0) {
+      return res.status(404).json({message: `Batch "${data.old_batchname}" no longer exists. Reload the page and try again.`});
+    }
 
     if (data.old_batchname !== data.new_batchname) {              // trigger host and host_groups updates
       await updateCollection('hosts', 'batches', client);        // update hosts using batches collection

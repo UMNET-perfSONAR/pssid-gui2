@@ -178,13 +178,17 @@ const updateTest = (async (req:Request, res:Response) => {
     if (isDuplicate && body.old_testname !== body.new_testname) {
       return res.status(400).json({message:"Test already exists!"});
     }
-    await collection.updateOne({
+    const updated = await collection.updateOne({
       // String-coerce so an operator object can't turn this filter into a
       // NoSQL query targeting an arbitrary document (new_testname is checked).
       "name": String(body.old_testname)
     }, {$set:{"name": body.new_testname, "type": body.type,
               "spec": body.spec},
        })
+    // See hosts.controllers.ts: a filter that matched nothing is not a save.
+    if (updated.matchedCount === 0) {
+      return res.status(404).json({message: `Test "${body.old_testname}" no longer exists. Reload the page and try again.`});
+    }
     if (body.old_testname !== body.new_testname) {                // Trigger update in jobs collection
       await updateCollection('jobs', 'tests', client)           // update jobs using tests collection
     }

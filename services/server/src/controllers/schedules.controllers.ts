@@ -97,13 +97,18 @@ const updateSchedule = (async (req:Request, res:Response) => {
     if (isDuplicate && req.body.old_schedule !== req.body.new_schedule) {
       return res.status(400).json({message:"Schedule already exists!"});
     }
-    await collection.updateOne({
+    const updated = await collection.updateOne({
       // String-coerce so an operator object can't turn this filter into a
       // NoSQL query targeting an arbitrary document (new_schedule is checked).
       "name": String(req.body.old_schedule)
     }, {$set:{"name": req.body.new_schedule, "repeat":req.body.repeat}
        });
-    
+
+    // See hosts.controllers.ts: a filter that matched nothing is not a save.
+    if (updated.matchedCount === 0) {
+      return res.status(404).json({message: `Schedule "${req.body.old_schedule}" no longer exists. Reload the page and try again.`});
+    }
+
     if (req.body.old_schedule !== req.body.new_schedule) {      // Trigger update in batches collection
       await updateCollection('batches', 'schedules', client);        // update batches using schedules collection
     }

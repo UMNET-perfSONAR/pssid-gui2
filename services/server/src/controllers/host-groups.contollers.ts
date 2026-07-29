@@ -142,7 +142,7 @@ const updateHostGroup = (async (req:Request, res:Response) => {
     // handful of indexed lookups, and it self-heals documents whose stored
     // *_ids drifted from the names (an old fast-path bug wrote names into the
     // ids array, which silently broke rename propagation).
-    await collection.updateOne({
+    const updated = await collection.updateOne({
       // String-coerce so an operator object can't turn this filter into a
       // NoSQL query targeting an arbitrary document (new_hostgroup is checked).
       "name": String(data.old_hostgroup)
@@ -153,6 +153,12 @@ const updateHostGroup = (async (req:Request, res:Response) => {
               "host_ids": await get_host_ids(client, req.body),
              }
        });
+    // See the equivalent guard in hosts.controllers.ts: a filter that matched
+    // nothing is not a successful save, and answering 200 discarded the edit
+    // while telling the operator it had been stored.
+    if (updated.matchedCount === 0) {
+      return res.status(404).json({message: `Host group "${data.old_hostgroup}" no longer exists. Reload the page and try again.`});
+    }
     res.json(data);
   }
   catch(error) {

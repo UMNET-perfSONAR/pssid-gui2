@@ -369,91 +369,76 @@ jobs:
   # the check a registry-side scanner (Harbor/Trivy, Quay/Clair) performs on a
   # pushed image; running it here means a vulnerable base is caught on the pull
   # request, not after it is published and deployed.
-  #
-  # Gated at HIGH and CRITICAL with a fix available. Unfixed CVEs are reported
-  # but do not fail the build: there is nothing a maintainer can do about one
-  # except wait for the upstream image, and a permanently red pipeline is one
-  # nobody reads.
   image-scan:
     name: Container images (CVE scan)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # services/database/Dockerfile is a single FROM line, so its image is
+      # byte-for-byte the upstream mongo tag; that tag is scanned directly below
+      # rather than built here for nothing.
       - name: Build the images this deployment ships
         run: |
           docker build -f services/server/Dockerfile -t pssid-scan_server:ci .
           docker build -f services/client/Dockerfile -t pssid-scan_client:ci .
-          docker build -f services/database/Dockerfile -t pssid-scan_mongo:ci services/database
 
-      # Also scans the third-party images compose pulls at runtime. They are as
-      # much a part of the deployment's attack surface as the ones built above,
-      # and nginx in particular terminates TLS for every request.
-      - name: Pull the third-party runtime images
-        run: |
-          docker pull redis:7
-          docker pull nginx:stable-alpine
-
+      # ONE trivy invocation for every image, sharing a single cache directory.
+      # The vulnerability database is ~800 MB hydrated and is served from a
+      # rate-limited registry, so a step per image downloads it once per image --
+      # slow, and the most common way a scanning job becomes intermittently red
+      # for reasons that have nothing to do with the code.
+      #
+      # Every image is scanned even after one fails (`|| fail=1` rather than
+      # `set -e`): stopping at the first would hide the client, nginx and redis
+      # results behind a finding in the server image, so a maintainer fixing one
+      # CVE would not learn about the others until the next run.
+      #
+      # Gated at HIGH/CRITICAL *with a fix available*. Unfixed CVEs are reported
+      # in the advisory pass below but do not fail the build: there is nothing a
+      # maintainer can do about one except wait for the upstream image, and a
+      # permanently red pipeline is one nobody reads.
+      #
+      # trivy itself floats rather than being pinned, unlike every other image
+      # here. A scanner pinned to an old release scans with old detection logic,
+      # which is the one place staleness defeats the purpose -- and this image
+      # only ever runs in CI, never in a deployment.
       - name: Scan
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: pssid-scan_server:ci
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          format: table
+        run: |
+          mkdir -p "$PWD/.trivycache"
+          scan() {
+            echo "::group::$1"
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$PWD/.trivycache:/root/.cache/trivy" \
+              aquasec/trivy:latest image \
+                --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+                --exit-code 1 --format table "$1" || return 1
+            echo "::endgroup::"
+          }
+          fail=0
+          # The third-party images compose runs are as much a part of the
+          # deployment's attack surface as the two built above; nginx in
+          # particular terminates TLS for every request.
+          for img in pssid-scan_server:ci pssid-scan_client:ci \
+                     mongo:8.0.17 redis:7 nginx:stable-alpine; do
+            scan "$img" || { echo "::error::$img has fixable HIGH/CRITICAL CVEs"; fail=1; }
+          done
+          exit $fail
 
-      - name: Scan client
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: pssid-scan_client:ci
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          format: table
-
-      - name: Scan mongo
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: pssid-scan_mongo:ci
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          format: table
-
-      - name: Scan nginx (terminates TLS for every request)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: nginx:stable-alpine
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          format: table
-
-      - name: Scan redis (session store)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: redis:7
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          format: table
-
-      # Advisory: everything the gate above excludes -- unfixed CVEs, and
-      # MEDIUM/LOW. Visible in the job log so a maintainer can judge one that
-      # matters without it blocking every merge.
+      # Everything the gate excludes -- unfixed, and MEDIUM/LOW -- so a
+      # maintainer can judge one that matters without it blocking a merge. Runs
+      # even when the gate failed, and reuses the cache the gate populated.
       - name: Full report (advisory)
         if: always()
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: pssid-scan_server:ci
-          severity: LOW,MEDIUM,HIGH,CRITICAL
-          ignore-unfixed: false
-          exit-code: '0'
-          format: table
+        run: |
+          for img in pssid-scan_server:ci pssid-scan_client:ci; do
+            echo "::group::$img (advisory)"
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$PWD/.trivycache:/root/.cache/trivy" \
+              aquasec/trivy:latest image \
+                --scanners vuln --severity LOW,MEDIUM,HIGH,CRITICAL \
+                --exit-code 0 --format table "$img" || true
+            echo "::endgroup::"
+          done

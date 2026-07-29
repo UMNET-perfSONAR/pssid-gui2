@@ -145,7 +145,7 @@ const updateJob = (async (req:Request, res:Response) => {
     // handful of indexed lookups, and it self-heals documents whose stored
     // *_ids drifted from the names (an old fast-path bug wrote names into the
     // ids array, which silently broke rename propagation).
-    await collection.updateOne({
+    const updated = await collection.updateOne({
       // String-coerce so an operator object can't turn this filter into a
       // NoSQL query targeting an arbitrary document (new_job is checked).
       "name": String(body.old_job)
@@ -154,6 +154,10 @@ const updateJob = (async (req:Request, res:Response) => {
               "tests": body.tests
              }
        })
+    // See hosts.controllers.ts: a filter that matched nothing is not a save.
+    if (updated.matchedCount === 0) {
+      return res.status(404).json({message: `Job "${body.old_job}" no longer exists. Reload the page and try again.`});
+    }
     if (body.old_job !== body.new_job) {                           // Trigger update in batches collection
       await updateCollection('batches', 'jobs', client);         // update batches using jobs collection
     }

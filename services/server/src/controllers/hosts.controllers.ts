@@ -156,7 +156,7 @@ const updateHost = (async (req:Request, res:Response) => {
     // handful of indexed lookups, and it self-heals documents whose stored
     // *_ids drifted from the names (an old fast-path bug wrote names into the
     // ids array, which silently broke rename propagation).
-    await collection.updateOne({
+    const updated = await collection.updateOne({
       // Coerce to a string so an operator object in old_hostname (e.g.
       // {"$ne": null}) can't turn this filter into a NoSQL query that
       // rewrites an arbitrary document. new_hostname is already string-checked.
@@ -165,6 +165,15 @@ const updateHost = (async (req:Request, res:Response) => {
               "batch_ids": await get_batch_ids(client, req.body),
               "data": body.data},
        });
+    // A filter that matched nothing is not a successful save. This used to
+    // answer 200 with the submitted body regardless, so an edit to an object
+    // that had been renamed or deleted since the form loaded -- a second
+    // operator, a restored backup, a tab left open -- was reported as saved and
+    // silently discarded. It also ran the rename cascade below for a rename
+    // that never happened.
+    if (updated.matchedCount === 0) {
+      return res.status(404).json({message: `Host "${body.old_hostname}" no longer exists. Reload the page and try again.`});
+    }
     if (body.new_hostname !== body.old_hostname) {            // Trigger update in hosts
       await updateCollection('host_groups', 'hosts', client);      // update host_groups using hosts collection
     }

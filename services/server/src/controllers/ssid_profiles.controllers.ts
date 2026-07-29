@@ -158,7 +158,7 @@ const updateSSIDProfile = (async (req:Request, res:Response) => {
     if (!isValidScript(layer2_script, 'layer2_path') || !isValidScript(layer3_script, 'layer3_path')) {
       return res.status(400).json({message: "Invalid method selection"});
     }
-    await collection.updateOne({
+    const updated = await collection.updateOne({
       // String-coerce so an operator object can't turn this filter into a
       // NoSQL query targeting an arbitrary document (new_ssid_name is checked).
       "name": String(body.old_ssid_name)
@@ -168,7 +168,12 @@ const updateSSIDProfile = (async (req:Request, res:Response) => {
          "layer2_script": layer2_script,
          "layer3_script": layer3_script
        }})
-    
+
+    // See hosts.controllers.ts: a filter that matched nothing is not a save.
+    if (updated.matchedCount === 0) {
+      return res.status(404).json({message: `SSID profile "${body.old_ssid_name}" no longer exists. Reload the page and try again.`});
+    }
+
     if (body.old_ssid_name !== body.new_ssid_name) {                   // Trigger update in batches collection
       await updateCollection('batches', 'ssid_profiles', client)      // update batches using ssid_profiles collection
     }

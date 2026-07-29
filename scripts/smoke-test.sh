@@ -217,6 +217,18 @@ req POST /api/host-groups/create-hostgroup '{"name":"smoke_bad_group","batches":
 check "server rejects non-hostname group name" 400 "$STATUS" '' "$BODY"
 req POST /api/tests/create-test '{"name":"smoke-bad-test","type":"no-such-template","spec":[]}'
 check "server rejects unknown test type" 400 "$STATUS" '' "$BODY"
+req POST /api/hosts/create-host '{"name":"smoke-probe-2","batches":[],"data":{"bad-key":"x"}}'
+check "server rejects a metadata key a \$reference cannot name" 400 "$STATUS" '' "$BODY"
+req POST /api/hosts/create-host '{"name":"smoke-probe-2","batches":[],"data":{"nested":{"a":1}}}'
+check "server rejects a non-string metadata value" 400 "$STATUS" '' "$BODY"
+
+# An update whose target no longer exists must not report success. This answered
+# 200 with the submitted body, so an edit to an object another operator had
+# renamed or deleted was silently discarded while the interface said "saved".
+req PUT /api/hosts/update-host '{"old_hostname":"smoke-gone","new_hostname":"smoke-gone","batches":[],"data":{}}'
+check "update of a missing host is 404, not a silent no-op" 404 "$STATUS" '' "$BODY"
+req PUT /api/schedules/update-schedule '{"old_schedule":"smoke-gone","new_schedule":"smoke-gone","repeat":"30 6 * * *"}'
+check "update of a missing schedule is 404" 404 "$STATUS" '' "$BODY"
 
 # ---- Reference scrubbing: deleting an object cleans up references to it ---------
 # smoke-probe-1 and smoke-group still reference smoke-batch here; deleting the
