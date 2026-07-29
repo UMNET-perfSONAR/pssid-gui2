@@ -555,3 +555,16 @@ describe('sliceHostView (per-host Probe configuration view)', () => {
     expect(view.problems).toEqual([]);
   });
 });
+
+// The guard that keeps a stored pattern from hanging the server. matchesHostPattern
+// runs on the single thread serving every request, so a pattern of the
+// catastrophic shape does not slow one request down -- it stops the deployment.
+describe('matchesHostPattern refuses to evaluate a catastrophic pattern', () => {
+  it('returns promptly instead of backtracking', () => {
+    const hostile = 'a'.repeat(40) + '!';
+    const started = Date.now();
+    expect(matchesHostPattern('(a+)+$', hostile)).toBe(false);
+    // Unguarded this was ~24s at 31 characters, doubling for each one after.
+    expect(Date.now() - started).toBeLessThan(100);
+  });
+});

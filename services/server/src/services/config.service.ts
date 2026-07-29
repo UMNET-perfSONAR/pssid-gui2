@@ -3,6 +3,7 @@
 import { MongoClient } from 'mongodb';
 import { connectToMongoDB } from './database.service';
 import { forLog } from './log.service';
+import { matchesHostPattern, isRiskyHostPattern } from './hostPattern';
 import { execFile } from 'node:child_process';
 
 import path from 'path';
@@ -607,34 +608,13 @@ export function stripResolvedMetadata(obj: any): any {
   return obj;
 }
 
-/**
- * Host patterns (hosts_regex) are matched on the probe by the pSSID daemon with
- * Python's `re.match` (see `find_matching_regex` in pssid-daemon.py). That means
- * a hosts_regex entry is a FULL regular expression, anchored at the START of the
- * hostname but NOT the end (re.match matches a prefix), and an invalid pattern is
- * skipped rather than fatal.
- *
- * We mirror that here so the GUI's Preview and per-host view show the same group
- * membership the daemon will compute:
- *  - prepend '^' (re.match anchors the start) and do NOT append '$' (re.match
- *    does not anchor the end, so a bare prefix like "probe" matches
- *    "probe-01"); end a pattern with '$' for an exact match.
- *  - compile the pattern as-is: '.', '*', '+', '?', '[...]', '(...)', '|', '\d'
- *    etc. are all honored, exactly like Python re (they are not treated as
- *    literal characters).
- *  - an invalid pattern (e.g. a bare '*') throws in RegExp and is treated as no
- *    match, the same way the daemon's caught re.error skips it.
- * JavaScript and Python regex agree for the character classes and quantifiers
- * hostnames use.
- */
-export function matchesHostPattern(pattern: string, hostname: string): boolean {
-  if (typeof pattern !== 'string' || pattern.length === 0) return false;
-  try {
-    return new RegExp('^' + pattern).test(hostname);
-  } catch {
-    return false;
-  }
-}
+// Host-pattern matching, and the safety rule deciding which patterns may be
+// evaluated at all, live in hostPattern.ts. They moved there so the controllers
+// can reuse the rule at write time without services importing controllers.
+// Re-exported here because this is where every caller has always found it.
+// (A bare `export ... from` would not bind the name locally, and this module
+// calls matchesHostPattern itself in assemble_config_object and build_host_view.)
+export { matchesHostPattern, isRiskyHostPattern };
 
 /**
  * The slice of the generated config that one probe acts on: its merged

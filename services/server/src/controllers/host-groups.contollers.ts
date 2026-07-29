@@ -3,7 +3,7 @@ import { MongoClient, Db, MongoServerError, Collection, ObjectId } from "mongodb
 import { connectToMongoDB } from '../services/database.service';
 import { get_batch_ids, get_host_ids } from '../services/utility.services';
 import { create_config_file } from '../services/config.service';
-import { isNameInDB, isValidRfc1123Name, isNameArray, metadataError, sendDeleted, provisionTarget } from './helpers';
+import { isNameInDB, isValidRfc1123Name, isNameArray, metadataError, sendDeleted, provisionTarget, isRiskyHostPattern } from './helpers';
 
 /**
  * Field rules for a host group payload beyond the name. hosts_regex entries
@@ -20,6 +20,15 @@ const hostGroupFieldError = (body: any): string | null => {
   const regexOk = (r: unknown) => typeof r === 'string' && r.length > 0 && r.length <= 256 && !/[\r\n]/.test(r);
   if (!Array.isArray(body.hosts_regex) || !body.hosts_regex.every(regexOk)) {
     return "Host patterns must be single-line strings";
+  }
+  // Shape, not just size: config generation runs every pattern against every
+  // host name on the one thread that serves all requests, and a quantified
+  // group containing a quantifier backtracks for hours on a name well within
+  // the length limit above. See isRiskyHostPattern.
+  const risky = body.hosts_regex.find((r: unknown) => isRiskyHostPattern(r));
+  if (risky !== undefined) {
+    return `Host pattern "${risky}" nests a repeat inside a repeated group ` +
+      `(like "(a+)+"), which can take hours to evaluate. Simplify it, for example to ".*".`;
   }
   const metaError = metadataError(body.data);
   if (metaError) {

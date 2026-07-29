@@ -14,6 +14,7 @@ import {
   isValidCron,
   sendDeleted,
   provisionTarget,
+  isRiskyHostPattern,
 } from '../helpers';
 
 // These are the API-level floor rules. The client forms enforce the same or
@@ -231,5 +232,45 @@ describe('metadataError (host and group metadata)', () => {
     expect(metadataError(many)).toMatch(/limited to 100 keys/);
     expect(metadataError({ a: 'x'.repeat(1025) })).toMatch(/1024 characters or fewer/);
     expect(metadataError({ a: 'x'.repeat(1024) })).toBeNull();
+  });
+});
+
+// matchesHostPattern compiles these and runs them against every host name during
+// config generation, on the single thread that serves every request. Node cannot
+// time-limit a regex, so one pathological pattern hangs the whole server rather
+// than slowing one request: `(a+)+$` against a 31-character name takes 24s, and
+// each further character doubles it.
+describe('isRiskyHostPattern (catastrophic backtracking)', () => {
+  it('does NOT reject the patterns operators actually write', () => {
+    // `.*` is the shipped `all` group; rejecting it would break every install.
+    expect(isRiskyHostPattern('.*')).toBe(false);
+    expect(isRiskyHostPattern('probe-.*')).toBe(false);
+    expect(isRiskyHostPattern(String.raw`^probe[0-9]+\.example\.edu$`)).toBe(false);
+    expect(isRiskyHostPattern('(foo|bar).*')).toBe(false);
+    expect(isRiskyHostPattern('(a|b)+')).toBe(false);   // quantified, but no nesting
+    expect(isRiskyHostPattern(String.raw`rpi4-\d{2}`)).toBe(false);
+    expect(isRiskyHostPattern('[a-z+*]+')).toBe(false); // quantifiers inside a class are literal
+  });
+
+  it('rejects a quantifier nested inside a quantified group', () => {
+    expect(isRiskyHostPattern('(a+)+')).toBe(true);
+    expect(isRiskyHostPattern('(a*)*')).toBe(true);
+    expect(isRiskyHostPattern('(a+)*')).toBe(true);
+    expect(isRiskyHostPattern('(x+x+)+y')).toBe(true);
+    expect(isRiskyHostPattern('^((a+)+)$')).toBe(true);
+    expect(isRiskyHostPattern('(a{2,}){3,}')).toBe(true);
+  });
+
+  it('is not fooled by escapes', () => {
+    // String.raw so the backslash reaches the validator: an escaped + is a
+    // literal plus, not a quantifier, so the group body has nothing to nest.
+    expect(isRiskyHostPattern(String.raw`(a\+)+`)).toBe(false);
+    expect(isRiskyHostPattern(String.raw`(\(a\))+`)).toBe(false);
+  });
+
+  it('ignores non-strings and unbalanced patterns rather than throwing', () => {
+    expect(isRiskyHostPattern(42)).toBe(false);
+    expect(isRiskyHostPattern(null)).toBe(false);
+    expect(isRiskyHostPattern('(a+')).toBe(false);   // RegExp itself rejects this
   });
 });

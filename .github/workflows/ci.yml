@@ -365,13 +365,26 @@ jobs:
   # knows anything about the OPERATING SYSTEM packages underneath: openssl, zlib,
   # glibc and the rest, inherited from node:22-slim, mongo, redis and nginx. A
   # base image that was clean when it was pinned accumulates CVEs without a line
-  # of this project's code changing, and nothing in CI noticed until now. This is
-  # the check a registry-side scanner (Harbor/Trivy, Quay/Clair) performs on a
-  # pushed image; running it here means a vulnerable base is caught on the pull
-  # request, not after it is published and deployed.
+  # of this project's code changing. This is the check a registry-side scanner
+  # (Harbor/Trivy, Quay/Clair) performs on a pushed image.
+  #
+  # ADVISORY by default -- it reports, it does not block. Three of the five
+  # images are third-party bases whose CVEs cannot be fixed here at all: the only
+  # remedies are waiting for upstream or moving the pin, neither of which belongs
+  # to the pull request that happens to be open. A gate that is red on day one
+  # for reasons no author can act on is one everybody learns to ignore, which
+  # costs more than it catches. Set GATE_ON_FINDINGS once the baseline is known
+  # and deliberately accepted.
+  #
+  # A scan that FAILS TO RUN still fails the build. A scanner that reports
+  # nothing because it never started is worse than no scanner, since it reads as
+  # a clean result.
   image-scan:
     name: Container images (CVE scan)
     runs-on: ubuntu-latest
+    env:
+      # "true" makes fixable HIGH/CRITICAL findings blocking. See above.
+      GATE_ON_FINDINGS: "false"
     steps:
       - uses: actions/checkout@v4
 
@@ -383,21 +396,10 @@ jobs:
           docker build -f services/server/Dockerfile -t pssid-scan_server:ci .
           docker build -f services/client/Dockerfile -t pssid-scan_client:ci .
 
-      # ONE trivy invocation for every image, sharing a single cache directory.
-      # The vulnerability database is ~800 MB hydrated and is served from a
-      # rate-limited registry, so a step per image downloads it once per image --
-      # slow, and the most common way a scanning job becomes intermittently red
-      # for reasons that have nothing to do with the code.
-      #
-      # Every image is scanned even after one fails (`|| fail=1` rather than
-      # `set -e`): stopping at the first would hide the client, nginx and redis
-      # results behind a finding in the server image, so a maintainer fixing one
-      # CVE would not learn about the others until the next run.
-      #
-      # Gated at HIGH/CRITICAL *with a fix available*. Unfixed CVEs are reported
-      # in the advisory pass below but do not fail the build: there is nothing a
-      # maintainer can do about one except wait for the upstream image, and a
-      # permanently red pipeline is one nobody reads.
+      # ONE trivy invocation per image, all sharing a single cache directory: the
+      # vulnerability database is large and served from a rate-limited registry,
+      # so downloading it per image is both slow and a common source of a job
+      # that goes red for reasons unrelated to the code.
       #
       # trivy itself floats rather than being pinned, unlike every other image
       # here. A scanner pinned to an old release scans with old detection logic,
@@ -405,40 +407,90 @@ jobs:
       # only ever runs in CI, never in a deployment.
       - name: Scan
         run: |
-          mkdir -p "$PWD/.trivycache"
-          scan() {
-            echo "::group::$1"
-            docker run --rm \
-              -v /var/run/docker.sock:/var/run/docker.sock \
-              -v "$PWD/.trivycache:/root/.cache/trivy" \
-              aquasec/trivy:latest image \
-                --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
-                --exit-code 1 --format table "$1" || return 1
-            echo "::endgroup::"
-          }
-          fail=0
+          mkdir -p "$PWD/.trivycache" "$PWD/.trivyout"
+          scan_failed=0
+          findings=0
+          summary=""
+
           # The third-party images compose runs are as much a part of the
           # deployment's attack surface as the two built above; nginx in
           # particular terminates TLS for every request.
           for img in pssid-scan_server:ci pssid-scan_client:ci \
                      mongo:8.0.17 redis:7 nginx:stable-alpine; do
-            scan "$img" || { echo "::error::$img has fixable HIGH/CRITICAL CVEs"; fail=1; }
-          done
-          exit $fail
+            safe="$(printf '%s' "$img" | tr ':/' '__')"
 
-      # Everything the gate excludes -- unfixed, and MEDIUM/LOW -- so a
-      # maintainer can judge one that matters without it blocking a merge. Runs
-      # even when the gate failed, and reuses the cache the gate populated.
-      - name: Full report (advisory)
-        if: always()
-        run: |
-          for img in pssid-scan_server:ci pssid-scan_client:ci; do
-            echo "::group::$img (advisory)"
+            echo "::group::trivy: $img"
+            # --exit-code 0 is deliberate. With it set to 1, "found a CVE" and
+            # "the scanner could not run" are the same exit status, so a broken
+            # invocation reads as a vulnerable image and the real fault stays
+            # hidden. Findings are counted from the JSON below instead, which
+            # leaves a non-zero exit meaning exactly one thing: the scan failed.
+            # `|| rc=$?`, not a bare call followed by `rc=$?`. A run: block is
+            # executed with `bash -e`, so a failing command at the top level
+            # aborts the whole step immediately and the next line never runs --
+            # the status would never be read, and the summary below never
+            # printed. Inside a `||` list errexit does not fire.
+            rc=0
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v "$PWD/.trivycache:/root/.cache/trivy" \
+              -v "$PWD/.trivyout:/out" \
               aquasec/trivy:latest image \
-                --scanners vuln --severity LOW,MEDIUM,HIGH,CRITICAL \
-                --exit-code 0 --format table "$img" || true
+                --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+                --exit-code 0 --format json --output "/out/${safe}.json" "$img" \
+              || rc=$?
+            # Unconditional, and NOT after a `|| return`: a group left open on
+            # failure collapses the error into it, which is precisely the output
+            # someone needs to see when this step goes red.
             echo "::endgroup::"
+
+            if [ "$rc" -ne 0 ] || [ ! -s "$PWD/.trivyout/${safe}.json" ]; then
+              summary="${summary}  ERROR  ${img} -- trivy exited ${rc}, no report produced"$'\n'
+              scan_failed=1
+              continue
+            fi
+
+            # Same errexit reasoning: a malformed report must be reported, not
+            # kill the step silently before the summary is printed.
+            n="$(jq '[.Results[]?.Vulnerabilities // [] | length] | add // 0' "$PWD/.trivyout/${safe}.json" 2>/dev/null || echo unknown)"
+            if [ "$n" = "unknown" ]; then
+              summary="${summary}  ERROR  ${img} -- report produced but could not be parsed"$'\n'
+              scan_failed=1
+              continue
+            fi
+            findings=$((findings + n))
+            if [ "$n" -eq 0 ]; then
+              summary="${summary}  ok     ${img}"$'\n'
+            else
+              summary="${summary}  ${n} fixable HIGH/CRITICAL  ${img}"$'\n'
+              echo "::group::details: $img"
+              docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -v "$PWD/.trivycache:/root/.cache/trivy" \
+                aquasec/trivy:latest image \
+                  --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+                  --exit-code 0 --format table "$img" || true
+              echo "::endgroup::"
+            fi
           done
+
+          # Printed outside every group, so the result is legible without
+          # expanding anything.
+          echo ""
+          echo "CVE summary (fixable HIGH/CRITICAL only)"
+          printf '%s' "$summary"
+          echo ""
+
+          if [ "$scan_failed" -ne 0 ]; then
+            echo "::error::Trivy could not scan one or more images. This is a broken check, not a vulnerability result -- see the ERROR lines above."
+            exit 1
+          fi
+
+          if [ "$findings" -gt 0 ]; then
+            if [ "$GATE_ON_FINDINGS" = "true" ]; then
+              echo "::error::${findings} fixable HIGH/CRITICAL CVEs across the deployment images"
+              exit 1
+            fi
+            echo "::warning::${findings} fixable HIGH/CRITICAL CVEs (advisory; set GATE_ON_FINDINGS to block)"
+          fi
+          exit 0

@@ -160,6 +160,11 @@ export const isPlainObjectOrAbsent = (v: unknown): boolean =>
   v === undefined || v === null ||
   (typeof v === 'object' && !Array.isArray(v));
 
+// The catastrophic-backtracking rule lives beside the matcher it protects
+// (../services/hostPattern), so the write-time check here and the
+// evaluation-time guard there apply one definition rather than two.
+export { isRiskyHostPattern } from '../services/hostPattern';
+
 /**
  * A metadata key, which is exactly what a `$reference` can name.
  *
