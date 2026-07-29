@@ -190,6 +190,32 @@ describe('applyMetadata', () => {
     });
   });
 
+  // `key in meta` walks the prototype chain, so it answers true for every name
+  // Object.prototype defines. A group key called `constructor` or `toString`
+  // looked to the merge like one the host had already set, and was dropped from
+  // a host that had never set it.
+  it('inherits group keys that collide with Object.prototype names', () => {
+    const hosts = { hosts: [{ name: 'p1', data: { site: 'lab' } }] };
+    const groups = {
+      host_groups: [{
+        name: 'g',
+        hosts: ['p1'],
+        data: { constructor: 'c', toString: 't', valueOf: 'v', hasOwnProperty: 'h' },
+      }],
+    };
+    applyMetadata(hosts, groups);
+    expect((hosts.hosts[0] as any).metadata).toEqual({
+      site: 'lab', constructor: 'c', toString: 't', valueOf: 'v', hasOwnProperty: 'h',
+    });
+  });
+
+  it('still lets the host win on a prototype-named key it does define', () => {
+    const hosts = { hosts: [{ name: 'p1', data: { toString: 'host' } }] };
+    const groups = { host_groups: [{ name: 'g', hosts: ['p1'], data: { toString: 'group' } }] };
+    applyMetadata(hosts, groups);
+    expect((hosts.hosts[0] as any).metadata.toString).toBe('host');
+  });
+
   it('gives a host with no groups its own data only', () => {
     const hosts = { hosts: [{ name: 'solo', data: { a: 1 } }] };
     applyMetadata(hosts, { host_groups: [] });

@@ -128,10 +128,93 @@ export const isValidSsidName = (v: unknown): boolean => {
 export const isNameArray = (v: unknown): boolean =>
   Array.isArray(v) && v.every((x) => isValidObjectName(x));
 
+/**
+ * The target of a provision request: '*' for the whole config, or one object
+ * name. Returns null when the payload names nothing valid.
+ *
+ * This value becomes an ENTRY IN THE ARGUMENT VECTOR of the operator's
+ * provision script (execFile in config.service.ts), so it is not ordinary
+ * request data. Two things made the unvalidated version a real problem:
+ *
+ *  * A value beginning with `-` is read as an OPTION by whatever that script
+ *    forwards it to -- ansible-playbook, rsync, getopts. execFile spawns no
+ *    shell, so metacharacters were already inert, but argument injection needs
+ *    no shell. The name floor requires a leading letter or digit, which closes
+ *    it.
+ *  * A non-string (`{"name": {...}}`) reached execFile, which throws on a
+ *    non-string argv entry -- turning a bad request into a 500.
+ *
+ * The empty array is the GUI's own way of saying "the whole config"
+ * (settings.store.ts generateConfig), and is the only shape it ever sends.
+ */
+export const provisionTarget = (body: unknown): string | null => {
+  if (Array.isArray(body)) return body.length === 0 ? '*' : null;
+  if (body === null || typeof body !== 'object') return null;
+  const name = (body as Record<string, unknown>).name;
+  if (name === '*') return '*';
+  return isValidObjectName(name) ? (name as string) : null;
+};
+
 /** Free-form metadata: absent, or a plain (non-array) object. */
 export const isPlainObjectOrAbsent = (v: unknown): boolean =>
   v === undefined || v === null ||
   (typeof v === 'object' && !Array.isArray(v));
+
+/**
+ * A metadata key, which is exactly what a `$reference` can name.
+ *
+ * The daemon resolves `$key` per host from that host's effective metadata, and
+ * substitution stops at the first character outside this set -- so a key with a
+ * hyphen in it can be stored but never referenced: `$external-dest` resolves as
+ * `$external` followed by a literal `-dest`, silently producing the wrong test
+ * target rather than an error. Matching the reference syntax here is what makes
+ * "it saved" and "it works on the probe" the same condition.
+ *
+ * Deliberately identical to the client's validInterfaceName reference rule
+ * (services/client/src/utils/validators.ts) so the form and the API agree.
+ */
+const METADATA_KEY = /^[A-Za-z0-9_]{1,64}$/;
+
+/** Upper bounds. Generous for this domain, and they stop one request writing an
+ *  unbounded blob into every probe's slice of the generated config. */
+const METADATA_MAX_KEYS = 100;
+const METADATA_MAX_VALUE = 1024;
+
+/**
+ * Free-form metadata, checked as the daemon actually consumes it: a FLAT object
+ * of string key/value pairs. Returns an error message, or null when valid.
+ *
+ * `isPlainObjectOrAbsent` above accepted any non-array object, so a nested
+ * object or an array value passed the API, was stored, and was written into
+ * pssid_config.json -- where the daemon expects a scalar to substitute. Nothing
+ * rejected it at any point: the probe received a config it could not use, and
+ * the GUI reported success. The interface can only ever produce flat strings
+ * (both metadata inputs are text fields), so this rejects nothing a form can
+ * make -- only payloads sent directly to the API.
+ */
+export const metadataError = (v: unknown): string | null => {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== 'object' || Array.isArray(v)) {
+    return "Metadata must be an object of key/value pairs";
+  }
+  const entries = Object.entries(v as Record<string, unknown>);
+  if (entries.length > METADATA_MAX_KEYS) {
+    return `Metadata is limited to ${METADATA_MAX_KEYS} keys`;
+  }
+  for (const [key, value] of entries) {
+    if (!METADATA_KEY.test(key)) {
+      return `Metadata key "${key}" must be letters, numbers or underscores ` +
+        `(up to 64), so it can be referenced as $${key}`;
+    }
+    if (typeof value !== 'string') {
+      return `Metadata value for "${key}" must be text`;
+    }
+    if (value.length > METADATA_MAX_VALUE) {
+      return `Metadata value for "${key}" must be ${METADATA_MAX_VALUE} characters or fewer`;
+    }
+  }
+  return null;
+};
 
 /**
  * Standard 5-field cron expression (minute hour day-of-month month weekday).

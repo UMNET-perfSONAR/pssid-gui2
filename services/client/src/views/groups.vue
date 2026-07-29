@@ -97,6 +97,7 @@
             </div>
             <label class="form-group-label"> Metadata </label>
             <dynamic_add_data class="metadata-fields" :addedData="form.meta"></dynamic_add_data>
+            <small v-if="metaError" class="text-danger" role="alert">{{ metaError }}</small>
           </fieldset>
         </form>
       </div>
@@ -120,7 +121,7 @@
  import PageHeader from '../components/PageHeader.vue';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
- import { validName } from "../utils/validators.ts"
+ import { validName, validMetadataRows } from "../utils/validators.ts"
 
  const blankForm = () => ({ name: '', batches: [], regex: [], meta: [] });
  const cloneForm = (form) => ({
@@ -212,8 +213,13 @@
          (g) => g.name === name && g.name !== this.selectedName
        );
      },
+     metaError() {
+       return validMetadataRows(this.form.meta).error;
+     },
      formValid() {
-       return validName(this.form.name).valid && !this.isDuplicateName;
+       return validName(this.form.name).valid
+         && !this.isDuplicateName
+         && validMetadataRows(this.form.meta).valid;
      }
    },
 

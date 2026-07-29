@@ -86,6 +86,7 @@
             </div>
             <label class="form-group-label"> Metadata </label>
             <dynamic_add_data class="metadata-fields" :addedData="form.meta"></dynamic_add_data>
+            <small v-if="metaError" class="text-danger" role="alert">{{ metaError }}</small>
           </fieldset>
         </form>
       </div>
@@ -177,7 +178,7 @@
  import PageHeader from '../components/PageHeader.vue';
  import config from '../shared/config';
  import { isFormDisabled } from "../utils/formControl.ts"
- import { validHostOrIp } from "../utils/validators.ts"
+ import { validHostOrIp, validMetadataRows } from "../utils/validators.ts"
 
  const blankForm = () => ({ name: '', batches: [], meta: [] });
  const cloneForm = (form) => ({
@@ -253,8 +254,13 @@
          (h) => h.name === name && h.name !== this.selectedName
        );
      },
+     metaError() {
+       return validMetadataRows(this.form.meta).error;
+     },
      formValid() {
-       return validHostOrIp(this.form.name).valid && !this.isDuplicateName;
+       return validHostOrIp(this.form.name).valid
+         && !this.isDuplicateName
+         && validMetadataRows(this.form.meta).valid;
      },
      // The JSON dump should mirror the slice of pssid_config.json this host acts
      // on, so drop `problems` - it is a GUI-only annotation, not part of the

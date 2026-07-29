@@ -12,6 +12,7 @@ import {
   validCron,
   describeCron,
   cronPeriodMinutes,
+  validMetadataRows,
 } from '../validators';
 
 // Every form field validator in one place. Each case states the rule it pins.
@@ -217,5 +218,48 @@ describe('cronPeriodMinutes (frequency ranking for schedule sort order)', () => 
 
   it('sorts an invalid expression to the end', () => {
     expect(cronPeriodMinutes('not a cron')).toBe(Infinity);
+  });
+});
+
+// Mirrors metadataError() on the server. Enforced in the form because the
+// failure it prevents is silent on the probe rather than loud here: a hyphenated
+// key saves fine and is simply never resolved, so the test runs against the
+// wrong target with nothing reporting an error.
+describe('validMetadataRows', () => {
+  it('accepts flat key/value rows and ignores entirely blank ones', () => {
+    expect(validMetadataRows([]).valid).toBe(true);
+    expect(validMetadataRows([{ key: 'external_dest', value: 'www.example.edu' }]).valid).toBe(true);
+    expect(validMetadataRows([{ key: 'ifacename', value: 'wlan0' }, { key: '', value: '' }]).valid).toBe(true);
+    // A key with no value yet is legitimate; the form keeps that row.
+    expect(validMetadataRows([{ key: 'external_dest', value: '' }]).valid).toBe(true);
+  });
+
+  it('rejects a value with no key, which the form can otherwise submit', () => {
+    const r = validMetadataRows([{ key: '', value: 'orphan' }]);
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/must be letters, numbers or underscores/);
+  });
+
+  it('rejects keys a $reference cannot name', () => {
+    expect(validMetadataRows([{ key: 'external-dest', value: 'x' }]).valid).toBe(false);
+    expect(validMetadataRows([{ key: 'has space', value: 'x' }]).valid).toBe(false);
+    expect(validMetadataRows([{ key: 'a.b', value: 'x' }]).valid).toBe(false);
+    expect(validMetadataRows([{ key: 'k'.repeat(65), value: 'x' }]).valid).toBe(false);
+  });
+
+  it('rejects a duplicate key, which would silently keep only the last value', () => {
+    const r = validMetadataRows([
+      { key: 'site', value: 'library' },
+      { key: 'site', value: 'annex' },
+    ]);
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/only appear once/);
+  });
+
+  it('bounds value length and key count', () => {
+    expect(validMetadataRows([{ key: 'a', value: 'x'.repeat(1025) }]).valid).toBe(false);
+    expect(validMetadataRows([{ key: 'a', value: 'x'.repeat(1024) }]).valid).toBe(true);
+    const many = Array.from({ length: 101 }, (_, i) => ({ key: `k${i}`, value: 'v' }));
+    expect(validMetadataRows(many).valid).toBe(false);
   });
 });

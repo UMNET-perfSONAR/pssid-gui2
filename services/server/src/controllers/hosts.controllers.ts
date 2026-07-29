@@ -4,7 +4,7 @@ import { updateCollection } from '../services/update.service';
 import { get_batch_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
 import { create_config_file, build_host_view } from '../services/config.service';
-import { isNameInDB, isValidHostEntry, isNameArray, isPlainObjectOrAbsent, sendDeleted } from './helpers';
+import { isNameInDB, isValidHostEntry, isNameArray, metadataError, sendDeleted, provisionTarget } from './helpers';
 
 /**
  * Field rules for a host payload beyond the name. Returns an error message,
@@ -14,8 +14,9 @@ const hostFieldError = (body: any): string | null => {
   if (!isNameArray(body.batches)) {
     return "Batches must be a list of batch names";
   }
-  if (!isPlainObjectOrAbsent(body.data)) {
-    return "Metadata must be an object of key/value pairs";
+  const metaError = metadataError(body.data);
+  if (metaError) {
+    return metaError;
   }
   return null;
 };
@@ -201,7 +202,12 @@ const getHostConfig = (async (req: Request, res: Response) => {
 
 const createConfig = (async (req: Request, res: Response) =>{
   try {
-    let name = (req.body.length==0)? '*' : req.body.name;
+    // Validated, not read straight off the body: this reaches the provision
+    // script's argument vector (see provisionTarget).
+    const name = provisionTarget(req.body);
+    if (name === null) {
+      return res.status(400).json({message: "Invalid provision target: send [] for the whole config, or a valid host name"});
+    }
     const oidcUser = (req as any).oidc?.user;
     const caller: string = oidcUser?.sub || oidcUser?.email || 'unauthenticated';
     const caller_role: string = oidcUser ? 'authenticated' : 'unauthenticated';

@@ -3,7 +3,7 @@ import { MongoClient, Db, MongoServerError, Collection, ObjectId } from "mongodb
 import { connectToMongoDB } from '../services/database.service';
 import { get_batch_ids, get_host_ids } from '../services/utility.services';
 import { create_config_file } from '../services/config.service';
-import { isNameInDB, isValidRfc1123Name, isNameArray, isPlainObjectOrAbsent, sendDeleted } from './helpers';
+import { isNameInDB, isValidRfc1123Name, isNameArray, metadataError, sendDeleted, provisionTarget } from './helpers';
 
 /**
  * Field rules for a host group payload beyond the name. hosts_regex entries
@@ -21,8 +21,9 @@ const hostGroupFieldError = (body: any): string | null => {
   if (!Array.isArray(body.hosts_regex) || !body.hosts_regex.every(regexOk)) {
     return "Host patterns must be single-line strings";
   }
-  if (!isPlainObjectOrAbsent(body.data)) {
-    return "Metadata must be an object of key/value pairs";
+  const metaError = metadataError(body.data);
+  if (metaError) {
+    return metaError;
   }
   return null;
 };
@@ -162,7 +163,12 @@ const updateHostGroup = (async (req:Request, res:Response) => {
 
 const createConfig = (async (req: Request, res: Response) =>{
   try {
-    let name = (req.body.length==0)? '*' : req.body.name;
+    // Validated, not read straight off the body: this reaches the provision
+    // script's argument vector (see provisionTarget).
+    const name = provisionTarget(req.body);
+    if (name === null) {
+      return res.status(400).json({message: "Invalid provision target: send [] for the whole config, or a valid host group name"});
+    }
     const oidcUser = (req as any).oidc?.user;
     const caller: string = oidcUser?.sub || oidcUser?.email || 'unauthenticated';
     const caller_role: string = oidcUser ? 'authenticated' : 'unauthenticated';

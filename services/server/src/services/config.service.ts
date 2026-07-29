@@ -507,7 +507,15 @@ export function applyMetadata(host_data: any, host_group_data: any) {
         (group.hosts_regex ?? []).some((p: string) => matchesHostPattern(p, host.name));
       if (!isMember) continue;
       for (const [key, value] of Object.entries(asObject(group.data))) {
-        if (!(key in meta)) meta[key] = value;   // first definition wins, as in the daemon
+        // hasOwnProperty, not `key in meta`: `in` walks the prototype chain, so
+        // it answers TRUE for every name Object.prototype defines -- constructor,
+        // toString, valueOf, hasOwnProperty, __proto__ and the rest. A group
+        // metadata key with one of those names was therefore treated as "the
+        // host already defines it" and silently dropped, on a host that had
+        // never defined it. Own keys are the only ones that should win here.
+        if (!Object.prototype.hasOwnProperty.call(meta, key)) {
+          meta[key] = value;   // first definition wins, as in the daemon
+        }
       }
     }
     host.metadata = meta;
@@ -778,7 +786,19 @@ export async function create_config_file(name: string, click_context: string, ca
     'Executing provision script: %s %s %s %s %s',
     shellscript_path, forLog(click_context), forLog(name), forLog(caller), forLog(caller_role)
   );
-  execFile(shellscript_path as string, [click_context, name, caller, caller_role], (err) => {
+  // Every entry is forced to a string and stripped of a leading `-` before it
+  // reaches the vector. execFile spawns no shell, so metacharacters are already
+  // inert -- but argument injection needs no shell: a value starting with `-`
+  // is read as an OPTION by whatever the provision script forwards it to
+  // (ansible-playbook, rsync, getopts), and that script is operator-supplied
+  // code this application does not control. `name` is validated at both callers
+  // (provisionTarget); `caller` is an identity-provider claim, so it is checked
+  // HERE as well -- this is the boundary, and it should hold whatever a future
+  // caller passes or a provider puts in a `sub`.
+  const argv = [click_context, name, caller, caller_role].map((v) =>
+    String(v ?? '').replace(/^-+/, '')
+  );
+  execFile(shellscript_path as string, argv, (err) => {
     if (err) {
       console.error('Provision script failed: context=%s name=%s', forLog(click_context), forLog(name), err);
     } else {

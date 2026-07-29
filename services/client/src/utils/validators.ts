@@ -119,6 +119,49 @@ export function validSingleToken(value: string): ValidationResult {
 }
 
 /**
+ * Metadata rows, as the daemon consumes them: a flat set of string key/value
+ * pairs whose keys are exactly what a `$reference` can name.
+ *
+ * Matches metadataError() in services/server/src/controllers/helpers.ts, which
+ * is the API-level floor. The rule is worth enforcing in the form because the
+ * failure it prevents is silent on the probe rather than loud here: a key with
+ * a hyphen stores fine and is simply never resolved -- `$external-dest` reads
+ * as `$external` followed by a literal `-dest`, so the test runs against the
+ * wrong target and nothing reports an error.
+ *
+ * Rows left entirely blank are dropped before submission, so they are not
+ * flagged; a row with a value but no key is a real mistake and is.
+ */
+export function validMetadataRows(
+  rows: { key?: string; value?: string }[]
+): ValidationResult {
+  for (const row of rows ?? []) {
+    const key = row.key ?? '';
+    const value = row.value ?? '';
+    if (key === '' && value === '') continue;   // blank row, dropped on submit
+    if (!/^[A-Za-z0-9_]{1,64}$/.test(key)) {
+      return fail(
+        `Metadata key "${key}" must be letters, numbers or underscores (up to 64), ` +
+        `so it can be referenced as $key.`
+      );
+    }
+    if (value.length > 1024) {
+      return fail(`Metadata value for "${key}" must be 1024 characters or fewer.`);
+    }
+  }
+  const keys = (rows ?? [])
+    .filter((r) => (r.key ?? '') !== '' || (r.value ?? '') !== '')
+    .map((r) => r.key);
+  if (new Set(keys).size !== keys.length) {
+    // The submitted object is built by assignment, so a repeated key silently
+    // keeps only the last value. Say so rather than discarding an entry.
+    return fail('Each metadata key can only appear once.');
+  }
+  if (keys.length > 100) return fail('Metadata is limited to 100 keys.');
+  return ok;
+}
+
+/**
  * Network interface name: strictly alphanumeric (e.g. wlan0), or a metadata
  * reference such as $ifacename that the daemon resolves per host from that
  * host's effective metadata.
