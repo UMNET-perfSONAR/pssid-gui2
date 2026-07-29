@@ -1,0 +1,20 @@
+---
+# qa6 was provisioned differently from the other MiServer VMs this group_vars
+# file was written for: it already has a dedicated 50 GB volume natively
+# mounted at /var/lib/docker (with containerd bind-mounted from its own
+# .containerd subdirectory) -- exactly the "large filesystem already at
+# /var/lib/docker" case docs/deployment.md documents, and exactly what
+# ansible/roles/pssid_webgui/tasks/main.yml auto-detects and adopts when this
+# variable is left empty.
+#
+# The group default, pssid_gui_docker_data_root: /usr/local/miserver/docker
+# (../group_vars/pssid_gui.yml), is a SEPARATE 1 GB LVM volume on this host
+# with well under 1 GB free. Leaving the group default in force skips the
+# role's auto-detection (it only runs when this is empty) and instead forces
+# a relocation onto that undersized volume, which fails outright: nowhere
+# near the ~8-10 GB an image build needs.
+#
+# Empty here, not set to /var/lib/docker directly, so the role's own checks
+# (dedicated-mount detection, filesystem type) still run and confirm the
+# assumption, rather than this file asserting it unverified.
+pssid_gui_docker_data_root: ""
