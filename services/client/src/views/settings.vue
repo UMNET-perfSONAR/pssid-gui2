@@ -34,85 +34,126 @@
             :aria-busy="settingsStore.previewLoading"
             @click="previewConfig"
           >
-            <span v-if="settingsStore.previewLoading" class="inline-spinner" aria-hidden="true"></span>
-            <span v-else class="material-icons btn-icon" aria-hidden="true">visibility</span>
+            <Transition name="icon-fade" mode="out-in">
+              <span v-if="settingsStore.previewLoading" key="spin" class="inline-spinner" aria-hidden="true"></span>
+              <span v-else key="icon" class="material-icons btn-icon" aria-hidden="true">visibility</span>
+            </Transition>
             {{ settingsStore.previewLoading ? 'Previewing...' : 'Preview' }}
           </button>
         </div>
 
         <!-- Only for the FIRST preview, when there is no panel yet: a refresh
-             keeps the panel below on screen and shows its busy state there. -->
-        <div
-          v-if="settingsStore.previewLoading && !settingsStore.preview"
-          class="loading-state"
-          role="status"
-          aria-live="polite"
-        >
-          <div class="spinner"></div>
-          <span>Building preview…</span>
-        </div>
-
-        <p v-if="settingsStore.previewError" class="preview-error" role="alert">
-          <span class="material-icons" aria-hidden="true">error</span>
-          {{ settingsStore.previewError }}
-        </p>
-
-        <div v-if="settingsStore.preview" class="preview-result" aria-live="polite">
-          <div class="preview-status valid">
-            <span class="material-icons" aria-hidden="true">check_circle</span>
-            <span>No validation problems found</span>
+             keeps the panel below on screen and shows its busy state there.
+             Every appear/disappear block on this page shares the one "fade"
+             transition (defined once, below .settings-card) rather than each
+             getting its own bespoke animation -- the consistency is what
+             reads as a single polished system instead of a pile of one-off
+             effects. -->
+        <Transition name="fade">
+          <div
+            v-if="settingsStore.previewLoading && !settingsStore.preview"
+            class="loading-state"
+            role="status"
+            aria-live="polite"
+          >
+            <div class="spinner"></div>
+            <span>Building preview…</span>
           </div>
+        </Transition>
 
-          <div class="preview-toolbar">
-            <div class="preview-tabs" role="tablist" aria-label="Preview file">
+        <Transition name="fade">
+          <p v-if="settingsStore.previewError" ref="previewErrorEl" class="preview-error" role="alert">
+            <span class="material-icons" aria-hidden="true">error</span>
+            {{ settingsStore.previewError }}
+          </p>
+        </Transition>
+
+        <Transition name="fade">
+          <div v-if="settingsStore.preview" ref="previewResultEl" class="preview-result" aria-live="polite">
+            <div class="preview-status valid">
+              <span class="preview-status-msg">
+                <span class="material-icons" aria-hidden="true">check_circle</span>
+                <span>No validation problems found</span>
+              </span>
+              <!-- The guided next step: validation already happened server-side
+                   to produce this preview, so there is nothing more to check --
+                   only Generate's own write-access gate stands between here and
+                   the controller, same as the standalone button below. Hidden
+                   for read-only accounts rather than shown disabled, since a
+                   nudge toward an action they cannot take is not guidance. -->
               <button
+                v-if="!isReadOnly"
                 type="button"
-                role="tab"
-                :aria-selected="previewTab === 'config'"
-                :class="{ active: previewTab === 'config' }"
-                @click="previewTab = 'config'"
+                class="cta-generate"
+                :disabled="settingsStore.generateLoading"
+                @click="generateConfig"
               >
-                pssid_config.json
-              </button>
-              <button
-                type="button"
-                role="tab"
-                :aria-selected="previewTab === 'inventory'"
-                :class="{ active: previewTab === 'inventory' }"
-                @click="previewTab = 'inventory'"
-              >
-                hosts.ini
+                Generate these files
+                <span class="material-icons" aria-hidden="true">arrow_forward</span>
               </button>
             </div>
-            <!-- Rebuilds this panel in place. The Preview button that opened it
-                 is a scroll away once a real config is on screen, and the state
-                 it was built from changes on every other page. Read-only, like
-                 Preview, so it is not gated on write access. -->
-            <button
-              type="button"
-              class="btn-refresh"
-              :disabled="settingsStore.previewLoading"
-              :aria-busy="settingsStore.previewLoading"
-              @click="previewConfig"
-            >
-              <span v-if="settingsStore.previewLoading" class="inline-spinner" aria-hidden="true"></span>
-              <span v-else class="material-icons" aria-hidden="true">refresh</span>
-              {{ settingsStore.previewLoading ? 'Refreshing...' : 'Refresh' }}
-            </button>
-          </div>
-          <div class="preview-pane">
-            <pre class="preview-pre">{{ previewText }}</pre>
-            <!-- The outgoing file stays visible under the scrim rather than
-                 being replaced by a blank box, so the panel keeps its height
-                 and the page does not jump while the rebuild is in flight. -->
-            <!-- No role="status": .preview-result already carries aria-live,
-                 and a nested live region announces this twice. -->
-            <div v-if="settingsStore.previewLoading" class="preview-busy">
-              <span class="inline-spinner" aria-hidden="true"></span>
-              <span>Rebuilding…</span>
+
+            <div class="preview-toolbar">
+              <div class="preview-tabs" role="tablist" aria-label="Preview file">
+                <button
+                  type="button"
+                  role="tab"
+                  :aria-selected="previewTab === 'config'"
+                  :class="{ active: previewTab === 'config' }"
+                  @click="previewTab = 'config'"
+                >
+                  pssid_config.json
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  :aria-selected="previewTab === 'inventory'"
+                  :class="{ active: previewTab === 'inventory' }"
+                  @click="previewTab = 'inventory'"
+                >
+                  hosts.ini
+                </button>
+              </div>
+              <!-- Rebuilds this panel in place. The Preview button that opened it
+                   is a scroll away once a real config is on screen, and the state
+                   it was built from changes on every other page. Read-only, like
+                   Preview, so it is not gated on write access. -->
+              <button
+                type="button"
+                class="btn-refresh"
+                :disabled="settingsStore.previewLoading"
+                :aria-busy="settingsStore.previewLoading"
+                @click="previewConfig"
+              >
+                <Transition name="icon-fade" mode="out-in">
+                  <span v-if="settingsStore.previewLoading" key="spin" class="inline-spinner" aria-hidden="true"></span>
+                  <span v-else key="icon" class="material-icons" aria-hidden="true">refresh</span>
+                </Transition>
+                {{ settingsStore.previewLoading ? 'Refreshing...' : 'Refresh' }}
+              </button>
+            </div>
+            <div class="preview-pane">
+              <pre class="preview-pre">{{ previewText }}</pre>
+              <!-- The outgoing file stays visible under the scrim rather than
+                   being replaced by a blank box, so the panel keeps its height
+                   and the page does not jump while the rebuild is in flight.
+                   Faded rather than popped in/out: MIN_BUSY_MS (settings.store)
+                   already keeps this on screen a minimum of 400ms so a fast
+                   rebuild doesn't skip past unnoticed, but a hard-cut v-if still
+                   read as a flicker at that duration. A soft crossfade on both
+                   edges is what makes a deliberately-brief state look intentional
+                   instead of broken. -->
+              <!-- No role="status": .preview-result already carries aria-live,
+                   and a nested live region announces this twice. -->
+              <Transition name="scrim-fade">
+                <div v-if="settingsStore.previewLoading" class="preview-busy">
+                  <span class="inline-spinner" aria-hidden="true"></span>
+                  <span>Rebuilding…</span>
+                </div>
+              </Transition>
             </div>
           </div>
-        </div>
+        </Transition>
 
         <div class="setting-divider" role="separator"></div>
 
@@ -139,8 +180,10 @@
             :title="isReadOnly ? 'Generating writes files on the controller, which needs write access.' : ''"
             @click="generateConfig"
           >
-            <span v-if="settingsStore.generateLoading" class="inline-spinner" aria-hidden="true"></span>
-            <span v-else class="material-icons btn-icon" aria-hidden="true">description</span>
+            <Transition name="icon-fade" mode="out-in">
+              <span v-if="settingsStore.generateLoading" key="spin" class="inline-spinner" aria-hidden="true"></span>
+              <span v-else key="icon" class="material-icons btn-icon" aria-hidden="true">description</span>
+            </Transition>
             {{ settingsStore.generateLoading ? 'Generating...' : 'Generate' }}
           </button>
         </div>
@@ -149,25 +192,36 @@
              slowest thing this page does and produces nothing until it is over.
              The button's own spinner is easy to miss once it has been clicked
              and the pointer has moved away. -->
-        <div
-          v-if="settingsStore.generateLoading"
-          class="loading-state"
-          role="status"
-          aria-live="polite"
-        >
-          <div class="spinner"></div>
-          <span>Writing files to the controller…</span>
-        </div>
+        <Transition name="fade">
+          <div
+            v-if="settingsStore.generateLoading"
+            class="loading-state"
+            role="status"
+            aria-live="polite"
+          >
+            <div class="spinner"></div>
+            <span>Writing files to the controller…</span>
+          </div>
+        </Transition>
 
-        <p v-if="settingsStore.generateError" class="preview-error" role="alert">
-          <span class="material-icons" aria-hidden="true">error</span>
-          {{ settingsStore.generateError }}
-        </p>
+        <Transition name="fade">
+          <p v-if="settingsStore.generateError" ref="generateErrorEl" class="preview-error" role="alert">
+            <span class="material-icons" aria-hidden="true">error</span>
+            {{ settingsStore.generateError }}
+          </p>
+        </Transition>
 
-        <div v-if="settingsStore.generated" class="preview-status valid" role="status" aria-live="polite">
-          <span class="material-icons" aria-hidden="true">check_circle</span>
-          <span>Files written to the controller</span>
-        </div>
+        <!-- Auto-dismissed ~5s after landing (see generateConfig() below) --
+             a confirmation that has to be manually cleared before the next
+             action reads as a leftover, not a result. Still a real aria-live
+             announcement while it's up, so screen readers get it once either
+             way. -->
+        <Transition name="fade">
+          <div v-if="settingsStore.generated" ref="generatedEl" class="preview-status valid" role="status" aria-live="polite">
+            <span class="material-icons" aria-hidden="true">check_circle</span>
+            <span>Files written to the controller</span>
+          </div>
+        </Transition>
       </section>
     </template>
 
@@ -180,6 +234,14 @@ import { useSettingsStore } from '../stores/settings.store'
 import { useUserStore } from '../stores/user.store'
 import { isFormDisabled } from '../utils/formControl.ts'
 
+// How long "Files written to the controller" stays up before it fades itself
+// out. Long enough to read at a glance without racing the eye, short enough
+// that it is gone well before it could be mistaken for the outcome of a
+// later click. Not tied to MIN_BUSY_MS (settings.store): that constant times
+// a busy state that's over the instant the request resolves, while this
+// times how long a message parked at rest stays worth looking at.
+const GENERATED_DISMISS_MS = 5000;
+
 export default {
   name: 'Settings',
   components: { PageHeader },
@@ -188,6 +250,7 @@ export default {
       settingsStore: useSettingsStore(),
       userStore: useUserStore(),
       previewTab: 'config',
+      generatedDismissTimer: null,
     }
   },
   computed: {
@@ -209,12 +272,38 @@ export default {
     await this.userStore.fetchUser();
     await this.settingsStore.getSettings();
   },
+  beforeUnmount() {
+    clearTimeout(this.generatedDismissTimer);
+  },
   methods: {
-    previewConfig() {
-      this.settingsStore.previewConfig();
+    // Brings whichever outcome just landed (result panel or inline error)
+    // on screen. block: 'nearest' is what makes this safe to call after
+    // every Preview/Refresh alike -- an element that's already fully
+    // visible (the common Refresh case) does not move at all, only a
+    // panel that grew past the viewport does.
+    scrollToOutcome(el) {
+      if (!el) return;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
     },
-    generateConfig() {
-      this.settingsStore.generateConfig();
+    async previewConfig() {
+      await this.settingsStore.previewConfig();
+      await this.$nextTick();
+      this.scrollToOutcome(this.$refs.previewErrorEl || this.$refs.previewResultEl);
+    },
+    async generateConfig() {
+      // Cancels a dismiss timer left over from a previous success so it
+      // can't fire mid-way through this run and hide a result that just
+      // landed.
+      clearTimeout(this.generatedDismissTimer);
+      await this.settingsStore.generateConfig();
+      await this.$nextTick();
+      this.scrollToOutcome(this.$refs.generateErrorEl || this.$refs.generatedEl);
+      if (this.settingsStore.generated) {
+        this.generatedDismissTimer = setTimeout(() => {
+          this.settingsStore.dismissGenerated();
+        }, GENERATED_DISMISS_MS);
+      }
     },
   },
 }
@@ -298,17 +387,33 @@ export default {
   vertical-align: -3px;
   margin-right: 0.35rem;
 }
+/* Preview/Generate swap to a longer label ("Previewing...", "Generating...")
+   while busy. Bootstrap's .btn already centers its label, so fixing a
+   min-width sized to the longest state is enough to stop the button -- and
+   the icon beside it users are about to click again -- from shifting under
+   the pointer. */
+.setting-row .btn {
+  min-width: 10rem;
+  white-space: nowrap;
+}
 .preview-result {
   margin-top: 1rem;
 }
 .preview-status {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.65rem 0.9rem;
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
   margin-bottom: 0.75rem;
+}
+.preview-status-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 .preview-status .material-icons {
   font-size: 1.15rem;
@@ -318,6 +423,39 @@ export default {
   background: var(--ok-soft-bg);
   color: var(--ok-soft-fg);
   border: 1px solid var(--ok-soft-bd);
+}
+/* The preview panel's guided next step: same "done, now do the real thing"
+   role as a "Learn more ->" link, so it borrows that vocabulary -- text-only,
+   no button chrome, the arrow the only thing that moves. Inherits the status
+   bar's ok-soft-fg so it reads as part of the same success message rather
+   than a competing control. */
+.cta-generate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ok-soft-fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cta-generate:hover:not(:disabled) {
+  text-decoration: underline;
+}
+.cta-generate:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cta-generate .material-icons {
+  font-size: 1rem;
+  transition: transform 0.15s ease;
+}
+.cta-generate:hover:not(:disabled) .material-icons {
+  transform: translateX(2px);
 }
 .preview-error {
   display: flex;
@@ -349,7 +487,12 @@ export default {
 .btn-refresh {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
+  /* Sized to its own longest label ("Refreshing...") for the same reason as
+     the min-width on .setting-row .btn above. */
+  min-width: 8rem;
+  white-space: nowrap;
   background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -447,6 +590,49 @@ export default {
   font-size: 0.85rem;
   border-radius: 0 6px 6px 6px;
 }
+/* Crossfade for the scrim above, in and out alike, rather than the hard
+   v-if cut. Opacity only, no rise: it sits on top of text that isn't moving,
+   so a translate would read as the scrim sliding rather than the code
+   settling. prefers-reduced-motion collapses this to a single frame via the
+   global transition-duration override in assets/main.css. */
+.scrim-fade-enter-active,
+.scrim-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+.scrim-fade-enter-from,
+.scrim-fade-leave-to {
+  opacity: 0;
+}
+/* The one entrance/exit used by every loading, error and success block on
+   this page (see the template) -- a single shared transition rather than a
+   bespoke one per element is what makes them read as one system instead of
+   a pile of unrelated effects. The slight rise is what separates this from
+   the scrim fade above: these blocks change the page's height as they
+   arrive, and a few px of upward motion sells "settling into place" instead
+   of just appearing over whatever reflowed under it. */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+/* The glyph inside Preview/Generate/Refresh: icon and spinner trade places
+   with a fast crossfade instead of an instant swap. mode="out-in" in the
+   template keeps only one of the two in the DOM at a time, so this never
+   needs the scrim's absolute-position trick. Quick on purpose -- this fires
+   on every click, and anything slower than the click itself would read as
+   lag rather than polish. */
+.icon-fade-enter-active,
+.icon-fade-leave-active {
+  transition: opacity 0.12s ease;
+}
+.icon-fade-enter-from,
+.icon-fade-leave-to {
+  opacity: 0;
+}
 /* One spinner for the buttons and the scrim both. It takes its color from the
    text beside it, so it stays visible on a filled primary button, a ghost
    button and the dark panel without a per-context override, and is sized in em
@@ -492,6 +678,10 @@ export default {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
+  }
+  .preview-status.valid {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
   }
 }
 </style>

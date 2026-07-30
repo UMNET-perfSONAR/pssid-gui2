@@ -176,5 +176,17 @@ export const useSettingsStore = defineStore('settings', {
         this.generateLoading = false;
       }
     },
+
+    /**
+     * Clear the "Files written to the controller" confirmation once the
+     * view has decided it's been up long enough (settings.vue). A plain
+     * state reset, not folded into generateConfig(): that action already
+     * clears `generated` at the START of the next run so a stale success
+     * never lingers under a fresh one, so this is only ever the view's own
+     * auto-dismiss timer firing on an unrelated, idle success.
+     */
+    dismissGenerated() {
+      this.generated = false;
+    },
   }
 })

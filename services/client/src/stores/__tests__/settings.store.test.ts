@@ -176,4 +176,17 @@ describe('settings store', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
   });
+
+  describe('dismissGenerated', () => {
+    it('clears a standing success without touching an unrelated error', async () => {
+      fetchMock.mockResolvedValueOnce(ok({}));
+      const store = useSettingsStore();
+      await settle(store.generateConfig());
+      expect(store.generated).toBe(true);
+
+      store.dismissGenerated();
+      expect(store.generated).toBe(false);
+      expect(store.generateError).toBe('');
+    });
+  });
 });

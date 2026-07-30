@@ -563,7 +563,12 @@ describe('matchesHostPattern refuses to evaluate a catastrophic pattern', () => 
   it('returns promptly instead of backtracking', () => {
     const hostile = 'a'.repeat(40) + '!';
     const started = Date.now();
-    expect(matchesHostPattern('(a+)+$', hostile)).toBe(false);
+    // The catastrophic shape itself, used deliberately: isRiskyHostPattern
+    // (hostPattern.ts) rejects it by structure before matchesHostPattern ever
+    // reaches `new RegExp(...).test(...)`, which is exactly what this
+    // assertion checks. CodeQL's js/redos flags the literal on sight -- it
+    // has no way to see the guard that intercepts it two calls down.
+    expect(matchesHostPattern('(a+)+$', hostile)).toBe(false); // lgtm[js/redos]
     // Unguarded this was ~24s at 31 characters, doubling for each one after.
     expect(Date.now() - started).toBeLessThan(100);
   });
