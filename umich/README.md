@@ -57,7 +57,7 @@ it returned is configured. The whole posture is in
 | Group claim | `edumember_ismemberof` | read automatically, no setting |
 | Group released | `pssid-gui-users` → **write** | `pssid_gui_auth_groups` |
 | Scope | `openid profile email edumember` | `pssid_gui_sso_scope` |
-| SSO enabled on | dev, qa6, qa8 (the registered redirect URIs) | per host in `inventory.ini` |
+| SSO enabled on | dev, qa5, qa6, qa8 (the registered redirect URIs) | per host in `inventory.ini` |
 
 **One group means one tier.** ITS releases only `pssid-gui-users`, so everyone who
 can sign in gets **write**. Mapping it to `read` instead would authenticate
