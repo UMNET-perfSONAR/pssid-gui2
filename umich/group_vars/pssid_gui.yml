@@ -52,16 +52,28 @@ pssid_gui_oidc_client_id: 0oa25hltopzoZr4XR1d8
 
 # Issuer: the tenant, not a per-application value.
 #
-# NOT independently confirmed. The AMP registration screens show the client id,
-# the claim and the redirect URIs but never the issuer, and this is the one value
-# a wrong guess makes fail loudly at startup rather than quietly: the server runs
-# OIDC discovery against it and refuses to boot if it does not resolve.
+# CONFIRMED against the tenant's own discovery document, which is the only
+# authority on this -- https://okta.umich.edu/.well-known/openid-configuration
+# returns "issuer": "https://okta.umich.edu", and the issuer we send must equal
+# that string exactly or token validation rejects every sign-in.
 #
-# If ITS instead gave a CUSTOM authorization server -- a URL with an /oauth2/...
-# path -- put that here, and confirm with them that edumember_ismemberof is
-# released on THAT server rather than the org one. Claims configured on the org
-# authorization server are not emitted by a custom one.
-pssid_gui_oidc_issuer: https://umich.okta.com
+# Note the domain is okta.umich.edu, NOT the umich.okta.com that the vendor's
+# default naming would suggest; this was set to the latter and had to be
+# corrected. The two are unrelated hosts, so the mistake does not surface as a
+# DNS error -- umich.okta.com resolves, it simply is not this tenant.
+#
+# No /oauth2/... path, so this is the ORG authorization server, which is what
+# releases the edumember_ismemberof claim configured in AMP. If ITS ever moves
+# the application to a custom authorization server, that URL goes here instead
+# and the claim has to be re-released on it: claims configured on the org server
+# are not emitted by a custom one.
+#
+# A wrong value here does NOT stop the server booting. express-openid-connect
+# discovers lazily, on the first request that needs the provider (lib/context.js),
+# so the deployment comes up healthy and fails at sign-in instead. Verify it
+# directly rather than inferring it from a successful deploy:
+#   curl -s https://okta.umich.edu/.well-known/openid-configuration | grep -o '"issuer":"[^"]*"'
+pssid_gui_oidc_issuer: https://okta.umich.edu
 
 # Scope requested at sign-in.
 #

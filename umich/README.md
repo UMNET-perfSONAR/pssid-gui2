@@ -53,7 +53,7 @@ it returned is configured. The whole posture is in
 | Application type | **OIDC** web application, Authorization Code + PKCE, `client_secret_post` | Okta (AMP) |
 | Client id | `0oa25hltopzoZr4XR1d8` — not a credential, committed on purpose | `pssid_gui_oidc_client_id` |
 | Client secret | *not in git* | `group_vars/all/vault.yml` |
-| Issuer | `https://umich.okta.com` — **unconfirmed, see below** | `pssid_gui_oidc_issuer` |
+| Issuer | `https://okta.umich.edu` — confirmed against the tenant's discovery document | `pssid_gui_oidc_issuer` |
 | Group claim | `edumember_ismemberof` | read automatically, no setting |
 | Group released | `pssid-gui-users` → **write** | `pssid_gui_auth_groups` |
 | Scope | `openid profile email edumember` | `pssid_gui_sso_scope` |
@@ -106,7 +106,7 @@ Verify on that host before the others:
 
 Then drop the `--limit`.
 
-### The three things most likely to go wrong
+### The four things most likely to go wrong
 
 Each has a different symptom, so the symptom tells you which one it is.
 
@@ -118,18 +118,40 @@ their authorization server wants something else, ask which scope releases
 fallback — sign-in will work, and step 2 above then tells you whether the claim
 arrived anyway.
 
-**The server refuses to start.** It is rejecting a setting on purpose and names
-which:
+**The server refuses to start**, so nginx never starts either (it waits on the
+server being healthy) and a deploy fails its health check with a refused
+connection rather than an HTTP error. The server is rejecting a setting on
+purpose and names which:
 
 ```bash
 docker compose logs server | grep -E 'SSO enabled|REFUSING TO START' -A3
 ```
 
-The likely culprit is the **issuer**, which is the one value the AMP screens never
-showed. If ITS gave a custom authorization server (a URL with an `/oauth2/...`
-path), set it in `pssid_gui_oidc_issuer` — and confirm with them that
-`edumember_ismemberof` is released on *that* server, since claims configured on
-the org authorization server are not emitted by a custom one.
+It is **not** the issuer. A wrong issuer passes the startup checks — they only
+require a valid `https` URL with no path — and `express-openid-connect`
+discovers lazily, on the first request that needs the provider, so the stack
+comes up healthy and fails at sign-in instead. Read the named setting and fix
+that one. `REDIS_URL carries no password` is worth knowing about specifically:
+that value is assembled by compose from `REDIS_PASSWORD` in the **root** `.env`,
+not from `services/server/.env`, so it is empty whenever that one line is
+missing — and it is only ever consulted with SSO on, which is why a deployment
+that was fine without SSO fails the moment it is switched on.
+
+**Sign-in fails at Okta, or every session is rejected.** This is where a wrong
+**issuer** surfaces, because the value we send must equal the tenant's own
+`issuer` string exactly. Confirm it against the tenant rather than assuming:
+
+```bash
+curl -s https://okta.umich.edu/.well-known/openid-configuration | grep -o '"issuer":"[^"]*"'
+```
+
+Note the domain is `okta.umich.edu`, not the `umich.okta.com` the vendor's usual
+naming suggests — both resolve, so getting this wrong looks like a working
+configuration right up until someone tries to sign in. If ITS ever moves the
+application to a custom authorization server (a URL with an `/oauth2/...` path),
+set that here and confirm `edumember_ismemberof` is released on *that* server,
+since claims configured on the org authorization server are not emitted by a
+custom one.
 
 **Sign-in works, then "not a member of any group permitted".** The claim did not
 arrive, or its contents do not match `pssid-gui-users`. To see exactly what Okta
