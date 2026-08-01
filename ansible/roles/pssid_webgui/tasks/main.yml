@@ -225,6 +225,33 @@
         EDITION: "{{ pssid_gui_edition }}"
       changed_when: true
 
+# ---- Apply configuration changes ---------------------------------------------
+
+# The server reads services/server/.env ONCE, at process start (dotenv, see
+# services/server/src/index.ts). The installer rewrites that file on every run --
+# ISSUER_BASE_URL, the OIDC client secret, the session timeouts -- but
+# `docker compose up -d` decides whether to recreate a container by comparing the
+# SERVICE DEFINITION (image, compose-level environment, volume paths), never the
+# contents of a bind-mounted file. The path here is unchanged, so compose sees
+# nothing to do and leaves the old process running with the old values.
+#
+# The failure is silent and looks like the change did not save: the deploy
+# reports success, the health check passes (/api/health needs none of these
+# settings), and the stale value only surfaces later at sign-in. Observed on
+# qa5, where a corrected OIDC issuer sat in .env for half an hour while the
+# running server kept using the previous one and answered every authenticated
+# page with a 500.
+#
+# Before nginx, deliberately: recreating the server gives it a new container
+# address, and the task below is what makes nginx re-resolve it. The reverse
+# order would leave nginx holding the address this task just invalidated.
+- name: Recreate the server so it re-reads services/server/.env
+  ansible.builtin.command:
+    argv: [docker, compose, up, -d, --force-recreate, --no-deps, server]
+    chdir: "{{ pssid_gui_src }}"
+  when: pssid_gui_mode == 'prod'
+  changed_when: true
+
 # ---- Reverse proxy -----------------------------------------------------------
 
 # nginx resolves the `client` and `server` hostnames ONCE, when its config is
