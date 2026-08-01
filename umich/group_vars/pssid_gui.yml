@@ -75,17 +75,35 @@ pssid_gui_oidc_client_id: 0oa25hltopzoZr4XR1d8
 #   curl -s https://okta.umich.edu/.well-known/openid-configuration | grep -o '"issuer":"[^"]*"'
 pssid_gui_oidc_issuer: https://okta.umich.edu
 
-# Scope requested at sign-in.
+# Scope requested at sign-in. Standard OIDC scopes ONLY.
 #
-# NOT the shipped default, deliberately. ITS releases membership through the
-# eduPerson `edumember_ismemberof` claim, and the default `openid profile email
-# groups` asks for a scope named `groups` -- which a tenant that does not define
-# one rejects outright with invalid_scope, failing every sign-in before the user
-# reaches a password prompt. `edumember` is the eduPerson convention that matches
-# the claim ITS actually configured.
+# https://okta.umich.edu is Okta's ORG authorization server -- that is what the
+# absence of an /oauth2/... path means -- and an org server accepts only the
+# scopes OIDC itself defines. It rejects anything else outright, before the user
+# reaches a password prompt:
 #
-# This is the second value to check if sign-in fails: see ../README.md#turning-sso-on.
-pssid_gui_sso_scope: "openid profile email edumember"
+#   invalid_scope (Custom scopes are not allowed for this request.)
+#
+# Custom scopes need a CUSTOM authorization server, which ITS has not issued for
+# this application.
+#
+# This was "openid profile email edumember", on the reasoning that `edumember` is
+# the eduPerson convention matching the `edumember_ismemberof` claim ITS
+# releases. That is the right claim name -- but a scope only exists if the
+# authorization server defines it, and the org server defines none beyond the
+# standard set. Confirmed against the live tenant on qa5, which failed every
+# sign-in with exactly the error above.
+#
+# Dropping it does not necessarily lose the group claim. On an org server a claim
+# is released by the APPLICATION's token configuration (AMP: Attribute Release),
+# not by the scope requested -- so the claim ITS configured can still arrive
+# under the standard scopes. That is a question of fact, not of reasoning:
+# sign in and read /api/userinfo, where `groups` must contain pssid-gui-users.
+# If it comes back empty, ask ITS either to release edumember_ismemberof
+# unconditionally on the ID token, or to issue a custom authorization server
+# that defines an `edumember` scope (and to re-release the claim on it -- claims
+# on the org server are not emitted by a custom one).
+pssid_gui_sso_scope: "openid profile email"
 
 # Group -> permission mapping.
 #

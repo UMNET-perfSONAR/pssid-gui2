@@ -110,13 +110,19 @@ Then drop the `--limit`.
 
 Each has a different symptom, so the symptom tells you which one it is.
 
-**`invalid_scope` at Okta, before any password prompt.** The tenant does not
-define a scope named in `pssid_gui_sso_scope`. We send
-`openid profile email edumember` because ITS releases the eduPerson claim; if
-their authorization server wants something else, ask which scope releases
-`edumember_ismemberof` and set it. `openid profile email` alone is the safe
-fallback — sign-in will work, and step 2 above then tells you whether the claim
-arrived anyway.
+**`invalid_scope` at Okta, before any password prompt.** Specifically
+`Custom scopes are not allowed for this request.` — `https://okta.umich.edu` is
+the **org** authorization server (no `/oauth2/...` path), and an org server
+accepts only the scopes OIDC itself defines. Any custom scope fails every
+sign-in. `pssid_gui_sso_scope` must therefore stay
+`openid profile email`; anything beyond the standard set needs a custom
+authorization server from ITS. This was hit for real on qa5 with
+`edumember` in the scope.
+
+Losing that scope does not necessarily lose the group claim: on an org server the
+claim is released by the application's token configuration, not the scope. Step 2
+above (`/api/userinfo`) is what tells you whether it arrived — check, rather than
+assume either way.
 
 **The server refuses to start**, so nginx never starts either (it waits on the
 server being healthy) and a deploy fails its health check with a refused
