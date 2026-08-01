@@ -50,59 +50,61 @@ pssid_gui_sso: ""
 # about what actually has to be protected.
 pssid_gui_oidc_client_id: 0oa25hltopzoZr4XR1d8
 
-# Issuer: the tenant, not a per-application value.
+# Issuer: the CUSTOM authorization server this application is registered on.
 #
-# CONFIRMED against the tenant's own discovery document, which is the only
-# authority on this -- https://okta.umich.edu/.well-known/openid-configuration
-# returns "issuer": "https://okta.umich.edu", and the issuer we send must equal
-# that string exactly or token validation rejects every sign-in.
+# Taken from the application's own record in AMP, which prints the endpoint under
+# "Okta OIDC Configuration":
+#   https://okta.umich.edu/oauth2/default/.well-known/openid-configuration
+# The /oauth2/default path is what makes this a custom authorization server
+# rather than the org one, and the two are NOT interchangeable.
 #
-# Note the domain is okta.umich.edu, NOT the umich.okta.com that the vendor's
-# default naming would suggest; this was set to the latter and had to be
-# corrected. The two are unrelated hosts, so the mistake does not surface as a
-# DNS error -- umich.okta.com resolves, it simply is not this tenant.
+# Two earlier values were wrong, both instructively:
 #
-# No /oauth2/... path, so this is the ORG authorization server, which is what
-# releases the edumember_ismemberof claim configured in AMP. If ITS ever moves
-# the application to a custom authorization server, that URL goes here instead
-# and the claim has to be re-released on it: claims configured on the org server
-# are not emitted by a custom one.
+#   umich.okta.com          -- the vendor's default naming, not this tenant. An
+#                              unrelated host that nonetheless resolves, so it
+#                              failed at sign-in rather than in DNS.
+#   okta.umich.edu          -- the right tenant, wrong server. The ORG server
+#                              knows nothing of this application's configuration:
+#                              it defines no custom scopes (so `edumember` came
+#                              back invalid_scope) and carries none of the claim
+#                              release configured in AMP (so every sign-in
+#                              succeeded with an EMPTY group list and was then
+#                              denied). One wrong path, both symptoms.
+#
+# The lesson worth keeping: an issuer that authenticates users correctly is not
+# thereby the right issuer. Take it from the application's record, not from the
+# tenant hostname.
 #
 # A wrong value here does NOT stop the server booting. express-openid-connect
 # discovers lazily, on the first request that needs the provider (lib/context.js),
 # so the deployment comes up healthy and fails at sign-in instead. Verify it
 # directly rather than inferring it from a successful deploy:
-#   curl -s https://okta.umich.edu/.well-known/openid-configuration | grep -o '"issuer":"[^"]*"'
-pssid_gui_oidc_issuer: https://okta.umich.edu
+#   curl -s https://okta.umich.edu/oauth2/default/.well-known/openid-configuration \
+#     | grep -o '"issuer":"[^"]*"'
+pssid_gui_oidc_issuer: https://okta.umich.edu/oauth2/default
 
-# Scope requested at sign-in. Standard OIDC scopes ONLY.
+# Scope requested at sign-in.
 #
-# https://okta.umich.edu is Okta's ORG authorization server -- that is what the
-# absence of an /oauth2/... path means -- and an org server accepts only the
-# scopes OIDC itself defines. It rejects anything else outright, before the user
-# reaches a password prompt:
-#
+# Standard scopes only, for now. `edumember` was here originally and produced
 #   invalid_scope (Custom scopes are not allowed for this request.)
+# but that was against the ORG authorization server, which defines no custom
+# scopes -- not evidence about the custom server the application is actually
+# registered on (see pssid_gui_oidc_issuer above). Whether `edumember` is valid
+# there is a separate question, and answerable directly:
 #
-# Custom scopes need a CUSTOM authorization server, which ITS has not issued for
-# this application.
+#   curl -s https://okta.umich.edu/oauth2/default/.well-known/openid-configuration \
+#     | grep -o '"scopes_supported":\[[^]]*\]'
 #
-# This was "openid profile email edumember", on the reasoning that `edumember` is
-# the eduPerson convention matching the `edumember_ismemberof` claim ITS
-# releases. That is the right claim name -- but a scope only exists if the
-# authorization server defines it, and the org server defines none beyond the
-# standard set. Confirmed against the live tenant on qa5, which failed every
-# sign-in with exactly the error above.
+# Add it back only if that list contains it. AMP releases the groups through the
+# `edumember_ismemberof` claim (Attribute Release: "These groups will be released
+# in the edumember_ismemberof claim"), and on a custom authorization server a
+# claim may be emitted unconditionally or gated behind a scope -- the two are
+# configured separately, so the claim existing says nothing about whether a scope
+# is needed to receive it.
 #
-# Dropping it does not necessarily lose the group claim. On an org server a claim
-# is released by the APPLICATION's token configuration (AMP: Attribute Release),
-# not by the scope requested -- so the claim ITS configured can still arrive
-# under the standard scopes. That is a question of fact, not of reasoning:
-# sign in and read /api/userinfo, where `groups` must contain pssid-gui-users.
-# If it comes back empty, ask ITS either to release edumember_ismemberof
-# unconditionally on the ID token, or to issue a custom authorization server
-# that defines an `edumember` scope (and to re-release the claim on it -- claims
-# on the org server are not emitted by a custom one).
+# The test that settles it either way: sign in and read /api/userinfo, where
+# `groups` must contain pssid-gui-users. An empty list there with a valid
+# sign-in means the claim did not arrive, not that the user lacks membership.
 pssid_gui_sso_scope: "openid profile email"
 
 # Group -> permission mapping.

@@ -53,7 +53,7 @@ it returned is configured. The whole posture is in
 | Application type | **OIDC** web application, Authorization Code + PKCE, `client_secret_post` | Okta (AMP) |
 | Client id | `0oa25hltopzoZr4XR1d8` — not a credential, committed on purpose | `pssid_gui_oidc_client_id` |
 | Client secret | *not in git* | `group_vars/all/vault.yml` |
-| Issuer | `https://okta.umich.edu` — confirmed against the tenant's discovery document | `pssid_gui_oidc_issuer` |
+| Issuer | `https://okta.umich.edu/oauth2/default` — the custom authorization server named in the app's AMP record | `pssid_gui_oidc_issuer` |
 | Group claim | `edumember_ismemberof` | read automatically, no setting |
 | Group released | `pssid-gui-users` → **write** | `pssid_gui_auth_groups` |
 | Scope | `openid profile email edumember` | `pssid_gui_sso_scope` |
