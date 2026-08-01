@@ -83,28 +83,31 @@ pssid_gui_oidc_client_id: 0oa25hltopzoZr4XR1d8
 #     | grep -o '"issuer":"[^"]*"'
 pssid_gui_oidc_issuer: https://okta.umich.edu/oauth2/default
 
-# Scope requested at sign-in.
+# Scope requested at sign-in. Do not add `edumember`.
 #
-# Standard scopes only, for now. `edumember` was here originally and produced
-#   invalid_scope (Custom scopes are not allowed for this request.)
-# but that was against the ORG authorization server, which defines no custom
-# scopes -- not evidence about the custom server the application is actually
-# registered on (see pssid_gui_oidc_issuer above). Whether `edumember` is valid
-# there is a separate question, and answerable directly:
+# There is no such scope on this tenant, on EITHER authorization server, and
+# requesting it fails every sign-in before the user reaches a password prompt
+# with `invalid_scope`. It was tried twice -- once against the org server and
+# once against the custom one -- on the reasonable but wrong assumption that a
+# claim named edumember_ismemberof implies a scope named edumember. The custom
+# server's own discovery document settles it:
 #
+#   scopes_supported: interclient_access, openid, profile, email, address,
+#                     phone, offline_access, device_sso
+#
+# Re-check with, rather than assuming either way:
 #   curl -s https://okta.umich.edu/oauth2/default/.well-known/openid-configuration \
 #     | grep -o '"scopes_supported":\[[^]]*\]'
 #
-# Add it back only if that list contains it. AMP releases the groups through the
-# `edumember_ismemberof` claim (Attribute Release: "These groups will be released
-# in the edumember_ismemberof claim"), and on a custom authorization server a
-# claim may be emitted unconditionally or gated behind a scope -- the two are
-# configured separately, so the claim existing says nothing about whether a scope
-# is needed to receive it.
+# The groups do not need a scope. AMP releases them through the
+# edumember_ismemberof claim (Attribute Release: "These groups will be released
+# in the edumember_ismemberof claim"), configured on the APPLICATION, and the
+# claim is emitted to the application's own authorization server unconditionally.
+# Requesting the right issuer is what makes it arrive -- not requesting a scope.
 #
-# The test that settles it either way: sign in and read /api/userinfo, where
-# `groups` must contain pssid-gui-users. An empty list there with a valid
-# sign-in means the claim did not arrive, not that the user lacks membership.
+# The test that confirms it: sign in and read /api/userinfo, where `groups` must
+# contain pssid-gui-users. An empty list there with a valid sign-in means the
+# claim did not arrive, not that the user lacks membership.
 pssid_gui_sso_scope: "openid profile email"
 
 # Group -> permission mapping.
