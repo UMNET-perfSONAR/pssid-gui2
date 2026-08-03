@@ -4,10 +4,10 @@ Docker runs `entrypoint.sh` to start the backend service, in which files under
 particular note is `starters/tests/`, which contains the test templates that
 define the rules for each test.
 
-For instance, `rtt` is a test option on the frontend tests page with three input
-fields: `dest`, `length`, and `protocol`. Correspondingly, `starters/tests/rtt.json`
-contains entries for the three input fields along with input validation code. The
-following is the content of `rtt.json`.
+For instance, `rtt` is a test option on the frontend tests page with two input
+fields: `dest` and `length`. Correspondingly, `starters/tests/rtt.json` contains
+entries for the two input fields along with input validation code. The following
+is the content of `rtt.json`.
 ```
 {
     "name": "rtt",
@@ -25,17 +25,6 @@ following is the content of `rtt.json`.
             "default": 512,
             "validator": "return input > 0;",
             "description": "length should be a positive integer"
-        },
-        {
-            "name":"protocol",
-            "type":"singleselect",
-            "options": [
-                {"name": "TCP"},
-                {"name": "UDP"}
-            ],
-            "default": { "name": "TCP" },
-            "validator": "return true;",
-            "description": "protocol should be either TCP or UDP"
         }
     ],
     "validator": "return true;"
@@ -43,6 +32,18 @@ following is the content of `rtt.json`.
 ```
 Note that `validator` may be any string containing validation code; it is compiled
 into JavaScript and evaluated against user input.
+
+A template's parameters are the exact spec fields the daemon receives, so they
+must match what pScheduler accepts for that test type — no extra fields, and
+values in the case pScheduler expects (the `dns` template's `record` options are
+lowercase for this reason). A parameter that pScheduler does not recognize makes
+the generated test unrunnable on the probe, and the GUI has no way to know that:
+it writes whatever the template declares.
+
+Changing a template does not rewrite tests already saved in the database. Their
+spec is reconciled against the current template when the test is opened in the
+editor (see `applySelection` in `client/src/views/tests.vue`), so an existing
+test picks up an added field and drops a removed one the next time it is saved.
 After initialization, Docker mounts the template files to
 `/var/lib/pssid/plugins/tests/` on the hosting machine.
 

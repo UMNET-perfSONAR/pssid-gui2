@@ -12,18 +12,25 @@
             "name":"record",
             "type":"singleselect",
             "options": [
-                {"name": "A"},
-                {"name": "AAAA"},
-                {"name": "NS"},
-                {"name": "CNAME"},
-                {"name": "SOA"},
-                {"name": "PTR"},
-                {"name": "MX"},
-                {"name": "TXT"}
+                {"name": "a"},
+                {"name": "aaaa"},
+                {"name": "ns"},
+                {"name": "cname"},
+                {"name": "soa"},
+                {"name": "ptr"},
+                {"name": "mx"},
+                {"name": "txt"}
             ],
-            "default": { "name": "A" },
+            "default": { "name": "a" },
             "validator": "return true;",
-            "description": "record should be one of the enum values"
+            "description": "record should be one of the enum values, in lowercase"
+        },
+        {
+            "name":"query",
+            "type":"text",
+            "default": "",
+            "validator": "return input && !/\\s/.test(input);",
+            "description": "query should be nonempty and free of whitespace"
         }
     ],
     "validator": "return true;",

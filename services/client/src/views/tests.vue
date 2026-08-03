@@ -345,19 +345,36 @@
 
      async applySelection(test) {
         // Deep-copy the saved spec so edits never touch the list until saved.
-        const data = JSON.parse(JSON.stringify(test.spec));
+        const data = Array.isArray(test.spec) ? JSON.parse(JSON.stringify(test.spec)) : [];
         this.viewType = test.type;
         await this.testStore.getDesiredTest(test.type);
+        const template = this.testStore.test_options;
 
-        this.currOptionalData = [];
+        // Optional data is every entry the dynamic form did not build from the
+        // template: a bare key/value pair with no "type" (see formatTestSpec on
+        // the server, which treats the two kinds the same way).
+        this.currOptionalData = data
+          .filter((entry) => entry && !Object.prototype.hasOwnProperty.call(entry, 'type'))
+          .map((entry) => ({ key: entry.key, value: entry.value }));
 
-        // First slice the required fields from the data array.
-        const spec = data.slice(0, this.testStore.test_options.length);
+        const templateFields = data.filter(
+          (entry) => entry && Object.prototype.hasOwnProperty.call(entry, 'type')
+        );
 
-        // Then add optional data, if any.
-        for (let ind = this.testStore.test_options.length; ind < data.length; ind++) {
-          this.currOptionalData.push({ key: data[ind].key, value: data[ind].value });
-        }
+        // Reconcile the saved spec against the type's CURRENT template, by field
+        // name. This used to be a positional slice, which quietly produced an
+        // invalid spec whenever a template changed shape: a field the template
+        // no longer declares (rtt's former `protocol`) fell past the slice and
+        // was saved back as a key-less optional entry, and a field the template
+        // gained (dns's `query`) never appeared in the editor at all. Matching by
+        // name keeps the saved values, drops what the template dropped, and
+        // fills in template defaults for what it added.
+        const saved = new Map(templateFields.map((entry) => [entry.name, entry]));
+        // A template that failed to load leaves nothing to reconcile against;
+        // show the saved fields untouched rather than blanking the form.
+        const spec = template.length
+          ? template.map((option) => this.reconcileField(option, saved.get(option.name)))
+          : templateFields;
 
         this.selectedName = test.name;
         this.currentItem = {
@@ -366,6 +383,41 @@
           type: test.type
         };
         this.origType = test.type;
+     },
+
+     /**
+      * One editor field: the template's metadata (type, dropdown options,
+      * validator) carrying the saved value when the test has one, mirroring
+      * what dynamicform.vue builds for a new test. Passing the template's
+      * options through also repairs a dropdown for a test written straight
+      * into the database by a seed script, which stores only the chosen value.
+      *
+      * @param {*} option - the template's declaration of the field.
+      * @param {*} saved - the matching saved spec entry, or undefined when the
+      * template has gained a field this test predates.
+      */
+     reconcileField(option, saved) {
+       const field = {
+         name: option.name,
+         type: option.type,
+         options: option.options,
+         trueValue: option.trueValue,
+         falseValue: option.falseValue,
+         validator: option.hasOwnProperty('validator') ? option.validator : 'return true;',
+         description: option.hasOwnProperty('description') ?
+           option.description : 'Input is invalid',
+         value: saved && saved.value !== undefined ? saved.value : option.default,
+       };
+       if (option.type === 'singleselect') {
+         // vue-multiselect binds a plain object here. A spec saved before that
+         // was settled (or seeded by hand) can hold an array or nothing at all;
+         // unwrap it rather than render a dropdown with no selection.
+         const selected = saved ? saved.selected : undefined;
+         const chosen = Array.isArray(selected) ? selected[0] : selected;
+         field.selected = chosen || (option.hasOwnProperty('default') ? option.default : null);
+         field.value = field.selected;
+       }
+       return field;
      },
 
      async renderForm(form_type) {

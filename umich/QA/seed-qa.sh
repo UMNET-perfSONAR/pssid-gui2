@@ -226,13 +226,13 @@ const tIds = db.tests.insertMany([
       { type: 'text', name: 'timeout', value: 'PT30S' },
   ] },
   { name: 'test-rtt-to-external',  type: 'rtt', spec: [
-      { type: 'text',         name: 'dest',     value: '$external_dest' },
-      { type: 'number',       name: 'length',   value: 1024 },
-      { type: 'singleselect', name: 'protocol', selected: { name: 'UDP' } },
+      { type: 'text',   name: 'dest',   value: '$external_dest' },
+      { type: 'number', name: 'length', value: 1024 },
   ] },
   { name: 'test-dns-to-external',  type: 'dns', spec: [
       { type: 'text',         name: 'nameserver', value: '$external_dest' },
-      { type: 'singleselect', name: 'record',     selected: { name: 'AAAA' } },
+      { type: 'singleselect', name: 'record',     selected: { name: 'aaaa' } },
+      { type: 'text',         name: 'query',      value: 'www.example.edu' },
       // User-defined optional data: no "type", just key/value. Exercises the
       // final branch of formatTestSpec.
       { key: 'comment', value: 'qa-optional-field' },

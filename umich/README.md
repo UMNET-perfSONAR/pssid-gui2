@@ -67,6 +67,24 @@ control — treat adding someone to it as granting them the ability to reconfigu
 the probes. For a viewer tier, ask ITS to release a second group and map it to
 `read`.
 
+**The AMP form is only half of it.** "Groups Released: `pssid-gui-users`" in AMP
+configures the *release mechanism* — it tells Okta to put that group in the
+`edumember_ismemberof` claim **for users who are in it**. It does not create the
+group and it does not add anybody. Membership is granted separately, in
+**MCommunity**. Until someone is a member, Okta correctly releases nothing, and
+every user authenticates successfully and is then refused — with the application,
+the issuer, the scopes and the AMP configuration all provably correct. That
+failure is indistinguishable from a broken claim release, and it cost a long
+diagnosis on qa5 to tell the two apart. Check membership first.
+
+There are two independent gates, in two different places, and they fail at
+different points:
+
+| Gate | Configured in | Failure looks like |
+|---|---|---|
+| Assignment Groups (`RegularStaffAA`, …) | AMP | Refused at Okta, before reaching the application |
+| `pssid-gui-users` membership | MCommunity | Signs in fine, then the application's "Access denied" page |
+
 `pssid_gui_open_write` is now `false`. It is never consulted on a host with SSO
 on, so it governs only unregistered hosts — and those cannot authenticate anyone,
 so read-only is the right resting state. `make sso-status` on a host reports

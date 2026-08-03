@@ -126,10 +126,11 @@ lab probes the seeder defaults to; substitute your own if you overrode them.
   rejects it.
 
 **Tests.** Show the seven tests and that different types have different fields.
-- Open `test-rtt-to-external`: type **rtt**, `dest` is `$external_dest`, `length`
-  is a number, `protocol` is a dropdown set to `UDP`.
-- Open `test-dns-to-external`: type **dns**, a `record` dropdown (`AAAA`), and a
-  free-form `comment` field. This is the one that exercises every field kind.
+- Open `test-rtt-to-external`: type **rtt**, `dest` is `$external_dest` and
+  `length` is a number.
+- Open `test-dns-to-external`: type **dns**, a `record` dropdown (`aaaa`), a
+  `query` field, and a free-form `comment` field. This is the one that exercises
+  every field kind.
 - Point out `$external_dest`: a metadata reference resolved per host, not a
   literal URL.
 
@@ -234,7 +235,8 @@ once: text, singleselect, and a user-defined optional key/value:
 
 ```json
 { "name": "test-dns-to-external", "type": "dns",
-  "spec": { "nameserver": "$external_dest", "record": "AAAA", "comment": "qa-optional-field" } }
+  "spec": { "nameserver": "$external_dest", "record": "aaaa", "query": "www.example.edu",
+            "comment": "qa-optional-field" } }
 ```
 
 If you see `"type"`/`"name"` keys inside `spec`, the conversion did not run.

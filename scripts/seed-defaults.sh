@@ -131,9 +131,8 @@ const tHttp = upsertByName('tests', 'test-http-to-google', { type: 'http', spec:
   { type: 'text', name: 'timeout', value: 'PT10S' },
 ] });
 const tRtt = upsertByName('tests', 'test-rtt-to-google', { type: 'rtt', spec: [
-  { type: 'text',         name: 'dest',     value: 'www.google.com' },
-  { type: 'number',       name: 'length',   value: 512 },
-  { type: 'singleselect', name: 'protocol', selected: { name: 'TCP' } },
+  { type: 'text',   name: 'dest',   value: 'www.google.com' },
+  { type: 'number', name: 'length', value: 512 },
 ] });
 
 // ---- job: the comprehensive suite ----------------------------------------------

@@ -71,15 +71,23 @@ export const useTestStore = defineStore('test', {
           {...(config.ENABLE_SSO ? { credentials: 'include' } : {})}
         );
         if (!res.ok) {
+          // Clear rather than leave the previously loaded template in place:
+          // callers build a form (and, in the tests view, reconcile a saved
+          // spec) from test_options, so a stale template belonging to another
+          // type is worse than none at all.
+          this.test_options = [];
+          this.test_category = '';
           useToastStore().show(await errorMessage(res, 'Failed to load the test template'), 'error');
           return;
         }
         const data = await res.json();
-        this.test_options = data.parameters;
+        this.test_options = Array.isArray(data.parameters) ? data.parameters : [];
         this.test_category = data.category || '';
       }
       catch(error) {
         console.error(error);
+        this.test_options = [];
+        this.test_category = '';
         useToastStore().show('Failed to load the test template', 'error');
       }
       finally {
