@@ -10,6 +10,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { create_config_file } from './config.service';
+import { Caller, resolveCaller } from './identity.service';
 import { forLog } from './log.service';
 import { getSettings } from './settings.service';
 
@@ -31,9 +32,17 @@ const DEBOUNCE_MS = 5000;
 
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
+// Nobody is at the keyboard when the debounce timer fires, so a run that was
+// never attributed to a request says so in every identity field rather than
+// naming a person who did not press anything.
+const AUTO_CALLER: Caller = Object.freeze({
+  name: 'auto-provision',
+  uid: 'auto',
+  okta_uid: 'auto',
+  role: 'unauthenticated',
+});
 // The most recent change wins as the attributed caller for the batched run.
-let lastCaller = 'auto';
-let lastCallerRole = 'unauthenticated';
+let lastCaller: Caller = AUTO_CALLER;
 let lastReason = 'config change';
 
 /**
@@ -41,15 +50,13 @@ let lastReason = 'config change';
  * concurrent calls within DEBOUNCE_MS into a single run.
  */
 export async function triggerAutoProvision(
-  caller: string,
-  caller_role: string,
+  caller: Caller,
   reason: string
 ): Promise<void> {
   const { autoProvision } = await getSettings();
   if (!autoProvision) return;
 
   lastCaller = caller;
-  lastCallerRole = caller_role;
   lastReason = reason;
 
   if (pendingTimer) clearTimeout(pendingTimer);
@@ -68,9 +75,9 @@ async function runAutoProvision(): Promise<void> {
   try {
     // forLog: the reason is a request URL and the caller an identity-provider
     // claim, neither of which may be trusted to stay on one log line.
-    console.log('Auto-provision firing (reason: %s, caller: %s)', forLog(lastReason), forLog(lastCaller));
+    console.log('Auto-provision firing (reason: %s, caller: %s)', forLog(lastReason), forLog(lastCaller.uid));
     // Provision all hosts ('*') from the current DB state.
-    await create_config_file('*', 'auto', lastCaller, lastCallerRole);
+    await create_config_file('*', 'auto', lastCaller);
   } catch (err) {
     console.error('Auto-provision run failed:', err);
   } finally {
@@ -107,11 +114,8 @@ export function autoProvisionOnWrite(req: Request, res: Response, next: NextFunc
   if (isWrite && !isProvisionEndpoint) {
     res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 400) {
-        const oidcUser = (req as any).oidc?.user;
-        const caller: string = oidcUser?.sub || oidcUser?.email || 'unauthenticated';
-        const caller_role: string = oidcUser ? 'authenticated' : 'unauthenticated';
         // Fire-and-forget; failures are logged inside triggerAutoProvision.
-        triggerAutoProvision(caller, caller_role, `${method} ${req.originalUrl}`).catch((err) =>
+        triggerAutoProvision(resolveCaller(req), `${method} ${req.originalUrl}`).catch((err) =>
           console.error('Auto-provision trigger error:', err)
         );
       }

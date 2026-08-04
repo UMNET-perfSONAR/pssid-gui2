@@ -18,6 +18,7 @@
 // fault can never turn a working request into a 500.
 
 import { Request, Response, NextFunction } from 'express';
+import { resolveCaller } from './identity.service';
 
 /** Methods that change server state and therefore always warrant an entry. */
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -38,15 +39,17 @@ export interface AuditEntry {
 }
 
 /**
- * Resolve the acting identity the same way the controllers do, so an audit line
- * and the `generated_by` stamp in a produced config always name the same person.
+ * Resolve the acting identity from the one shared definition, so an audit line
+ * and the `generated_by_okta_uid` stamp in a produced config always name the
+ * same person. The immutable provider id is what goes in the log: a display
+ * name or a login can change, and an audit trail that cannot be correlated
+ * across such a change is not an audit trail.
+ *
  * Falls back to 'unauthenticated', which is the real state when SSO is off.
  */
 function resolveActor(req: Request): { actor: string; role: AuditEntry['role'] } {
-  // req.oidc only exists while the OIDC middleware is mounted (SSO on).
-  const user = (req as any).oidc?.user;
-  const actor = user?.sub || user?.email || 'unauthenticated';
-  return { actor, role: user ? 'authenticated' : 'unauthenticated' };
+  const caller = resolveCaller(req);
+  return { actor: caller.okta_uid, role: caller.role };
 }
 
 function outcomeFor(status: number): AuditEntry['outcome'] {

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { build_config_payload } from '../services/config.service';
+import { resolveCaller } from '../services/identity.service';
 
 /**
  * GET /api/provision/preview, dry run.
@@ -18,10 +19,7 @@ import { build_config_payload } from '../services/config.service';
  */
 const getProvisionPreview = async (req: Request, res: Response) => {
   try {
-    const oidcUser = (req as any).oidc?.user;
-    const caller: string = oidcUser?.sub || oidcUser?.email || 'unauthenticated';
-    const caller_role: string = oidcUser ? 'authenticated' : 'unauthenticated';
-    const proposed = await build_config_payload({ caller, caller_role });
+    const proposed = await build_config_payload({ caller: resolveCaller(req) });
     res.json({ proposed });
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Config validation failed')) {

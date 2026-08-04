@@ -4,6 +4,7 @@ import { updateCollection } from '../services/update.service';
 import { get_batch_ids } from '../services/utility.services';
 import { deleteDocument } from '../services/delete.service';
 import { create_config_file, build_host_view } from '../services/config.service';
+import { resolveCaller } from '../services/identity.service';
 import { isNameInDB, isValidHostEntry, isNameArray, metadataError, sendDeleted, provisionTarget } from './helpers';
 
 /**
@@ -217,10 +218,7 @@ const createConfig = (async (req: Request, res: Response) =>{
     if (name === null) {
       return res.status(400).json({message: "Invalid provision target: send [] for the whole config, or a valid host name"});
     }
-    const oidcUser = (req as any).oidc?.user;
-    const caller: string = oidcUser?.sub || oidcUser?.email || 'unauthenticated';
-    const caller_role: string = oidcUser ? 'authenticated' : 'unauthenticated';
-    await create_config_file(name, 'host', caller, caller_role);
+    await create_config_file(name, 'host', resolveCaller(req));
     res.json({ message: 'Config file created' });
   }
   catch(error) {

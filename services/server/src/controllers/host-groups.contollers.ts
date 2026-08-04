@@ -3,6 +3,7 @@ import { MongoClient, Db, MongoServerError, Collection, ObjectId } from "mongodb
 import { connectToMongoDB } from '../services/database.service';
 import { get_batch_ids, get_host_ids } from '../services/utility.services';
 import { create_config_file } from '../services/config.service';
+import { resolveCaller } from '../services/identity.service';
 import { isNameInDB, isValidRfc1123Name, isNameArray, metadataError, sendDeleted, provisionTarget, isRiskyHostPattern } from './helpers';
 
 /**
@@ -184,10 +185,7 @@ const createConfig = (async (req: Request, res: Response) =>{
     if (name === null) {
       return res.status(400).json({message: "Invalid provision target: send [] for the whole config, or a valid host group name"});
     }
-    const oidcUser = (req as any).oidc?.user;
-    const caller: string = oidcUser?.sub || oidcUser?.email || 'unauthenticated';
-    const caller_role: string = oidcUser ? 'authenticated' : 'unauthenticated';
-    await create_config_file(name, 'host_group', caller, caller_role);
+    await create_config_file(name, 'host_group', resolveCaller(req));
     res.json({ message: 'Config file created' });
   }
   catch(error) {

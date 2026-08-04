@@ -4,6 +4,7 @@ import { MongoClient } from 'mongodb';
 import { connectToMongoDB } from './database.service';
 import { forLog } from './log.service';
 import { matchesHostPattern, isRiskyHostPattern } from './hostPattern';
+import { Caller, UNAUTHENTICATED_CALLER } from './identity.service';
 import { execFile } from 'node:child_process';
 
 import path from 'path';
@@ -440,24 +441,35 @@ export function assertDaemonValid(obj: any): void {
  * a single object of individual scalar fields (not an array) so consumers can read
  * e.g. config_version directly.
  *
- * @param meta - who/what triggered the generation. caller/caller_role come from
- *   the authenticated request when available, else default to 'unauthenticated'.
+ * The acting identity is recorded three ways. `generated_by_okta_uid` is the
+ * provider's immutable user id and is the field to correlate on -- it is stable
+ * for a person across a rename, a new email address or a changed login.
+ * `generated_by_name` and `generated_by_uid` are there so whoever opens a
+ * deployed config can see who produced it without a lookup against the identity
+ * provider.
+ *
+ * @param meta - who/what triggered the generation. `caller` comes from the
+ *   authenticated request when available, else defaults to 'unauthenticated'.
  */
-function buildMetadata(meta: { caller?: string; caller_role?: string }) {
+function buildMetadata(meta: { caller?: Caller }) {
+  const caller = meta.caller || UNAUTHENTICATED_CALLER;
   return {
     pssid_metadata: {
       config_version: CONFIG_VERSION,
       generator: 'pssid-gui',
       generated_at: new Date().toISOString(),
-      generated_by: meta.caller || 'unauthenticated',
-      generated_by_role: meta.caller_role || 'unauthenticated',
+      generated_by_name: caller.name,
+      generated_by_uid: caller.uid,
+      generated_by_okta_uid: caller.okta_uid,
+      generated_by_role: caller.role,
     },
   };
 }
 
 /**
  * Returns a config JSON string with the volatile `pssid_metadata` block removed,
- * for equality comparisons. `generated_at` (and possibly generated_by) changes on
+ * for equality comparisons. `generated_at` (and possibly the generated_by_*
+ * identity fields) changes on
  * every build, so a raw string compare of two configs would ALWAYS differ; the
  * dry-run preview uses this so a pure provenance change is not reported as a real
  * config change. Falls back to the raw string if it cannot be parsed.
@@ -532,11 +544,11 @@ export function applyMetadata(host_data: any, host_group_data: any) {
  * instead of throwing, so one broken test cannot blank out the view of a host
  * that does not even use it.
  *
- * @param meta - caller/caller_role recorded in the config's pssid_metadata block.
+ * @param meta - the acting identity recorded in the config's pssid_metadata block.
  * @param opts.lenientTests - do not throw on a malformed test spec (read-only views).
  */
 async function assemble_config_object(
-  meta: { caller?: string; caller_role?: string } = {},
+  meta: { caller?: Caller } = {},
   opts: { lenientTests?: boolean } = {}
 ): Promise<any> {
   get_paths();
@@ -567,11 +579,11 @@ async function assemble_config_object(
  * Builds the daemon config (pssid_config.json) and ansible inventory (hosts.ini)
  * from the current database state, WITHOUT writing them or running provision.
  * Shared by create_config_file (the real provision) and the dry-run preview.
- * @param meta - caller/caller_role recorded in the config's pssid_metadata block.
+ * @param meta - the acting identity recorded in the config's pssid_metadata block.
  * @returns the proposed config + inventory as strings
  */
 export async function build_config_payload(
-  meta: { caller?: string; caller_role?: string } = {}
+  meta: { caller?: Caller } = {}
 ): Promise<{ config: string; inventory: string }> {
   const obj = await assemble_config_object(meta);
 
@@ -743,11 +755,22 @@ export function get_current_config(): { config: string | null; inventory: string
  * Creates the config file and Ansible inventory, then executes the provision script.
  * @param name - name of host or host_group where button was clicked. defaults to '*'
  * @param click_context - 'host', 'host_group', or 'auto'
- * @param caller - username of the authenticated user, or 'unauthenticated'
- * @param caller_role - 'authenticated' or 'unauthenticated'
+ * @param caller - the acting identity, or UNAUTHENTICATED_CALLER when SSO is off
  */
-export async function create_config_file(name: string, click_context: string, caller: string = 'unauthenticated', caller_role: string = 'unauthenticated') {
-  const { config: config_content, inventory } = await build_config_payload({ caller, caller_role });
+export async function create_config_file(
+  name: string,
+  click_context: string,
+  caller: Caller = UNAUTHENTICATED_CALLER
+) {
+  const { config: config_content, inventory } = await build_config_payload({ caller });
+
+  // The provision script's argument contract is unchanged -- <context> <name>
+  // <caller> <caller_role> -- and <caller> stays the immutable provider id it
+  // has always been, because a deployment supplies its own script and this is
+  // the value any existing one already records. The human-readable fields live
+  // in the config's pssid_metadata block, which that script does not parse.
+  const caller_id = caller.okta_uid;
+  const caller_role = caller.role;
 
   fs.writeFileSync(ini_path as string, inventory);
   console.log("Writing config file...");
@@ -764,7 +787,7 @@ export async function create_config_file(name: string, click_context: string, ca
   // reason the provisioning failed from the only record of it.
   console.log(
     'Executing provision script: %s %s %s %s %s',
-    shellscript_path, forLog(click_context), forLog(name), forLog(caller), forLog(caller_role)
+    shellscript_path, forLog(click_context), forLog(name), forLog(caller_id), forLog(caller_role)
   );
   // Every entry is forced to a string and stripped of a leading `-` before it
   // reaches the vector. execFile spawns no shell, so metacharacters are already
@@ -775,7 +798,7 @@ export async function create_config_file(name: string, click_context: string, ca
   // (provisionTarget); `caller` is an identity-provider claim, so it is checked
   // HERE as well -- this is the boundary, and it should hold whatever a future
   // caller passes or a provider puts in a `sub`.
-  const argv = [click_context, name, caller, caller_role].map((v) =>
+  const argv = [click_context, name, caller_id, caller_role].map((v) =>
     String(v ?? '').replace(/^-+/, '')
   );
   execFile(shellscript_path as string, argv, (err) => {
@@ -784,7 +807,7 @@ export async function create_config_file(name: string, click_context: string, ca
     } else {
       console.log(
         'Provision script completed: context=%s name=%s caller=%s role=%s',
-        forLog(click_context), forLog(name), forLog(caller), forLog(caller_role)
+        forLog(click_context), forLog(name), forLog(caller_id), forLog(caller_role)
       );
     }
   });
