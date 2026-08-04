@@ -18,9 +18,13 @@ examples are placeholders to replace with your own.
 - [Starter data](#starter-data)
 - [QA walkthrough](../umich/QA/QA.md)
 - [Single sign-on](#single-sign-on)
+  - [The on/off switch](#the-onoff-switch)
+  - [Writes while SSO is off](#writes-while-sso-is-off)
 - [TLS](#tls)
 - [Editions](#editions)
 - [Provisioning and automation](#provisioning-and-automation)
+  - [Provenance: who generated a config](#provenance-who-generated-a-config)
+  - [Audit trail](#audit-trail)
 - [Troubleshooting](#troubleshooting)
 
 ## One-command bootstrap
@@ -973,6 +977,82 @@ the database, and it is intentional: fix the flagged host to clear its own
 warning, and clear every host's warnings (or check Preview directly) before
 relying on the whole file being valid.
 
+### Provenance: who generated a config
+
+Every generated `pssid_config.json` opens with a `pssid_metadata` block. It
+describes the **file itself**, as opposed to the collections below it, which
+describe what the probes do:
+
+```json
+{
+  "pssid_metadata": {
+    "config_version": "1",
+    "generator": "pssid-gui",
+    "generated_at": "2026-08-03T21:49:39.613Z",
+    "generated_by_name": "Alex Rivera",
+    "generated_by_uid": "arivera",
+    "generated_by_okta_uid": "00u22pf9jgqqsnqaQ1d8",
+    "generated_by_role": "authenticated"
+  },
+  "hosts": [ ... ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `config_version` | Schema version of the generated file. Bumped when its shape changes in a way a consumer (daemon or tooling) should notice. |
+| `generator` | Always `pssid-gui`, distinguishing a file this application produced from a hand-written one. |
+| `generated_at` | UTC timestamp of the build. |
+| `generated_by_name` | Display name, from the provider's `name` claim. |
+| `generated_by_uid` | Login with any domain removed, from `preferred_username` (else `email`). |
+| `generated_by_okta_uid` | The provider's immutable user id, the OIDC `sub`. |
+| `generated_by_role` | `authenticated`, or `unauthenticated` when SSO is off. |
+
+Three identity fields rather than one, because they answer different questions.
+`generated_by_okta_uid` is the field to **correlate** on: an Okta user id
+(`00u…`) is permanent for a person and survives a rename, a new email address or
+a changed login, none of which the other two survive. `generated_by_name` and
+`generated_by_uid` exist so that whoever opens a deployed config can see who
+produced it without a lookup against the identity provider. To go the other way,
+from an id back to a person, use **Directory → People** in the Okta admin console
+or `GET /api/v1/users/<id>` on its Users API.
+
+Every field is populated whatever the provider releases. A deployment chooses its
+own `SSO_SCOPE`, and one without `profile` sends neither `name` nor
+`preferred_username`; the human-readable fields then fall back to the `sub`,
+which OIDC requires of every provider, rather than shipping blanks. With SSO off
+there is no identity to record and all three read `unauthenticated`.
+
+The same identity is written to the [audit line](#audit-trail) for the request
+that triggered the generation — both come from
+[`identity.service.ts`](../services/server/src/services/identity.service.ts), so
+a config and the log entry that explains it can never name different people.
+
+The block is excluded when Preview compares configurations, so regenerating an
+unchanged configuration under a different account is not reported as a change.
+
+### Audit trail
+
+Every state-changing request emits one structured line, as does every denial of
+any method — a refused read is as interesting as an accepted write. Lines carry
+the `AUDIT` prefix and go to stdout, which Docker's json-file driver already
+captures and rotates, so they survive to `make logs` with no new storage to
+manage and can be shipped to an aggregator later without a code change:
+
+```bash
+make logs | grep AUDIT
+```
+
+Each entry names the actor, role, method, path, status, outcome, source IP and
+duration. The actor is the immutable provider id, the same value the config
+records as `generated_by_okta_uid`, for the reason given above: a trail that
+cannot be correlated across a rename is not a trail.
+
+Request and response bodies are deliberately **not** recorded. An SSID profile
+carries a pre-shared key and a settings payload carries other operator secrets,
+and an audit log is the wrong place to copy either; method and path identify the
+resource without duplicating its contents.
+
 ### Delivering the config to the probes
 
 Generation and delivery are separate on purpose, and the split is not
@@ -1040,14 +1120,22 @@ without rebuilding images.
 
 ### Image-based deployments
 
-When deploying from prebuilt images rather than a source build, pin a release
-tag for reproducibility:
+When deploying from prebuilt images rather than a source build, pin an immutable
+tag for reproducibility. [`publish.yml`](../.github/workflows/publish.yml) pushes
+two kinds on every merge to `main`: a moving tag (`latest` for the default
+edition, the edition's own name for a branded one) and a `sha-<commit>` tag that
+never moves. Pin the second — `latest` is whatever was merged most recently,
+which is not a version:
 
+```bash
+# In services/server/.env, or the environment install.sh runs with
+PSSID_IMAGE_PREFIX=<registry>/pssid-gui2
+PSSID_IMAGE_TAG=sha-<commit>          # server and mongo
+PSSID_CLIENT_TAG=sha-<commit>         # client; use umich-sha-<commit> for that edition
 ```
-<registry>/pssid-gui2_client:v1
-<registry>/pssid-gui2_server:v1
-<registry>/pssid-gui2_mongo:v1
-```
+
+`install.sh --pull` sets these for you and defaults them to the moving tags, so
+pin them explicitly when a deployment must stay on a known build.
 
 Mount `shared/` into both the client and server containers, and do not mount the
 `node_modules` volumes, which would hide the dependencies already in the image.

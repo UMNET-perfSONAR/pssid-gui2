@@ -4,13 +4,9 @@
 
 Please report suspected vulnerabilities privately, not as a public issue.
 
-> **Before release:** replace the address below with your own, and confirm it is
-> monitored. A disclosure contact that nobody reads is worse than none, because it
-> stops a reporter looking for another route.
-
-- **Email:** `security@example.edu`
-- **Or:** open a [GitHub security advisory](https://docs.github.com/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
-  on this repository.
+Open a [GitHub security advisory](https://docs.github.com/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
+on this repository. It is the only reporting route, so it is the one that is
+watched — a report sent anywhere else may not reach a maintainer.
 
 Useful things to include: the version or commit, the deployment posture (SSO on
 or off), what an attacker gains, and the smallest reproduction you have. If you
@@ -58,6 +54,15 @@ versions and cipher, security headers, whether unauthenticated and cross-origin
 writes are refused, the mode of the secret file, and each container's privileges.
 It exits non-zero on a failure, so it can run from CI or cron. Run it after any
 change to `nginx.conf`, the compose files, or the auth configuration.
+
+After the fact, the audit trail answers who did what: every state-changing
+request and every denial emits one structured `AUDIT` line to stdout (`make logs
+| grep AUDIT`). The actor is the identity provider's immutable user id, which is
+also what a generated config records as `generated_by_okta_uid` — the two are
+resolved in one place so they cannot disagree, and an id that survives a rename
+is what makes the trail correlatable months later. Request and response bodies
+are never logged; see
+[the deployment guide](docs/deployment.md#audit-trail).
 
 The `security` job in CI additionally validates every nginx variant with
 `nginx -t`, asserts the container hardening survives into the resolved compose

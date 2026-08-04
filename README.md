@@ -140,7 +140,10 @@ The application produces two files:
 
 - `hosts.ini`, an Ansible inventory of the hosts and groups.
 - `pssid_config.json`, the pSSID daemon configuration, which lists the batches to
-  run.
+  run. It opens with a `pssid_metadata` header recording when the file was built
+  and who built it — by display name, by login, and by the identity provider's
+  immutable user id, which is the one that stays correct across a rename (see
+  [provenance](docs/deployment.md#provenance-who-generated-a-config)).
 
 You build these in the GUI and write them to the controller with **Settings >
 Configuration > Generate**, which validates them against the daemon's rules
@@ -170,9 +173,24 @@ to read or write access in
 [`shared/auth-groups.config.json`](shared/auth-groups.config.json). With SSO
 disabled, access is open, and `OPEN_WRITE` decides whether unauthenticated users
 have read-only or read-write access. Both ship closed: SSO off, writes refused.
-The installer sets these values; the
-[deployment guide](docs/deployment.md#single-sign-on) covers provider-specific
-setup, including a worked Okta example.
+
+Single sign-on is one binary flag, and a deployment can be run either way and
+switched later without reinstalling. The installer takes the choice
+(`./install.sh --sso=true|false`, or `PSSID_SSO` for the bootstrap), and
+afterwards:
+
+```bash
+make sso-status   # what posture is this deployment in right now?
+make sso-on       # on: OIDC sign-in, group membership decides read vs write
+make sso-off      # off: unauthenticated, OPEN_WRITE decides whether writes are allowed
+make writes-on    # allow writes while SSO is off (make writes-off returns to read-only)
+```
+
+`make sso-on` refuses until the OIDC values are present and names the ones that
+are missing, rather than flipping the flag and leaving a server that will not
+boot. The
+[deployment guide](docs/deployment.md#the-onoff-switch) covers both postures and
+provider-specific setup, including a worked Okta example.
 
 The authorization model fails closed throughout. With SSO on, the server
 **validates its configuration at startup and refuses to start** on a fault that
@@ -191,9 +209,10 @@ Authorization Code flow with PKCE and no token in the browser, signed
 Redis-backed sessions with both idle and absolute timeouts, cross-origin write
 refusal, tiered per-IP rate limits, a hardened TLS and security-header policy at
 nginx, unprivileged capability-dropped containers on read-only root filesystems,
-and a structured audit line for
-every state-changing request, every denial and every sign-in — never including a
-request body. `make test` and the CI `security` job cover these.
+and a [structured audit line](docs/deployment.md#audit-trail) for
+every state-changing request, every denial and every sign-in — naming the actor
+by the provider's immutable user id, never including a request body. `make test`
+and the CI `security` job cover these.
 
 ## Further reading
 

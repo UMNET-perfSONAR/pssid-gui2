@@ -154,6 +154,11 @@ check "preview: batch present"                             200 "$STATUS" 'smoke-
 check "preview: ssid profile carries layer 2 method"       200 "$STATUS" 'wpa_supplicant' "$BODY"
 check "preview: inventory carries the group section"       200 "$STATUS" 'smoke-group' "$BODY"
 check "preview: metadata provenance block present"         200 "$STATUS" 'pssid_metadata' "$BODY"
+# The identity fields are what an operator reads off a deployed config months
+# later. A unit test pins how they are resolved; only a live request proves the
+# claims survive the OIDC middleware and reach the file.
+check "preview: provenance names the generator by id"      200 "$STATUS" 'generated_by_okta_uid' "$BODY"
+check "preview: provenance names the generator readably"   200 "$STATUS" 'generated_by_uid' "$BODY"
 
 # ---- Generate: write the validated files to disk (Settings > Configuration) -------
 # Same build + daemon validation as preview, but this actually writes

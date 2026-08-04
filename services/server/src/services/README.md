@@ -7,6 +7,15 @@ All generated outputs originate here.
 ### database.service.ts
 Connects to the MongoDB client instance.
 
+### identity.service.ts
+Resolves the acting identity from the OIDC claims, once, for everything that has
+to name a person: the audit line, the `pssid_metadata` provenance block in a
+generated config, and the argument vector handed to the provision script. Those
+three used to derive it independently from `req.oidc.user`, so a change to one
+silently disagreed with the others about who did something. Every field falls
+back rather than going empty, because a deployment picks its own `SSO_SCOPE` and
+may release no human-readable claim at all.
+
 ### delete.service.ts
 Maintains data validity when an object is deleted. For example, when a host is
 deleted, it ensures the same host is removed from every host_group that references it,
