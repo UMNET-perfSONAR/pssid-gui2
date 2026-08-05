@@ -123,10 +123,15 @@ pssid_gui_sso_scope: "openid profile email"
 # separate operators from viewers later, ask ITS to release a second group and
 # map it to `read` here.
 #
-# Set here rather than edited into shared/auth-groups.config.json on each host:
-# the role discards deploy-time edits to tracked files before it pulls, so a hand
-# edit would survive until the next upgrade and then revert to the shipped
-# placeholders -- denying every user on a site that had been working.
+# Set here rather than edited into shared/auth-groups.config.json on each host.
+# The role discards deploy-time edits to tracked files before it pulls, and this
+# file is tracked, so a hand edit used to revert to the shipped placeholders on
+# the next upgrade -- which downgraded a working site to read-only rather than
+# breaking it outright, and so went unnoticed. The role now reads that file
+# before the discard and restores it after the pull, so a hand edit does
+# survive; setting it here is still preferred, because a value in the inventory
+# is reasserted identically on every host on every run, which no per-host edit
+# can promise.
 #
 # The string is what appears in the CLAIM, not a display name. Matching folds
 # case and trims whitespace but is otherwise exact, with no prefix matching.

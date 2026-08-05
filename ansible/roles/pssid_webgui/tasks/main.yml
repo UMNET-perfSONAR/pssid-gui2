@@ -120,6 +120,27 @@
 # Untracked files are left alone. Anything hand-edited inside this checkout is
 # lost on upgrade by design: customizations belong in group_vars or the
 # inventory, where they are reapplied on every run.
+#
+# shared/auth-groups.config.json is the one exception that design does not
+# cover, and it is read here, BEFORE the discard, so it can be restored below.
+# nginx.conf and shared/config.ts are safe to discard unconditionally because
+# install.sh deterministically REGENERATES their content every run regardless
+# of what was there before; this file has no such regeneration step -- the only
+# thing that ever writes its content is the task below, and that task is a
+# no-op whenever pssid_gui_auth_groups is unset. A site with no custom
+# inventory maps its groups by hand-editing this file directly (the documented
+# path in docs/deployment-with-sso.md), so discarding it here silently resets a
+# working deployment to the shipped placeholder mapping on every upgrade -- and
+# because that placeholder still recognises some group names, just at a lower
+# level, the failure reads as "my write access became read-only", not as an
+# obvious break.
+- name: Read the current group -> permission mapping before it can be discarded
+  ansible.builtin.slurp:
+    src: "{{ pssid_gui_src }}/shared/auth-groups.config.json"
+  register: pssid_gui_auth_groups_before
+  when: pssid_gui_git_update | bool
+  failed_when: false
+
 - name: Discard deploy-time edits that would conflict with the pull
   ansible.builtin.command:
     argv: [git, -C, "{{ pssid_gui_src }}", checkout, --, .]
@@ -134,6 +155,32 @@
   register: pssid_gui_git_pull
   changed_when: "'Already up to date' not in pssid_gui_git_pull.stdout"
   failed_when: pssid_gui_git_pull.rc != 0
+
+# Restored AFTER the pull, not before: writing it back earlier would leave the
+# file locally modified WHILE the fast-forward runs, which is exactly the
+# conflict the discard above exists to avoid, and could abort the pull. Once
+# the pull has landed, this is a plain filesystem write that git no longer has
+# any stake in. The task below (pssid_gui_auth_groups) still runs after this
+# one, so an inventory-managed mapping is still reasserted/updated normally --
+# this only protects the hand-edited case that task does not cover.
+- name: Restore the group -> permission mapping the discard above removed
+  ansible.builtin.copy:
+    dest: "{{ pssid_gui_src }}/shared/auth-groups.config.json"
+    content: "{{ pssid_gui_auth_groups_before.content | b64decode }}"
+    mode: "0644"
+    # In place, NOT Ansible's usual write-a-temp-file-and-rename: see the note
+    # on the task below, which this mirrors for the same reason.
+    unsafe_writes: true
+  # Gated on `content` existing, NOT on the slurp's `failed` flag: `failed_when:
+  # false` above forces `failed` to false even when the file genuinely could not
+  # be read, so testing that would pass straight into a b64decode of nothing.
+  # `content` is present only on a real successful read, which is exactly the
+  # case worth restoring -- and its absence covers both a skipped task (normal
+  # deploy) and a missing file (fresh clone, before install.sh has run).
+  when:
+    - pssid_gui_git_update | bool
+    - pssid_gui_auth_groups_before is defined
+    - pssid_gui_auth_groups_before.content is defined
 
 # ---- Production: run the installer ------------------------------------------
 
