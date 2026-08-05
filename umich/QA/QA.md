@@ -4,7 +4,7 @@ How to load the QA dataset on top of the pre-load, run an official demo that
 shows every part of the GUI working, and verify the generated configuration is
 correct, all without needing a probe.
 
-This dataset is site-specific — the campus SSIDs and the two lab probes — so it
+This dataset is site-specific - the campus SSIDs and the two lab probes - so it
 lives under [`umich/`](../README.md) with the rest of the University of Michigan
 material, and deliberately **outside the deployment path**: neither the bootstrap
 nor the installer runs `seed-qa.sh`. It is a manual QA tool, applied by hand on a
@@ -139,7 +139,7 @@ lab probes the seeder defaults to; substitute your own if you overrode them.
   `continue-if` is `false`, different from the others, to show the options.
 - Point out the help text under **Tests**: the tests inside a job are **not
   guaranteed to run in any particular order**. If one thing has to happen before
-  another, they belong in separate jobs — a batch runs *its jobs* in the listed
+  another, they belong in separate jobs - a batch runs *its jobs* in the listed
   order.
 
 **Batches.** The central part of the demonstration: four batches at three priorities.
@@ -148,7 +148,7 @@ lab probes the seeder defaults to; substitute your own if you overrode them.
   `batch-tie` (**2**, MWireless).
 - Point out the priority help text: *lower number has higher precedence in the
   event of a scheduling conflict*.
-- `batch-group` and `batch-tie` carry the **same** priority on purpose — the
+- `batch-group` and `batch-tie` carry the **same** priority on purpose - the
   ambiguous case, covered in section 5.
 - All four list the same two schedules, the deliberate collision for section 5.
 
@@ -178,7 +178,7 @@ lab probes the seeder defaults to; substitute your own if you overrode them.
 - Point out that the two membership styles are equivalent in what they deliver:
   a host gets the group's **batches and its metadata** whether it was listed by
   name or matched by the pattern. What separates a group key from a host key is
-  precedence, not membership style — the host's own key wins.
+  precedence, not membership style - the host's own key wins.
 
 **Settings → Configuration.** Turn all of the above into the daemon's files.
 - **Preview**: builds and validates without writing. Walk through the output
@@ -212,7 +212,7 @@ dataset. `ifacename` is **not** repeated on the hosts: it lives once in the
 `rpi4` group's own `data` block, and the daemon merges it per probe when it
 resolves `$ifacename`.
 
-Check that no host carries a second, resolved copy of these values — a
+Check that no host carries a second, resolved copy of these values - a
 `"metadata"` key beside `"data"` would be the same values written twice into a
 field the daemon ignores, and editing that copy would appear to change something
 and change nothing. The resolved view still exists where it is useful: open a
@@ -308,14 +308,14 @@ What to check:
 
 - Preview shows `batch-group` and `batch-tie` on both probes, both at priority 2,
   both listing the same two schedules. The GUI reports the tie faithfully rather
-  than silently reordering or rejecting it — equal priorities are legal.
+  than silently reordering or rejecting it - equal priorities are legal.
 - Their jobs are distinct (`job-group-1` runs rtt, `job-tie-1` runs http to a
   fixed target), so on a real probe the two are easy to tell apart in the logs.
 - Whatever order a probe happens to run them in, do not record it as expected
   behaviour.
 
 The remedy, whenever the order between two batches actually matters, is to give
-them different priorities — which is exactly what separates 0, 1 and 2 in the
+them different priorities - which is exactly what separates 0, 1 and 2 in the
 rest of this dataset.
 
 ## 6. Error handling

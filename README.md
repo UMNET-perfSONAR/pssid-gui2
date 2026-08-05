@@ -11,7 +11,7 @@ model: HTTPS, optional single sign-on, and an isolated Docker network.
 
 ## Deployment
 
-There is exactly **one supported installation path** — `bootstrap.sh` on a
+There is exactly **one supported installation path** - `bootstrap.sh` on a
 fresh host, or `install.sh` from a checkout, which the Ansible playbooks and
 `bootstrap.sh` also call internally. Every guide below describes that same
 script; which one to open depends on what you need:
@@ -21,7 +21,7 @@ script; which one to open depends on what you need:
 | **[Deploying without SSO](docs/deployment-without-sso.md)** | The fastest path: no identity provider, network-controlled access. Includes the one-command bootstrap **and** the same steps by hand (prerequisites, fetching the source, the playbook or `install.sh` directly, verifying, starter data). |
 | **[Deploying with SSO](docs/deployment-with-sso.md)** | OIDC sign-in, group membership decides read/write. Same structure: one command, and the by-hand equivalent with the OIDC flags filled in. |
 | **[Full deployment reference](docs/deployment.md)** | Everything neither guide above covers: disk sizing on small VMs, TLS modes, editions, upgrades and backups, the provisioning pipeline, metadata and host-regex rules, provenance, the audit trail, and troubleshooting. |
-| **[Ansible guide](ansible/README.md)** | The roles and playbooks both installers above run on top of, remote hosts, site inventories, and every deploy-time variable. |
+| **[Ansible guide](ansible/README.md)** | The roles and playbooks that run the installer both guides above describe, remote hosts, site inventories, and every deploy-time variable. |
 
 On a VM with a small disk, add `PSSID_PULL=true` to pull the prebuilt images
 from the registry instead of building them (~4 GB of Docker storage instead of
@@ -60,10 +60,10 @@ establishes the baseline and the QA dataset layers on top without disturbing it.
 
 ## Documentation
 
-[`docs/`](docs/README.md) is the full documentation index — the deployment
+[`docs/`](docs/README.md) is the full documentation index - the deployment
 guides above, working on the code, and security. Everything specific to the
-University of Michigan deployment — its master Ansible inventory, its live SSO
-configuration, and the QA dataset — is in [`umich/`](umich/README.md); the
+University of Michigan deployment - its master Ansible inventory, its live SSO
+configuration, and the QA dataset - is in [`umich/`](umich/README.md); the
 rest of the repository is vendor-neutral.
 
 ## System overview
@@ -85,7 +85,7 @@ The application produces two files:
 - `hosts.ini`, an Ansible inventory of the hosts and groups.
 - `pssid_config.json`, the pSSID daemon configuration, which lists the batches to
   run. It opens with a `pssid_metadata` header recording when the file was built
-  and who built it — by display name, by login, and by the identity provider's
+  and who built it - by display name, by login, and by the identity provider's
   immutable user id, which is the one that stays correct across a rename (see
   [provenance](docs/deployment.md#provenance-who-generated-a-config)).
 
@@ -139,7 +139,7 @@ provider-specific setup, including a worked Okta example.
 The authorization model fails closed throughout. With SSO on, the server
 **validates its configuration at startup and refuses to start** on a fault that
 would otherwise present as a working deployment which authenticates nobody or
-denies everyone — a session secret too short to be safe, a cookie domain that
+denies everyone - a session secret too short to be safe, a cookie domain that
 would loop sign-in forever, an unauthenticated session store, a group mapping that
 is missing or malformed. Entitlement is checked at sign-in as well as per request,
 so a user with no mapped group is refused with an explanation rather than reaching
@@ -154,7 +154,7 @@ Redis-backed sessions with both idle and absolute timeouts, cross-origin write
 refusal, tiered per-IP rate limits, a hardened TLS and security-header policy at
 nginx, unprivileged capability-dropped containers on read-only root filesystems,
 and a [structured audit line](docs/deployment.md#audit-trail) for
-every state-changing request, every denial and every sign-in — naming the actor
+every state-changing request, every denial and every sign-in - naming the actor
 by the provider's immutable user id, never including a request body. `make test`
 and the CI `security` job cover these.
 

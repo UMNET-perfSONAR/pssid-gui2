@@ -141,7 +141,7 @@ supplies the hostname, Okta issuer, edition, TLS mode, and Docker storage path.
 ansible-playbook -i ../umich/inventory.ini site.yml --ask-vault-pass
 ```
 
-Those files set only the generic variables documented below — a site inventory
+Those files set only the generic variables documented below - a site inventory
 never introduces a variable of its own, so there is exactly one code path.
 
 ## Variables
@@ -159,7 +159,7 @@ The most common:
 | `pssid_gui_tls` | `self-signed` | `self-signed`, `letsencrypt`, or `none` |
 | `pssid_gui_sso` | `""` | Enable OIDC single sign-on. Empty leaves the host's current posture alone (off on a first install), so `make sso-on` survives an upgrade; `true`/`false` forces it on every run |
 | `pssid_gui_sso_scope` | `""` | Scope requested at sign-in. Empty keeps the host's existing value (`openid profile email groups` on a first install). The right value belongs to the **tenant**: a provider that does not define a scope named `groups` rejects the whole authorization request with `invalid_scope`, and a federated eduPerson tenant releases membership through `edumember` |
-| `pssid_gui_auth_groups` | `{}` | Group → permission mapping (`write`/`read`/`none`) written to `shared/auth-groups.config.json`. Keys are group names exactly as the provider emits them in the token. Empty leaves the checkout's file alone; set it to give every host the same mapping on every run, which a hand edit cannot do — the role discards deploy-time edits to tracked files before pulling |
+| `pssid_gui_auth_groups` | `{}` | Group → permission mapping (`write`/`read`/`none`) written to `shared/auth-groups.config.json`. Keys are group names exactly as the provider emits them in the token. Empty leaves the checkout's file alone; set it to give every host the same mapping on every run, which a hand edit cannot do - the role discards deploy-time edits to tracked files before pulling |
 | `pssid_gui_open_write` | `""` | Whether the site is writable **while SSO is off**. Empty leaves the host's own setting alone (read-only on a first install, so a fresh SSO-off deploy greys out every form until `make writes-on` or `true` here); `true`/`false` forces it on every run. Never consulted while SSO is on |
 | `pssid_gui_version` | `main` | Branch or tag to deploy when cloning |
 | `pssid_gui_docker_data_root` | auto | Local filesystem with sufficient space for Docker + containerd; a dedicated `/var/lib/docker` mount is detected automatically |

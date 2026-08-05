@@ -6,7 +6,7 @@ Everything else is here or linked from here.
 
 ## Deployment
 
-There is exactly one supported installation path — `bootstrap.sh` on a fresh
+There is exactly one supported installation path - `bootstrap.sh` on a fresh
 host, or `install.sh` from a checkout, which the Ansible playbooks and
 `bootstrap.sh` also call internally. These three guides all describe that
 same script; which one to read depends on how much detail you need:
@@ -16,12 +16,12 @@ same script; which one to read depends on how much detail you need:
 | [Deploying without SSO](deployment-without-sso.md) | The fastest path: no identity provider, network-controlled access |
 | [Deploying with SSO](deployment-with-sso.md) | OIDC sign-in, group membership decides read/write |
 | [Full deployment reference](deployment.md) | Everything: disk sizing, TLS modes, editions, upgrades, backups, the provisioning pipeline, metadata and host-regex rules, provenance, the audit trail, and troubleshooting |
-| [Ansible guide](../ansible/README.md) | The roles and playbooks both scripts above run, remote hosts, and every deploy-time variable |
+| [Ansible guide](../ansible/README.md) | The roles and playbooks that run the installer both guides above describe, remote hosts, and every deploy-time variable |
 
 ## University of Michigan
 
-Everything specific to this repository's own production deployment —
-real values, not placeholders — lives under [`../umich/`](../umich/README.md):
+Everything specific to this repository's own production deployment -
+real values, not placeholders - lives under [`../umich/`](../umich/README.md):
 
 | Guide | For |
 |---|---|
@@ -39,6 +39,8 @@ real values, not placeholders — lives under [`../umich/`](../umich/README.md):
 | [Test templates](../services/server/README.md) | The on-disk test-type definitions dynamic forms render from |
 | [Frontend directories](../services/client/src/README.md) | Client source layout |
 | [Components](../services/client/src/components/README.md) | Shared Vue components |
+| [Host picker](../services/client/src/forms/README.md) | The `hostSelection.vue` component used by Host Groups |
+| [Client roadmap notes](../services/client/README.md) | Known duplication and possible future directions, not yet acted on |
 
 ## Security
 

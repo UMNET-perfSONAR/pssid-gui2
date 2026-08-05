@@ -34,7 +34,7 @@ Note that `validator` may be any string containing validation code; it is compil
 into JavaScript and evaluated against user input.
 
 A template's parameters are the exact spec fields the daemon receives, so they
-must match what pScheduler accepts for that test type — no extra fields, and
+must match what pScheduler accepts for that test type - no extra fields, and
 values in the case pScheduler expects (the `dns` template's `record` options are
 lowercase for this reason). A parameter that pScheduler does not recognize makes
 the generated test unrunnable on the probe, and the GUI has no way to know that:

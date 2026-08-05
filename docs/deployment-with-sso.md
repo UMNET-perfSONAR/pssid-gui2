@@ -3,7 +3,7 @@
 With single sign-on (SSO) on, users authenticate through an OIDC identity
 provider and their group membership decides whether they get read or write
 access. This is the posture to prefer for any deployment reachable outside a
-network you already control — see
+network you already control - see
 [deployment without SSO](deployment-without-sso.md) for what runs in its
 place when SSO is off.
 
@@ -14,12 +14,12 @@ only difference is which flags you pass it.
 ## Prerequisites
 
 1. **A compliant OIDC provider.** The server uses generic OIDC
-   (`express-openid-connect`), so any provider works — Okta, Entra ID,
+   (`express-openid-connect`), so any provider works - Okta, Entra ID,
    Keycloak, Google, and others. [`umich/SSO.md`](../umich/SSO.md) and
    [`umich/QA/SSOwithOkta.md`](../umich/QA/SSOwithOkta.md) are worked
    examples against Okta.
 2. **HTTPS.** The session cookie is `Secure`-only, so SSO cannot work over
-   plain HTTP — the installer refuses `--sso=true --tls=none` outright. Use
+   plain HTTP - the installer refuses `--sso=true --tls=none` outright. Use
    `--tls=self-signed` for an internal CA or lab, or `--tls=letsencrypt` for a
    publicly trusted certificate.
 3. **Register a web application** with the provider:
@@ -27,7 +27,7 @@ only difference is which flags you pass it.
    - Sign-in redirect URI: `https://<your-hostname>/callback`
    - Sign-out redirect URI: `https://<your-hostname>`
    - Make sure the ID token includes a **groups claim** (`groups`,
-     `edumember_ismemberof`/`edumember_is_member_of`, or `isMemberOf` — the
+     `edumember_ismemberof`/`edumember_is_member_of`, or `isMemberOf` - the
      server reads whichever the provider sends). This is the single most
      common reason an OIDC integration appears to work and grants nobody
      anything: without it, every user authenticates and is then refused.
@@ -37,7 +37,7 @@ only difference is which flags you pass it.
 Record the **issuer base URL**, **client ID**, and **client secret** the
 provider gives you; the installer asks for exactly these three.
 
-## Step 1 — Deploy
+## Step 1: Deploy
 
 ### One command
 
@@ -55,7 +55,7 @@ curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/boo
 ```
 
 This is the same script [deployment without SSO](deployment-without-sso.md)
-uses — it installs git and Ansible, clones the repository, and runs the
+uses - it installs git and Ansible, clones the repository, and runs the
 Ansible playbook, which installs Docker and runs
 [`install.sh`](../install.sh) internally. There is no other script this
 repository documents or supports for a first install.
@@ -112,10 +112,10 @@ depth.
    authorization-server path that needs its own claim configuration) is caught
    here rather than at sign-in.
 
-## Step 2 — Map groups to permissions
+## Step 2: Map groups to permissions
 
 Edit [`shared/auth-groups.config.json`](../shared/auth-groups.config.json)
-with the exact group strings the provider's claim carries — not a display
+with the exact group strings the provider's claim carries - not a display
 name:
 
 ```json
@@ -130,7 +130,7 @@ name:
 Matching folds case and surrounding whitespace but is otherwise exact: no
 prefix or suffix matching, so `pssid-gui` does not also grant
 `pssid-gui-readonly`. A user in several groups gets the highest level among
-them; a group not listed grants nothing. The server re-reads this file live —
+them; a group not listed grants nothing. The server re-reads this file live -
 but compose bind-mounts it as a single file, and an editor that replaces the
 file on save (`sed -i`, vim, by default) leaves the running container reading
 the old copy. Either edit in place, or run
@@ -159,18 +159,18 @@ make security-check                    # TLS, headers, auth, containers -- from 
 
 Then, signed in through the browser:
 
-1. Sign in at `https://<your-hostname>` — the provider, then back to the
+1. Sign in at `https://<your-hostname>` - the provider, then back to the
    dashboard with your name in the navigation bar.
 2. Open `/api/userinfo`. `groups` must list the groups the provider actually
    sent, and `access_level` must match what you mapped in step 2. An empty
-   `groups` means the provider is not releasing the claim — go back to
+   `groups` means the provider is not releasing the claim - go back to
    prerequisite 3.
 3. Sign out, revisit, and you must be asked to authenticate again.
 
 ## Turning SSO on for an already-deployed host
 
-The credentials can be filled in ahead of time and sit inert — the server
-only reads them behind the `ENABLE_SSO` flag — so "configure the provider now,
+The credentials can be filled in ahead of time and sit inert - the server
+only reads them behind the `ENABLE_SSO` flag - so "configure the provider now,
 switch on later" is one command once you are ready:
 
 ```bash

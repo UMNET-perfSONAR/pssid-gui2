@@ -47,7 +47,7 @@ the full deployment reference.
 SSO is live on UMich's controllers, registered as the ITS Okta application
 **ITS - pssid development**: OIDC Authorization Code + PKCE, issuer
 `https://okta.umich.edu/oauth2/default`, one group (`pssid-gui-users`) released
-in the `edumember_ismemberof` claim and mapped to **write** — so membership of
+in the `edumember_ismemberof` claim and mapped to **write** - so membership of
 that MCommunity group *is* the access control here. The whole posture is in
 [`group_vars/pssid_gui.yml`](group_vars/pssid_gui.yml) and
 [`inventory.ini`](inventory.ini); the only value not in git is the client
@@ -57,14 +57,14 @@ secret, in an `ansible-vault`-encrypted `group_vars/all/vault.yml`.
 how to deploy a new host or rotate the secret, and the four things most likely
 to go wrong against this specific Okta tenant (a scope Okta rejects outright,
 an issuer that looks right but discovers the wrong server, and the two
-independent gates — Okta assignment and MCommunity membership — that fail
+independent gates - Okta assignment and MCommunity membership - that fail
 differently and are easy to mistake for one another).
 
 ## QA
 
-The QA dataset is UMich-specific — it seeds the campus SSIDs (eduroam and
+The QA dataset is UMich-specific - it seeds the campus SSIDs (eduroam and
 MWireless) and the two lab probes, whose hostnames are their IP addresses at this
-site — so it lives here rather than in the generic tree. It is **not** part of any
+site - so it lives here rather than in the generic tree. It is **not** part of any
 deployment path: neither the bootstrap nor the installer runs it.
 
 ```bash

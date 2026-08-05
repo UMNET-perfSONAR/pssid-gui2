@@ -6,8 +6,8 @@ storage paths in the examples are placeholders to replace with your own. For a
 shorter, task-focused walkthrough, use one of these instead and come back here
 for anything they link out to:
 
-- [Deploying without SSO](deployment-without-sso.md) — the fastest path
-- [Deploying with SSO](deployment-with-sso.md) — OIDC sign-in, group membership
+- [Deploying without SSO](deployment-without-sso.md) - the fastest path
+- [Deploying with SSO](deployment-with-sso.md) - OIDC sign-in, group membership
   decides read/write
 
 Both describe the same installer this guide does; see
@@ -346,9 +346,9 @@ To run it without prompts, pass the answers as flags:
 
 It checks for Docker, Docker Compose, and OpenSSL, then collects the edition,
 hostname, SSO, and TLS settings. From those it writes `services/server/.env` (the
-Mongo and Redis URLs, `BASE_URL`, an empty `COOKIE_DOMAIN` — which gives a
+Mongo and Redis URLs, `BASE_URL`, an empty `COOKIE_DOMAIN` - which gives a
 host-only session cookie, sent to exactly the host that set it rather than to
-every subdomain — a random `SECRET`, and the OIDC
+every subdomain - a random `SECRET`, and the OIDC
 values when SSO is on) and a root `.env` recording the edition and a generated
 MongoDB username and password. The database runs with authentication enabled, and
 the server connects with those credentials. It applies the SSO flag and base URL
@@ -457,7 +457,7 @@ re-running the pre-load never detaches a batch assigned to it.
 The QA dataset lives under [`umich/QA/`](../umich/QA/), deliberately outside the
 deployment path: neither the bootstrap nor the installer runs it. It is
 site-specific (campus SSIDs, the two lab probes), which is why it sits with the
-rest of the UMich material — see [`umich/README.md`](../umich/README.md). Apply it
+rest of the UMich material - see [`umich/README.md`](../umich/README.md). Apply it
 by hand with `bash umich/QA/seed-qa.sh` (or `make seed-qa`). It layers on top of
 the pre-load: the MWireless profile, five more tests (including
 `test-http-to-external`, whose url is the metadata reference `$external_dest`),
@@ -550,7 +550,7 @@ make sso-off            # turn it back off
 The flag lives in two places, and the targets above move both together:
 the root `.env` (read by Docker Compose and resolved by the server at runtime)
 and `shared/config.ts` (the default compiled into the browser bundle). Moving
-only one desynchronises the API from the interface — the server would
+only one desynchronises the API from the interface - the server would
 authenticate a user the browser still believes is anonymous. Because the value
 is compiled into the bundle, switching rebuilds the client image; `make ps`
 showing `client` healthy means the change is live.
@@ -559,8 +559,8 @@ showing `client` healthy means the change is live.
 `services/server/.env` (`ISSUER_BASE_URL`, `CLIENT_ID`, `CLIENT_SECRET`,
 `SECRET`), and names the ones that are missing. That guard matters: the server
 deliberately fails closed on an incomplete OIDC config, so flipping the flag
-early would stop it booting and take the site down. Fill those values in — the
-rest of this section is how — then run `make sso-on`.
+early would stop it booting and take the site down. Fill those values in - the
+rest of this section is how - then run `make sso-on`.
 
 **The switch survives upgrades.** `install.sh` keeps the posture and the OIDC
 settings a host already has whenever they are not passed on the command line
@@ -570,7 +570,7 @@ when `pssid_gui_sso` is explicitly set. Two consequences worth knowing:
 - Provider credentials are written to `services/server/.env` and preserved
   **whether or not SSO is on**, so you can register the application, put the
   values in, deploy several more times, and flip the switch whenever you are
-  ready. They are inert while SSO is off — the server only reads them behind the
+  ready. They are inert while SSO is off - the server only reads them behind the
   same flag.
 - If you set `pssid_gui_sso: true` (or `false`) in your inventory, that wins on
   every run and overrides `make sso-on`/`make sso-off`. Leave it empty to let
@@ -580,8 +580,8 @@ when `pssid_gui_sso` is explicitly set. Two consequences worth knowing:
 ### Writes while SSO is off
 
 `OPEN_WRITE` in the root `.env` decides whether the unauthenticated interface is
-read-only or writable, and it also ships closed. That is deliberate — a
-deployment is never unauthenticated-writable by accident — but it has a
+read-only or writable, and it also ships closed. That is deliberate - a
+deployment is never unauthenticated-writable by accident - but it has a
 consequence worth stating plainly: **a site that has just been switched to
 `make sso-off` greys out every form until writes are opened.** Reads work,
 nothing can be saved, and the interface itself does not explain why.
@@ -600,7 +600,7 @@ running server actually reports.
 Opening writes means anyone who can reach the hostname can change the probe
 configuration, so the network in front of the site becomes its access control.
 That is a reasonable interim posture on a private network while a provider is
-being registered — it is not one to leave in place on a reachable host.
+being registered - it is not one to leave in place on a reachable host.
 
 ### Configuring the provider
 
@@ -637,7 +637,7 @@ suffix matching, so mapping `pssid-gui` does not also grant `pssid-gui-readonly`
 A user in several groups gets the highest level among them, and a group that is
 not listed grants nothing.
 
-The server re-reads this file while it runs, so a group change needs no restart —
+The server re-reads this file while it runs, so a group change needs no restart -
 **but** compose bind-mounts it as a single file, and such a mount follows the
 inode rather than the path. An editor that writes a temporary file and renames it
 over the original, which is what `sed -i` and vim do by default, leaves the
@@ -645,7 +645,7 @@ container reading the old copy. Either edit in place (`cat > shared/auth-groups.
 or, more simply, run `docker compose restart server` afterwards and confirm the
 result with `/api/userinfo`.
 
-None of this applies while SSO is off — group membership is not consulted, and
+None of this applies while SSO is off - group membership is not consulted, and
 [`OPEN_WRITE`](#writes-while-sso-is-off) governs instead. It is set in the **root
 `.env`**, which is what compose passes to the server: `make writes-on` on a
 running host, `./install.sh --open-write=true` at install time, or
@@ -658,7 +658,7 @@ environment overrides, and it ships `false`.
 With SSO enabled the server **validates its configuration at startup and refuses
 to start** if anything is wrong, naming the setting at fault. Every case it
 rejects would otherwise present as a working deployment that authenticates nobody,
-loops at sign-in, or denies every user — failures that are easy to misread as an
+loops at sign-in, or denies every user - failures that are easy to misread as an
 application bug. The checks cover the issuer and base URL (absolute, HTTPS, no
 stray path), a `COOKIE_DOMAIN` that does not match the site hostname (the usual
 cause of an endless sign-in redirect), a `SECRET` shorter than 32 characters, an
@@ -693,7 +693,7 @@ Both spellings of the eduPerson attribute are read, because providers disagree
 about how to snake_case `isMemberOf` into a claim name and matching is exact.
 Carrying only one is a trap worth knowing about: the tenant using the other
 spelling authenticates every user and then denies them all, because membership
-resolves to an empty list — a symptom identical to the claim never having been
+resolves to an empty list - a symptom identical to the claim never having been
 released, which costs a round trip with the identity team to tell apart.
 
 The **requested scope** is what differs between tenants, and it is configurable
@@ -730,7 +730,7 @@ one of them, and the table below is the summary.
 | `RATE_LIMIT_API_PER_MIN` | `200` | Per-IP ceiling on API requests. |
 | `RATE_LIMIT_WRITE_PER_MIN` | `120` | Per-IP ceiling on state-changing requests. |
 | `RATE_LIMIT_LOGIN_PER_MIN` | `60` | Per-IP ceiling on `/login`. Loose on purpose: one office can share an egress address. |
-| `AUTH_GROUPS_FILE` | — | Read the group mapping from a path outside the source tree. When set it is the **only** path consulted: if the file is missing the server refuses to start rather than falling back to the copy inside the image. |
+| `AUTH_GROUPS_FILE` | - | Read the group mapping from a path outside the source tree. When set it is the **only** path consulted: if the file is missing the server refuses to start rather than falling back to the copy inside the image. |
 
 The session itself needs no configuration to be sound: Authorization Code flow
 with PKCE, RS256 pinned for the ID token, no token in the browser, and a
@@ -741,7 +741,7 @@ a session cannot be hijacked by guessing an id.
 
 1. Sign in to your Okta tenant with an admin account, go to Applications, then
    Create App Integration, and choose OIDC (OpenID Connect) followed by Web
-   Application. Leave **Authorization Code** as the only grant type — uncheck
+   Application. Leave **Authorization Code** as the only grant type - uncheck
    Implicit. Set the sign-in redirect URI to `https://<your-hostname>/callback`
    and the sign-out redirect URI to `https://<your-hostname>`. Under Assignments,
    limit access to your own groups rather than Everyone. Save, and note the
@@ -750,12 +750,12 @@ a session cannot be hijacked by guessing an id.
    API → Authorization Servers → your server → Claims, add a claim named
    `groups`, included in the **ID Token** and set to **Always** (not "Userinfo /
    id_token request"), value type **Groups**, with a **Filter** that matches your
-   groups — for example, starts with `pssid`. Prefer a filter to a `.*` regex:
+   groups - for example, starts with `pssid`. Prefer a filter to a `.*` regex:
    there is no reason to hand this application a user's entire directory
    membership. Confirm it with Token Preview on the same authorization server
    before deploying; if `groups` is missing there, nothing downstream can
    compensate. (A federated higher-education tenant may release the eduPerson
-   attribute instead — Okta names that claim `edumember_ismemberof` — in which
+   attribute instead - Okta names that claim `edumember_ismemberof` - in which
    case the claim arrives on its own and only `SSO_SCOPE` needs changing.)
 3. Use the Okta org authorization server as the issuer, for example
    `ISSUER_BASE_URL=https://<your-tenant>.okta.com`. The discovery document is at
@@ -910,7 +910,7 @@ even on the same OS) or a per-group test destination.
 #### `data` is the input, and the only thing in the file
 
 Metadata appears in the generated `pssid_config.json` exactly once, as the `data`
-block on each host and host group — what you typed in the Metadata section, and
+block on each host and host group - what you typed in the Metadata section, and
 the only field the daemon reads:
 
 ```json
@@ -922,8 +922,8 @@ A probe in a group carrying `ifacename=wlan0` still resolves `$ifacename`: the
 daemon reads that group's own `data` block from the same file and merges it
 itself, per the order below.
 
-The **resolved** view — this host's own keys plus the ones its groups contribute,
-which is what `$key` will actually become — is not written into the file. It
+The **resolved** view - this host's own keys plus the ones its groups contribute,
+which is what `$key` will actually become - is not written into the file. It
 would repeat every value a second time in a field the daemon ignores, so a
 `external_dest` edited in the derived copy would appear to change something and
 change nothing. That view is still computed, and you can see it per host in the
@@ -936,13 +936,13 @@ probe and substitutes `$key` in batch and test fields from it. An unresolved
 `$key` invalidates that batch on that host. The set is assembled in this order,
 and **the first definition of a key wins**:
 
-1. **The host's own `data`** — so a host key always beats every group.
+1. **The host's own `data`** - so a host key always beats every group.
 2. **Each group the host belongs to**, in the order the groups appear in the
    config. Between two groups the earlier one wins, which makes a collision
    across overlapping groups fragile: avoid defining the same key on groups that
    share hosts.
 
-A group contributes its metadata to a host it selects **by name or by regex** —
+A group contributes its metadata to a host it selects **by name or by regex** -
 the daemon adds group metadata in the same step that it adds group batches, so
 pattern-matched membership carries both. The GUI reproduces exactly this order
 ([`applyMetadata`](../services/server/src/services/config.service.ts)), which is
@@ -1044,7 +1044,7 @@ which OIDC requires of every provider, rather than shipping blanks. With SSO off
 there is no identity to record and all three read `unauthenticated`.
 
 The same identity is written to the [audit line](#audit-trail) for the request
-that triggered the generation — both come from
+that triggered the generation - both come from
 [`identity.service.ts`](../services/server/src/services/identity.service.ts), so
 a config and the log entry that explains it can never name different people.
 
@@ -1054,7 +1054,7 @@ unchanged configuration under a different account is not reported as a change.
 ### Audit trail
 
 Every state-changing request emits one structured line, as does every denial of
-any method — a refused read is as interesting as an accepted write. Lines carry
+any method - a refused read is as interesting as an accepted write. Lines carry
 the `AUDIT` prefix and go to stdout, which Docker's json-file driver already
 captures and rotates, so they survive to `make logs` with no new storage to
 manage and can be shipped to an aggregator later without a code change:
@@ -1076,14 +1076,14 @@ resource without duplicating its contents.
 ### Delivering the config to the probes
 
 Generation and delivery are separate on purpose, and the split is not
-cosmetic — it is where the fleet's root credentials live.
+cosmetic - it is where the fleet's root credentials live.
 
 **Generate** validates the configuration and writes `pssid_config.json` and
 `hosts.ini` to the controller. It then runs `bin/provision` inside the server
 container, which records the request and stops there. That container cannot
 deliver anything: the image has no `ssh`, `scp` or `ansible`, its root filesystem
 is read-only so none can be installed at run time, and it runs as uid 1000 with
-every capability dropped. Nor should it be able to — delivery needs a key with
+every capability dropped. Nor should it be able to - delivery needs a key with
 root on every probe, and the one process that must never hold that key is the
 internet-facing web application. A single remote-code-execution bug there would
 otherwise be root on the entire fleet.
@@ -1110,7 +1110,7 @@ file. Settings come from the environment, all optional:
 | `PSSID_SSH_OPTS` | (none) | Extra `ssh`/`scp` options. Use `-o Port=2222`, not `-p`, since `scp` spells the port flag differently |
 
 It exits non-zero if any probe failed, names the ones that did, and records the
-outcome in `last-delivery.json` beside the config — readable from the server
+outcome in `last-delivery.json` beside the config - readable from the server
 container, since that directory is a bind mount.
 
 **What it does not claim.** It does not restart the daemon and it does not verify
@@ -1119,8 +1119,8 @@ either. The result says the file was *delivered*, which is the only thing this
 side honestly knows; when and how the daemon picks it up is the probe's business.
 
 To have delivery follow generation automatically, watch
-`/var/lib/pssid/output/provision-request.json` — written by `bin/provision` on
-every Generate — with a systemd path unit or a cron entry that runs the script
+`/var/lib/pssid/output/provision-request.json` - written by `bin/provision` on
+every Generate - with a systemd path unit or a cron entry that runs the script
 above. That keeps the credentials on the host while still being hands-off.
 
 The `settings` collection's `autoProvision` flag (served at `GET`/`PUT
@@ -1144,7 +1144,7 @@ When deploying from prebuilt images rather than a source build, pin an immutable
 tag for reproducibility. [`publish.yml`](../.github/workflows/publish.yml) pushes
 two kinds on every merge to `main`: a moving tag (`latest` for the default
 edition, the edition's own name for a branded one) and a `sha-<commit>` tag that
-never moves. Pin the second — `latest` is whatever was merged most recently,
+never moves. Pin the second - `latest` is whatever was merged most recently,
 which is not a version:
 
 ```bash

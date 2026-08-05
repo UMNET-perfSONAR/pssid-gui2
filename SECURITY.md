@@ -6,7 +6,7 @@ Please report suspected vulnerabilities privately, not as a public issue.
 
 Open a [GitHub security advisory](https://docs.github.com/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
 on this repository. It is the only reporting route, so it is the one that is
-watched — a report sent anywhere else may not reach a maintainer.
+watched - a report sent anywhere else may not reach a maintainer.
 
 Useful things to include: the version or commit, the deployment posture (SSO on
 or off), what an attacker gains, and the smallest reproduction you have. If you
@@ -19,12 +19,12 @@ Please do not test against a deployment you do not operate.
 This application manages the configuration of wireless test probes. The findings
 we care most about, roughly in order:
 
-1. Authentication or authorization bypass — reaching data or a write without a
+1. Authentication or authorization bypass - reaching data or a write without a
    mapped group, or escalating from read to write.
 2. Anything that lets one user act as another: session fixation or hijacking,
    CSRF that survives the same-origin check, or a cookie that escapes its scope.
 3. Injection reaching MongoDB, the generated `hosts.ini` / `pssid_config.json`,
-   or the provisioning path — the last of these ends up executing against probes.
+   or the provisioning path - the last of these ends up executing against probes.
 4. Secret disclosure: the OIDC client secret, the session key, or database
    credentials appearing in a response, a log line, or an image layer.
 5. Container escape, or anything that turns code execution in a container into
@@ -39,9 +39,9 @@ operator.
 
 Two are supported, and which one you run changes what "unauthorized" means:
 
-- **SSO enabled** — identity comes from an OIDC provider and group membership
+- **SSO enabled** - identity comes from an OIDC provider and group membership
   decides read or write. This is the posture to assume unless stated otherwise.
-- **SSO disabled** — there is no identity. Reads are open, and `OPEN_WRITE`
+- **SSO disabled** - there is no identity. Reads are open, and `OPEN_WRITE`
   decides whether writes are too. This is intended only for a deployment that is
   access-controlled by other means, and the installer warns when it is left open.
   A report that amounts to "writes are open when OPEN_WRITE is true" is the
@@ -49,7 +49,7 @@ Two are supported, and which one you run changes what "unauthorized" means:
 
 ## Verifying a deployment
 
-`make security-check` inspects a running deployment from the outside — TLS
+`make security-check` inspects a running deployment from the outside - TLS
 versions and cipher, security headers, whether unauthenticated and cross-origin
 writes are refused, the mode of the secret file, and each container's privileges.
 It exits non-zero on a failure, so it can run from CI or cron. Run it after any
@@ -58,7 +58,7 @@ change to `nginx.conf`, the compose files, or the auth configuration.
 After the fact, the audit trail answers who did what: every state-changing
 request and every denial emits one structured `AUDIT` line to stdout (`make logs
 | grep AUDIT`). The actor is the identity provider's immutable user id, which is
-also what a generated config records as `generated_by_okta_uid` — the two are
+also what a generated config records as `generated_by_okta_uid` - the two are
 resolved in one place so they cannot disagree, and an id that survives a rename
 is what makes the trail correlatable months later. Request and response bodies
 are never logged; see
