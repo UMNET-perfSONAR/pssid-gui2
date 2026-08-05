@@ -391,7 +391,7 @@
   font-size: 0.85em;
   color: var(--text);
 }
-:global(:root[data-theme="dark"]) #group-regex-help code {
+:root[data-theme="dark"] #group-regex-help code {
   background: #0e1626;
 }
 </style>

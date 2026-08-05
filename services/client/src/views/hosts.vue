@@ -531,7 +531,7 @@
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   white-space: pre;
 }
-:global(:root[data-theme="dark"]) .probe-config-sub code {
+:root[data-theme="dark"] .probe-config-sub code {
   background: #0e1626;
 }
 </style>

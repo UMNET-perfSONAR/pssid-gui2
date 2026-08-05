@@ -3,10 +3,16 @@
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <ToastNotification />
     <nav class="navbar navbar-expand-md navbar-dark" aria-label="Primary">
-      <router-link class="navbar-brand" to="/" @click="navOpen = false">
-        <span class="material-icons nav-brand-icon" aria-hidden="true">{{ edition.glyph }}</span>
-        <span class="nav-brand-text">{{ edition.shortName }} <strong>{{ edition.emphasis }}</strong></span>
-      </router-link>
+      <!-- Identity block: the product name and the version of it you are
+           looking at, kept together as one unit so the version reads as part
+           of the name rather than as another piece of navigation. -->
+      <div class="nav-brand-group">
+        <router-link class="navbar-brand" to="/" @click="navOpen = false">
+          <span class="material-icons nav-brand-icon" aria-hidden="true">{{ edition.glyph }}</span>
+          <span class="nav-brand-text">{{ edition.shortName }} <strong>{{ edition.emphasis }}</strong></span>
+        </router-link>
+        <span class="nav-version">{{ edition.version }}</span>
+      </div>
       <button
         class="navbar-toggler"
         type="button"
@@ -18,80 +24,88 @@
         <span class="navbar-toggler-icon" aria-hidden="true"></span>
       </button>
       <div id="primary-nav" class="collapse navbar-collapse" :class="{ show: navOpen }">
-        <ul class="navbar-nav mx-auto">
+        <ul class="navbar-nav">
           <li class="nav-item" v-for="link in navLinks" :key="link.to">
             <router-link :to="link.to" class="nav-link" @click="navOpen = false">{{ link.label }}</router-link>
           </li>
         </ul>
 
-        <!-- Appearance picker: a proper menu button rather than a blind toggle,
-             so the current mode and the available modes are always announced.
-             Fully keyboard-operable (Enter/Space/Arrows/Escape) and closes on
-             outside click. -->
-        <div class="theme-menu" ref="themeMenu" @focusout="onMenuFocusout">
-          <button
-            class="theme-toggle"
-            type="button"
-            aria-haspopup="true"
-            :aria-expanded="themeMenuOpen ? 'true' : 'false'"
-            :aria-label="`Appearance: ${currentTheme.label}. Change appearance`"
-            :title="`Appearance: ${currentTheme.label}`"
-            @click="toggleThemeMenu"
-            @keydown.down.prevent="openThemeMenu(0)"
-            @keydown.up.prevent="openThemeMenu(themeOptions.length - 1)"
-          >
-            <span
-              class="material-icons"
-              :class="{ 'theme-toggle-icon-moon': theme === 'dark' }"
-              aria-hidden="true"
-            >{{ currentTheme.icon }}</span>
-          </button>
-          <ul
-            v-show="themeMenuOpen"
-            class="theme-menu-list"
-            role="menu"
-            aria-label="Appearance"
-          >
-            <li v-for="(opt, i) in themeOptions" :key="opt.value" role="none">
-              <button
-                type="button"
-                role="menuitemradio"
-                :aria-checked="theme === opt.value ? 'true' : 'false'"
-                class="theme-menu-item"
-                :class="{ active: theme === opt.value }"
-                ref="themeItems"
-                @click="chooseTheme(opt.value)"
-                @keydown.down.prevent="focusItem(i + 1)"
-                @keydown.up.prevent="focusItem(i - 1)"
-                @keydown.home.prevent="focusItem(0)"
-                @keydown.end.prevent="focusItem(themeOptions.length - 1)"
-                @keydown.esc.prevent="closeThemeMenu(true)"
-              >
-                <span class="material-icons theme-menu-icon" aria-hidden="true">{{ opt.icon }}</span>
-                <span class="theme-menu-label">{{ opt.label }}</span>
-                <span class="material-icons theme-menu-check" aria-hidden="true">{{ theme === opt.value ? 'check' : '' }}</span>
-              </button>
-            </li>
-          </ul>
-        </div>
+        <!-- Utility cluster, anchored to the right margin and ordered by how
+             far each control reaches: appearance is a setting for this browser,
+             the profile identifies the session, and Sign out ends it. -->
+        <div class="nav-utilities">
+          <!-- Appearance picker: a proper menu button rather than a blind toggle,
+               so the current mode and the available modes are always announced.
+               Fully keyboard-operable (Enter/Space/Arrows/Escape) and closes on
+               outside click. -->
+          <div class="theme-menu" ref="themeMenu" @focusout="onMenuFocusout">
+            <button
+              class="theme-toggle"
+              type="button"
+              aria-haspopup="true"
+              :aria-expanded="themeMenuOpen ? 'true' : 'false'"
+              :aria-label="`Appearance: ${currentTheme.label}. Change appearance`"
+              :title="`Appearance: ${currentTheme.label}`"
+              @click="toggleThemeMenu"
+              @keydown.down.prevent="openThemeMenu(0)"
+              @keydown.up.prevent="openThemeMenu(themeOptions.length - 1)"
+            >
+              <span
+                class="material-icons"
+                :class="{ 'theme-toggle-icon-moon': theme === 'dark' }"
+                aria-hidden="true"
+              >{{ currentTheme.icon }}</span>
+            </button>
+            <ul
+              v-show="themeMenuOpen"
+              class="theme-menu-list"
+              role="menu"
+              aria-label="Appearance"
+            >
+              <li v-for="(opt, i) in themeOptions" :key="opt.value" role="none">
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  :aria-checked="theme === opt.value ? 'true' : 'false'"
+                  class="theme-menu-item"
+                  :class="{ active: theme === opt.value }"
+                  ref="themeItems"
+                  @click="chooseTheme(opt.value)"
+                  @keydown.down.prevent="focusItem(i + 1)"
+                  @keydown.up.prevent="focusItem(i - 1)"
+                  @keydown.home.prevent="focusItem(0)"
+                  @keydown.end.prevent="focusItem(themeOptions.length - 1)"
+                  @keydown.esc.prevent="closeThemeMenu(true)"
+                >
+                  <span class="material-icons theme-menu-icon" aria-hidden="true">{{ opt.icon }}</span>
+                  <span class="theme-menu-label">{{ opt.label }}</span>
+                  <span class="material-icons theme-menu-check" aria-hidden="true">{{ theme === opt.value ? 'check' : '' }}</span>
+                </button>
+              </li>
+            </ul>
+          </div>
 
-        <!-- Signed-in identity and the way out of it. Only rendered when single
-             sign-on is actually in force: with SSO off there is no identity to
-             show and no session to end, so a "Sign out" control would be a lie. -->
-        <div v-if="showAccount" class="nav-account">
-          <span
-            v-if="accessLevel === 'read'"
-            class="nav-readonly"
-            title="Your group membership grants read access; edits are refused."
-          >Read-only</span>
-          <span class="nav-user" :title="accountTitle">
-            <span class="material-icons nav-user-icon" aria-hidden="true">account_circle</span>
-            <span class="nav-user-name">{{ accountName }}</span>
-          </span>
-          <button type="button" class="nav-signout" @click="userStore.signOut()">Sign out</button>
+          <!-- Signed-in identity and the way out of it. Only rendered when single
+               sign-on is actually in force: with SSO off there is no identity to
+               show and no session to end, so a "Sign out" control would be a lie.
+               Sign out sits outside .nav-account and behind a wider gap: it is the
+               one control here that ends the session, and it should not be a
+               near-miss for the profile it sits beside. -->
+          <div v-if="showAccount" class="nav-identity">
+            <div class="nav-account">
+              <span
+                v-if="accessLevel === 'read'"
+                class="nav-readonly"
+                title="Your group membership grants read access; edits are refused."
+              >Read-only</span>
+              <span class="nav-user" :title="accountTitle">
+                <span class="material-icons nav-user-icon" aria-hidden="true">account_circle</span>
+                <span class="nav-user-name">{{ accountName }}</span>
+              </span>
+            </div>
+            <button type="button" class="nav-signout" @click="userStore.signOut()">Sign out</button>
+          </div>
         </div>
-
-        <span class="nav-version">{{ edition.version }}</span>
       </div>
     </nav>
     <main id="main-content" class="container mt-4" tabindex="-1">
@@ -261,6 +275,21 @@ export default {
   padding: 0 1.25rem;
   min-height: 60px;
 }
+/* flex-shrink: 0, not min-width: 0 -- the identity is the one thing that never
+   gives. Allowed to shrink, it collapses under its own text in the narrower
+   flex fallback and the wordmark runs under the first link. */
+.nav-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+/* Bootstrap gives .navbar-brand a 1rem right margin, which would add to the
+   gap above and leave the version floating away from the name it labels. Two
+   classes to outrank it -- see the note on .navbar.navbar-expand-md below. */
+.nav-brand-group .navbar-brand {
+  margin-right: 0;
+}
 .navbar-brand {
   display: flex !important;
   align-items: center;
@@ -309,9 +338,28 @@ export default {
 .navbar-toggler {
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
+/* ─── Right-side utility cluster ──────────────────────────────── */
+/* Appearance, then profile, then Sign out. The gaps are graded rather than
+   even: the appearance toggle and the profile are both settings and sit a
+   normal gap apart, while Sign out is an exit and gets a wider one (see
+   .nav-identity) so it is never a near-miss for the profile. */
+.nav-utilities {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+.nav-identity {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  min-width: 0;
+}
+/* Everything in the cluster holds its size; the account name is the one thing
+   that gives when the navbar runs short of room. */
 .theme-menu {
   position: relative;
-  margin-left: 0.5rem;
+  flex-shrink: 0;
 }
 /* On the always-navy navbar any translucent white fill still composites to a
    dark slate tone that is easy to overlook. Use a SOLID near-white fill with the
@@ -406,11 +454,12 @@ export default {
   width: 1.1rem;
 }
 /* ─── Signed-in identity ──────────────────────────────────────── */
+/* Avatar and name are one unit, so they are tighter than any gap around them. */
 .nav-account {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: 0.75rem;
+  min-width: 0;
 }
 .nav-user {
   display: inline-flex;
@@ -423,8 +472,9 @@ export default {
   font-size: 0.8rem;
   font-weight: 500;
   max-width: 14rem;
+  min-width: 0;
 }
-.nav-user-icon { font-size: 1.1rem; }
+.nav-user-icon { font-size: 1.1rem; flex-shrink: 0; }
 .nav-user-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -442,8 +492,16 @@ export default {
   padding: 0.2rem 0.5rem;
   border-radius: 10px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
-.nav-signout {
+/* Qualified with .navbar to reach specificity 0-2-0. A reset later in the
+   bundle -- button, [type="button"], ... { color: inherit } -- matches this
+   button through its type attribute, which carries class-level specificity and
+   so ties a bare .nav-signout. The reset wins the tie on order, and inherit
+   resolves to body's var(--text): near-black in the light and high-contrast
+   themes, near-white in dark. Hence white letters in dark mode only, on a
+   navbar that is navy in all three. */
+.navbar .nav-signout {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.35);
   color: #fff;
@@ -453,6 +511,7 @@ export default {
   border-radius: 8px;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: background 0.15s, border-color 0.15s;
 }
 .nav-signout:hover,
@@ -460,16 +519,74 @@ export default {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.6);
 }
+/* The version labels the product name, so it is quieter than the name and
+   quieter than the links: a muted chip rather than the accent pill it used to
+   be, which competed with the accent in the wordmark right beside it. Still
+   >= 5:1 on the navbar -- muted, not decorative. */
 .nav-version {
-  background: rgba(var(--accent-rgb), 0.15);
-  color: var(--accent);
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.2rem 0.65rem;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 10px;
   white-space: nowrap;
-  margin-left: 0.5rem;
+}
+
+/* Centering the links on the page means the two side columns must be equal,
+   which in turn caps the utility cluster at whatever the brand's side gets.
+   Below about 1400px the nine links plus both side groups no longer fit under
+   that constraint, and equal columns would drive the cluster into the links.
+   So the grid applies only where it fits; narrower desktops fall back to the
+   auto margins below, which center the links within the space left over --
+   not on the page, but never overlapping. */
+.navbar .navbar-nav {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Three columns, with the side columns sharing the leftover space equally so
+   the link row is centered on the page rather than in the gap between the
+   brand and the cluster (which are different widths, so an auto margin lands
+   it off center). minmax(0, 1fr) lets a side column shrink below its content
+   -- the account name is set to ellipsis -- rather than shoving the links off
+   center when a long name comes through. */
+@media (min-width: 1400px) {
+  /* Both classes, not just .navbar: main.ts imports App.vue before Bootstrap,
+     so this stylesheet is emitted first and loses every specificity tie to
+     Bootstrap's own .navbar rule, which sets display: flex. (The !important
+     scattered through the rest of this file is the same fight.) */
+  .navbar.navbar-expand-md {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 1rem;
+  }
+  /* The collapse wrapper exists for the mobile toggle only. At this width its
+     children have to be grid items of the navbar itself, or the links and the
+     cluster would be centered as one block within a single column. */
+  .navbar #primary-nav {
+    display: contents !important;
+  }
+  /* Right-aligned by justifying content inside a stretched grid item, not by
+     justify-self: end. An end-justified item is sized to its content and, when
+     that content is wider than the column, overhangs to the left and collides
+     with the centered links. Stretched, the item is exactly the column's width
+     and the account name -- the only thing here allowed to shrink -- ellipses
+     instead. */
+  .nav-utilities {
+    justify-content: flex-end;
+  }
+}
+
+/* Users who ask for more contrast get the version at full strength; it is
+   deliberately muted, but muted should not mean unreadable. */
+@media (prefers-contrast: more) {
+  .nav-version {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+  }
 }
 
 @media (max-width: 767px) {
@@ -490,9 +607,13 @@ export default {
     background: rgba(var(--accent-rgb), 0.12);
     border-left: 3px solid var(--accent);
   }
-  .nav-version {
-    margin: 0.5rem 0;
-    display: inline-block;
+  /* Stacked under the links in the open menu. Wraps rather than compressing,
+     so the Sign out gap survives on a narrow screen -- that separation matters
+     most where taps are least precise. */
+  .nav-utilities {
+    flex-wrap: wrap;
+    row-gap: 0.75rem;
+    padding: 0.65rem 0.75rem 0.25rem;
   }
 }
 </style>

@@ -479,10 +479,10 @@ export default {
    flex-end keeps Refresh sitting on the tabs' baseline rather than stretching. */
 .preview-toolbar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: -1px;
+  margin-bottom: 0.5rem;
 }
 .btn-refresh {
   display: inline-flex;
@@ -497,7 +497,6 @@ export default {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.3rem 0.7rem;
-  margin-bottom: 0.3rem;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--muted);
@@ -517,67 +516,81 @@ export default {
 }
 .preview-tabs {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
+/* Detached pills rather than tabs docked to the panel below. Both files are
+   offered as a pair of equals here, and a free-standing pill can carry the
+   selected marker on all four sides instead of only the edge facing away from
+   the panel. Sized by an even border box (see .active) so selecting one does
+   not shift the other. */
 .preview-tabs button {
-  position: relative;
   background: transparent;
-  /* A quiet theme-aware outline keeps both file sections defined against the
-     card. The active tab draws its cyan top stroke over this border below. */
-  border: 1px solid var(--border);
-  border-top-width: 2px;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-  padding: 0.35rem 0.85rem;
-  font-size: 0.78rem;
+  /* --field-border, not --border: these are interactive controls whose own
+     outline is the affordance, and only --field-border is guaranteed >= 3:1
+     against the surface in every theme (WCAG 1.4.11). */
+  border: 2px solid var(--field-border);
+  border-radius: 10px;
+  padding: 0.4rem 0.95rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--muted);
   cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
-/* The active tab takes the code panel's own colors (see .preview-pre below)
-   rather than the card's, so the tab and the panel it labels read as one
-   surface -- the conventional tabbed-panel look, and the reason the tab strip
-   is pulled down a pixel to sit flush against it. These are the panel's fixed
-   values, not theme tokens, because the panel is deliberately dark in every
-   theme; matching it keeps the two in step.
-   That match is also why background/text alone cannot mark which tab is
-   selected in dark mode: the card's own --surface is already a near-black
-   navy there, almost the same shade as this fixed panel color, so the
-   "boxed tab popping off the card" cue that works in light mode nearly
-   vanishes in dark mode. The accent top border is theme-independent (the
-   edition accent color, not a neutral token) and stays visible regardless of
-   how close --surface lands to the panel's fixed dark value.
-
-   The accent is a shallow rounded outline instead of border-top-color. A
-   separately colored top border gets split diagonally where it meets the dark
-   side borders, stopping short of the rounded corners. This stroke follows the
-   whole top curve, reaches each edge, and stops before it can outline the tab's
-   straight sides. */
+.preview-tabs button:hover:not(.active) {
+  border-color: var(--text);
+  color: var(--text);
+}
+/* Selected: a full accent outline, plus a faint accent wash and brighter text.
+   Three cues rather than one because the edition accent is an inline style the
+   themes cannot override (see main.css) and its luminance is the edition's
+   choice: cyan or maize on a white surface is well under 3:1, so on the light
+   themes the stroke is recognizable but is not carrying the state on its own.
+   The high-contrast paths below drop the accent entirely for that reason. */
 .preview-tabs button.active {
-  color: #e2e8f0;
-  background: #0f172a;
-  border-color: var(--border);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--text);
 }
-.preview-tabs button.active::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  right: -1px;
-  left: -1px;
-  height: 8px;
-  box-sizing: border-box;
-  border: 2px solid var(--accent);
-  border-bottom: 0;
-  border-radius: 6px 6px 0 0;
-  pointer-events: none;
+/* High contrast, by either route -- the "High contrast" theme in the menu or
+   an OS-level contrast preference. Both mean the same thing here: an accent
+   the app does not control cannot be trusted to mark the selected pill, so
+   invert it instead. A filled pill against an outlined one is a difference in
+   form as well as color, at the maximum contrast the theme has to offer. */
+/* No :global() around the ancestor: scoped styles attach the component's
+   data attribute to the last element of the selector only, so a plain
+   ancestor works -- and :global(X) Y compiles to a bare X here, dropping the
+   descendant and restyling the document root. */
+:root[data-theme='accessible'] .preview-tabs button.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--surface);
+}
+@media (prefers-contrast: more) {
+  .preview-tabs button.active {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--surface);
+  }
+}
+/* Windows High Contrast: the OS palette replaces every color above, including
+   the accent stroke and the wash, which would leave the two pills identical.
+   System color keywords are honored, so the selected pill is painted in the
+   user's own selection colors. */
+@media (forced-colors: active) {
+  .preview-tabs button.active {
+    background: Highlight;
+    border-color: Highlight;
+    color: HighlightText;
+  }
 }
 .preview-pane {
   position: relative;
 }
 /* Scrim over the outgoing file while a refresh is in flight. The panel is
    deliberately dark in every theme (see .preview-pre), so these are fixed
-   light-on-dark values rather than theme tokens -- the same reasoning as the
-   active tab above. */
+   light-on-dark values rather than theme tokens, matching the panel they
+   cover. */
 .preview-busy {
   position: absolute;
   inset: 0;
@@ -588,7 +601,7 @@ export default {
   background: rgba(15, 23, 42, 0.72);
   color: #e2e8f0;
   font-size: 0.85rem;
-  border-radius: 0 6px 6px 6px;
+  border-radius: 6px;
 }
 /* Crossfade for the scrim above, in and out alike, rather than the hard
    v-if cut. Opacity only, no rise: it sits on top of text that isn't moving,
@@ -661,7 +674,7 @@ export default {
   overflow: auto;
   background: #0f172a;
   color: #e2e8f0;
-  border-radius: 0 6px 6px 6px;
+  border-radius: 6px;
   padding: 0.85rem 1rem;
   font-size: 0.78rem;
   line-height: 1.5;
@@ -669,7 +682,7 @@ export default {
   white-space: pre;
 }
 
-:global(:root[data-theme="dark"]) .setting-sub code {
+:root[data-theme="dark"] .setting-sub code {
   background: #0e1626;
 }
 
