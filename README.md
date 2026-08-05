@@ -115,12 +115,17 @@ establishes the baseline and the QA dataset layers on top without disturbing it.
 
 ## Documentation
 
-The [deployment guide](docs/deployment.md) covers installation, single sign-on
-(with an Okta example), TLS, editions, and the provisioning pipeline. The
-[Ansible guide](ansible/README.md) covers the role-based deployment. Everything
-specific to the University of Michigan deployment — its master Ansible
-inventory, its variables, and the QA dataset — is in
-[`umich/`](umich/README.md); the rest of the repository is vendor-neutral.
+[`docs/`](docs/README.md) is the documentation index. The two most direct
+paths in are [deploying without SSO](docs/deployment-without-sso.md) and
+[deploying with SSO](docs/deployment-with-sso.md) — both describe the one
+installer this project ships (`bootstrap.sh`/`install.sh`), just with
+different flags. [`docs/deployment.md`](docs/deployment.md) is the full
+reference behind both: disk sizing, TLS modes, editions, upgrades and backups,
+and the provisioning pipeline. The [Ansible guide](ansible/README.md) covers
+the role-based deployment those installers run on top of. Everything specific
+to the University of Michigan deployment — its master Ansible inventory, its
+live SSO configuration, and the QA dataset — is in [`umich/`](umich/README.md);
+the rest of the repository is vendor-neutral.
 
 ## System overview
 

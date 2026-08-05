@@ -1,8 +1,17 @@
 # Deployment
 
-This guide covers deploying pSSID GUI on a single host with Docker. It applies to
-any organization; hostnames, identity-provider URLs, and storage paths in the
-examples are placeholders to replace with your own.
+This is the complete deployment reference for pSSID GUI on a single host with
+Docker. It applies to any organization; hostnames, identity-provider URLs, and
+storage paths in the examples are placeholders to replace with your own. For a
+shorter, task-focused walkthrough, use one of these instead and come back here
+for anything they link out to:
+
+- [Deploying without SSO](deployment-without-sso.md) — the fastest path
+- [Deploying with SSO](deployment-with-sso.md) — OIDC sign-in, group membership
+  decides read/write
+
+Both describe the same installer this guide does; see
+[`docs/README.md`](README.md) for the full documentation index.
 
 ## Contents
 
@@ -307,6 +316,10 @@ make restore                # restore an archive (scripts/restore.sh)
 
 ## Quickstart
 
+For a shorter walkthrough of exactly this command with either posture's flags
+filled in, see [deploying without SSO](deployment-without-sso.md) or
+[deploying with SSO](deployment-with-sso.md).
+
 ```bash
 git clone <your-fork-or-this-repo> pssid-gui
 cd pssid-gui
@@ -517,6 +530,10 @@ To roll back to the pre-load afterwards, restore a backup taken before seeding
 not remove QA data. [umich/QA/QA.md](../umich/QA/QA.md) covers the whole cycle.
 
 ## Single sign-on
+
+For a shorter, task-focused walkthrough of turning this on at install time,
+see [deploying with SSO](deployment-with-sso.md); this section is the full
+reference it links back to.
 
 ### The on/off switch
 
@@ -780,6 +797,9 @@ Where the identity provider is run by a central IT group rather than by you, the
 work splits into "ask them for these values" and "apply them here". `umich/QA/SSOwithOkta.md`
 is that runbook, including a ready-to-send request covering the two things only a
 tenant administrator can do (release the groups claim, require MFA).
+[`umich/SSO.md`](../umich/SSO.md) is what that process produced for a real
+tenant, University of Michigan's own Okta, including the tenant-specific
+troubleshooting that came out of it.
 
 That file is **deliberately untracked** (see `.gitignore`): it is a working
 document an operator fills in with their own tenant name, application id, group
