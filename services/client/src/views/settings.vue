@@ -27,6 +27,11 @@
               enforces, without writing anything to disk.
             </div>
           </div>
+          <!-- One control for both jobs. Before a panel exists the action is
+               Preview; once one is on screen the same click rebuilds it, so
+               the button says Refresh. Two buttons doing the identical thing
+               was the alternative, and the second one only ever appeared after
+               the first had already been used. -->
           <button
             type="button"
             class="btn btn-secondary"
@@ -36,13 +41,13 @@
           >
             <Transition name="icon-fade" mode="out-in">
               <span v-if="settingsStore.previewLoading" key="spin" class="inline-spinner" aria-hidden="true"></span>
-              <span v-else key="icon" class="material-icons btn-icon" aria-hidden="true">visibility</span>
+              <span v-else :key="previewAction.icon" class="material-icons btn-icon" aria-hidden="true">{{ previewAction.icon }}</span>
             </Transition>
-            {{ settingsStore.previewLoading ? 'Previewing...' : 'Preview' }}
+            {{ settingsStore.previewLoading ? previewAction.busyLabel : previewAction.label }}
           </button>
         </div>
 
-        <!-- Only for the FIRST preview, when there is no panel yet: a refresh
+        <!-- Only for the FIRST preview, when there is no panel yet: a rebuild
              keeps the panel below on screen and shows its busy state there.
              Every appear/disappear block on this page shares the one "fade"
              transition (defined once, below .settings-card) rather than each
@@ -93,43 +98,24 @@
               </button>
             </div>
 
-            <div class="preview-toolbar">
-              <div class="preview-tabs" role="tablist" aria-label="Preview file">
-                <button
-                  type="button"
-                  role="tab"
-                  :aria-selected="previewTab === 'config'"
-                  :class="{ active: previewTab === 'config' }"
-                  @click="previewTab = 'config'"
-                >
-                  pssid_config.json
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  :aria-selected="previewTab === 'inventory'"
-                  :class="{ active: previewTab === 'inventory' }"
-                  @click="previewTab = 'inventory'"
-                >
-                  hosts.ini
-                </button>
-              </div>
-              <!-- Rebuilds this panel in place. The Preview button that opened it
-                   is a scroll away once a real config is on screen, and the state
-                   it was built from changes on every other page. Read-only, like
-                   Preview, so it is not gated on write access. -->
+            <div class="preview-tabs" role="tablist" aria-label="Preview file">
               <button
                 type="button"
-                class="btn-refresh"
-                :disabled="settingsStore.previewLoading"
-                :aria-busy="settingsStore.previewLoading"
-                @click="previewConfig"
+                role="tab"
+                :aria-selected="previewTab === 'config'"
+                :class="{ active: previewTab === 'config' }"
+                @click="previewTab = 'config'"
               >
-                <Transition name="icon-fade" mode="out-in">
-                  <span v-if="settingsStore.previewLoading" key="spin" class="inline-spinner" aria-hidden="true"></span>
-                  <span v-else key="icon" class="material-icons" aria-hidden="true">refresh</span>
-                </Transition>
-                {{ settingsStore.previewLoading ? 'Refreshing...' : 'Refresh' }}
+                pssid_config.json
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="previewTab === 'inventory'"
+                :class="{ active: previewTab === 'inventory' }"
+                @click="previewTab = 'inventory'"
+              >
+                hosts.ini
               </button>
             </div>
             <div class="preview-pane">
@@ -259,6 +245,15 @@ export default {
     isReadOnly() {
       return isFormDisabled();
     },
+    // What the preview button is offering right now. Keyed on the panel being
+    // on screen, not on "has been clicked": if a preview fails or is cleared,
+    // the button goes back to offering Preview, which is what the click will
+    // actually do.
+    previewAction() {
+      return this.settingsStore.preview
+        ? { label: 'Refresh', busyLabel: 'Refreshing...', icon: 'refresh' }
+        : { label: 'Preview', busyLabel: 'Previewing...', icon: 'visibility' };
+    },
     previewText() {
       if (!this.settingsStore.preview) return '';
       return this.previewTab === 'config'
@@ -387,11 +382,11 @@ export default {
   vertical-align: -3px;
   margin-right: 0.35rem;
 }
-/* Preview/Generate swap to a longer label ("Previewing...", "Generating...")
-   while busy. Bootstrap's .btn already centers its label, so fixing a
-   min-width sized to the longest state is enough to stop the button -- and
-   the icon beside it users are about to click again -- from shifting under
-   the pointer. */
+/* These buttons swap labels: Preview/Refresh on click, and both take a longer
+   form while busy ("Previewing...", "Refreshing...", "Generating..."). Bootstrap's
+   .btn already centers its label, so fixing a min-width sized to the longest
+   state is enough to stop the button -- and the icon beside it users are about
+   to click again -- from shifting under the pointer. */
 .setting-row .btn {
   min-width: 10rem;
   white-space: nowrap;
@@ -477,46 +472,11 @@ export default {
 /* Tabs and Refresh share a row, with the -1px that pulls the tab strip flush
    against the panel moved up here so it applies to the whole row. align-items:
    flex-end keeps Refresh sitting on the tabs' baseline rather than stretching. */
-.preview-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
-}
-.btn-refresh {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  /* Sized to its own longest label ("Refreshing...") for the same reason as
-     the min-width on .setting-row .btn above. */
-  min-width: 8rem;
-  white-space: nowrap;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.3rem 0.7rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  transition: color .15s, border-color .15s;
-}
-.btn-refresh:hover:not(:disabled) {
-  color: var(--primary);
-  border-color: var(--primary);
-}
-.btn-refresh:disabled {
-  cursor: default;
-  opacity: 0.65;
-}
-.btn-refresh .material-icons {
-  font-size: 0.95rem;
-}
 .preview-tabs {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 /* Detached pills rather than tabs docked to the panel below. Both files are
    offered as a pair of equals here, and a free-standing pill can carry the
