@@ -9,36 +9,25 @@ The same codebase can be themed for different organizations, and the included
 installer brings the stack up in one step while keeping the existing security
 model: HTTPS, optional single sign-on, and an isolated Docker network.
 
-## Quickstart: one command
+## Deployment
 
-On a fresh Unix host, as root:
+There is exactly **one supported installation path** — `bootstrap.sh` on a
+fresh host, or `install.sh` from a checkout, which the Ansible playbooks and
+`bootstrap.sh` also call internally. Every guide below describes that same
+script; which one to open depends on what you need:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh | bash
-```
-
-That single command installs git and Ansible, fetches the application,
-installs Docker, generates the secrets and certificates, builds and starts the
-stack, loads the reusable starter defaults, and schedules nightly database
-backups. When it finishes, open `https://<this machine's hostname>`.
-
-Settings ride along as environment variables (all optional):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/bootstrap.sh \
-  | PSSID_HOSTNAME=pssid.example.edu bash
-```
-
-`bootstrap.sh` documents the full list (TLS mode, Let's Encrypt email, SSO and
-its OIDC values). From a clone, `./bootstrap.sh` does the same thing.
+| | For |
+|---|---|
+| **[Deploying without SSO](docs/deployment-without-sso.md)** | The fastest path: no identity provider, network-controlled access. Includes the one-command bootstrap **and** the same steps by hand (prerequisites, fetching the source, the playbook or `install.sh` directly, verifying, starter data). |
+| **[Deploying with SSO](docs/deployment-with-sso.md)** | OIDC sign-in, group membership decides read/write. Same structure: one command, and the by-hand equivalent with the OIDC flags filled in. |
+| **[Full deployment reference](docs/deployment.md)** | Everything neither guide above covers: disk sizing on small VMs, TLS modes, editions, upgrades and backups, the provisioning pipeline, metadata and host-regex rules, provenance, the audit trail, and troubleshooting. |
+| **[Ansible guide](ansible/README.md)** | The roles and playbooks both installers above run on top of, remote hosts, site inventories, and every deploy-time variable. |
 
 On a VM with a small disk, add `PSSID_PULL=true` to pull the prebuilt images
 from the registry instead of building them (~4 GB of Docker storage instead of
-~8-10 GB); see the
-[deployment guide](docs/deployment.md#small-vms-pull-prebuilt-images-instead-of-building).
-The bootstrap also recognizes a dedicated local filesystem mounted at
-`/var/lib/docker` and places containerd on that same volume automatically.
-Network filesystems such as NFS are not supported for container storage.
+~8-10 GB); see
+[deploying to a new VM](docs/deployment.md#deploying-to-a-new-vm) in the full
+reference.
 
 Afterwards, one command each keeps the deployment maintained:
 
@@ -47,50 +36,6 @@ make upgrade    # backup, pull the latest release, rebuild, verify health
 make backup     # extra on-demand database backup (nightly ones are automatic)
 make help       # every operator shortcut (up, down, logs, doctor, ...)
 ```
-
-## The same steps, by hand
-
-The automation only strings together the stages below. Run them yourself when
-you want control at each point, or when something needs investigating; the
-[deployment guide](docs/deployment.md) covers every stage in depth and is
-written for the Unix sysadmin and WiFi engineer who has to intervene when the
-automation cannot.
-
-1. **Prerequisites** (root shell):
-   ```bash
-   apt-get update && apt-get install -y git ansible
-   ```
-2. **Fetch the source**:
-   ```bash
-   git clone https://github.com/UMNET-perfSONAR/pssid-gui2.git /opt/pssid-gui
-   ```
-3. **Deploy**. Either the playbook (installs Docker for you; the
-   [Ansible guide](ansible/README.md) covers remote hosts, SSO, editions,
-   upgrades, and backups):
-   ```bash
-   cd /opt/pssid-gui/ansible
-   ansible-playbook site.yml -e pssid_gui_hostname=pssid.example.edu
-   ```
-   or, when Docker is already installed, the interactive installer, which asks
-   for the edition, hostname, SSO, and TLS settings and can also run without
-   prompts:
-   ```bash
-   ./install.sh
-   ./install.sh -y --edition=default --hostname=pssid.example.com --tls=self-signed --sso=false
-   ```
-4. **Verify**:
-   ```bash
-   curl -k https://localhost/api/health    # {"status":"ok",...}
-   make ps                                 # container status
-   ```
-5. **Optional starter data** (the playbook already does this on first install):
-   ```bash
-   make seed-defaults
-   ```
-
-Day-to-day operations are wrapped in the Makefile (`make up`, `make down`,
-`make logs`, `make dev`, `make doctor`, and others). Run `make help` for the
-full list.
 
 ## Starter data
 
@@ -115,17 +60,11 @@ establishes the baseline and the QA dataset layers on top without disturbing it.
 
 ## Documentation
 
-[`docs/`](docs/README.md) is the documentation index. The two most direct
-paths in are [deploying without SSO](docs/deployment-without-sso.md) and
-[deploying with SSO](docs/deployment-with-sso.md) — both describe the one
-installer this project ships (`bootstrap.sh`/`install.sh`), just with
-different flags. [`docs/deployment.md`](docs/deployment.md) is the full
-reference behind both: disk sizing, TLS modes, editions, upgrades and backups,
-and the provisioning pipeline. The [Ansible guide](ansible/README.md) covers
-the role-based deployment those installers run on top of. Everything specific
-to the University of Michigan deployment — its master Ansible inventory, its
-live SSO configuration, and the QA dataset — is in [`umich/`](umich/README.md);
-the rest of the repository is vendor-neutral.
+[`docs/`](docs/README.md) is the full documentation index — the deployment
+guides above, working on the code, and security. Everything specific to the
+University of Michigan deployment — its master Ansible inventory, its live SSO
+configuration, and the QA dataset — is in [`umich/`](umich/README.md); the
+rest of the repository is vendor-neutral.
 
 ## System overview
 

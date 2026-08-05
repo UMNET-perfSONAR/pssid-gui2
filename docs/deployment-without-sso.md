@@ -29,7 +29,7 @@ difference is which flags you pass it.
 Nothing here is a dead end: SSO can be turned on for the same deployment later
 without reinstalling. See [Moving to SSO later](#moving-to-sso-later).
 
-## The one script
+## One command
 
 On a fresh Unix host, as root:
 
@@ -53,15 +53,48 @@ curl -fsSL https://raw.githubusercontent.com/UMNET-perfSONAR/pssid-gui2/main/boo
   | PSSID_HOSTNAME=pssid.example.edu PSSID_OPEN_WRITE=true bash
 ```
 
-From an existing checkout, the same installer directly (Docker must already be
-installed):
+Afterwards, one command each keeps the deployment maintained:
 
 ```bash
-./install.sh --hostname=pssid.example.edu --sso=false --open-write=true -y
+make upgrade    # backup, pull the latest release, rebuild, verify health
+make backup     # extra on-demand database backup (nightly ones are automatic)
+make help       # every operator shortcut (up, down, logs, doctor, ...)
 ```
 
-Omit `--open-write` (or pass `false`) to keep the shipped read-only default.
-`./install.sh` with no flags asks interactively.
+## The same steps, by hand
+
+The command above only strings together the steps below. Run them yourself
+when you want control at each point, or when something needs investigating;
+the [Ansible guide](../ansible/README.md) and the
+[full deployment reference](deployment.md) cover each stage in depth.
+
+1. **Install git and Ansible** (root shell):
+   ```bash
+   apt-get update && apt-get install -y git ansible
+   ```
+2. **Fetch the source**:
+   ```bash
+   git clone https://github.com/UMNET-perfSONAR/pssid-gui2.git /opt/pssid-gui
+   ```
+3. **Deploy**. Either the playbook (installs Docker for you; the
+   [Ansible guide](../ansible/README.md) covers remote hosts, editions,
+   upgrades, and backups):
+   ```bash
+   cd /opt/pssid-gui/ansible
+   ansible-playbook site.yml \
+     -e pssid_gui_hostname=pssid.example.edu \
+     -e pssid_gui_open_write=true
+   ```
+   or, when Docker is already installed, the installer directly:
+   ```bash
+   ./install.sh --hostname=pssid.example.edu --sso=false --open-write=true -y
+   ```
+   Omit `--open-write` / `pssid_gui_open_write` (or pass `false`) to keep the
+   shipped read-only default. `ENABLE_SSO` needs no flag in either form — it
+   ships off. `./install.sh` with no flags asks interactively.
+
+Then [verify](#verify) and optionally load the starter data, exactly as with
+the one-command path.
 
 ## Verify
 

@@ -37,7 +37,9 @@ only difference is which flags you pass it.
 Record the **issuer base URL**, **client ID**, and **client secret** the
 provider gives you; the installer asks for exactly these three.
 
-## Step 1 — The one script
+## Step 1 — Deploy
+
+### One command
 
 On a fresh host, as root, with the values from above:
 
@@ -58,20 +60,57 @@ Ansible playbook, which installs Docker and runs
 [`install.sh`](../install.sh) internally. There is no other script this
 repository documents or supports for a first install.
 
-From an existing checkout, the same installer directly (Docker must already be
-installed):
+Afterwards, one command each keeps the deployment maintained:
 
 ```bash
-./install.sh --hostname=pssid.example.edu --sso=true \
-  --issuer=https://idp.example.com --client-id=your-client-id \
-  --tls=letsencrypt --email=you@example.edu
+make upgrade    # backup, pull the latest release, rebuild, verify health
+make backup     # extra on-demand database backup (nightly ones are automatic)
+make help       # every operator shortcut (up, down, logs, doctor, ...)
 ```
 
-Omit `--client-secret` to be prompted for it, which keeps it out of your shell
-history. The installer normalizes and validates the issuer before writing
-anything, so a common mistake (a discovery-document URL, a custom
-authorization-server path that needs its own claim configuration) is caught
-here rather than at sign-in.
+### The same steps, by hand
+
+The command above only strings together the steps below. Run them yourself
+when you want control at each point, or when something needs investigating;
+the [Ansible guide](../ansible/README.md) and the
+[full deployment reference](deployment.md#single-sign-on) cover each stage in
+depth.
+
+1. **Install git and Ansible** (root shell):
+   ```bash
+   apt-get update && apt-get install -y git ansible
+   ```
+2. **Fetch the source**:
+   ```bash
+   git clone https://github.com/UMNET-perfSONAR/pssid-gui2.git /opt/pssid-gui
+   ```
+3. **Deploy**. Either the playbook (installs Docker for you; the
+   [Ansible guide](../ansible/README.md) covers remote hosts, editions,
+   upgrades, and backups). Export the client secret rather than passing it with
+   `-e`: an `ansible-playbook` command line is world-readable through
+   `/proc/<pid>/cmdline` for as long as the run takes, and the role's default
+   reads the secret from the environment instead:
+   ```bash
+   read -rs PSSID_OIDC_CLIENT_SECRET && export PSSID_OIDC_CLIENT_SECRET
+   cd /opt/pssid-gui/ansible
+   ansible-playbook site.yml \
+     -e pssid_gui_hostname=pssid.example.edu \
+     -e pssid_gui_sso=true \
+     -e pssid_gui_oidc_issuer=https://idp.example.com \
+     -e pssid_gui_oidc_client_id=your-client-id \
+     -e pssid_gui_tls=letsencrypt -e pssid_gui_letsencrypt_email=you@example.edu
+   ```
+   or, when Docker is already installed, the installer directly:
+   ```bash
+   ./install.sh --hostname=pssid.example.edu --sso=true \
+     --issuer=https://idp.example.com --client-id=your-client-id \
+     --tls=letsencrypt --email=you@example.edu
+   ```
+   Omit `--client-secret` to be prompted for it, which keeps it out of your
+   shell history. Either form normalizes and validates the issuer before
+   writing anything, so a common mistake (a discovery-document URL, a custom
+   authorization-server path that needs its own claim configuration) is caught
+   here rather than at sign-in.
 
 ## Step 2 — Map groups to permissions
 
