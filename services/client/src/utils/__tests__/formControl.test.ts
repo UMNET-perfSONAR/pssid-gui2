@@ -101,8 +101,8 @@ describe('before the identity request lands', () => {
     store.accessLevel = null;
     store.ssoEnabled = true;
     store.isLoading = false;
-    store.user = { name: 'A', sub: '1', groups: ['pssid-gui'] };
-    // 'pssid-gui' is mapped to write in the shipped mapping.
+    store.user = { name: 'A', sub: '1', groups: ['your-write-group'] };
+    // 'your-write-group' is the shipped mapping's write placeholder.
     expect(isFormDisabled()).toBe(false);
 
     store.user = { name: 'B', sub: '2', groups: ['not-a-mapped-group'] };
@@ -111,12 +111,12 @@ describe('before the identity request lands', () => {
 
   it('matches mapped group names case-insensitively, as the server does', () => {
     // The server folds case when matching; if the browser did not, a user whose
-    // provider emits "PSSID-GUI" would see every form greyed out on a deployment
-    // that accepts their writes.
+    // provider emits "YOUR-WRITE-GROUP" would see every form greyed out on a
+    // deployment that accepts their writes.
     const store = useUserStore();
     store.accessLevel = null;
     store.ssoEnabled = true;
-    store.user = { name: 'A', sub: '1', groups: ['PSSID-GUI'] };
+    store.user = { name: 'A', sub: '1', groups: ['YOUR-WRITE-GROUP'] };
     expect(isFormDisabled()).toBe(false);
   });
 });

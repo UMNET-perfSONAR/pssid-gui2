@@ -334,10 +334,17 @@ if [ "$SSO" = "true" ]; then
     warn "The deployment will come up READ-ONLY for everyone. Add your admin"
     warn "group before handing it over. See docs/deployment.md."
   fi
-  if grep -qE '"(pssid-gui|pssid-gui-users)"' "$AUTH_GROUPS_PRECHECK"; then
-    warn "$AUTH_GROUPS_PRECHECK still contains the shipped example group names."
+  # The shipped names are deliberately unmistakable placeholders rather than
+  # plausible ones. A plausible default is worse than no default: this file used
+  # to ship "pssid-gui-users": "read", which is a REAL group name at one
+  # deployment, so a site that lost its own mapping (an upgrade discarding the
+  # edit, a group_vars that never loaded) kept authenticating everybody and
+  # silently served them read-only instead of failing. A name nothing can match
+  # turns that into one clear refusal at sign-in, which is the whole point.
+  if grep -qE '"your-(write|read)-group"' "$AUTH_GROUPS_PRECHECK"; then
+    warn "$AUTH_GROUPS_PRECHECK still contains the shipped placeholder group names."
     warn "Replace them with YOUR provider's group names, exactly as it emits them,"
-    warn "or nobody will have access."
+    warn "or every user will be refused at sign-in."
   fi
 fi
 

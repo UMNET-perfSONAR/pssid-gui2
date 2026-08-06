@@ -1,6 +1,6 @@
 {
     "permissions": {
-        "pssid-gui": "write",
-        "pssid-gui-users": "read"
+        "your-write-group": "write",
+        "your-read-group": "read"
     }
 }
