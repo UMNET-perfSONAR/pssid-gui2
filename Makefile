@@ -37,10 +37,18 @@ help: ## Show this help
 install: ## Run the installer (interactive)
 	@./install.sh
 
+# The site-inventory guard runs first on both generic targets. It is a silent
+# no-op unless THIS host is named in a site inventory (umich/inventory.ini),
+# in which case the generic default inventory would leave that site's
+# group_vars unloaded and quietly revert the deployment to role defaults --
+# including an empty auth-groups mapping, which downgrades an SSO site to
+# read-only. See scripts/check-site-inventory.sh.
 deploy: ## Full automated deployment via Ansible (Docker, certs, stack, backups)
+	@bash scripts/check-site-inventory.sh deploy
 	@cd ansible && ansible-playbook site.yml
 
 upgrade: ## Upgrade in place: backup, pull latest, rebuild, verify
+	@bash scripts/check-site-inventory.sh upgrade
 	@cd ansible && ansible-playbook upgrade.yml
 
 deploy-umich: ## Deploy the UMich controllers from umich/inventory.ini
