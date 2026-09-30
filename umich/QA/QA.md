@@ -194,10 +194,15 @@ attach to hosts and groups → generate a validated config file.
 it is verified against the shipped pipeline, so these are exact expectations.
 (Values assume the default probe names and destinations.)
 
-**Batch attachment.** `198.111.226.186`'s `batches` lists all four;
-`198.111.226.189`'s lists `batch-comprehensive`, `batch-group` and
-`batch-tie` (all arriving via `all`/`rpi4`). `batch-host` reaches probe 1 alone,
-by direct host attachment rather than a group. See section 5 for why.
+**Batch attachment.** In the file, each host's own `batches` lists only what is
+attached to it directly: `["batch-host"]` on `198.111.226.186`, `[]` on
+`198.111.226.189`. Group batches stay on the groups (`all` carries
+`batch-comprehensive`, `rpi4` carries `batch-group` and `batch-tie`), and the
+daemon merges them per probe at run time. The merged result is what each host's
+**Probe configuration** panel shows: all four batches on `198.111.226.186`,
+three (`batch-comprehensive`, `batch-group`, `batch-tie`) on `198.111.226.189`.
+`batch-host` reaches probe 1 alone, by direct host attachment rather than a
+group. See section 5 for why.
 
 **Metadata appears once, as `data`.** Each probe carries the value that was typed
 into its Metadata section, and nothing else:
@@ -287,9 +292,9 @@ higher-precedence batch should run and the others yield. `198.111.226.189`
 sees `batch-comprehensive` (0), `batch-group` (2) and `batch-tie` (2), so the
 full three-level ordering is only visible on probe 1.
 
-Without a probe, confirm in Preview that `198.111.226.186` resolves to all
-four batches, `198.111.226.189` to three, and that the shared batches
-genuinely overlap on both schedules.
+Without a probe, confirm in each host's **Probe configuration** panel that
+`198.111.226.186` resolves to all four batches and `198.111.226.189` to three,
+and in Preview that the shared batches genuinely overlap on both schedules.
 
 ### Identical precedence
 
@@ -320,11 +325,14 @@ rest of this dataset.
 
 ## 6. Error handling
 
-Confirm a broken reference is reported rather than silently shipped. Delete
-`job-group-1` while `batch-group` still uses it, then Preview:
+Confirm that a config the daemon cannot run is reported rather than silently
+shipped. Deleting an object also removes its name from everything that
+referenced it, so a delete never leaves a dangling name behind; what it can
+leave is an **empty** list. Delete `job-group-1`, the only job of
+`batch-group`, then Preview:
 
 ```
-batch "batch-group": references unknown job "job-group-1"
+batch "batch-group": jobs must be a non-empty list
 ```
 
 Re-run `bash umich/QA/seed-qa.sh` to restore.
@@ -333,10 +341,14 @@ Other messages worth provoking the same way:
 
 | Break | Message |
 |---|---|
+| Delete `test-http-to-example`, the only test of `job-tie-1` | `job "job-tie-1": tests must be a non-empty list` |
 | Empty a batch's SSID list | `batch "X": ssid_profiles must be a non-empty list` |
 | Clear a layer 2 method | `ssid_profile "X": layer2_script (layer 2 method) is required` |
-| Delete a host still in a group | `host_group "X": references unknown host "Y"` |
 | Deselect a dropdown | `test "X" field "Y" has no value selected` |
+
+Deleting a host that a group lists by name is **not** an error: the host is
+removed from the group as well (`rpi4` keeps `198.111.226.186`), and Preview
+still builds.
 
 ## 7. Return to the baseline
 
