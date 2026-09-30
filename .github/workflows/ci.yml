@@ -416,7 +416,7 @@ jobs:
           # deployment's attack surface as the two built above; nginx in
           # particular terminates TLS for every request.
           for img in pssid-scan_server:ci pssid-scan_client:ci \
-                     mongo:8.0.17 redis:7 nginx:stable-alpine; do
+                     mongo:8.0.32 redis:7 nginx:stable-alpine; do
             safe="$(printf '%s' "$img" | tr ':/' '__')"
 
             echo "::group::trivy: $img"
