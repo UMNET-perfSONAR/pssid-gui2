@@ -28,6 +28,8 @@ www/
 
 # Site-specific Ansible inventories (copied from remote.example.ini)
 ansible/inventories/remote.ini
+# This host's deployment choices, recorded by bootstrap.sh for later runs
+ansible/inventories/host_vars/
 
 # Ansible Vault files holding a deployment's OIDC client id and secret. The
 # inventories and group_vars beside them ARE tracked; the credentials are not.

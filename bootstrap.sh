@@ -375,6 +375,43 @@ EXTRA=()
 [ -n "${PSSID_DOCKER_DATA_ROOT:-}" ]   && EXTRA+=(-e "pssid_gui_docker_data_root=${PSSID_DOCKER_DATA_ROOT}")
 [ "$PULL_MODE" = "true" ]              && EXTRA+=(-e "pssid_gui_pull=true")
 
+# ─── Remember this host's deployment choices ──────────────────────────────────
+# `make upgrade` and `make deploy` run the playbook with no -e flags, so every
+# later run used to re-apply the role DEFAULTS: this machine's FQDN for the
+# hostname, the default edition, self-signed TLS. An upgrade therefore quietly
+# swapped a Let's Encrypt site to a self-signed certificate and moved its OIDC
+# callback URL to a host the provider does not know. Ansible loads host_vars
+# beside the inventory on every run (an explicit -e still overrides them), so
+# recording the choices there makes them stick. Keys given now replace the
+# recorded ones; keys not given keep theirs.
+#
+# Deliberately NOT recorded: the auth posture (SSO, issuer, client id, writes).
+# install.sh already carries those over from .env, and `make sso-on` /
+# `make writes-off` change them later -- a value frozen here would undo that.
+yaml_q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/''/g")"; }
+remember() { # remember <key> <YAML value>
+  # `|| true`: grep -v exits 1 when it prints nothing, which pipefail would
+  # otherwise turn into an abort under set -e.
+  HOST_VARS_NEW="$(printf '%s\n' "$HOST_VARS_NEW" | grep -v "^$1:" || true)"$'\n'"$1: $2"
+}
+HOST_VARS="$SRC/ansible/inventories/host_vars/localhost.yml"
+HOST_VARS_NEW="$(grep -E '^pssid_gui_[a-z_]+:' "$HOST_VARS" 2>/dev/null || true)"
+[ -n "${PSSID_HOSTNAME:-}" ] && remember pssid_gui_hostname "$(yaml_q "$PSSID_HOSTNAME")"
+[ -n "${PSSID_EDITION:-}" ]  && remember pssid_gui_edition "$(yaml_q "$PSSID_EDITION")"
+[ -n "${PSSID_TLS:-}" ]      && remember pssid_gui_tls "$(yaml_q "$PSSID_TLS")"
+[ -n "${PSSID_LE_EMAIL:-}" ] && remember pssid_gui_letsencrypt_email "$(yaml_q "$PSSID_LE_EMAIL")"
+[ "$PULL_MODE" = "true" ]    && remember pssid_gui_pull true
+HOST_VARS_NEW="$(printf '%s\n' "$HOST_VARS_NEW" | sed '/^$/d')"
+if [ -n "$HOST_VARS_NEW" ]; then
+  mkdir -p "$(dirname "$HOST_VARS")"
+  {
+    echo "# Written by bootstrap.sh: this host's deployment choices, reused by every"
+    echo "# later playbook run (make upgrade, make deploy). Edit to change them."
+    printf '%s\n' "$HOST_VARS_NEW"
+  } > "$HOST_VARS"
+  ok "Deployment settings recorded in ${HOST_VARS#"$SRC"/}"
+fi
+
 # ─── Deploy ───────────────────────────────────────────────────────────────────
 step "Deploying (Ansible: docker + pssid_webgui roles)"
 cd "$SRC/ansible"
