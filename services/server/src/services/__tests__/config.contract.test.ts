@@ -108,6 +108,31 @@ describe('assertDaemonValid', () => {
     expect(() => assertDaemonValid(cfg)).toThrow(/ssid_profiles must be a non-empty list/);
   });
 
+  // Deleting the only job of a batch (or test of a job) scrubs the reference and
+  // leaves an empty list, which the daemon would run as a batch that measures
+  // nothing. It must be reported, not shipped.
+  it('rejects a batch with an empty jobs list', () => {
+    const cfg = validConfig();
+    (cfg.batches[0] as any).jobs = [];
+    expect(() => assertDaemonValid(cfg)).toThrow(/batch "batch-1": jobs must be a non-empty list/);
+
+    const missing = validConfig();
+    delete (missing.batches[0] as any).jobs;
+    expect(() => assertDaemonValid(missing)).toThrow(/jobs must be a non-empty list/);
+  });
+
+  it('rejects a job with an empty tests list', () => {
+    const cfg = validConfig();
+    (cfg.jobs[0] as any).tests = [];
+    expect(() => assertDaemonValid(cfg)).toThrow(/job "job-1": tests must be a non-empty list/);
+  });
+
+  it('rejects a job that references an undefined test', () => {
+    const cfg = validConfig();
+    (cfg.jobs[0] as any).tests = ['ping-test', 'nope'];
+    expect(() => assertDaemonValid(cfg)).toThrow(/job "job-1": references unknown test "nope"/);
+  });
+
   it('rejects dangling references from batches', () => {
     const ssid = validConfig();
     (ssid.batches[0] as any).ssid_profiles = ['nope'];
