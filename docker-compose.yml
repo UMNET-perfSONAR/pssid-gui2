@@ -356,7 +356,7 @@ services:
     command: >
       "trap exit TERM;
       while :; do
-        ts=$$(date +%F-%H-%M);
+        ts=$$(date +%F-%H-%M-%S);
         if [ -n \"$$MONGO_PASSWORD\" ]; then URI=\"mongodb://$$MONGO_USERNAME:$$MONGO_PASSWORD@mongo:27017/gui?authSource=admin\"; else URI=\"mongodb://mongo:27017/gui\"; fi;
         echo \"[backup] dumping gui -> /backups/backup-$$ts.gz\";
         mongodump --uri=\"$$URI\" --archive=/backups/backup-$$ts.gz --gzip || echo '[backup] dump failed';
