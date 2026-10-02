@@ -7,7 +7,7 @@ const config = {
   // to the server) only when the site is otherwise access-controlled.
   OPEN_WRITE: false,
   // Placeholder; the installer rewrites this with the deployment's hostname.
-  BASE_URL: "https://pssid.example.edu"
+  BASE_URL: "https://localhost"
   // any other config values
 };
 

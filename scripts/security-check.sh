@@ -131,12 +131,23 @@ if [ "${BASE%%:*}" = "https" ]; then
       || warn "TLS 1.2 did not negotiate" "Only 1.3? That is stricter than required, and fine."
     # Forward secrecy: a key compromise later must not decrypt traffic captured
     # today, so the negotiated suite has to be ECDHE.
-    NEG="$(openssl s_client -connect "${HOST}:443" $SNI </dev/null 2>/dev/null | grep -m1 'Cipher *:' | awk '{print $3}')"
-    case "$NEG" in
-      ECDHE*|TLS_*) pass "the negotiated cipher is forward-secret (${NEG})" ;;
-      "")           warn "could not read the negotiated cipher" ;;
-      *)            fail "the negotiated cipher is forward-secret" "Negotiated ${NEG}, which is not ECDHE." ;;
-    esac
+    #
+    # Read from the "New, TLSv1.x, Cipher is X" line. OpenSSL 3 prints the
+    # session block's "Cipher :" line only for TLS 1.2, so parsing that alone
+    # found nothing whenever 1.3 was negotiated. Every 1.3 suite is forward-secret
+    # by design; the 1.2 suites are the ones this server's config chooses, so
+    # 1.2 is checked on its own as well.
+    for opt in "" -tls1_2; do
+      # shellcheck disable=SC2086  # $SNI and $opt are deliberately word-split
+      NEG="$(openssl s_client -connect "${HOST}:443" $SNI $opt </dev/null 2>/dev/null \
+        | sed -nE 's/^New, [^,]+, Cipher is ([^ ]+).*/\1/p' | grep -v '^(NONE)$' | head -1)"
+      label="${opt:+TLS 1.2 }cipher"
+      case "$NEG" in
+        ECDHE*|TLS_*) pass "the negotiated ${label} is forward-secret (${NEG})" ;;
+        "")           warn "could not read the negotiated ${label}" ;;
+        *)            fail "the negotiated ${label} is forward-secret" "Negotiated ${NEG}, which is not ECDHE." ;;
+      esac
+    done
   fi
 
   # A self-signed certificate is legitimate for a lab, but HSTS must then stay

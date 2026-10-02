@@ -305,10 +305,17 @@ export function stripLegacyArchivers(batch_data: any) {
  *  - job.parallel must be the STRING "True"/"False" (daemon string-compares it)
  *  - job['continue-if'] must be a STRING (daemon calls .lower() on it)
  *  - every batch must have a non-empty ssid_profiles array
+ *  - every batch must have a non-empty jobs array, and every job a non-empty
+ *    tests array: the daemon hands an empty one to pScheduler as a batch that
+ *    joins the network and measures nothing. Deleting the last job of a batch
+ *    (or test of a job) leaves exactly this behind, because the delete scrubs
+ *    the reference, so it has to be reported here rather than shipped
  *  - every ssid_profile must declare a layer2_script and layer3_script
  *    (required; never blank) so the config always states the connection methods
- *  - every name referenced by a batch (jobs, ssid_profiles, schedules) must
- *    resolve to an actually-defined object
+ *  - every name referenced by a batch (jobs, ssid_profiles, schedules) or by a
+ *    job (tests) must resolve to an actually-defined object. The daemon treats
+ *    a missing one as an invalid batch and stops scheduling at that point, so
+ *    one dangling name silently drops every batch after it on that probe
  *  - every host's batches and every host_group's hosts/batches must resolve
  *
  * Plus one generated-file safety rule: host and host_group names must be safe
@@ -355,6 +362,7 @@ export function assertDaemonValid(obj: any): void {
   }
 
   const definedJobs = names(obj.jobs);
+  const definedTests = names(obj.tests);
   const definedSsids = names(obj.ssid_profiles);
   const definedSchedules = names(obj.schedules);
   const definedHosts = names(obj.hosts);
@@ -372,6 +380,14 @@ export function assertDaemonValid(obj: any): void {
         `job "${job.name}": continue-if must be a string ("true"/"false"), got ${JSON.stringify(job['continue-if'])}`
       );
     }
+    if (!Array.isArray(job.tests) || job.tests.length === 0) {
+      errors.push(`job "${job.name}": tests must be a non-empty list`);
+    }
+    for (const t of job.tests ?? []) {
+      if (!definedTests.has(t)) {
+        errors.push(`job "${job.name}": references unknown test "${t}"`);
+      }
+    }
   }
 
   // ---- ssid_profiles: layer 2 and layer 3 method are required --------------
@@ -388,6 +404,9 @@ export function assertDaemonValid(obj: any): void {
   for (const batch of Array.isArray(obj.batches) ? obj.batches : []) {
     if (!Array.isArray(batch.ssid_profiles) || batch.ssid_profiles.length === 0) {
       errors.push(`batch "${batch.name}": ssid_profiles must be a non-empty list`);
+    }
+    if (!Array.isArray(batch.jobs) || batch.jobs.length === 0) {
+      errors.push(`batch "${batch.name}": jobs must be a non-empty list`);
     }
     for (const s of batch.ssid_profiles ?? []) {
       if (!definedSsids.has(s)) {

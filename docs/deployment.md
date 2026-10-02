@@ -266,6 +266,15 @@ before pulling (they would otherwise block the pull whenever upstream also
 changed either file), and the installer run that follows regenerates both from
 the deployment's settings, so nothing is lost.
 
+The settings a bootstrap was given (`PSSID_HOSTNAME`, `PSSID_EDITION`,
+`PSSID_TLS`, `PSSID_LE_EMAIL`, `PSSID_PULL`) are recorded in
+`ansible/inventories/host_vars/localhost.yml`, which every later `make upgrade`
+and `make deploy` reads. Edit that file to change them for future runs. The
+auth posture is not recorded there: the installer carries SSO and the write
+policy over from `.env`, and `make sso-on` / `make writes-off` change them.
+Hosts deployed from a site inventory (such as `umich/inventory.ini`) take all
+of these from that inventory's `group_vars` instead.
+
 ### Controller-integrated installs
 
 On machines where the GUI containers run inside the pSSID controller stack

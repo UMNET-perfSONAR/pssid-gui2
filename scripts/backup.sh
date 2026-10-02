@@ -6,7 +6,9 @@
 # installed by the Ansible role uses this.
 set -euo pipefail
 
-TIMESTAMP=$(date +%F-%H-%M)
+# To the second: two backups in the same minute (make upgrade, then a manual
+# `make backup`) used to share a name, and the second silently replaced the first.
+TIMESTAMP=$(date +%F-%H-%M-%S)
 BACKUP_DIR="./mongo-backups"
 DB_NAME="gui"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-0}"
