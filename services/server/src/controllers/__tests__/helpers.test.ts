@@ -17,6 +17,12 @@ import {
   isRiskyHostPattern,
 } from '../helpers';
 
+describe('cron step regressions', () => {
+  it.each(['*/0 * * * *', '*/5/2 * * * *', '0-30/0 * * * *'])('rejects %s', (value) => {
+    expect(isValidCron(value)).toBe(false);
+  });
+});
+
 // These are the API-level floor rules. The client forms enforce the same or
 // stricter rules; what matters here is that direct API calls cannot store
 // values the forms would never produce.

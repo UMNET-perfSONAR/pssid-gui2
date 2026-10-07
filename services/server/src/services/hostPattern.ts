@@ -100,7 +100,7 @@ export function matchesHostPattern(pattern: string, hostname: string): boolean {
     return false;
   }
   try {
-    return new RegExp('^' + pattern).test(hostname);
+    return new RegExp('^(?:' + pattern + ')').test(hostname);
   } catch {
     return false;
   }

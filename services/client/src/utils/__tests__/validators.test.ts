@@ -15,6 +15,12 @@ import {
   validMetadataRows,
 } from '../validators';
 
+describe('cron step regressions', () => {
+  it.each(['*/0 * * * *', '*/5/2 * * * *', '0-30/0 * * * *'])('rejects %s', (value) => {
+    expect(validCron(value).valid).toBe(false);
+  });
+});
+
 // Every form field validator in one place. Each case states the rule it pins.
 
 describe('validName (RFC 1123: host/group/profile names)', () => {

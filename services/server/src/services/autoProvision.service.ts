@@ -73,6 +73,9 @@ async function runAutoProvision(): Promise<void> {
   }
   running = true;
   try {
+    // The setting may have been switched off while this run was waiting.
+    // Recheck before starting any external provisioning work.
+    if (!(await getSettings()).autoProvision) return;
     // forLog: the reason is a request URL and the caller an identity-provider
     // claim, neither of which may be trusted to stay on one log line.
     console.log('Auto-provision firing (reason: %s, caller: %s)', forLog(lastReason), forLog(lastCaller.uid));
@@ -109,7 +112,7 @@ export function isExplicitProvisionPath(path: string): boolean {
 export function autoProvisionOnWrite(req: Request, res: Response, next: NextFunction): void {
   const method = req.method.toUpperCase();
   const isWrite = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
-  const isProvisionEndpoint = isExplicitProvisionPath(req.path);
+  const isProvisionEndpoint = method === 'POST' && isExplicitProvisionPath(req.path);
 
   if (isWrite && !isProvisionEndpoint) {
     res.on('finish', () => {

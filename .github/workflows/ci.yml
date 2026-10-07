@@ -239,7 +239,9 @@ jobs:
       - name: Shell script syntax check
         run: |
           bash -n bootstrap.sh install.sh
-          for f in scripts/*.sh umich/QA/*.sh; do bash -n "$f"; done
+          for f in scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh umich/QA/*.sh; do bash -n "$f"; done
+      - name: Database maintenance regressions
+        run: bash scripts/tests/database-maintenance.test.sh
       # ShellCheck catches what `bash -n` cannot: unquoted expansions, a `[ x = y ]`
       # that silently succeeds on an empty variable, a `local` that swallows an
       # exit status. These scripts run as root and write the deployment's
@@ -247,7 +249,7 @@ jobs:
       - name: Shell lint (shellcheck)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          shellcheck -S warning bootstrap.sh install.sh scripts/*.sh umich/QA/*.sh
+          shellcheck -S warning bootstrap.sh install.sh scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh umich/QA/*.sh
       # Structural consistency that neither tests nor a syntax check can express:
       # links and operator-facing paths that survived a rename, Ansible vars files
       # whose NAME excludes them from ever loading, Makefile targets referenced

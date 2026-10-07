@@ -33,7 +33,9 @@ check() { # check "name" expected_status actual_status [body_regex] [body]
 
 req() { # req METHOD path [json] -> sets STATUS and BODY
   local method="$1" path="$2" data="${3:-}"
-  local args=(-X "$method" -H 'Content-Type: application/json' -w '\n%{http_code}')
+  # Match browser writes, including their origin. Without this header the suite
+  # missed nginx dropping the non-default port and refusing every UI save.
+  local args=(-X "$method" -H 'Content-Type: application/json' -H "Origin: ${BASE%/}" -w '\n%{http_code}')
   [ -n "$data" ] && args+=(-d "$data")
   local out attempt=0
   while :; do

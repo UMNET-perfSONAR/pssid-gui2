@@ -234,8 +234,11 @@ export function validCron(value: string): ValidationResult {
   const ranges: [number, number][] = [[0, 59], [0, 23], [1, 31], [1, 12], [0, 7]];
   const fieldOk = (field: string, min: number, max: number): boolean =>
     field.split(',').every((part) => {
-      const [range, stepStr] = part.split('/');
-      if (stepStr !== undefined && !/^\d+$/.test(stepStr)) return false;
+      const segments = part.split('/');
+      if (segments.length > 2) return false;
+      const [range, stepStr] = segments;
+      if (stepStr !== undefined &&
+          (!/^\d+$/.test(stepStr) || !Number.isSafeInteger(Number(stepStr)) || Number(stepStr) < 1)) return false;
       if (range === '*') return true;
       const within = (n: number) => n >= min && n <= max;
       if (/^\d+$/.test(range)) return within(Number(range));

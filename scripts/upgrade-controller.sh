@@ -40,6 +40,14 @@ fi
 check_disk || exit 1
 
 echo "==> Backing up the database"
+if [ -z "${PSSID_DB_CONTAINER:-}" ]; then
+  PSSID_DB_CONTAINER="$(cd "$CONTROLLER_DIR" && docker compose ps -q mongo)"
+  if [ -z "$PSSID_DB_CONTAINER" ] || [[ "$PSSID_DB_CONTAINER" == *$'\n'* ]]; then
+    echo 'error: expected one controller mongo service; set PSSID_DB_CONTAINER explicitly.' >&2
+    exit 1
+  fi
+fi
+export PSSID_DB_CONTAINER
 bash "$REPO_DIR/scripts/backup.sh"
 
 # The pull fast-forwards whatever branch this checkout is on. Releases land on

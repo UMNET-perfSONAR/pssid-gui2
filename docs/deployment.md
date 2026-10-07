@@ -323,6 +323,13 @@ make backup                 # archive now (scripts/backup.sh)
 make restore                # restore an archive (scripts/restore.sh)
 ```
 
+Backup and restore select the `mongo` service in the current Compose project.
+For the local development stack, set `COMPOSE_FILE=docker-compose.local.yml`.
+For an integrated controller, set `PSSID_DB_CONTAINER` to its exact MongoDB
+container name or ID. The scripts never select a database by searching all
+containers on the machine. Failed backups are removed instead of being offered
+as restorable archives.
+
 ## Quickstart
 
 For a shorter walkthrough of exactly this command with either posture's flags
