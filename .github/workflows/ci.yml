@@ -242,6 +242,8 @@ jobs:
           for f in scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh umich/QA/*.sh; do bash -n "$f"; done
       - name: Database maintenance regressions
         run: bash scripts/tests/database-maintenance.test.sh
+      - name: Probe provisioning reports adoption
+        run: bash scripts/tests/provision-probes.test.sh
       # ShellCheck catches what `bash -n` cannot: unquoted expansions, a `[ x = y ]`
       # that silently succeeds on an empty variable, a `local` that swallows an
       # exit status. These scripts run as root and write the deployment's

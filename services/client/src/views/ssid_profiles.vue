@@ -117,6 +117,70 @@
               >
               </VueMultiselect>
             </div>
+
+            <!-- Which access points the probe tests on this SSID. Every field is
+                 optional; the defaults test the SSID the way a client would. -->
+            <div class="form-group targeting">
+              <span id="ssid-targeting-label" class="form-group-label"> Access points to test </span>
+              <small class="form-text text-muted">
+                Optional. Left alone, the probe joins the SSID the way a client would and the
+                driver picks the access point.
+              </small>
+              <div role="radiogroup" aria-labelledby="ssid-targeting-label" class="targeting-options">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" id="ap-mode-ssid" value="ssid" v-model="form.ap_mode" />
+                  <label class="form-check-label" for="ap-mode-ssid"> Let the client choose </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" id="ap-mode-each" value="each" v-model="form.ap_mode" />
+                  <label class="form-check-label" for="ap-mode-each"> Each access point heard, strongest first, up to </label>
+                  <input
+                    type="number" min="1" max="32" class="form-control form-control-sm inline-number"
+                    aria-label="Most access points to test" placeholder="3"
+                    v-model="form.max_bssids" :disabled="isDisabled || form.ap_mode !== 'each'"
+                  />
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" id="ap-mode-list" value="list" v-model="form.ap_mode" />
+                  <label class="form-check-label" for="ap-mode-list"> These access points </label>
+                </div>
+              </div>
+              <textarea
+                v-if="form.ap_mode === 'list'"
+                id="ssid-bssids" class="form-control" rows="3" v-model="form.bssids"
+                placeholder="One BSSID per line, e.g. 00:11:22:33:44:55, or a $metadata key such as $nearest_ap"
+                aria-label="BSSIDs to test"
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <span id="ssid-bands-label" class="form-group-label"> Bands </span>
+              <div role="group" aria-labelledby="ssid-bands-label" class="band-options">
+                <label v-for="band in bands" :key="band" class="band-option">
+                  <input type="checkbox" :value="band" v-model="form.bands" /> {{ band }} GHz
+                </label>
+              </div>
+              <small class="form-text text-muted"> Each checked band is tested separately. None checked: any band. </small>
+            </div>
+            <div class="form-group">
+              <label for="ssid-min-signal"> Minimum signal (dBm) </label>
+              <input
+                type="number" id="ssid-min-signal" min="-120" max="0" class="form-control"
+                placeholder="e.g. -75; blank for none" v-model="form.min_signal"
+                aria-describedby="ssid-min-signal-help"
+              />
+              <small id="ssid-min-signal-help" class="form-text text-muted">
+                An attempt whose best access point is weaker is recorded as skipped, not failed,
+                so a badly placed probe does not drag down the results.
+              </small>
+            </div>
+            <div class="form-group">
+              <label for="ssid-connect-timeout"> Connect timeout (seconds) </label>
+              <input
+                type="number" id="ssid-connect-timeout" min="1" max="300" class="form-control"
+                placeholder="blank: the probe's default, 30" v-model="form.connect_timeout"
+              />
+            </div>
+            <small v-if="targetingError" id="ssid-targeting-error" class="text-danger" role="alert">{{ targetingError }}</small>
           </fieldset>
         </form>
       </div>
@@ -136,6 +200,10 @@
  import config from "../shared/config"
  import { isFormDisabled } from "../utils/formControl.ts"
  import { validName, validSsidNetworkName } from "../utils/validators.ts"
+ import { BANDS, parseTargeting, splitBssids } from "../shared/apTargeting"
+
+ // The targeting part of the form, blank: the SSID tested as a client would.
+ const BLANK_TARGETING = { ap_mode: 'ssid', max_bssids: '', bssids: '', bands: [], min_signal: '', connect_timeout: '' };
 
  export default {
    components: { itemList, PageHeader, ConfirmModal, VueMultiselect },
@@ -147,8 +215,9 @@
 
        // Name of the profile open in the editor; null = "New SSID profile" mode.
        selectedName: null,
-       form: { name: '', SSID: '', layer2_script: '', layer3_script: '' },
-       baseline: { name: '', SSID: '', layer2_script: '', layer3_script: '' },
+       form: { name: '', SSID: '', layer2_script: '', layer3_script: '', ...BLANK_TARGETING, bands: [] },
+       baseline: { name: '', SSID: '', layer2_script: '', layer3_script: '', ...BLANK_TARGETING, bands: [] },
+       bands: BANDS,
 
        confirmVisible: false,
        confirmMessage: '',
@@ -207,11 +276,19 @@
       ssidNameError() {
         return this.form.SSID ? validSsidNetworkName(this.form.SSID).error : '';
       },
+      // The same rules the server applies (shared/apTargeting.ts).
+      targetingError() {
+        if (this.form.ap_mode === 'list' && splitBssids(String(this.form.bssids)).length === 0) {
+          return 'List at least one access point, or choose another option.';
+        }
+        return parseTargeting(this.targetingPayload()).error || '';
+      },
       formValid() {
         return validName(this.form.name).valid &&
                !this.isDuplicateName &&
                validSsidNetworkName(this.form.SSID).valid &&
-               !!this.form.layer2_script && !!this.form.layer3_script;
+               !!this.form.layer2_script && !!this.form.layer3_script &&
+               !this.targetingError;
       }
     },
 
@@ -227,7 +304,22 @@
          name: '',
          SSID: '',
          layer2_script: this.defaultLayer2() || '',
-         layer3_script: this.defaultLayer3() || ''
+         layer3_script: this.defaultLayer3() || '',
+         ...BLANK_TARGETING,
+         bands: [],
+       };
+     },
+     // What the API stores. Every field is sent, blank when unset, so an edit
+     // that clears a field clears it on the server too.
+     targetingPayload() {
+       const mode = this.form.ap_mode;
+       return {
+         per_bssid: mode === 'each',
+         max_bssids: mode === 'each' ? this.form.max_bssids : '',
+         bssids: mode === 'list' ? splitBssids(String(this.form.bssids)) : '',
+         bands: [...this.form.bands],
+         min_signal: this.form.min_signal,
+         connect_timeout: this.form.connect_timeout,
        };
      },
 
@@ -267,9 +359,15 @@
          // Pre-fill a method default for profiles created before these fields
          // existed, on the draft only; nothing is stored until Save.
          layer2_script: item.layer2_script || this.defaultLayer2() || '',
-         layer3_script: item.layer3_script || this.defaultLayer3() || ''
+         layer3_script: item.layer3_script || this.defaultLayer3() || '',
+         ap_mode: item.per_bssid ? 'each' : (item.bssids?.length ? 'list' : 'ssid'),
+         max_bssids: item.max_bssids ?? '',
+         bssids: (item.bssids || []).join('\n'),
+         bands: [...(item.bands || [])],
+         min_signal: item.min_signal ?? '',
+         connect_timeout: item.connect_timeout ?? '',
        };
-       this.baseline = { ...this.form };
+       this.baseline = { ...this.form, bands: [...this.form.bands] };
      },
 
      requestClose() {
@@ -334,6 +432,7 @@
          SSID: this.form.SSID,
          layer2_script: this.form.layer2_script,
          layer3_script: this.form.layer3_script,
+         ...this.targetingPayload(),
        });
        // Keep the typed values when the server rejects the profile.
        if (ok) {
@@ -350,6 +449,7 @@
          SSID: this.form.SSID || '',
          layer2_script: this.form.layer2_script || '',
          layer3_script: this.form.layer3_script || '',
+         ...this.targetingPayload(),
        });
        if (!ok) return;
        await this.ssidStore.getSsidProfiles();
@@ -370,3 +470,30 @@
 </script>
 
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
+<style scoped>
+/* The targeting fields reuse the page's label style (.form-group > label and
+   .form-group-label in main.css); these rules only lay out the options. */
+.targeting {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+.targeting-options {
+  margin: 0.5rem 0;
+}
+.form-check-label,
+.band-option {
+  font-size: 0.875rem;
+}
+.band-options {
+  display: flex;
+  gap: 1.25rem;
+}
+.band-option input {
+  margin-right: 0.35rem;
+}
+.inline-number {
+  display: inline-block;
+  width: 5rem;
+  margin-left: 0.5rem;
+}
+</style>

@@ -5,6 +5,7 @@ import { connectToMongoDB } from './database.service';
 import { forLog } from './log.service';
 import { matchesHostPattern, isRiskyHostPattern } from './hostPattern';
 import { Caller, UNAUTHENTICATED_CALLER } from './identity.service';
+import { parseTargeting } from '../shared/apTargeting';
 import { execFile } from 'node:child_process';
 
 import path from 'path';
@@ -397,6 +398,11 @@ export function assertDaemonValid(obj: any): void {
     }
     if (!ssid.layer3_script) {
       errors.push(`ssid_profile "${ssid.name}": layer3_script (layer 3 method) is required`);
+    }
+    // Access-point targeting: the same rules the API applied when it was stored.
+    const targeting = parseTargeting(ssid);
+    if (targeting.error) {
+      errors.push(`ssid_profile "${ssid.name}": ${targeting.error}`);
     }
   }
 

@@ -1111,6 +1111,7 @@ sudo scripts/provision-probes.sh                  # every probe in the inventory
 sudo scripts/provision-probes.sh --limit rpi4     # one host group
 sudo scripts/provision-probes.sh --limit 10.0.0.5 # one probe
 sudo scripts/provision-probes.sh --dry-run        # show the plan, touch nothing
+sudo scripts/provision-probes.sh --wait 120       # wait up to 2 minutes for adoption
 ```
 
 It reads the generated `hosts.ini`, copies `pssid_config.json` to each probe over
@@ -1124,15 +1125,23 @@ file. Settings come from the environment, all optional:
 | `PSSID_CONFIG_DEST` | `/etc/pssid/pssid_config.json` | Where the daemon reads its config |
 | `PSSID_OUTPUT_DIR` | `/var/lib/pssid/output` | Where Generate wrote the files |
 | `PSSID_SSH_OPTS` | (none) | Extra `ssh`/`scp` options. Use `-o Port=2222`, not `-p`, since `scp` spells the port flag differently |
+| `PSSID_ADOPTION_WAIT` | `30` | Seconds to wait for probes to adopt the file (`--wait`) |
 
-It exits non-zero if any probe failed, names the ones that did, and records the
-outcome in `last-delivery.json` beside the config - readable from the server
-container, since that directory is a bind mount.
+**Delivered, then adopted.** pssid-daemon 2.0 and later picks a new file up by
+itself, between runs and without a restart, and publishes the sha256 of the
+config it runs in `/run/pssid/status.json`. After delivering, the script compares
+that with the file it sent and reports each probe as:
 
-**What it does not claim.** It does not restart the daemon and it does not verify
-that the probe adopted the file, because nothing on the controller can observe
-either. The result says the file was *delivered*, which is the only thing this
-side honestly knows; when and how the daemon picks it up is the probe's business.
+| Result | Meaning |
+|---|---|
+| adopted | the probe runs this file |
+| pending | delivered, not adopted when the wait ran out: the daemon adopts between runs, so a probe in a long batch takes a while (`pssid-daemon.py --status` on the probe) |
+| refused | the daemon found errors in the file and keeps running its previous config; the first error is shown |
+| unknown | a daemon older than 2.0, which does not report: there, *delivered* is all this side can know |
+
+It exits non-zero if any probe could not be reached or refused the file, names
+them, and records every list in `last-delivery.json` beside the config -
+readable from the server container, since that directory is a bind mount.
 
 To have delivery follow generation automatically, watch
 `/var/lib/pssid/output/provision-request.json` - written by `bin/provision` on

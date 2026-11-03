@@ -108,6 +108,29 @@ describe('assertDaemonValid', () => {
     expect(() => assertDaemonValid(cfg)).toThrow(/ssid_profiles must be a non-empty list/);
   });
 
+  // Access-point targeting reaches the daemon's Targeting (pssid_daemon/config.py),
+  // which refuses the profile if a field is out of range.
+  it('accepts SSID profiles with access-point targeting', () => {
+    const cfg = validConfig();
+    Object.assign(cfg.ssid_profiles[0], {
+      min_signal: -75, bands: ['5', '6'], bssids: ['00:11:22:33:44:55', '$nearest_ap'], connect_timeout: 45,
+    });
+    expect(() => assertDaemonValid(cfg)).not.toThrow();
+  });
+
+  it('rejects targeting the daemon would refuse', () => {
+    for (const [fields, message] of [
+      [{ min_signal: 10 }, /Minimum signal/],
+      [{ bands: ['7'] }, /Bands must be/],
+      [{ per_bssid: true, bssids: ['00:11:22:33:44:55'] }, /not both/],
+      [{ connect_timeout: 0 }, /Connect timeout/],
+    ] as const) {
+      const cfg = validConfig();
+      Object.assign(cfg.ssid_profiles[0], fields);
+      expect(() => assertDaemonValid(cfg)).toThrow(message);
+    }
+  });
+
   // Deleting the only job of a batch (or test of a job) scrubs the reference and
   // leaves an empty list, which the daemon would run as a batch that measures
   // nothing. It must be reported, not shipped.

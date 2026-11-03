@@ -5,6 +5,7 @@ import { connectToMongoDB } from '../services/database.service';
 import { updateCollection } from '../services/update.service';
 import { deleteDocument } from '../services/delete.service';
 import { isNameInDB, isValidRfc1123Name, isValidSsidName, sendDeleted } from './helpers';
+import { parseTargeting, TARGETING_FIELDS } from '../shared/apTargeting';
 
 var client = connectToMongoDB();
 
@@ -117,11 +118,16 @@ const postSSIDProfile = (async (req:Request, res:Response) => {
     if (!isValidScript(layer2_script, 'layer2_path') || !isValidScript(layer3_script, 'layer3_path')) {
       return res.status(400).json({message: "Invalid method selection"});
     }
+    const targeting = parseTargeting(req.body);
+    if (targeting.error) {
+      return res.status(400).json({message: targeting.error});
+    }
     await collection.insertOne({
       "name": req.body.name,
       "SSID": req.body.SSID,
       "layer2_script": layer2_script,
-      "layer3_script": layer3_script
+      "layer3_script": layer3_script,
+      ...targeting.value
     });
     res.json(req.body);
   }
@@ -158,16 +164,29 @@ const updateSSIDProfile = (async (req:Request, res:Response) => {
     if (!isValidScript(layer2_script, 'layer2_path') || !isValidScript(layer3_script, 'layer3_path')) {
       return res.status(400).json({message: "Invalid method selection"});
     }
+    const targeting = parseTargeting(body);
+    if (targeting.error) {
+      return res.status(400).json({message: targeting.error});
+    }
+    // A targeting field sent blank is cleared; one not sent at all is left as
+    // it is, so an API client that predates these fields cannot wipe them.
+    const cleared = Object.fromEntries(
+      TARGETING_FIELDS.filter((field) => field in body && !(field in targeting.value)).map((field) => [field, ""])
+    );
     const updated = await collection.updateOne({
       // String-coerce so an operator object can't turn this filter into a
       // NoSQL query targeting an arbitrary document (new_ssid_name is checked).
       "name": String(body.old_ssid_name)
-    }, {$set:{
-         "name": body.new_ssid_name,
-         "SSID": body.SSID,
-         "layer2_script": layer2_script,
-         "layer3_script": layer3_script
-       }})
+    }, {
+      $set: {
+        "name": body.new_ssid_name,
+        "SSID": body.SSID,
+        "layer2_script": layer2_script,
+        "layer3_script": layer3_script,
+        ...targeting.value
+      },
+      ...(Object.keys(cleared).length ? { $unset: cleared } : {})
+    })
 
     // See hosts.controllers.ts: a filter that matched nothing is not a save.
     if (updated.matchedCount === 0) {
